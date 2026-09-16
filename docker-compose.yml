@@ -1,0 +1,23 @@
+services:
+  zonamatch-db:
+    image: postgis/postgis:16-3.4
+    container_name: zonamatch-postgis
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-zonamatch_db}
+      POSTGRES_USER: ${POSTGRES_USER:-zonamatch_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zonamatch_pass}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - zonamatch_pgdata:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-zonamatch_user} -d ${POSTGRES_DB:-zonamatch_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  zonamatch_pgdata:
+    driver: local

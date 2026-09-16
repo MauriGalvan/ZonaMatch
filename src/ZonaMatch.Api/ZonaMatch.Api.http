@@ -1,0 +1,6 @@
+@ZonaMatch.Api_HostAddress = http://localhost:5222
+
+GET {{ZonaMatch.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

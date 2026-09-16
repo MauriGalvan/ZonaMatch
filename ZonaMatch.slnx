@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ZonaMatch.Api/ZonaMatch.Api.csproj" />
+    <Project Path="src/ZonaMatch.Core/ZonaMatch.Core.csproj" />
+    <Project Path="src/ZonaMatch.Domain/ZonaMatch.Domain.csproj" />
+    <Project Path="src/ZonaMatch.Infrastructure/ZonaMatch.Infrastructure.csproj" />
+  </Folder>
+</Solution>
