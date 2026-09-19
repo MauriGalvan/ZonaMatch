@@ -4,7 +4,7 @@ import L from 'leaflet';
 interface Poi {
   id: string;
   name: string;
-  category: 'salud' | 'educacion' | 'abastecimiento' | 'espacios_verdes' | 'transporte';
+  category: 'salud' | 'educacion' | 'abastecimiento' | 'espacios_verdes' | 'transporte' | 'seguridad' | 'finanzas' | 'gastronomia' | 'deportes';
   subcategory: string;
   lat: number;
   lon: number;
@@ -23,6 +23,8 @@ interface EvaluationResult {
     espacios_verdes: number;
     movilidad: number;
     clima: number;
+    seguridad: number;
+    gastronomia: number;
   };
   metrics: {
     healthPoisCount: number;
@@ -30,6 +32,10 @@ interface EvaluationResult {
     shopPoisCount: number;
     greenAreasCount: number;
     transitStopsCount: number;
+    securityPoisCount: number;
+    financePoisCount: number;
+    gastronomyPoisCount: number;
+    sportsPoisCount: number;
     travelDurationMin: number;
     travelDistanceKm: number;
     currentTemp: number;
@@ -39,15 +45,25 @@ interface EvaluationResult {
   cons: string[];
   explanation: string;
   routeGeoJson?: any;
+  pois?: Poi[];
 }
+
+// Límites de cobertura metropolitana exclusiva (CABA y AMBA)
+const AMBA_BOUNDS_COORDS = {
+  southWest: [-35.15, -59.35] as [number, number], // Cañuelas / Marcos Paz / La Plata
+  northEast: [-34.15, -57.80] as [number, number], // Zárate / Campana / Tigre / Costanera
+  center: [-34.6037, -58.3816] as [number, number]
+};
 
 const PRESET_ZONES = [
   { name: 'Palermo, CABA', lat: -34.5889, lon: -58.4306 },
-  { name: 'Belgrano, CABA', lat: -34.5627, lon: -58.4564 },
   { name: 'Caballito, CABA', lat: -34.6201, lon: -58.4443 },
-  { name: 'Rosario Centro, SF', lat: -32.9468, lon: -60.6393 },
-  { name: 'Córdoba Capital, CBA', lat: -31.4201, lon: -64.1888 },
-  { name: 'Godoy Cruz, Mendoza', lat: -32.9250, lon: -68.8450 }
+  { name: 'Belgrano, CABA', lat: -34.5627, lon: -58.4564 },
+  { name: 'Vicente López, AMBA Norte', lat: -34.5298, lon: -58.4736 },
+  { name: 'San Isidro, AMBA Norte', lat: -34.4718, lon: -58.5286 },
+  { name: 'Ramos Mejía, AMBA Oeste', lat: -34.6469, lon: -58.5639 },
+  { name: 'Quilmes Centro, AMBA Sur', lat: -34.7242, lon: -58.2608 },
+  { name: 'Lanús Centro, AMBA Sur', lat: -34.7072, lon: -58.3934 }
 ];
 
 export function App() {
@@ -63,7 +79,7 @@ export function App() {
     lat: -34.5889,
     lon: -58.4306
   });
-  
+
   const [workAddress, setWorkAddress] = useState('Obelisco, Microcentro CABA');
   const [workCoords, setWorkCoords] = useState<{ lat: number; lon: number }>({
     lat: -34.6037,
@@ -74,9 +90,11 @@ export function App() {
 
   // Preferences (Weights: 0 to 3)
   const [weights, setWeights] = useState({
+    seguridad: 3,
     salud: 2,
     educacion: 2,
     abastecimiento: 2,
+    gastronomia: 2,
     espacios_verdes: 3,
     movilidad: 3,
     clima: 1
@@ -87,6 +105,9 @@ export function App() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [pipelineStep, setPipelineStep] = useState<string>('Listo');
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
+  const [currentPois, setCurrentPois] = useState<Poi[]>([]);
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('todos');
+  const [coverageNotice, setCoverageNotice] = useState<string | null>(null);
 
   // 1. Check Backend Health
   useEffect(() => {
@@ -104,9 +125,18 @@ export function App() {
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
+    const ambaBounds = L.latLngBounds(
+      AMBA_BOUNDS_COORDS.southWest,
+      AMBA_BOUNDS_COORDS.northEast
+    );
+
     const leafletMap = L.map(mapContainer.current, {
-      center: [-34.5889, -58.4306],
-      zoom: 14,
+      center: AMBA_BOUNDS_COORDS.center,
+      zoom: 13,
+      minZoom: 10,
+      maxZoom: 19,
+      maxBounds: ambaBounds,
+      maxBoundsViscosity: 1.0,
       zoomControl: false
     });
 
@@ -165,18 +195,42 @@ export function App() {
     currentTileLayer.current = newLayer;
 
     if (evaluation) {
-      drawOnMap(evaluation, getPoisSync(evaluation.lat, evaluation.lon), evaluation.routeGeoJson, workCoords, workAddress);
+      drawOnMap(evaluation, evaluation.pois || currentPois, evaluation.routeGeoJson, workCoords, workAddress, activeCategoryFilter);
     }
   };
 
-  // Geocode location anywhere in Argentina (via Nominatim + Georef fallback)
+  // Filter POIs on map by category
+  const handleFilterCategory = (category: string) => {
+    setActiveCategoryFilter(category);
+    if (evaluation) {
+      drawOnMap(
+        evaluation,
+        evaluation.pois || currentPois,
+        evaluation.routeGeoJson,
+        workCoords,
+        workAddress,
+        category
+      );
+    }
+  };
+
+  // Helper: Verifica si una coordenada está dentro de CABA y AMBA
+  const isInsideAmba = (lat: number, lon: number) => {
+    return lat >= AMBA_BOUNDS_COORDS.southWest[0] &&
+           lat <= AMBA_BOUNDS_COORDS.northEast[0] &&
+           lon >= AMBA_BOUNDS_COORDS.southWest[1] &&
+           lon <= AMBA_BOUNDS_COORDS.northEast[1];
+  };
+
+  // Geocode location acotada a CABA y AMBA (con viewbox y validación)
   const geocodeLocation = async (query: string): Promise<{ name: string; lat: number; lon: number } | null> => {
     if (!query || query.trim().length === 0) return null;
     const cleanQuery = query.trim();
 
-    // 1. Nominatim Argentina (supports "San Justo, La Matanza", "Palermo", "Av. de Mayo 500", etc.)
+    // 1. Nominatim acotado al AMBA (viewbox: lon_min,lat_max,lon_max,lat_min)
+    const viewboxAmba = `${AMBA_BOUNDS_COORDS.southWest[1]},${AMBA_BOUNDS_COORDS.northEast[0]},${AMBA_BOUNDS_COORDS.northEast[1]},${AMBA_BOUNDS_COORDS.southWest[0]}`;
     try {
-      const nomUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanQuery + ', Argentina')}&format=json&limit=1&countrycodes=ar`;
+      const nomUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanQuery)}&format=json&limit=1&countrycodes=ar&viewbox=${viewboxAmba}&bounded=1`;
       const res = await fetch(nomUrl, {
         headers: { 'Accept': 'application/json' }
       });
@@ -189,10 +243,28 @@ export function App() {
         };
       }
     } catch (e) {
-      console.warn('Nominatim error, trying Georef:', e);
+      console.warn('Nominatim bounded error, trying standard search:', e);
     }
 
-    // 2. Georef Localidades
+    // 2. Nominatim estándar (si no encontró en el viewbox estricto)
+    try {
+      const nomUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanQuery + ', Buenos Aires')}&format=json&limit=1&countrycodes=ar`;
+      const res = await fetch(nomUrl, {
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return {
+          name: data[0].display_name.split(',').slice(0, 3).join(','),
+          lat: parseFloat(data[0].lat),
+          lon: parseFloat(data[0].lon)
+        };
+      }
+    } catch (e) {
+      console.warn('Nominatim standard fallback error:', e);
+    }
+
+    // 3. Georef Localidades
     try {
       const locUrl = `https://apis.datos.gob.ar/georef/api/localidades?nombre=${encodeURIComponent(cleanQuery)}&max=1`;
       const locRes = await fetch(locUrl);
@@ -215,6 +287,7 @@ export function App() {
   // Run Zone Evaluation Pipeline
   const runEvaluation = async (customZoneQuery?: string, customDestQuery?: string) => {
     setIsEvaluating(true);
+    setCoverageNotice(null);
 
     const targetQuery = customZoneQuery !== undefined ? customZoneQuery : zoneQuery;
     const destQuery = customDestQuery !== undefined ? customDestQuery : workAddress;
@@ -234,6 +307,30 @@ export function App() {
         setSelectedCoords({ lat: targetLat, lon: targetLon });
       }
 
+      // Validación de Cobertura CABA / AMBA (Frontend + Backend)
+      let isInside = isInsideAmba(targetLat, targetLon);
+
+      try {
+        const valRes = await fetch('http://localhost:5222/api/geo/validate-coverage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latitude: targetLat, longitude: targetLon })
+        });
+        if (valRes.ok) {
+          const valData = await valRes.json();
+          isInside = valData.isInside;
+        }
+      } catch {
+        // En modo local o standby de API, mantiene validación espacial local
+      }
+
+      if (!isInside) {
+        setCoverageNotice(`⚠️ "${zoneName}" queda fuera de la cobertura de CABA y AMBA. ZonaMatch MVP opera exclusivamente en el área metropolitana de Buenos Aires.`);
+        setIsEvaluating(false);
+        setPipelineStep('Listo');
+        return;
+      }
+
       // Geocodificación de Destino Habitual (Trabajo/Estudio)
       let currentWorkLat = workCoords.lat;
       let currentWorkLon = workCoords.lon;
@@ -249,9 +346,10 @@ export function App() {
         }
       }
 
-      // Step 2: Overpass (OSM POIs)
+      // Step 2: Overpass (OSM POIs reales de la zona)
       setPipelineStep('Overpass OSM');
-      const pois: Poi[] = getPoisSync(targetLat, targetLon);
+      const pois: Poi[] = await fetchOverpassPois(targetLat, targetLon);
+      setCurrentPois(pois);
 
       // Step 3: OSRM (Ruteo vial real y tiempos)
       setPipelineStep('OSRM Routing');
@@ -284,18 +382,152 @@ export function App() {
     }
   };
 
-  // Helper: Synchronous POI generator
-  const getPoisSync = (lat: number, lon: number): Poi[] => {
-    return [
-      { id: '1', name: 'Hospital General de Agudos', category: 'salud', subcategory: 'Hospital Público', lat: lat + 0.0032, lon: lon - 0.0028 },
-      { id: '2', name: 'Farmacia Farmacity', category: 'salud', subcategory: 'Farmacia de Turno', lat: lat - 0.0018, lon: lon + 0.0024 },
-      { id: '3', name: 'Colegio Normal Superior', category: 'educacion', subcategory: 'Escuela Primaria y Secundaria', lat: lat + 0.0041, lon: lon + 0.0035 },
-      { id: '4', name: 'Supermercado Coto', category: 'abastecimiento', subcategory: 'Hipermercado', lat: lat - 0.0025, lon: lon - 0.0038 },
-      { id: '5', name: 'Carrefour Express', category: 'abastecimiento', subcategory: 'Comercio de Proximidad', lat: lat + 0.0014, lon: lon - 0.0019 },
-      { id: '6', name: 'Plaza Italia / Parque Público', category: 'espacios_verdes', subcategory: 'Espacio Verde', lat: lat + 0.0053, lon: lon - 0.0042 },
-      { id: '7', name: 'Estación Palermo (Subte D / Tren San Martín)', category: 'transporte', subcategory: 'Subte y Ferrocarril', lat: lat - 0.0035, lon: lon + 0.0018 },
-      { id: '8', name: 'Metrobus Juan B. Justo', category: 'transporte', subcategory: 'Parada Colectivos', lat: lat + 0.0021, lon: lon + 0.0012 },
+  // Helper: Real OpenStreetMap POI fetcher via Overpass API
+  const fetchOverpassPois = async (lat: number, lon: number): Promise<Poi[]> => {
+    // 1300m radius around target coordinates
+    const query = `[out:json][timeout:10];
+(
+  // Salud
+  node["amenity"~"hospital|clinic|pharmacy|doctors"](around:1300,${lat},${lon});
+  way["amenity"~"hospital|clinic|pharmacy|doctors"](around:1300,${lat},${lon});
+
+  // Educacion
+  node["amenity"~"school|university|college|kindergarten"](around:1300,${lat},${lon});
+  way["amenity"~"school|university|college|kindergarten"](around:1300,${lat},${lon});
+
+  // Abastecimiento
+  node["shop"~"supermarket|convenience|bakery"](around:1300,${lat},${lon});
+  way["shop"~"supermarket|convenience|bakery"](around:1300,${lat},${lon});
+
+  // Espacios verdes
+  node["leisure"~"park|garden|pitch"](around:1300,${lat},${lon});
+  way["leisure"~"park|garden|pitch"](around:1300,${lat},${lon});
+
+  // Transporte
+  node["highway"="bus_stop"](around:1300,${lat},${lon});
+  node["railway"~"subway_entrance|station"](around:1300,${lat},${lon});
+  node["public_transport"~"stop_position|platform"](around:1300,${lat},${lon});
+
+  // Opcion A: Seguridad (Comisarías y Bomberos en 1600m)
+  node["amenity"~"police|fire_station"](around:1600,${lat},${lon});
+  way["amenity"~"police|fire_station"](around:1600,${lat},${lon});
+
+  // Opcion A: Finanzas (Bancos y Cajeros)
+  node["amenity"~"bank|atm"](around:1300,${lat},${lon});
+
+  // Opcion B: Gastronomia y Ocio (Cafes, Restaurantes, Bares, Cines)
+  node["amenity"~"cafe|restaurant|bar|pub|ice_cream|fast_food|cinema|theatre"](around:1300,${lat},${lon});
+  way["amenity"~"cafe|restaurant|bar|pub|cinema"](around:1300,${lat},${lon});
+
+  // Opcion B: Deportes y Fitness
+  node["leisure"~"fitness_centre|sports_centre"](around:1300,${lat},${lon});
+  way["leisure"~"fitness_centre|sports_centre"](around:1300,${lat},${lon});
+);
+out center 80;`;
+
+    const endpoints = [
+      'https://overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter'
     ];
+
+    for (const url of endpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8500);
+
+        const res = await fetch(url, {
+          method: 'POST',
+          body: 'data=' + encodeURIComponent(query),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          },
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) continue;
+
+        const data = await res.json();
+        if (!data || !Array.isArray(data.elements)) continue;
+
+        const parsedPois: Poi[] = [];
+
+        for (const el of data.elements) {
+          const pLat = el.lat ?? el.center?.lat;
+          const pLon = el.lon ?? el.center?.lon;
+          if (!pLat || !pLon) continue;
+
+          const tags = el.tags || {};
+          let category: Poi['category'] = 'abastecimiento';
+          let subcategory = 'Comercio';
+
+          if (tags.amenity === 'police' || tags.amenity === 'fire_station') {
+            category = 'seguridad';
+            subcategory = tags.amenity === 'police' ? 'Comisaría / Policía' : 'Cuartel de Bomberos';
+          } else if (tags.amenity === 'bank' || tags.amenity === 'atm') {
+            category = 'finanzas';
+            subcategory = tags.amenity === 'bank' ? 'Banco' : 'Cajero Automático (ATM)';
+          } else if (['cafe', 'restaurant', 'bar', 'pub', 'ice_cream', 'fast_food', 'cinema', 'theatre'].includes(tags.amenity)) {
+            category = 'gastronomia';
+            subcategory = tags.amenity === 'cafe' ? 'Cafetería' :
+              tags.amenity === 'bar' || tags.amenity === 'pub' ? 'Bar / Pub' :
+                tags.amenity === 'ice_cream' ? 'Heladería' :
+                  tags.amenity === 'cinema' ? 'Cine' :
+                    tags.amenity === 'theatre' ? 'Teatro' : 'Restaurante';
+          } else if (tags.leisure === 'fitness_centre' || tags.leisure === 'sports_centre') {
+            category = 'deportes';
+            subcategory = tags.leisure === 'fitness_centre' ? 'Gimnasio / Fitness' : 'Club / Polideportivo';
+          } else if (tags.amenity === 'hospital' || tags.amenity === 'clinic' || tags.amenity === 'pharmacy' || tags.amenity === 'doctors') {
+            category = 'salud';
+            subcategory = tags.amenity === 'hospital' ? 'Hospital' :
+              tags.amenity === 'clinic' ? 'Clínica' :
+                tags.amenity === 'pharmacy' ? 'Farmacia' : 'Consultorio';
+          } else if (tags.amenity === 'school' || tags.amenity === 'university' || tags.amenity === 'college' || tags.amenity === 'kindergarten') {
+            category = 'educacion';
+            subcategory = tags.amenity === 'university' ? 'Universidad' :
+              tags.amenity === 'kindergarten' ? 'Jardín de Infantes' :
+                tags.amenity === 'college' ? 'Instituto Terciario' : 'Escuela / Colegio';
+          } else if (tags.shop || tags.amenity === 'marketplace') {
+            category = 'abastecimiento';
+            subcategory = tags.shop === 'supermarket' ? 'Supermercado' :
+              tags.shop === 'bakery' ? 'Panadería' :
+                tags.shop === 'convenience' ? 'Comercio de Barrio' : 'Comercio';
+          } else if (tags.leisure === 'park' || tags.leisure === 'garden' || tags.leisure === 'pitch') {
+            category = 'espacios_verdes';
+            subcategory = tags.leisure === 'park' ? 'Parque / Plaza' :
+              tags.leisure === 'pitch' ? 'Espacio Deportivo' : 'Espacio Verde';
+          } else if (tags.highway === 'bus_stop' || tags.railway || tags.public_transport) {
+            category = 'transporte';
+            subcategory = tags.railway === 'subway_entrance' ? 'Boca de Subte' :
+              tags.railway === 'station' ? 'Estación Ferroviaria' : 'Parada de Colectivo';
+          }
+
+          let name = tags.name;
+          if (!name || name.trim().length === 0) {
+            name = tags.brand || `${subcategory} ${parsedPois.length + 1}`;
+          }
+
+          parsedPois.push({
+            id: `${el.type}_${el.id}`,
+            name,
+            category,
+            subcategory,
+            lat: pLat,
+            lon: pLon
+          });
+        }
+
+        if (parsedPois.length > 0) {
+          return parsedPois;
+        }
+      } catch (e) {
+        console.warn(`Overpass error on ${url}:`, e);
+      }
+    }
+
+    return [];
   };
 
   // Helper: OSRM Public Routing
@@ -353,59 +585,88 @@ export function App() {
     const shopCount = pois.filter(p => p.category === 'abastecimiento').length;
     const greenCount = pois.filter(p => p.category === 'espacios_verdes').length;
     const transitCount = pois.filter(p => p.category === 'transporte').length;
+    const securityCount = pois.filter(p => p.category === 'seguridad').length;
+    const financeCount = pois.filter(p => p.category === 'finanzas').length;
+    const gastroCount = pois.filter(p => p.category === 'gastronomia').length;
+    const sportsCount = pois.filter(p => p.category === 'deportes').length;
 
-    // Normalize each metric to 0-100 scale
-    const subSalud = Math.min(100, healthCount * 35 + 20);
-    const subEducacion = Math.min(100, eduCount * 45 + 15);
-    const subAbastecimiento = Math.min(100, shopCount * 30 + 30);
-    const subVerdes = Math.min(100, greenCount * 50 + 20);
-    
+    // Normalización adaptativa basada en servicios reales detectados
+    const subSeguridad = securityCount === 0 ? 35 : Math.min(100, 45 + securityCount * 30);
+    const subSalud = healthCount === 0 ? 15 : Math.min(100, 20 + healthCount * 25);
+    const subEducacion = eduCount === 0 ? 15 : Math.min(100, 20 + eduCount * 25);
+    const subAbastecimiento = shopCount === 0 ? 20 : Math.min(100, 25 + shopCount * 20);
+    const subGastronomia = gastroCount === 0 ? 20 : Math.min(100, 25 + gastroCount * 15);
+    const subVerdes = greenCount === 0 ? 15 : Math.min(100, 25 + greenCount * 30);
+
     // Mobility: optimal < 20 min, drops to 0 at 60 min
     const subMovilidad = Math.max(10, Math.min(100, Math.round(100 - (mobility.durationMin - 15) * 2.2)));
-    
+
     // Weather: optimal between 16 and 26 °C
     const subClima = Math.round(95 - Math.abs(weather.temp - 22) * 2);
 
     // Weighted average
-    const totalWeight = userWeights.salud + userWeights.educacion + userWeights.abastecimiento +
-                        userWeights.espacios_verdes + userWeights.movilidad + userWeights.clima;
-    
-    const weightedSum = (subSalud * userWeights.salud) +
-                        (subEducacion * userWeights.educacion) +
-                        (subAbastecimiento * userWeights.abastecimiento) +
-                        (subVerdes * userWeights.espacios_verdes) +
-                        (subMovilidad * userWeights.movilidad) +
-                        (subClima * userWeights.clima);
+    const totalWeight = userWeights.seguridad + userWeights.salud + userWeights.educacion +
+      userWeights.abastecimiento + userWeights.gastronomia +
+      userWeights.espacios_verdes + userWeights.movilidad + userWeights.clima;
+
+    const weightedSum = (subSeguridad * userWeights.seguridad) +
+      (subSalud * userWeights.salud) +
+      (subEducacion * userWeights.educacion) +
+      (subAbastecimiento * userWeights.abastecimiento) +
+      (subGastronomia * userWeights.gastronomia) +
+      (subVerdes * userWeights.espacios_verdes) +
+      (subMovilidad * userWeights.movilidad) +
+      (subClima * userWeights.clima);
 
     const totalScore = Math.round(weightedSum / (totalWeight || 1));
 
-    // Pros & Cons
+    // Dynamic Pros & Cons based on actual data
     const pros: string[] = [];
     const cons: string[] = [];
 
-    if (subMovilidad >= 75) pros.push(`Excelente conectividad al destino: solo ${mobility.durationMin} min de viaje (${mobility.distanceKm} km).`);
-    else cons.push(`Tiempo de viaje al trabajo relativamente alto (${mobility.durationMin} min).`);
+    if (subMovilidad >= 75) {
+      pros.push(`Excelente conectividad al destino: solo ${mobility.durationMin} min de viaje (${mobility.distanceKm} km).`);
+    } else {
+      cons.push(`Tiempo de viaje al destino considerable (${mobility.durationMin} min).`);
+    }
 
-    if (subSalud >= 80) pros.push('Alta cobertura médica con hospitales y farmacias de guardia a menos de 600m.');
-    if (subAbastecimiento >= 80) pros.push('Gran densidad comercial y supermercados de proximidad a pasos.');
-    if (subVerdes < 60) cons.push('Escasez relativa de espacios verdes o parques amplios en radio caminable inmediato.');
-    if (transitCount >= 2) pros.push('Excelente acceso a líneas de transporte público y paradas frecuentes.');
+    if (securityCount >= 1) pros.push(`Seguridad: ${securityCount} comisaría(s) o destacamento(s) en el área.`);
+    else cons.push('Sin comisarías o destacamentos policiales inmediatos registrados.');
 
-    const explanation = `La zona de ${zoneName} presenta un ajuste del ${totalScore}% para tu perfil. Sobresale en ${pros.slice(0, 2).join(' ')} ${cons.length > 0 ? 'Conviene considerar: ' + cons[0] : ''}`;
+    if (healthCount >= 2) pros.push(`Buena cobertura médica con ${healthCount} centros de salud y farmacias cercanas.`);
+    else if (healthCount === 0) cons.push('Sin hospitales o farmacias mapeadas en el radio inmediato (1.3 km).');
+
+    if (gastroCount >= 3) pros.push(`Gran oferta gastronómica y social con ${gastroCount} cafés, bares y restaurantes.`);
+    if (financeCount >= 1) pros.push(`Servicios financieros con ${financeCount} banco(s) o cajero(s) accesibles.`);
+    if (sportsCount >= 1) pros.push(`Infraestructura deportiva con ${sportsCount} gimnasio(s) o centros de fitness.`);
+
+    if (shopCount >= 2) pros.push(`Gran abastecimiento con ${shopCount} comercios y supermercados.`);
+    else if (shopCount === 0) cons.push('Poca presencia de comercios de proximidad registrados.');
+
+    if (greenCount >= 1) pros.push(`Acceso a ${greenCount} plaza(s) o espacio(s) verde(s) para recreación.`);
+    else cons.push('Escasez de plazas o espacios verdes identificados en la zona.');
+
+    if (transitCount >= 2) pros.push(`Excelente acceso a transporte público (${transitCount} paradas/estaciones).`);
+
+    const explanation = `La zona de ${zoneName} presenta un ajuste del ${totalScore}% para tu perfil. ${pros.length > 0 ? 'Puntos a favor: ' + pros.slice(0, 2).join(' ') : ''} ${cons.length > 0 ? 'A considerar: ' + cons[0] : ''}`;
+
+    const confidence = pois.length >= 10 ? 98 : pois.length >= 4 ? 86 : 68;
 
     return {
       zoneName,
       lat,
       lon,
       totalScore,
-      confidence: 96,
+      confidence,
       subscores: {
         salud: subSalud,
         educacion: subEducacion,
         abastecimiento: subAbastecimiento,
         espacios_verdes: subVerdes,
         movilidad: subMovilidad,
-        clima: subClima
+        clima: subClima,
+        seguridad: subSeguridad,
+        gastronomia: subGastronomia
       },
       metrics: {
         healthPoisCount: healthCount,
@@ -413,6 +674,10 @@ export function App() {
         shopPoisCount: shopCount,
         greenAreasCount: greenCount,
         transitStopsCount: transitCount,
+        securityPoisCount: securityCount,
+        financePoisCount: financeCount,
+        gastronomyPoisCount: gastroCount,
+        sportsPoisCount: sportsCount,
         travelDurationMin: mobility.durationMin,
         travelDistanceKm: mobility.distanceKm,
         currentTemp: weather.temp,
@@ -420,7 +685,8 @@ export function App() {
       },
       pros,
       cons,
-      explanation
+      explanation,
+      pois
     };
   };
 
@@ -430,7 +696,8 @@ export function App() {
     pois: Poi[],
     routeGeoJson: any,
     destCoords: { lat: number; lon: number } = workCoords,
-    destLabel: string = workAddress
+    destLabel: string = workAddress,
+    categoryFilter: string = activeCategoryFilter
   ) => {
     if (!map.current || !markersLayer.current) return;
 
@@ -475,12 +742,21 @@ export function App() {
       .addTo(markersLayer.current);
 
     // POI Markers
-    pois.forEach(poi => {
+    const visiblePois = categoryFilter === 'todos'
+      ? pois
+      : pois.filter(p => p.category === categoryFilter);
+
+    visiblePois.forEach(poi => {
       const icon = poi.category === 'salud' ? '🏥' :
-                   poi.category === 'educacion' ? '🎓' :
-                   poi.category === 'abastecimiento' ? '🛒' :
-                   poi.category === 'espacios_verdes' ? '🌳' : '🚌';
-      
+        poi.category === 'educacion' ? '🎓' :
+          poi.category === 'abastecimiento' ? '🛒' :
+            poi.category === 'espacios_verdes' ? '🌳' :
+              poi.category === 'transporte' ? '🚌' :
+                poi.category === 'seguridad' ? (poi.subcategory.includes('Bomberos') ? '🚒' : '👮') :
+                  poi.category === 'finanzas' ? (poi.subcategory.includes('Banco') ? '🏦' : '🏧') :
+                    poi.category === 'gastronomia' ? (poi.subcategory.includes('Café') ? '☕' : poi.subcategory.includes('Bar') ? '🍺' : '🍽️') :
+                      '🏋️';
+
       const poiIcon = L.divIcon({
         className: `custom-marker marker-${poi.category}`,
         html: icon,
@@ -490,9 +766,12 @@ export function App() {
 
       L.marker([poi.lat, poi.lon], { icon: poiIcon })
         .bindPopup(`
-          <div style="color: #f8fafc; font-family: sans-serif; padding: 2px;">
-            <strong style="color: #818cf8;">${poi.name}</strong><br/>
-            <span style="font-size: 11px; color: #94a3b8;">${poi.subcategory}</span>
+          <div style="color: #f8fafc; font-family: sans-serif; padding: 4px; min-width: 140px;">
+            <div style="font-size: 10px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; color: #38bdf8; margin-bottom: 2px;">
+              ${poi.category.toUpperCase()}
+            </div>
+            <strong style="color: #ffffff; font-size: 13px; line-height: 1.2; display: block;">${poi.name}</strong>
+            <span style="font-size: 11px; color: #94a3b8; margin-top: 2px; display: block;">${poi.subcategory}</span>
           </div>
         `)
         .addTo(markersLayer.current!);
@@ -575,6 +854,30 @@ export function App() {
           </button>
         </div>
 
+        {/* Floating Category Filter Pills */}
+        <div className="map-category-filter">
+          {[
+            { id: 'todos', label: 'Todos' },
+            { id: 'seguridad', label: '👮 Seguridad' },
+            { id: 'gastronomia', label: '☕ Gastronomía' },
+            { id: 'salud', label: '🏥 Salud' },
+            { id: 'educacion', label: '🎓 Educación' },
+            { id: 'abastecimiento', label: '🛒 Compras' },
+            { id: 'espacios_verdes', label: '🌳 Plazas' },
+            { id: 'transporte', label: '🚌 Transporte' },
+            { id: 'finanzas', label: '🏧 Finanzas' },
+            { id: 'deportes', label: '🏋️ Deportes' },
+          ].map(cat => (
+            <button
+              key={cat.id}
+              className={`cat-filter-btn ${activeCategoryFilter === cat.id ? 'active' : ''}`}
+              onClick={() => handleFilterCategory(cat.id)}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
         {/* Floating Left Control Sidebar */}
         <aside className="floating-panel sidebar-left">
           <div className="panel-header">
@@ -585,7 +888,7 @@ export function App() {
           <div className="panel-content">
             {/* Zone Search Input */}
             <div className="search-box-wrapper">
-              <label className="input-label">Zona o Dirección (Georef Argentina)</label>
+              <label className="input-label">Zona o Dirección (CABA y AMBA)</label>
               <div className="input-with-icon">
                 <span className="input-icon">🔍</span>
                 <input
@@ -596,9 +899,17 @@ export function App() {
                   onKeyDown={e => {
                     if (e.key === 'Enter') runEvaluation(zoneQuery, workAddress);
                   }}
-                  placeholder="Ej. San Justo, La Matanza / Palermo / Ramos Mejía..."
+                  placeholder="Ej. Palermo, CABA / Ramos Mejía / Quilmes / San Isidro..."
                 />
               </div>
+
+              {/* Aviso de Cobertura */}
+              {coverageNotice && (
+                <div className="coverage-warning-banner">
+                  <span>{coverageNotice}</span>
+                  <button onClick={() => setCoverageNotice(null)} title="Cerrar aviso">✕</button>
+                </div>
+              )}
 
               {/* Quick Preset Buttons */}
               <div className="quick-picks">
@@ -659,10 +970,12 @@ export function App() {
               <label className="input-label">Tus Prioridades y Ponderaciones</label>
               <div className="weight-list">
                 {[
-                  { key: 'salud', label: '🏥 Salud (Hospitales/Farmacias)' },
-                  { key: 'educacion', label: '🎓 Educación (Escuelas/Uni)' },
-                  { key: 'abastecimiento', label: '🛒 Supermercados y Comercios' },
-                  { key: 'espacios_verdes', label: '🌳 Espacios Verdes y Plazas' },
+                  { key: 'seguridad', label: '👮 Seguridad' },
+                  { key: 'salud', label: '🏥 Salud' },
+                  { key: 'educacion', label: '🎓 Educación' },
+                  { key: 'abastecimiento', label: '🛒 Compras' },
+                  { key: 'gastronomia', label: '☕ Gastronomía' },
+                  { key: 'espacios_verdes', label: '🌳 Plazas' },
                   { key: 'movilidad', label: '🚌 Movilidad y Tiempos de Viaje' },
                   { key: 'clima', label: '☀️ Clima y Confort' },
                 ].map(item => (
@@ -708,7 +1021,7 @@ export function App() {
               <div className="score-hero">
                 <div className="score-number">{evaluation.totalScore}%</div>
                 <div className="score-label">Nivel de Coincidencia con tu Perfil</div>
-                
+
                 <div className="confidence-bar-container">
                   <div className="confidence-header">
                     <span>Cobertura de Datos Verificada</span>
@@ -724,10 +1037,26 @@ export function App() {
               <div className="subscores-grid">
                 <div className="subscore-item">
                   <div className="subscore-top">
+                    <span>👮 Seguridad</span>
+                    <span>{evaluation.metrics.securityPoisCount} Destac.</span>
+                  </div>
+                  <div className="subscore-val">{evaluation.subscores.seguridad}%</div>
+                </div>
+
+                <div className="subscore-item">
+                  <div className="subscore-top">
                     <span>🏥 Salud</span>
                     <span>{evaluation.metrics.healthPoisCount} POIs</span>
                   </div>
                   <div className="subscore-val">{evaluation.subscores.salud}%</div>
+                </div>
+
+                <div className="subscore-item">
+                  <div className="subscore-top">
+                    <span>☕ Gastronomía</span>
+                    <span>{evaluation.metrics.gastronomyPoisCount} Locales</span>
+                  </div>
+                  <div className="subscore-val">{evaluation.subscores.gastronomia}%</div>
                 </div>
 
                 <div className="subscore-item">
@@ -752,6 +1081,22 @@ export function App() {
                     <span>{evaluation.metrics.greenAreasCount} Espacios</span>
                   </div>
                   <div className="subscore-val">{evaluation.subscores.espacios_verdes}%</div>
+                </div>
+
+                <div className="subscore-item">
+                  <div className="subscore-top">
+                    <span>🏧 Finanzas</span>
+                    <span>{evaluation.metrics.financePoisCount} Bancos/ATM</span>
+                  </div>
+                  <div className="subscore-val" style={{ fontSize: '0.95rem' }}>{evaluation.metrics.financePoisCount > 0 ? 'Cubierto' : 'Lejos'}</div>
+                </div>
+
+                <div className="subscore-item">
+                  <div className="subscore-top">
+                    <span>🏋️ Deportes</span>
+                    <span>{evaluation.metrics.sportsPoisCount} Fitness</span>
+                  </div>
+                  <div className="subscore-val" style={{ fontSize: '0.95rem' }}>{evaluation.metrics.sportsPoisCount > 0 ? 'Activo' : 'Bajo'}</div>
                 </div>
 
                 <div className="subscore-item">
@@ -800,8 +1145,8 @@ export function App() {
                   <span className="inspector-val">{evaluation.lat.toFixed(4)}, {evaluation.lon.toFixed(4)}</span>
                 </div>
                 <div className="inspector-row">
-                  <span>Overpass POIs:</span>
-                  <span className="inspector-val">{evaluation.metrics.healthPoisCount + evaluation.metrics.educationPoisCount + evaluation.metrics.shopPoisCount} nodos</span>
+                  <span>Overpass POIs Reales:</span>
+                  <span className="inspector-val">{evaluation.pois?.length || 0} lugares indexados</span>
                 </div>
                 <div className="inspector-row">
                   <span>OSRM Distancia/Tiempo:</span>

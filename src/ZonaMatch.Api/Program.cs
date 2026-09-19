@@ -1,7 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using ZonaMatch.Infrastructure.Data;
+using ZonaMatch.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Servicio de Cobertura Metropolitana (CABA y AMBA)
+builder.Services.AddSingleton<IGeoCoverageService, GeoCoverageService>();
 
 // Configuración de PostgreSQL / PostGIS con NetTopologySuite
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -71,4 +75,28 @@ app.MapGet("/api/health", async (ZonaMatchDbContext db) =>
     }
 });
 
+// Configuración de límites y presets de cobertura geográfica (CABA y AMBA)
+app.MapGet("/api/config/coverage", (IGeoCoverageService coverage) =>
+{
+    return Results.Ok(coverage.GetCoverageInfo());
+});
+
+// Validación de pertenencia geográfica a CABA / AMBA
+app.MapPost("/api/geo/validate-coverage", (ValidateCoverageRequest req, IGeoCoverageService coverage) =>
+{
+    var isInside = coverage.IsInsideCoverage(req.Latitude, req.Longitude);
+    return Results.Ok(new
+    {
+        isInside = isInside,
+        region = "CABA y AMBA",
+        latitude = req.Latitude,
+        longitude = req.Longitude,
+        message = isInside
+            ? "Coordenada válida dentro del área metropolitana (CABA y AMBA)."
+            : "La ubicación seleccionada está fuera de la cobertura exclusiva de ZonaMatch (CABA y AMBA)."
+    });
+});
+
 app.Run();
+
+public record ValidateCoverageRequest(double Latitude, double Longitude);

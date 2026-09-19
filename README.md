@@ -1,9 +1,4 @@
-# 🗺️ ZonaMatch — Guía para Levantar el Proyecto
-
-Plataforma web geoespacial para evaluar, comparar y encontrar zonas en Argentina según necesidades de vivienda, movilidad, servicios (hospitales, escuelas, comercios) y estilo de vida.
-
----
-
+# 🗺️ ZonaMatch — Guía para Levantar el Proyecto 
 ## 📋 Requisitos Previos
 
 Antes de comenzar, asegúrate de tener instalado en tu computadora:
