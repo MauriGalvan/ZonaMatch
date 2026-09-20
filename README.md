@@ -32,8 +32,8 @@ npm install
 
 ## Archivos de datos (GeoJSON)
 
-- `partidos-pba.json` — partidos de la Provincia de Buenos Aires (143 polígonos, fuente ARBA). Se importa en `src/App.jsx` y se embebe en el bundle.
-- `departamentos-ciudad_autonoma_de_buenos_aires.json` — comunas de CABA (15 polígonos). Ídem.
+- `data/partidos-pba.json` — partidos de la Provincia de Buenos Aires (143 polígonos, fuente ARBA). Se importa en `src/App.jsx` y se embebe en el bundle.
+- `data/departamentos-ciudad_autonoma_de_buenos_aires.json` — comunas de CABA (15 polígonos). Ídem.
 - `public/radios-censales-pba-2022.json` — radios censales Censo 2022 de PBA (23.901, fuente datos.gba.gob.ar). Se sirve como estático y se filtra por código `DEPTO` al seleccionar un partido.
 - `public/radios-censales-caba-2022.json` — radios censales Censo 2022 de CABA (3.820, fuente IDEEC, capa `RC_CNPHyV2022`). Se filtra por comuna (`ncom`).
 - `src/data/partidoCenso2022.js` — mapeo generado: nombre de partido → código `DEPTO` (INDEC).
