@@ -32,10 +32,12 @@ npm install
 
 ## Archivos de datos (GeoJSON)
 
-Los archivos se importan directamente en `src/App.jsx` (se embeben en el bundle al compilar). Deben existir en la raíz del proyecto:
-
-- `departamentos-buenos_aires.json` — partidos de la Provincia de Buenos Aires (134 polígonos).
-- `departamentos-ciudad_autonoma_de_buenos_aires.json` — comunas de CABA (15 polígonos).
+- `partidos-pba.json` — partidos de la Provincia de Buenos Aires (143 polígonos, fuente ARBA). Se importa en `src/App.jsx` y se embebe en el bundle.
+- `departamentos-ciudad_autonoma_de_buenos_aires.json` — comunas de CABA (15 polígonos). Ídem.
+- `public/radios-censales-pba-2022.json` — radios censales Censo 2022 de PBA (23.901, fuente datos.gba.gob.ar). Se sirve como estático y se filtra por código `DEPTO` al seleccionar un partido.
+- `public/radios-censales-caba-2022.json` — radios censales Censo 2022 de CABA (3.820, fuente IDEEC, capa `RC_CNPHyV2022`). Se filtra por comuna (`ncom`).
+- `src/data/partidoCenso2022.js` — mapeo generado: nombre de partido → código `DEPTO` (INDEC).
+- `src/data/cabaComunaCenso2022.js` — mapeo generado: comuna → código de radio (`COMUNA NN`).
 
 ## Scripts
 
@@ -52,4 +54,8 @@ npm run lint     # ejecuta ESLint
 2. Ejecuta `npm run dev`.
 3. Abre la URL que muestra Vite (por defecto http://localhost:5173).
 
-El mapa se centra en Buenos Aires. Pasa el cursor sobre un partido/comuna para resaltarlo y haz clic para seleccionarlo (se marca en verde; un nuevo clic la desmarca). La capa es fija: no se subdivide ni cambia según el zoom.
+El mapa se centra en Buenos Aires. Pasa el cursor sobre un partido/comuna para resaltarlo y haz clic para seleccionarlo (se marca en verde; un nuevo clic la desmarca). Al seleccionar una zona se muestran sus radios censales del Censo 2022 como subcapa, con zoom automático y el contador de radios en el panel lateral. De la misma forma, haz clic sobre un radio para seleccionarlo (se resalta en azul) y ver su fracción, número de radio y código censal en el panel lateral; un nuevo clic lo desmarca.
+
+### Punto en el mapa
+
+Tras seleccionar un partido, hacé clic en cualquiera de sus radios (subcapa censal): se fija un marcador en el punto exacto del clic junto con los datos del radio (fracción/radio/código). Botón **Quitar punto** para limpiarlo. La información de servicios se consumirá de una base de datos PostgreSQL servida por un backend propio (en desarrollo).

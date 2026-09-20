@@ -127,6 +127,54 @@
   margin-bottom: 4px;
 }
 
+.zone-info.unit-info {
+  background: #f0fdf4;
+  border-top: 1px solid #d1fae5;
+}
+
+.unit-info h4 {
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: #1a7f37;
+}
+
+.analisis button {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: #3c4043;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.analisis button:hover {
+  background: #f1f3f4;
+}
+
+.analisis button.quitar {
+  margin-top: 10px;
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fff;
+}
+
+.analisis-status {
+  color: #5f6368;
+  font-style: italic;
+}
+
+.punto-marker .punto-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 3px solid #fff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+}
+
 .map-area {
   flex: 1;
   height: 100%;
