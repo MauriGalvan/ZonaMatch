@@ -1,0 +1,13 @@
+<Solution>
+  <Project Path="ZonaMatch.Api/ZonaMatch.Api.csproj" Id="fcf04c13-81e2-456f-a9a4-258cd5039616">
+    <BuildDependency Project="ZonaMatch.Application/ZonaMatch.Application.csproj" />
+    <BuildDependency Project="ZonaMatch.Infrastructure/ZonaMatch.Infrastructure.csproj" />
+  </Project>
+  <Project Path="ZonaMatch.Application/ZonaMatch.Application.csproj" Id="3aafadf7-06f7-43c6-917a-262c7d6cb82f">
+    <BuildDependency Project="ZonaMatch.domain/ZonaMatch.Domain.csproj" />
+  </Project>
+  <Project Path="ZonaMatch.domain/ZonaMatch.Domain.csproj" Id="7253e2ec-3422-41b5-bbd4-13722c860547" />
+  <Project Path="ZonaMatch.Infrastructure/ZonaMatch.Infrastructure.csproj" Id="f01ea0a1-29f2-4b4f-bcd5-9efeb59ec11f">
+    <BuildDependency Project="ZonaMatch.domain/ZonaMatch.Domain.csproj" />
+  </Project>
+</Solution>

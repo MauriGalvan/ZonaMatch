@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      - POSTGRES_USER=zonamatch
+      - POSTGRES_PASSWORD=zonamatch
+      - POSTGRES_DB=zonamatch_docker
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
