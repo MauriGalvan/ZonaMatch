@@ -1,0 +1,22 @@
+# PBI 1: build + tests en cada push y PR; el merge se bloquea si falla algo o si la cobertura baja del 100 %
+name: Backend CI
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+    - run: dotnet restore ZonaMatch.slnx
+    - run: dotnet build ZonaMatch.slnx --no-restore --configuration Release
+    # los tests de integración levantan PostGIS con Testcontainers (Docker viene instalado en el runner)
+    - run: dotnet test ZonaMatch.slnx --no-build --configuration Release

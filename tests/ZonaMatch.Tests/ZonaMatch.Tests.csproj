@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!--
+    Cobertura obligatoria: `dotnet test` falla si alguna capa baja del 100 % de líneas, ramas o métodos.
+    Las migraciones son código generado por EF Core y se validan aplicándolas sobre una base vacía.
+  -->
+  <PropertyGroup>
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
+    <CoverletOutput>$(MSBuildThisFileDirectory)TestResults/coverage/</CoverletOutput>
+    <Include>[ZonaMatch.Api]*,[ZonaMatch.Application]*,[ZonaMatch.Domain]*,[ZonaMatch.Infrastructure]*</Include>
+    <Exclude>[ZonaMatch.Infrastructure]ZonaMatch.Infrastructure.Migrations.*</Exclude>
+    <ExcludeByAttribute>GeneratedCodeAttribute</ExcludeByAttribute>
+    <SkipAutoProps>true</SkipAutoProps>
+    <Threshold>100</Threshold>
+    <ThresholdType>line,branch,method</ThresholdType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.msbuild" Version="10.1.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="NSubstitute" Version="6.2.0" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.15.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ZonaMatch.Api\ZonaMatch.Api.csproj" />
+    <ProjectReference Include="..\..\ZonaMatch.Infrastructure\ZonaMatch.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\ZonaMatch.Application\ZonaMatch.Application.csproj" />
+    <ProjectReference Include="..\..\ZonaMatch.domain\ZonaMatch.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

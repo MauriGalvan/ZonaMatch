@@ -1,6 +1,50 @@
 @ZonaMatch.Api_HostAddress = http://localhost:5279
 
-GET {{ZonaMatch.Api_HostAddress}}/weatherforecast/
+### Buscar zonas por nombre o partido
+GET {{ZonaMatch.Api_HostAddress}}/api/zones?query=ramos&limit=10
 Accept: application/json
 
-###
+### Detalle de una zona (geometría GeoJSON + indicadores con trazabilidad)
+GET {{ZonaMatch.Api_HostAddress}}/api/zones/ramos-mejia-la-matanza
+
+### Zonas aledañas
+GET {{ZonaMatch.Api_HostAddress}}/api/zones/ramos-mejia-la-matanza/neighbors
+
+### POIs en un radio, filtrados por capa
+GET {{ZonaMatch.Api_HostAddress}}/api/zones/villa-luro-caba/pois?radius=1000&layers=transporte,educacion
+
+### Conteos por capa (ficha de zona)
+GET {{ZonaMatch.Api_HostAddress}}/api/zones/villa-luro-caba/summary?radius=1000
+
+### Barrio/localidad, comuna/partido y radio censal de un punto
+GET {{ZonaMatch.Api_HostAddress}}/api/territorial-context?lat=-34.6488&lon=-58.5640
+
+### Taxonomía estándar de POIs
+GET {{ZonaMatch.Api_HostAddress}}/api/poi-categories
+
+### Ranking personalizado
+POST {{ZonaMatch.Api_HostAddress}}/api/analysis/ranking
+Content-Type: application/json
+
+{
+  "zoneSlugs": ["ramos-mejia-la-matanza", "villa-luro-caba"],
+  "radiusMeters": 1000,
+  "maxRent": 650000,
+  "includeSuggestion": true,
+  "participants": [
+    {
+      "name": "Nicolás",
+      "weight": 1,
+      "criteria": [
+        { "code": "movilidad", "priority": "High" },
+        { "code": "seguridad", "priority": "Medium" }
+      ],
+      "points": [
+        { "name": "UNLaM", "latitude": -34.6702, "longitude": -58.5636, "mode": "PublicTransport", "tripsPerWeek": 3, "maxMinutes": 50 }
+      ]
+    }
+  ]
+}
+
+### Ingesta (requiere Admin:IngestionEndpointsEnabled = true)
+POST {{ZonaMatch.Api_HostAddress}}/api/admin/ingestion/territorial
