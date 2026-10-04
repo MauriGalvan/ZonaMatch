@@ -480,3 +480,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# ZonaMatch data load
+zonamatch.sql
+restore-geo.log
+*.osm.pbf

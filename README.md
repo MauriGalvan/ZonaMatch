@@ -17,34 +17,20 @@ docker-compose up -d
 
 Puerto : La base de datos se expone en el puerto local 5433 (para evitar conflictos con instalaciones locales de PostgreSQL).
 
-3. Cargar los datos GIS (schema geo)
+3. Cargar los datos (schemas geo y osm) con un solo script
 
-Los datos de partidos, comunas, radios censales y escuelas vienen en el archivo zonamatch.sql (se comparte aparte, no está en el repositorio). Se restauran con:
+Copiá el archivo zonamatch.sql (se comparte aparte, no está en el repositorio) en la carpeta raíz del proyecto, al lado de OSM-DATA-UPDATER-DOCKER.bat, y hacé doble clic en el .bat. El script, en orden:
 
-docker-compose exec -T db psql -U zonamatch -d zonamatch_docker < zonamatch.sql
+- levanta la base con docker compose y espera a que esté lista,
+- crea los schemas app, geo y osm si no existen,
+- restaura zonamatch.sql y renombra el schema zm a geo (si geo ya tiene tablas, omite este paso; si no encuentra zonamatch.sql, avisa y sigue),
+- aplica las migraciones de EF (dotnet ef database update; instala dotnet-ef si falta y omite el paso si no hay carpeta Migrations),
+- descarga el mapa de Argentina (~400MB), recorta el AMBA y lo importa al schema osm.
 
-El dump crea sus tablas en un schema llamado zm. Renombralo para que quede como geo:
+Los errores inofensivos del restore (\restrict, transaction_timeout y filas duplicadas de spatial_ref_sys) quedan en restore-geo.log. Es seguro volver a ejecutarlo para actualizar solo los datos de OSM.
 
-docker-compose exec db psql -U zonamatch -d zonamatch_docker -c "ALTER SCHEMA zm RENAME TO geo;"
+4. Migraciones de Entity Framework (schema app)
 
-Pueden aparecer errores inofensivos (comandos \restrict, transaction_timeout y filas duplicadas de spatial_ref_sys).
-
-4. Ejecutar las Migraciones (Entity Framework, schema app)
-
-Entity Framework solo administra el schema app (el modelo propio de la aplicación). Las tablas de geo y osm no se migran. Desde la Consola del Administrador de paquetes de Visual Studio:
-
-Update-Database
-
-
-5. Cargar los datos de OpenStreetMap (schema osm)
-
-Para poblar la base con la cartografía de CABA y GBA, un script descarga los datos de OpenStreetMap y los inyecta en el schema osm.
-
-Navegá a la carpeta raíz del proyecto desde tu explorador de archivos de Windows.
-
-Hacé doble clic en el archivo OSM-DATA-UPDATER-DOCKER.bat.
-
-Aguardá a que finalice: El proceso descargará el mapa completo de Argentina (~400MB), recortará la zona del AMBA y cargará las geometrías en la base de datos. Tomará unos minutos dependiendo de tu conexión.
-
+Ya las aplica el script del paso 3. Si preferís hacerlo a mano, desde la Consola del Administrador de paquetes de Visual Studio: Update-Database. Entity Framework solo administra el schema app; las tablas de geo y osm no se migran.
 
 Esquemas de la base: app (modelo de la aplicación, EF Core), geo (datos GIS externos), osm (importación cruda de OpenStreetMap). PostGIS vive en public.
