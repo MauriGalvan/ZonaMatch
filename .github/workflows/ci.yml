@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [Development]
+  push:
+    branches: [Development]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - run: dotnet restore ZonaMatch.slnx
+      - run: dotnet build ZonaMatch.slnx -c Release --no-restore
+      - run: dotnet test ZonaMatch.slnx -c Release --no-build --verbosity normal

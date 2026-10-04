@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace ZonaMatch.Application.Interfaces
 {
-
-    // interface de crud basico para las entidades 
+    // Basic CRUD contract. Every entity of the zm schema has a text primary key.
     public interface IRepository<T> where T : class
     {
-        Task<T?> GetByIdAsync(int id);
+        Task<T?> GetByIdAsync(string id);
         Task<IReadOnlyList<T>> GetAllAsync();
         Task<T> AddAsync(T entity);
         Task UpdateAsync(T entity);
