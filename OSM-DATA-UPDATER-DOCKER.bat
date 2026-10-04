@@ -14,7 +14,7 @@ docker run --rm -v "%cd%":/data -w /data ubuntu:22.04 bash -c "apt-get update > 
 
 echo.
 echo 3. Importando los datos al contenedor de PostgreSQL...
-docker run --rm -v "%cd%":/data -e PGPASSWORD=zonamatch -e DEBIAN_FRONTEND=noninteractive ubuntu:22.04 bash -c "apt-get update > /dev/null && apt-get install -y osm2pgsql > /dev/null && osm2pgsql -c -d zonamatch_docker -U zonamatch -H host.docker.internal -P 5433 /data/amba.osm.pbf"
+docker run --rm -v "%cd%":/data -e PGPASSWORD=zonamatch -e DEBIAN_FRONTEND=noninteractive ubuntu:22.04 bash -c "apt-get update > /dev/null && apt-get install -y osm2pgsql > /dev/null && osm2pgsql -c --output-pgsql-schema=osm -d zonamatch_docker -U zonamatch -H host.docker.internal -P 5433 /data/amba.osm.pbf"
 
 echo.
 echo 4. Limpiando archivos temporales...

@@ -1,8 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Infrastructure.Data
 {
+    // Entities of the "geo" schema (external GIS data, see zonamatch.sql) are mapped here but excluded from
+    // migrations: they are loaded from the dump, not created by EF Core. Tables of the application model go to "app".
     public class ZonaMatchDbContext : DbContext
     {
         public ZonaMatchDbContext(DbContextOptions<ZonaMatchDbContext> options)
@@ -11,61 +13,63 @@ namespace ZonaMatch.Infrastructure.Data
         }
 
         public DbSet<Escuela> Escuelas => Set<Escuela>();
-        public DbSet<EspacioVerde> EspaciosVerdes => Set<EspacioVerde>();
-        public DbSet<Barrio> Barrios => Set<Barrio>();
-        public DbSet<Zona> Zonas => Set<Zona>();
+        public DbSet<Partido> Partidos => Set<Partido>();
+        public DbSet<Comuna> Comunas => Set<Comuna>();
+        public DbSet<Radio> Radios => Set<Radio>();
+        public DbSet<MunicipioAlias> MunicipiosAlias => Set<MunicipioAlias>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.HasPostgresExtension("postgis");
+            modelBuilder.HasDefaultSchema(ZonaMatchDbOptions.AppSchema);
+
+            // The dump uses snake_case columns. Applied first so the explicit names below can override it.
+            foreach (var property in modelBuilder.Model.GetEntityTypes().SelectMany(t => t.GetProperties()))
+                property.SetColumnName(ToSnakeCase(property.Name));
 
             modelBuilder.Entity<Escuela>(e =>
             {
-                e.ToTable("escuelas");
-                e.Property(x => x.Nombre).IsRequired().HasMaxLength(200);
-                e.Property(x => x.Nivel).HasMaxLength(50);
-                e.Property(x => x.Gestion).HasMaxLength(50);
-                e.Property(x => x.Direccion).HasMaxLength(300);
-                e.Property(x => x.Ubicacion)
-                    .HasColumnType("geography (Point,4326)")
-                    .IsRequired();
-                e.HasIndex(x => x.Ubicacion).HasMethod("GIST");
+                e.ToTable("escuelas", ZonaMatchDbOptions.GeoSchema, t => t.ExcludeFromMigrations());
+                e.HasKey(x => x.ClaveNatural);
+                e.Property(x => x.Ubicacion).HasColumnName("geom").HasColumnType("geometry(Point,4326)");
             });
 
-            modelBuilder.Entity<EspacioVerde>(e =>
+            modelBuilder.Entity<Partido>(e =>
             {
-                e.ToTable("espacios_verdes");
-                e.Property(x => x.Nombre).IsRequired().HasMaxLength(200);
-                e.Property(x => x.Tipo).HasMaxLength(50);
-                e.Property(x => x.Ubicacion)
-                    .HasColumnType("geography (Point,4326)")
-                    .IsRequired();
-                e.HasIndex(x => x.Ubicacion).HasMethod("GIST");
+                e.ToTable("partidos", ZonaMatchDbOptions.GeoSchema, t => t.ExcludeFromMigrations());
+                e.HasKey(x => x.Key);
+                e.Property(x => x.Geometria).HasColumnName("geom").HasColumnType("geometry(MultiPolygon,4326)");
             });
 
-            modelBuilder.Entity<Barrio>(e =>
+            modelBuilder.Entity<Comuna>(e =>
             {
-                e.ToTable("barrios");
-                e.Property(x => x.Nombre).IsRequired().HasMaxLength(200);
-                e.Property(x => x.Comuna).HasMaxLength(50);
-                e.Property(x => x.Geometria)
-                    .HasColumnType("geometry (MultiPolygon,4326)")
-                    .IsRequired();
-                e.HasIndex(x => x.Geometria).HasMethod("GIST");
+                e.ToTable("comunas", ZonaMatchDbOptions.GeoSchema, t => t.ExcludeFromMigrations());
+                e.HasKey(x => x.Key);
+                e.Property(x => x.Geometria).HasColumnName("geom").HasColumnType("geometry(MultiPolygon,4326)");
             });
 
-            modelBuilder.Entity<Zona>(e =>
+            modelBuilder.Entity<Radio>(e =>
             {
-                e.ToTable("zonas");
-                e.Property(x => x.Nombre).IsRequired().HasMaxLength(200);
-                e.Property(x => x.Descripcion).HasMaxLength(500);
-                e.Property(x => x.Geometria)
-                    .HasColumnType("geometry (MultiPolygon,4326)")
-                    .IsRequired();
-                e.HasIndex(x => x.Geometria).HasMethod("GIST");
+                e.ToTable("radios", ZonaMatchDbOptions.GeoSchema, t => t.ExcludeFromMigrations());
+                e.HasKey(x => x.Id);
+                e.Property(x => x.NroRadio).HasColumnName("radio");
+                e.Property(x => x.Geometria).HasColumnName("geom").HasColumnType("geometry(MultiPolygon,4326)");
+            });
+
+            modelBuilder.Entity<MunicipioAlias>(e =>
+            {
+                e.ToTable("municipio_alias", ZonaMatchDbOptions.GeoSchema, t => t.ExcludeFromMigrations());
+                e.HasKey(x => x.MunicipioNombre);
+
+                e.HasOne(x => x.Partido)
+                    .WithMany(p => p.Aliases)
+                    .HasForeignKey(x => x.PartidoKey);
             });
         }
+
+        private static string ToSnakeCase(string name) =>
+            string.Concat(name.Select((c, i) =>
+                i > 0 && char.IsUpper(c) ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
     }
 }

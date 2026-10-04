@@ -1,8 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Infrastructure.Data;
-using ZonaMatch.Infrastructure.Geo;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
@@ -12,26 +10,18 @@ namespace ZonaMatch.Infrastructure.Repositories
         {
         }
 
-        public async Task<IReadOnlyList<(Escuela Entidad, double DistanciaMetros)>> GetCercanasAsync(
-            double latitud, double longitud, double radioMetros, string? nivel, string? gestion)
+        public Task<IReadOnlyList<(Escuela Entidad, double DistanciaMetros)>> GetCercanasAsync(
+            double latitud, double longitud, double radioMetros, string? nivel, string? sector)
         {
-            var punto = GeoFactory.CrearPunto(latitud, longitud);
-
-            var query = _dbContext.Set<Escuela>()
-                .Where(e => e.Ubicacion.IsWithinDistance(punto, radioMetros));
+            IQueryable<Escuela> query = _dbContext.Set<Escuela>();
 
             if (!string.IsNullOrWhiteSpace(nivel))
                 query = query.Where(e => e.Nivel == nivel);
 
-            if (!string.IsNullOrWhiteSpace(gestion))
-                query = query.Where(e => e.Gestion == gestion);
+            if (!string.IsNullOrWhiteSpace(sector))
+                query = query.Where(e => e.Sector == sector);
 
-            var resultados = await query
-                .Select(e => new { Entidad = e, Distancia = e.Ubicacion.Distance(punto) })
-                .OrderBy(x => x.Distancia)
-                .ToListAsync();
-
-            return resultados.Select(x => (x.Entidad, x.Distancia)).ToList();
+            return BuscarEnRadioAsync(query, latitud, longitud, radioMetros);
         }
     }
 }

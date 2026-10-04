@@ -1,11 +1,12 @@
-﻿namespace ZonaMatch.Application.DTOs
+namespace ZonaMatch.Application.DTOs
 {
     public record EscuelaDto(
-        int Id,
+        string ClaveNatural,
         string Nombre,
         string? Nivel,
-        string? Gestion,
+        string? Sector,
         string? Direccion,
+        string? Localidad,
         double Latitud,
         double Longitud,
         double? DistanciaMetros = null);

@@ -1,9 +1,9 @@
-﻿namespace ZonaMatch.Application.DTOs
+namespace ZonaMatch.Application.DTOs
 {
+    // A point belongs to a Comuna (CABA) or to a Partido (rest of Buenos Aires), so both are optional
     public record UbicacionResumenDto(
         CoordenadaDto Ubicacion,
-        BarrioDto? Barrio,
-        ZonaDto? Zona,
-        IReadOnlyList<EscuelaDto> EscuelasCercanas,
-        IReadOnlyList<EspacioVerdeDto> EspaciosVerdesCercanos);
+        PartidoDto? Partido,
+        ComunaDto? Comuna,
+        IReadOnlyList<EscuelaDto> EscuelasCercanas);
 }

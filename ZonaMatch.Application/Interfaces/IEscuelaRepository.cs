@@ -1,11 +1,11 @@
-﻿using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.Interfaces
 {
     public interface IEscuelaRepository : IGeoPuntoRepository<Escuela>
     {
-        // Sobrecarga con filtros opcionales por nivel educativo y tipo de gestion
+        // Same as GetCercanosAsync, with optional filters by nivel and sector
         Task<IReadOnlyList<(Escuela Entidad, double DistanciaMetros)>> GetCercanasAsync(
-            double latitud, double longitud, double radioMetros, string? nivel, string? gestion);
+            double latitud, double longitud, double radioMetros, string? nivel, string? sector);
     }
 }

@@ -1,4 +1,4 @@
-﻿using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 
@@ -7,74 +7,84 @@ namespace ZonaMatch.Application.Services
     public class GeolocationService : IGeolocationService
     {
         private readonly IEscuelaRepository _escuelaRepository;
-        private readonly IEspacioVerdeRepository _espacioVerdeRepository;
-        private readonly IBarrioRepository _barrioRepository;
-        private readonly IZonaRepository _zonaRepository;
+        private readonly IPartidoRepository _partidoRepository;
+        private readonly IComunaRepository _comunaRepository;
+        private readonly IGeocodingClient _geocodingClient;
 
         public GeolocationService(
             IEscuelaRepository escuelaRepository,
-            IEspacioVerdeRepository espacioVerdeRepository,
-            IBarrioRepository barrioRepository,
-            IZonaRepository zonaRepository)
+            IPartidoRepository partidoRepository,
+            IComunaRepository comunaRepository,
+            IGeocodingClient geocodingClient)
         {
             _escuelaRepository = escuelaRepository;
-            _espacioVerdeRepository = espacioVerdeRepository;
-            _barrioRepository = barrioRepository;
-            _zonaRepository = zonaRepository;
+            _partidoRepository = partidoRepository;
+            _comunaRepository = comunaRepository;
+            _geocodingClient = geocodingClient;
         }
 
         public async Task<UbicacionResumenDto> GetResumenUbicacionAsync(double latitud, double longitud, double radioMetros)
         {
-            var barrioTask = _barrioRepository.GetQueContienePuntoAsync(latitud, longitud);
-            var zonaTask = _zonaRepository.GetQueContienePuntoAsync(latitud, longitud);
-            var escuelasTask = GetEscuelasCercanasAsync(latitud, longitud, radioMetros);
-            var espaciosTask = GetEspaciosVerdesCercanosAsync(latitud, longitud, radioMetros);
+            // Sequential on purpose: the repositories share one scoped DbContext, which does not allow concurrent queries
+            var partido = await GetPartidoPorUbicacionAsync(latitud, longitud);
+            var comuna = await GetComunaPorUbicacionAsync(latitud, longitud);
+            var escuelas = await GetEscuelasCercanasAsync(latitud, longitud, radioMetros);
 
-            await Task.WhenAll(barrioTask, zonaTask, escuelasTask, espaciosTask);
-
-            return new UbicacionResumenDto(
-                new CoordenadaDto(latitud, longitud),
-                MapBarrio(barrioTask.Result),
-                MapZona(zonaTask.Result),
-                escuelasTask.Result,
-                espaciosTask.Result);
+            return new UbicacionResumenDto(new CoordenadaDto(latitud, longitud), partido, comuna, escuelas);
         }
 
         public async Task<IReadOnlyList<EscuelaDto>> GetEscuelasCercanasAsync(
-            double latitud, double longitud, double radioMetros, string? nivel = null, string? gestion = null)
+            double latitud, double longitud, double radioMetros, string? nivel = null, string? sector = null)
         {
-            var escuelas = await _escuelaRepository.GetCercanasAsync(latitud, longitud, radioMetros, nivel, gestion);
+            var escuelas = await _escuelaRepository.GetCercanasAsync(latitud, longitud, radioMetros, nivel, sector);
             return escuelas.Select(r => MapEscuela(r.Entidad, r.DistanciaMetros)).ToList();
         }
 
-        public async Task<IReadOnlyList<EspacioVerdeDto>> GetEspaciosVerdesCercanosAsync(double latitud, double longitud, double radioMetros)
+        public async Task<IReadOnlyList<EscuelaDto>> GetEscuelasMasCercanasAsync(double latitud, double longitud, int cantidad)
         {
-            var espacios = await _espacioVerdeRepository.GetCercanosAsync(latitud, longitud, radioMetros);
-            return espacios.Select(r => MapEspacioVerde(r.Entidad, r.DistanciaMetros)).ToList();
+            var escuelas = await _escuelaRepository.GetMasCercanosAsync(latitud, longitud, cantidad);
+            return escuelas.Select(r => MapEscuela(r.Entidad, r.DistanciaMetros)).ToList();
         }
 
-        public async Task<BarrioDto?> GetBarrioPorUbicacionAsync(double latitud, double longitud)
+        public async Task<PartidoDto?> GetPartidoPorUbicacionAsync(double latitud, double longitud)
         {
-            var barrio = await _barrioRepository.GetQueContienePuntoAsync(latitud, longitud);
-            return MapBarrio(barrio);
+            var partido = await _partidoRepository.GetQueContienePuntoAsync(latitud, longitud);
+            return partido is null ? null : new PartidoDto(partido.Key, partido.Nombre, partido.Provincia);
         }
 
-        public async Task<ZonaDto?> GetZonaPorUbicacionAsync(double latitud, double longitud)
+        public async Task<ComunaDto?> GetComunaPorUbicacionAsync(double latitud, double longitud)
         {
-            var zona = await _zonaRepository.GetQueContienePuntoAsync(latitud, longitud);
-            return MapZona(zona);
+            var comuna = await _comunaRepository.GetQueContienePuntoAsync(latitud, longitud);
+            return comuna is null ? null : new ComunaDto(comuna.Key, comuna.Nombre);
+        }
+
+        public async Task<DireccionDto?> GetDireccionPorUbicacionAsync(
+            double latitud, double longitud, CancellationToken cancellationToken = default)
+        {
+            var geocodificada = await _geocodingClient.ReversaAsync(latitud, longitud, cancellationToken);
+
+            // Sequential on purpose (shared scoped DbContext)
+            var partido = await GetPartidoPorUbicacionAsync(latitud, longitud);
+            var comuna = await GetComunaPorUbicacionAsync(latitud, longitud);
+
+            if (geocodificada is null && partido is null && comuna is null)
+                return null;
+
+            return new DireccionDto(
+                Ubicacion: new CoordenadaDto(latitud, longitud),
+                Nombre: geocodificada?.Nombre,
+                Calle: geocodificada?.Calle,
+                Altura: geocodificada?.Altura,
+                Localidad: geocodificada?.Localidad,
+                Partido: partido?.Nombre,
+                Comuna: comuna?.Nombre,
+                Provincia: partido?.Provincia ?? geocodificada?.Provincia,
+                CodigoPostal: geocodificada?.CodigoPostal,
+                DireccionCompleta: geocodificada?.DireccionCompleta);
         }
 
         private static EscuelaDto MapEscuela(Escuela e, double distanciaMetros) =>
-            new(e.Id, e.Nombre, e.Nivel, e.Gestion, e.Direccion, e.Ubicacion.Y, e.Ubicacion.X, distanciaMetros);
-
-        private static EspacioVerdeDto MapEspacioVerde(EspacioVerde e, double distanciaMetros) =>
-            new(e.Id, e.Nombre, e.Tipo, e.SuperficieM2, e.Ubicacion.Y, e.Ubicacion.X, distanciaMetros);
-
-        private static BarrioDto? MapBarrio(Barrio? b) =>
-            b is null ? null : new BarrioDto(b.Id, b.Nombre, b.Comuna, b.Poblacion);
-
-        private static ZonaDto? MapZona(Zona? z) =>
-            z is null ? null : new ZonaDto(z.Id, z.Nombre, z.Descripcion);
+            new(e.ClaveNatural, e.Nombre, e.Nivel, e.Sector, e.Direccion, e.Localidad,
+                e.Ubicacion.Y, e.Ubicacion.X, distanciaMetros);
     }
 }
