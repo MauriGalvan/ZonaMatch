@@ -21,6 +21,7 @@ builder.Services.AddScoped<IPartidoRepository, PartidoRepository>();
 builder.Services.AddScoped<IComunaRepository, ComunaRepository>();
 builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
+builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
 
 // Reverse geocoding. "Osm" (default) queries the local osm schema; "Nominatim" calls the public OpenStreetMap API.
 if (string.Equals(builder.Configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
@@ -42,6 +43,7 @@ else
 // Servicios de aplicacion
 builder.Services.AddScoped<IGeolocationService, GeolocationService>();
 builder.Services.AddScoped<IMapaService, MapaService>();
+builder.Services.AddScoped<IZonaService, ZonaService>();
 
 // GeoJSON compresses very well; "application/geo+json" is not in the default MIME list
 builder.Services.AddResponseCompression(options =>
