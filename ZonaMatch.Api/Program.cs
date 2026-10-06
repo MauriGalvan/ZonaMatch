@@ -1,10 +1,16 @@
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using ZonaMatch.Api.Authentication;
+using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
+using ZonaMatch.Infrastructure.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +51,31 @@ builder.Services.AddScoped<IGeolocationService, GeolocationService>();
 builder.Services.AddScoped<IMapaService, MapaService>();
 builder.Services.AddScoped<IZonaService, ZonaService>();
 
+// Registro de usuarios
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
+builder.Services.AddOptions<JwtOptions>()
+    .BindConfiguration(JwtOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddSingleton<ITokenService, JwtTokenService>();
+builder.Services.ConfigureOptions<ConfigureJwtBearerOptions>();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+builder.Services.AddAuthorization();
+
+// Slows down password guessing on /Auth/login: 10 attempts per minute per IP
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+});
+
 // GeoJSON compresses very well; "application/geo+json" is not in the default MIME list
 builder.Services.AddResponseCompression(options =>
 {
@@ -62,12 +93,18 @@ builder.Services.AddCors(options =>
         .AllowAnyHeader()
         .AllowAnyMethod()));
 
+// Centralized error handling: every unhandled exception becomes a ProblemDetails response
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
@@ -81,6 +118,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseResponseCompression();
 app.UseCors(FrontendCorsPolicy);
+app.UseRateLimiter();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

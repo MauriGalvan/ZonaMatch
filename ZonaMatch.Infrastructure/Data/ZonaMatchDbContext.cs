@@ -17,6 +17,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Comuna> Comunas => Set<Comuna>();
         public DbSet<Radio> Radios => Set<Radio>();
         public DbSet<MunicipioAlias> MunicipiosAlias => Set<MunicipioAlias>();
+        public DbSet<Usuario> Usuarios => Set<Usuario>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -65,6 +66,18 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasOne(x => x.Partido)
                     .WithMany(p => p.Aliases)
                     .HasForeignKey(x => x.PartidoKey);
+            });
+
+            // Application model: created by migrations in the "app" schema
+            modelBuilder.Entity<Usuario>(e =>
+            {
+                e.ToTable("usuarios");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Email).HasMaxLength(254).IsRequired();
+                e.HasIndex(x => x.Email).IsUnique();
+                e.Property(x => x.PasswordHash).HasMaxLength(255).IsRequired();
+                e.Property(x => x.FechaNacimiento).HasColumnType("date");
+                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
             });
         }
 

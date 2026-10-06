@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\ZonaMatch.Application\ZonaMatch.Application.csproj" />
     <ProjectReference Include="..\..\ZonaMatch.domain\ZonaMatch.Domain.csproj" />
   </ItemGroup>
 
