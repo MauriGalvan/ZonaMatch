@@ -47,40 +47,63 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         private const string Columnas = "name, amenity, shop, leisure, tourism, railway, public_transport, highway, operator";
 
-        // Web Mercator meters are stretched by 1/cos(lat): the radius is scaled by k for the index-friendly
-        // ST_DWithin prefilter, then the exact distance is measured on the geography.
-        // Shared by the list and the summary: ends with the "en_radio" CTE (classified points inside the radius).
-        private const string PuntosEnRadio = $"""
-            WITH p AS (
-                SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@lon, @lat), 4326), 3857) AS g,
-                       ST_SetSRID(ST_MakePoint(@lon, @lat), 4326)::geography AS geog,
-                       1 / cos(radians(@lat)) AS k
-            ),
+        // Classified points inside an area, with their distance to a reference point. Shared by the list and the
+        // summary, for a radius and for a zone. "origen" defines the CTE "o" (prefilter geometry g in 3857 and the
+        // reference geography geog); candidates pass the index-friendly "prefiltro" and then the exact "dentro"
+        // (on the 4326 point c.punto). Ends with the "en_area" CTE.
+        private static string PuntosEn(string origen, Func<string, string> prefiltro, string dentro) => $"""
+            WITH {origen},
             candidatos AS (
                 SELECT 'n' || t.osm_id AS id, {Columnas}, t.way AS punto
-                FROM {Schema}.planet_osm_point t, p
-                WHERE ST_DWithin(t.way, p.g, @radio * p.k)
+                FROM {Schema}.planet_osm_point t, o
+                WHERE {prefiltro("t.way")}
                 UNION ALL
                 SELECT CASE WHEN t.osm_id < 0 THEN 'r' || -t.osm_id ELSE 'w' || t.osm_id END, {Columnas},
                        ST_PointOnSurface(t.way)
-                FROM {Schema}.planet_osm_polygon t, p
-                WHERE ST_DWithin(t.way, p.g, @radio * p.k)
+                FROM {Schema}.planet_osm_polygon t, o
+                WHERE {prefiltro("t.way")}
             ),
             clasificados AS (
                 SELECT id, name, operator, {Clasificacion} AS categoria, {Tipo} AS tipo, ST_Transform(punto, 4326) AS punto
                 FROM candidatos
                 WHERE name IS NOT NULL OR highway = 'bus_stop' OR railway = 'subway_entrance'
             ),
-            en_radio AS (
-                SELECT c.*, ST_Distance(c.punto::geography, p.geog) AS distancia
-                FROM clasificados c, p
+            en_area AS (
+                SELECT c.*, ST_Distance(c.punto::geography, o.geog) AS distancia
+                FROM clasificados c, o
                 WHERE c.categoria IS NOT NULL
-                  AND ST_DWithin(c.punto::geography, p.geog, @radio)
+                  AND {dentro}
             )
             """;
 
-        private const string SqlCercanos = $"""
-            {PuntosEnRadio}
+        // Web Mercator meters are stretched by 1/cos(lat): the radius is scaled by k for the ST_DWithin prefilter,
+        // then the exact distance is measured on the geography
+        private static readonly string PuntosEnRadio = PuntosEn(
+            """
+            o AS (
+                SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@lon, @lat), 4326), 3857) AS g,
+                       ST_SetSRID(ST_MakePoint(@lon, @lat), 4326)::geography AS geog,
+                       1 / cos(radians(@lat)) AS k
+            )
+            """,
+            way => $"ST_DWithin({way}, o.g, @radio * o.k)",
+            "ST_DWithin(c.punto::geography, o.geog, @radio)");
+
+        // The zone of the @slug parameter (same choice as GET /Zonas/{slug}); distances are measured from its center.
+        // A polygon counts when the point that represents it falls inside the zone.
+        private static readonly string PuntosEnZona = PuntosEn(
+            $"""
+            {ZonaSql.ZonaPorSlug},
+            o AS (
+                SELECT z.way AS g, z.geom, ({ZonaSql.Centro("z.geom")})::geography AS geog
+                FROM zona z
+            )
+            """,
+            way => $"ST_Intersects({way}, o.g)",
+            "ST_Intersects(c.punto, o.geom)");
+
+        private static string Cercanos(string puntos) => $"""
+            {puntos}
             SELECT id AS "Id",
                    name AS "Nombre",
                    categoria AS "Categoria",
@@ -89,18 +112,23 @@ namespace ZonaMatch.Infrastructure.Repositories
                    ST_Y(punto) AS "Latitud",
                    ST_X(punto) AS "Longitud",
                    distancia AS "DistanciaMetros"
-            FROM en_radio
+            FROM en_area
             WHERE categoria = ANY(@categorias)
             ORDER BY distancia
             LIMIT @limite
             """;
 
-        private const string SqlResumen = $"""
-            {PuntosEnRadio}
+        private static string Resumen(string puntos) => $"""
+            {puntos}
             SELECT categoria AS "Categoria", tipo AS "Tipo", count(*)::int AS "Cantidad"
-            FROM en_radio
+            FROM en_area
             GROUP BY categoria, tipo
             """;
+
+        private static readonly string SqlCercanos = Cercanos(PuntosEnRadio);
+        private static readonly string SqlResumen = Resumen(PuntosEnRadio);
+        private static readonly string SqlEnZona = Cercanos(PuntosEnZona);
+        private static readonly string SqlResumenZona = Resumen(PuntosEnZona);
 
         private readonly ZonaMatchDbContext _dbContext;
 
@@ -109,17 +137,39 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<PuntoInteresDto>> GetCercanosAsync(
+        public Task<IReadOnlyList<PuntoInteresDto>> GetCercanosAsync(
             double latitud, double longitud, double radioMetros, IReadOnlyCollection<string> categorias, int limite,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default) =>
+            ListarAsync(SqlCercanos, cancellationToken,
+                new NpgsqlParameter("lat", latitud),
+                new NpgsqlParameter("lon", longitud),
+                new NpgsqlParameter("radio", radioMetros),
+                new NpgsqlParameter("categorias", categorias.ToArray()),
+                new NpgsqlParameter("limite", limite));
+
+        public Task<IReadOnlyList<CantidadPorTipo>> ContarPorTipoAsync(
+            double latitud, double longitud, double radioMetros, CancellationToken cancellationToken = default) =>
+            ContarAsync(SqlResumen, cancellationToken,
+                new NpgsqlParameter("lat", latitud),
+                new NpgsqlParameter("lon", longitud),
+                new NpgsqlParameter("radio", radioMetros));
+
+        public Task<IReadOnlyList<PuntoInteresDto>> GetEnZonaAsync(
+            string slug, IReadOnlyCollection<string> categorias, int limite, CancellationToken cancellationToken = default) =>
+            ListarAsync(SqlEnZona, cancellationToken,
+                new NpgsqlParameter("slug", slug),
+                new NpgsqlParameter("categorias", categorias.ToArray()),
+                new NpgsqlParameter("limite", limite));
+
+        public Task<IReadOnlyList<CantidadPorTipo>> ContarPorTipoEnZonaAsync(
+            string slug, CancellationToken cancellationToken = default) =>
+            ContarAsync(SqlResumenZona, cancellationToken, new NpgsqlParameter("slug", slug));
+
+        private async Task<IReadOnlyList<PuntoInteresDto>> ListarAsync(
+            string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
         {
             var filas = await _dbContext.Database
-                .SqlQueryRaw<PuntoInteresFila>(SqlCercanos,
-                    new NpgsqlParameter("lat", latitud),
-                    new NpgsqlParameter("lon", longitud),
-                    new NpgsqlParameter("radio", radioMetros),
-                    new NpgsqlParameter("categorias", categorias.ToArray()),
-                    new NpgsqlParameter("limite", limite))
+                .SqlQueryRaw<PuntoInteresFila>(sql, parametros)
                 .ToListAsync(cancellationToken);
 
             return filas
@@ -128,14 +178,11 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .ToList();
         }
 
-        public async Task<IReadOnlyList<CantidadPorTipo>> ContarPorTipoAsync(
-            double latitud, double longitud, double radioMetros, CancellationToken cancellationToken = default)
+        private async Task<IReadOnlyList<CantidadPorTipo>> ContarAsync(
+            string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
         {
             var filas = await _dbContext.Database
-                .SqlQueryRaw<CantidadFila>(SqlResumen,
-                    new NpgsqlParameter("lat", latitud),
-                    new NpgsqlParameter("lon", longitud),
-                    new NpgsqlParameter("radio", radioMetros))
+                .SqlQueryRaw<CantidadFila>(sql, parametros)
                 .ToListAsync(cancellationToken);
 
             return filas.Select(f => new CantidadPorTipo(f.Categoria, f.Tipo, f.Cantidad)).ToList();

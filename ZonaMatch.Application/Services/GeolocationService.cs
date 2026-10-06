@@ -39,17 +39,25 @@ namespace ZonaMatch.Application.Services
             var puntos = await _puntoInteresRepository.GetCercanosAsync(
                 latitud, longitud, radioMetros, categorias, MaxPuntosInteres + 1, cancellationToken);
 
-            return puntos.Count > MaxPuntosInteres
-                ? new PuntosInteresCercanosDto(puntos.Take(MaxPuntosInteres).ToList(), Truncado: true)
-                : new PuntosInteresCercanosDto(puntos, Truncado: false);
+            return Recortar(puntos);
         }
 
         public async Task<ResumenPuntosInteresDto> GetResumenPuntosInteresAsync(
             double latitud, double longitud, double radioMetros, CancellationToken cancellationToken = default)
         {
             var cantidades = await _puntoInteresRepository.ContarPorTipoAsync(latitud, longitud, radioMetros, cancellationToken);
+            return new ResumenPuntosInteresDto(radioMetros, ResumirPorCategoria(cantidades));
+        }
 
-            var categorias = CategoriaPuntoInteres.Todas
+        // Points come with one extra row (MaxPuntosInteres + 1): if it is there, the result was cut at the limit
+        internal static PuntosInteresCercanosDto Recortar(IReadOnlyList<PuntoInteresDto> puntos) =>
+            puntos.Count > MaxPuntosInteres
+                ? new PuntosInteresCercanosDto(puntos.Take(MaxPuntosInteres).ToList(), Truncado: true)
+                : new PuntosInteresCercanosDto(puntos, Truncado: false);
+
+        // Every category, with its types ordered by count
+        internal static IReadOnlyList<ResumenCategoriaDto> ResumirPorCategoria(IReadOnlyList<CantidadPorTipo> cantidades) =>
+            CategoriaPuntoInteres.Todas
                 .Select(categoria =>
                 {
                     var tipos = cantidades
@@ -61,9 +69,6 @@ namespace ZonaMatch.Application.Services
                     return new ResumenCategoriaDto(categoria, tipos.Sum(t => t.Cantidad), tipos);
                 })
                 .ToList();
-
-            return new ResumenPuntosInteresDto(radioMetros, categorias);
-        }
 
         public async Task<UbicacionResumenDto> GetResumenUbicacionAsync(double latitud, double longitud, double radioMetros)
         {

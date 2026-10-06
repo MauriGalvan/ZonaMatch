@@ -16,8 +16,9 @@ namespace ZonaMatch.Application.DTOs
     // Truncado = there were more points than the limit; only the closest ones are returned
     public record PuntosInteresCercanosDto(IReadOnlyList<PuntoInteresDto> Puntos, bool Truncado);
 
-    // How many points of each category (and of each OSM type inside it) there are within a radius
-    public record ResumenPuntosInteresDto(double RadioMetros, IReadOnlyList<ResumenCategoriaDto> Categorias);
+    // How many points of each category (and of each OSM type inside it) there are within a radius or a zone
+    // RadioMetros is null when the area is a zone (GET /Zonas/{slug}/puntos-interes/resumen)
+    public record ResumenPuntosInteresDto(double? RadioMetros, IReadOnlyList<ResumenCategoriaDto> Categorias);
 
     // Tipos ordered by Cantidad, descending. Every category is listed, with Total 0 when it has no points.
     public record ResumenCategoriaDto(string Categoria, int Total, IReadOnlyList<CantidadPorTipoDto> Tipos);

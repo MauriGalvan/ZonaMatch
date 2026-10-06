@@ -13,10 +13,12 @@ namespace ZonaMatch.Application.Services
         public const int MaxResultadosBusqueda = 20;
 
         private readonly IZonaRepository _zonaRepository;
+        private readonly IPuntoInteresRepository _puntoInteresRepository;
 
-        public ZonaService(IZonaRepository zonaRepository)
+        public ZonaService(IZonaRepository zonaRepository, IPuntoInteresRepository puntoInteresRepository)
         {
             _zonaRepository = zonaRepository;
+            _puntoInteresRepository = puntoInteresRepository;
         }
 
         public Task<string?> GetPorSlugAsync(string slug, double? tolerancia, CancellationToken cancellationToken = default) =>
@@ -32,6 +34,23 @@ namespace ZonaMatch.Application.Services
 
             return await _zonaRepository.BuscarAsync(
                 fragmento, Math.Clamp(limite, 1, MaxResultadosBusqueda), cancellationToken);
+        }
+
+        public async Task<PuntosInteresCercanosDto> GetPuntosInteresAsync(
+            string slug, IReadOnlyCollection<string> categorias, CancellationToken cancellationToken = default)
+        {
+            // Same limit as the radius search: big zones (a partido) return the points closest to the center
+            var puntos = await _puntoInteresRepository.GetEnZonaAsync(
+                slug, categorias, GeolocationService.MaxPuntosInteres + 1, cancellationToken);
+
+            return GeolocationService.Recortar(puntos);
+        }
+
+        public async Task<ResumenPuntosInteresDto> GetResumenPuntosInteresAsync(
+            string slug, CancellationToken cancellationToken = default)
+        {
+            var cantidades = await _puntoInteresRepository.ContarPorTipoEnZonaAsync(slug, cancellationToken);
+            return new ResumenPuntosInteresDto(RadioMetros: null, GeolocationService.ResumirPorCategoria(cantidades));
         }
     }
 }
