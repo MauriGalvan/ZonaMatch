@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Services;
 using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Api.Controllers
@@ -16,6 +17,22 @@ namespace ZonaMatch.Api.Controllers
         public ZonasController(IZonaService zonaService)
         {
             _zonaService = zonaService;
+        }
+
+        // GET /Zonas?buscar=villa l&limite=10
+        // Zones whose name contains the text (ignoring case and accents); names that start with it come first
+        [HttpGet]
+        public async Task<IActionResult> Buscar(
+            [FromQuery] string? buscar, [FromQuery] int limite = 10, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(buscar))
+                return BadRequest("Indica el texto a buscar en buscar.");
+
+            if (limite is < 1 or > ZonaService.MaxResultadosBusqueda)
+                return BadRequest($"El limite debe estar entre 1 y {ZonaService.MaxResultadosBusqueda}.");
+
+            var zonas = await _zonaService.BuscarAsync(buscar, limite, cancellationToken);
+            return Ok(zonas);
         }
 
         // GET /Zonas/villa-luro?tolerancia=0.00015
