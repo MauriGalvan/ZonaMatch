@@ -1,27 +1,74 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.Services
 {
     public class GeolocationService : IGeolocationService
     {
+        // Keeps the payload and the markers drawn on the map reasonable
+        public const int MaxPuntosInteres = 1_500;
+        public const double MaxRadioPuntosInteresMetros = 5_000;
+
         private readonly IEscuelaRepository _escuelaRepository;
         private readonly IPartidoRepository _partidoRepository;
         private readonly IComunaRepository _comunaRepository;
         private readonly IGeocodingClient _geocodingClient;
+        private readonly IPuntoInteresRepository _puntoInteresRepository;
 
         public GeolocationService(
             IEscuelaRepository escuelaRepository,
             IPartidoRepository partidoRepository,
             IComunaRepository comunaRepository,
-            IGeocodingClient geocodingClient)
+            IGeocodingClient geocodingClient,
+            IPuntoInteresRepository puntoInteresRepository)
         {
             _escuelaRepository = escuelaRepository;
             _partidoRepository = partidoRepository;
             _comunaRepository = comunaRepository;
             _geocodingClient = geocodingClient;
+            _puntoInteresRepository = puntoInteresRepository;
         }
+
+        public async Task<PuntosInteresCercanosDto> GetPuntosInteresCercanosAsync(
+            double latitud, double longitud, double radioMetros, IReadOnlyCollection<string> categorias,
+            CancellationToken cancellationToken = default)
+        {
+            // One extra row tells whether the result was cut at the limit
+            var puntos = await _puntoInteresRepository.GetCercanosAsync(
+                latitud, longitud, radioMetros, categorias, MaxPuntosInteres + 1, cancellationToken);
+
+            return Recortar(puntos);
+        }
+
+        public async Task<ResumenPuntosInteresDto> GetResumenPuntosInteresAsync(
+            double latitud, double longitud, double radioMetros, CancellationToken cancellationToken = default)
+        {
+            var cantidades = await _puntoInteresRepository.ContarPorTipoAsync(latitud, longitud, radioMetros, cancellationToken);
+            return new ResumenPuntosInteresDto(radioMetros, ResumirPorCategoria(cantidades));
+        }
+
+        // Points come with one extra row (MaxPuntosInteres + 1): if it is there, the result was cut at the limit
+        internal static PuntosInteresCercanosDto Recortar(IReadOnlyList<PuntoInteresDto> puntos) =>
+            puntos.Count > MaxPuntosInteres
+                ? new PuntosInteresCercanosDto(puntos.Take(MaxPuntosInteres).ToList(), Truncado: true)
+                : new PuntosInteresCercanosDto(puntos, Truncado: false);
+
+        // Every category, with its types ordered by count
+        internal static IReadOnlyList<ResumenCategoriaDto> ResumirPorCategoria(IReadOnlyList<CantidadPorTipo> cantidades) =>
+            CategoriaPuntoInteres.Todas
+                .Select(categoria =>
+                {
+                    var tipos = cantidades
+                        .Where(c => c.Categoria == categoria)
+                        .OrderByDescending(c => c.Cantidad)
+                        .Select(c => new CantidadPorTipoDto(c.Tipo, c.Cantidad))
+                        .ToList();
+
+                    return new ResumenCategoriaDto(categoria, tipos.Sum(t => t.Cantidad), tipos);
+                })
+                .ToList();
 
         public async Task<UbicacionResumenDto> GetResumenUbicacionAsync(double latitud, double longitud, double radioMetros)
         {
