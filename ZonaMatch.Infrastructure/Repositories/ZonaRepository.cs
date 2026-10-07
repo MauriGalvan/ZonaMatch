@@ -121,6 +121,31 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
+        private static readonly string SqlExiste = $"""
+            WITH {ZonaSql.ZonaPorSlug}
+            SELECT EXISTS (SELECT 1 FROM zona) AS "Value"
+            """;
+
+        private static readonly string SqlContienePunto = $"""
+            WITH {ZonaSql.ZonaPorSlug}
+            SELECT EXISTS (
+                SELECT 1 FROM zona z
+                WHERE ST_Intersects(z.geom, ST_SetSRID(ST_MakePoint(@lon, @lat), 4326))) AS "Value"
+            """;
+
+        public Task<bool> ExisteAsync(string slug, CancellationToken cancellationToken = default) =>
+            _dbContext.Database
+                .SqlQueryRaw<bool>(SqlExiste, new NpgsqlParameter("slug", slug))
+                .SingleAsync(cancellationToken);
+
+        public Task<bool> ContienePuntoAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default) =>
+            _dbContext.Database
+                .SqlQueryRaw<bool>(SqlContienePunto,
+                    new NpgsqlParameter("slug", slug),
+                    new NpgsqlParameter("lat", latitud),
+                    new NpgsqlParameter("lon", longitud))
+                .SingleAsync(cancellationToken);
+
         public async Task<string?> GetPorSlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default)
         {
             var filas = await _dbContext.Database

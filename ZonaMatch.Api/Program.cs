@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -57,6 +59,14 @@ builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Comunidad de cada zona: resenas, preguntas y aportes al mapa
+builder.Services.AddScoped<IResenaRepository, ResenaRepository>();
+builder.Services.AddScoped<IPreguntaRepository, PreguntaRepository>();
+builder.Services.AddScoped<IAporteRepository, AporteRepository>();
+builder.Services.AddScoped<IResenaService, ResenaService>();
+builder.Services.AddScoped<IPreguntaService, PreguntaService>();
+builder.Services.AddScoped<IAporteService, AporteService>();
+
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()
     .BindConfiguration(JwtOptions.SectionName)
@@ -97,7 +107,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-builder.Services.AddControllers();
+// Enums travel as kebab-case text ("punto-nuevo", "cerro") in requests and responses
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)));
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi();
