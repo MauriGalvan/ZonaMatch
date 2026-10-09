@@ -17,7 +17,7 @@ public class CreateGroup
         _groupRepository = groupRepository;
     }
 
-    public async Task<GroupResponse> ExecuteAsync(CreateGroupRequest request, Guid userCreatorId, CancellationToken cancellationToken)
+    public async Task<GroupResponse> ExecuteAsync(CreateGroupRequest request, Guid userId, CancellationToken cancellationToken)
     {
         var nuevoGrupo = new Group
         {
@@ -28,7 +28,7 @@ public class CreateGroup
             {
                     new Participant
                     {
-                        UsuarioId = userCreatorId,      // El ID que extrajimos del Token
+                        UsuarioId = userId,      // El ID que extrajimos del Token
                         Role = "Propietario",       // Le damos el poder total
                     }
                 }

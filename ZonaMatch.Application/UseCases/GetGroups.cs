@@ -13,9 +13,9 @@ public class GetGroups
     {
         _groupRepository = groupRepository;
     }
-    public async Task<GroupListResponse> ExecuteAsync(Guid userCreatorId, CancellationToken cancellationToken)
+    public async Task<GroupListResponse> ExecuteAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var groups = await _groupRepository.GetByUserCreatorIdAsync(userCreatorId, cancellationToken);
+        var groups = await _groupRepository.GetByUserCreatorIdAsync(userId, cancellationToken);
         // Mapear a DTOs
         var response = new GroupListResponse
         {

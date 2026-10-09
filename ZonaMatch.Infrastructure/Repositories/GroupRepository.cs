@@ -34,4 +34,22 @@ public class GroupRepository : IGroupRepository
                 p.Role == "Propietario")) // <-- Opcional: si solo quieres los que él creó
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<Group?> GetByIdAsync(Guid groupId, CancellationToken cancellationToken)
+    {
+        // Usamos Include(g => g.Participants) para traernos los participantes también
+        // y así el Caso de Uso puede verificar si el usuario es el Propietario.
+        return await _context.Groups
+            .Include(g => g.Participants)
+            .FirstOrDefaultAsync(g => g.Id == groupId, cancellationToken);
+    }
+
+    public async Task DeleteAsync(Group group, CancellationToken cancellationToken)
+    {
+        // Eliminamos el grupo del contexto
+        _context.Groups.Remove(group);
+
+        // Guardamos los cambios en PostgreSQL
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }
