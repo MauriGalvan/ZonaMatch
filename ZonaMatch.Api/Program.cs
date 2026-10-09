@@ -11,6 +11,7 @@ using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
 using ZonaMatch.Infrastructure.Security;
+using ZonaMatch.Application.UseCases;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +51,7 @@ else
 builder.Services.AddScoped<IGeolocationService, GeolocationService>();
 builder.Services.AddScoped<IMapaService, MapaService>();
 builder.Services.AddScoped<IZonaService, ZonaService>();
+builder.Services.AddScoped<CreateGroup>();
 
 // Registro de usuarios
 builder.Services.AddSingleton(TimeProvider.System);

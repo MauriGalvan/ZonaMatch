@@ -18,6 +18,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Radio> Radios => Set<Radio>();
         public DbSet<MunicipioAlias> MunicipiosAlias => Set<MunicipioAlias>();
         public DbSet<Usuario> Usuarios => Set<Usuario>();
+        public DbSet<Group> Groups => Set<Group>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
