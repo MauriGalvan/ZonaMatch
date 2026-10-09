@@ -13,4 +13,5 @@ public interface IGroupRepository
     // Necesitamos un método para buscar un solo grupo por ID
     Task<Group?> GetByIdAsync(Guid groupId, CancellationToken cancellationToken);
     Task<IEnumerable<Group>> GetByUserCreatorIdAsync(Guid userCreatorId, CancellationToken cancellationToken);
+    Task UpdateAsync(Group group, CancellationToken cancellationToken);
 }

@@ -4,7 +4,7 @@ using System.Text;
 using ZonaMatch.Application.DTOs.Group;
 using ZonaMatch.Application.Interfaces;
 
-namespace ZonaMatch.Application.UseCases;
+namespace ZonaMatch.Application.UseCases.Groups;
 
 public class GetGroups
 {

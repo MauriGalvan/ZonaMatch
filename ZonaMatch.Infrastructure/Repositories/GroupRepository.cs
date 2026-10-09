@@ -52,4 +52,10 @@ public class GroupRepository : IGroupRepository
         // Guardamos los cambios en PostgreSQL
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task UpdateAsync(Group group, CancellationToken cancellationToken)
+    {
+        _context.Groups.Update(group);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

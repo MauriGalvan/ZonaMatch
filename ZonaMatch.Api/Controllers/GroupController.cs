@@ -1,8 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using ZonaMatch.Application.UseCases;
 using Microsoft.IdentityModel.JsonWebTokens;
 using ZonaMatch.Application.DTOs.Group;
+using ZonaMatch.Application.UseCases.Groups;
+
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace ZonaMatch.Api.Controllers
@@ -15,13 +16,15 @@ namespace ZonaMatch.Api.Controllers
 
         private readonly CreateGroup _createGroup;
         private readonly GetGroups _getGroups;
-        private readonly DeleteGroup _deleteGroupUseCase;
+        private readonly DeleteGroup _deleteGroup;
+        private readonly UpdateGroup _updateGroup;
 
-        public GroupController(CreateGroup createGroup, GetGroups getGroups, DeleteGroup deleteGroupUseCase)
+        public GroupController(CreateGroup createGroup, GetGroups getGroups, DeleteGroup deleteGroup, UpdateGroup updateGroup)
         {
             _createGroup = createGroup;
             _getGroups = getGroups;
-            _deleteGroupUseCase = deleteGroupUseCase;
+            _deleteGroup = deleteGroup;
+            _updateGroup = updateGroup;
         }
 
         // POST /Group
@@ -66,17 +69,33 @@ namespace ZonaMatch.Api.Controllers
             return Ok(response);
         }
 
-        // GET api/<GroupController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
-        {
-            return "value";
-        }
 
-        // PUT api/<GroupController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        [HttpPut("Update/{groupId:guid}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
+        public async Task<IActionResult> UpdateGroup([FromRoute] Guid groupId, UpdateGroupRequest request, CancellationToken cancellationToken)
         {
+            var idClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            if (!Guid.TryParse(idClaim, out var userId))
+                return Unauthorized();
+
+            try
+            {
+                await _updateGroup.ExecuteAsync(groupId, userId, request, cancellationToken);
+                return NoContent();
+            }
+            catch (Exception ex) when (ex.Message == "Grupo no encontrado")
+            {
+                return NotFound(new ProblemDetails { Title = ex.Message });
+            }
+            catch (Exception ex) when (ex.Message == "No tienes permiso para modificar este grupo")
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails { Title = ex.Message });
+            }
         }
 
         [HttpDelete("Delete/{groupId:guid}")]
@@ -93,7 +112,7 @@ namespace ZonaMatch.Api.Controllers
 
             try
             {
-                await _deleteGroupUseCase.ExecuteAsync(groupId, userId, cancellationToken);
+                await _deleteGroup.ExecuteAsync(groupId, userId, cancellationToken);
                 return NoContent();
             }
             catch (Exception ex) when (ex.Message == "Grupo no encontrado")
