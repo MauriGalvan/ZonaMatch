@@ -53,6 +53,7 @@ builder.Services.AddScoped<IGeolocationService, GeolocationService>();
 builder.Services.AddScoped<IMapaService, MapaService>();
 builder.Services.AddScoped<IZonaService, ZonaService>();
 builder.Services.AddScoped<CreateGroup>();
+builder.Services.AddScoped<GetGroups>();
 
 // Registro de usuarios
 builder.Services.AddSingleton(TimeProvider.System);
