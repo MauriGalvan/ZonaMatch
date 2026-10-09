@@ -23,7 +23,7 @@ namespace ZonaMatch.Api.Controllers
         // POST /Group
         // Body: { "name": "Búsqueda Capital" }
         [HttpPost]
-        [ProducesResponseType<GroupResponse>(StatusCodes.Status201Created)] 
+        [ProducesResponseType<GroupResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
@@ -54,12 +54,6 @@ namespace ZonaMatch.Api.Controllers
         public string Get(int id)
         {
             return "value";
-        }
-
-        // POST api/<GroupController>
-        [HttpPost]
-        public void Post([FromBody] string value)
-        {
         }
 
         // PUT api/<GroupController>/5

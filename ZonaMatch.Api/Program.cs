@@ -29,6 +29,7 @@ builder.Services.AddScoped<IComunaRepository, ComunaRepository>();
 builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
 builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 
 // Reverse geocoding. "Osm" (default) queries the local osm schema; "Nominatim" calls the public OpenStreetMap API.
 if (string.Equals(builder.Configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
