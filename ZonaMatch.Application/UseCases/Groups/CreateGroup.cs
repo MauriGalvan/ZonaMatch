@@ -5,7 +5,8 @@ using ZonaMatch.Application.DTOs.Group;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Application.UseCases;
+
+namespace ZonaMatch.Application.UseCases.Groups;
 
 public class CreateGroup
 {
@@ -17,16 +18,18 @@ public class CreateGroup
         _groupRepository = groupRepository;
     }
 
-    public async Task<GroupResponse> execute(CreateGroupRequest request, Guid userCreatorId, CancellationToken cancellationToken)
+    public async Task<GroupResponse> ExecuteAsync(CreateGroupRequest request, Guid userId, CancellationToken cancellationToken)
     {
         var nuevoGrupo = new Group
         {
             Name = request.Name,
+            CreatedAt = DateTime.UtcNow,
             Participants = new List<Participant>
-                {
+
+            {
                     new Participant
                     {
-                        UsuarioId = userCreatorId,      // El ID que extrajimos del Token
+                        UsuarioId = userId,      // El ID que extrajimos del Token
                         Role = "Propietario",       // Le damos el poder total
                     }
                 }
@@ -40,7 +43,9 @@ public class CreateGroup
         return new GroupResponse
         {
             Id = nuevoGrupo.Id,
-            Name = nuevoGrupo.Name
+            Name = nuevoGrupo.Name,
+            CreatedAt = nuevoGrupo.CreatedAt
+
         };
     }
 }

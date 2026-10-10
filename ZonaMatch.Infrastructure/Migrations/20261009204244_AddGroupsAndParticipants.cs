@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ZonaMatch.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AgregarGroupsParticipants : Migration
+    public partial class AddGroupsAndParticipants : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
