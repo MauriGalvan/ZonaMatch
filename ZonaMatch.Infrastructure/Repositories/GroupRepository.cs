@@ -7,7 +7,7 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories;
 
-internal class GroupRepository : IGroupRepository
+public class GroupRepository : IGroupRepository
 {
     private readonly ZonaMatchDbContext _context;
 

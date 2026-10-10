@@ -29,6 +29,8 @@ builder.Services.AddScoped<IComunaRepository, ComunaRepository>();
 builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
 builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IAnalisisRepository, AnalisisRepository>();
 
 // Reverse geocoding. "Osm" (default) queries the local osm schema; "Nominatim" calls the public OpenStreetMap API.
 if (string.Equals(builder.Configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
@@ -58,6 +60,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAnalisisService, AnalisisService>();
 
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()

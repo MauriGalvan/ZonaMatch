@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using ZonaMatch.Infrastructure.Data;
 namespace ZonaMatch.Infrastructure.Migrations
 {
     [DbContext(typeof(ZonaMatchDbContext))]
-    partial class ZonaMatchDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261009232443_AgregarGroupsParticipants")]
+    partial class AgregarGroupsParticipants
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -24,53 +27,6 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.AnalisisDetallado", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ContextoJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("contexto_json");
-
-                    b.Property<string>("CriteriosJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("criterios_json");
-
-                    b.Property<DateTimeOffset>("FechaActualizacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_actualizacion");
-
-                    b.Property<DateTimeOffset>("FechaCreacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_creacion");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("nombre");
-
-                    b.Property<string>("PuntosJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("puntos_json");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.ToTable("analisis_detallado", "app");
-                });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Comuna", b =>
                 {
@@ -508,15 +464,6 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("usuarios", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.AnalisisDetallado", b =>
-                {
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipioAlias", b =>
