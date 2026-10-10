@@ -36,9 +36,9 @@ namespace ZonaMatch.Api.Controllers
             Ok(await _listarResenas.EjecutarAsync(slug, User.UsuarioId(), cancellationToken));
 
         // PUT /Zonas/villa-luro/resenas/mia
-        // Cuerpo: { "puntaje": 4, "aspectos": { "seguridad": 3, "transporte": 5, "conectividad": 4, "comercios": 4,
-        //         "espaciosVerdes": 3 }, "texto": "...", "aniosEnZona": 9, "temas": ["transporte"] }
-        // Crea tu resena de la zona o la reemplaza (una por usuario y zona)
+        // Cuerpo: { "aspectos": { "seguridad": 3, "transporte": 5, "conectividad": 4, "comercios": 4, "espaciosVerdes": 3 },
+        //         "texto": "...", "aniosEnZona": 9, "temas": ["transporte"] }
+        // Crea tu resena de la zona o la reemplaza (una por usuario y zona). El puntaje general es el promedio de los aspectos.
         [Authorize]
         [HttpPut("mia")]
         [ProducesResponseType<ResenaDto>(StatusCodes.Status200OK)]

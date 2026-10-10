@@ -94,9 +94,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.ToTable("resenas", t =>
                 {
                     t.HasCheckConstraint("ck_resenas_puntajes",
-                        "puntaje BETWEEN 1 AND 5 AND puntaje_seguridad BETWEEN 1 AND 5 AND puntaje_transporte BETWEEN 1 AND 5 " +
-                        "AND puntaje_conectividad BETWEEN 1 AND 5 AND puntaje_comercios BETWEEN 1 AND 5 " +
-                        "AND puntaje_espacios_verdes BETWEEN 1 AND 5");
+                        "puntaje_seguridad BETWEEN 1 AND 5 AND puntaje_transporte BETWEEN 1 AND 5 AND puntaje_conectividad BETWEEN 1 AND 5 " +
+                        "AND puntaje_comercios BETWEEN 1 AND 5 AND puntaje_espacios_verdes BETWEEN 1 AND 5");
                 });
                 e.HasKey(x => x.Id);
                 e.Property(x => x.ZonaSlug).HasMaxLength(200);

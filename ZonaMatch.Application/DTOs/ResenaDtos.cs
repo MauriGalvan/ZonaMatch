@@ -12,13 +12,14 @@ namespace ZonaMatch.Application.DTOs
     public record PromedioAspectoDto(string Aspecto, double Promedio);
 
     // Iniciales identifica al autor sin exponer el email.
+    // Puntaje es el promedio de los aspectos (siempre con un decimal como mucho).
     // MarcadaUtilPorMi y EsMia son false en pedidos anonimos.
     public record ResenaDto(
         Guid Id,
         string Iniciales,
         int? AniosEnZona,
         bool Verificada,
-        int Puntaje,
+        double Puntaje,
         PuntajesAspectosDto Aspectos,
         IReadOnlyList<string> Temas,
         string Texto,
@@ -35,10 +36,9 @@ namespace ZonaMatch.Application.DTOs
         [Range(1, 5, ErrorMessage = "El puntaje de espacios verdes debe estar entre 1 y 5.")] int EspaciosVerdes);
 
     // PUT /Zonas/{slug}/resenas/mia: crea o reemplaza la resena del usuario actual.
+    // El puntaje general no se envia: se calcula a partir de los aspectos.
     // Temas: codigos de AspectoZona (seguridad, transporte, conectividad, comercios, espacios-verdes).
     public record GuardarResenaDto(
-        [Range(1, 5, ErrorMessage = "El puntaje debe estar entre 1 y 5.")]
-        int Puntaje,
         [Required(ErrorMessage = "Indica el puntaje de cada aspecto.")]
         PuntajesAspectosDto? Aspectos,
         [Required(ErrorMessage = "El texto de la resena es obligatorio.")]

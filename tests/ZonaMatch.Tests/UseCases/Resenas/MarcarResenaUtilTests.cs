@@ -18,7 +18,7 @@ namespace ZonaMatch.Tests.UseCases.Resenas
         public MarcarResenaUtilTests()
         {
             _casoDeUso = new MarcarResenaUtil(_resenas, new FixedTimeProvider(Ahora));
-            _resenaDeAna = new Resena { ZonaSlug = Zona, UsuarioId = _ana, Puntaje = 4, FechaCreacion = Ahora };
+            _resenaDeAna = new Resena { ZonaSlug = Zona, UsuarioId = _ana, FechaCreacion = Ahora };
             _resenas.Agregar(_resenaDeAna);
         }
 

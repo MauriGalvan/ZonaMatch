@@ -39,7 +39,6 @@ namespace ZonaMatch.Application.UseCases.Resenas
             }
 
             var aspectos = solicitud.Aspectos!; // garantizado por [Required] en el DTO
-            resena.Puntaje = solicitud.Puntaje;
             resena.PuntajeSeguridad = aspectos.Seguridad;
             resena.PuntajeTransporte = aspectos.Transporte;
             resena.PuntajeConectividad = aspectos.Conectividad;

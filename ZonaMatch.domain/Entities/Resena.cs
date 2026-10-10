@@ -14,13 +14,16 @@ namespace ZonaMatch.Domain.Entities
         public Guid UsuarioId { get; set; }
         public Usuario? Usuario { get; set; }
 
-        // Puntaje general y puntaje de cada aspecto (AspectoZona), de 1 a 5
-        public int Puntaje { get; set; }
+        // Puntaje de cada aspecto (AspectoZona), de 1 a 5
         public int PuntajeSeguridad { get; set; }
         public int PuntajeTransporte { get; set; }
         public int PuntajeConectividad { get; set; }
         public int PuntajeComercios { get; set; }
         public int PuntajeEspaciosVerdes { get; set; }
+
+        // Puntaje general: el promedio de los aspectos, sin redondear. No se guarda en la base.
+        public double Puntaje =>
+            (PuntajeSeguridad + PuntajeTransporte + PuntajeConectividad + PuntajeComercios + PuntajeEspaciosVerdes) / 5.0;
 
         public string Texto { get; set; } = string.Empty;
 

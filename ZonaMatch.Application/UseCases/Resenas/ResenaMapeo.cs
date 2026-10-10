@@ -10,7 +10,7 @@ namespace ZonaMatch.Application.UseCases.Resenas
     {
         public static ResumenResenasDto Resumir(IReadOnlyList<Resena> resenas)
         {
-            static double Promedio(IReadOnlyList<Resena> resenas, Func<Resena, int> puntaje) =>
+            static double Promedio(IReadOnlyList<Resena> resenas, Func<Resena, double> puntaje) =>
                 resenas.Count == 0 ? 0 : Math.Round(resenas.Average(puntaje), 1);
 
             return new ResumenResenasDto(

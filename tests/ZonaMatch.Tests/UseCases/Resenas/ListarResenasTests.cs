@@ -20,14 +20,14 @@ namespace ZonaMatch.Tests.UseCases.Resenas
             _casoDeUso = new ListarResenas(_resenas);
         }
 
-        private Resena Agregar(Usuario autor, int puntaje = 4, int seguridad = 3, string zona = Zona)
+        // Con seguridad 3 el puntaje general es (3 + 5 + 4 + 4 + 2) / 5 = 3,6
+        private Resena Agregar(Usuario autor, int seguridad = 3, string zona = Zona)
         {
             var resena = new Resena
             {
                 ZonaSlug = zona,
                 UsuarioId = autor.Id,
                 Usuario = autor,
-                Puntaje = puntaje,
                 PuntajeSeguridad = seguridad,
                 PuntajeTransporte = 5,
                 PuntajeConectividad = 4,
@@ -43,15 +43,18 @@ namespace ZonaMatch.Tests.UseCases.Resenas
         [Fact]
         public async Task Listar_ResumePromediosPorAspecto()
         {
-            Agregar(_ana, puntaje: 4, seguridad: 3);
-            Agregar(new Usuario { Id = _luis, Email = "luis@example.com" }, puntaje: 5, seguridad: 4);
-            Agregar(_ana, puntaje: 1, seguridad: 1, zona: "otra-zona");
+            Agregar(_ana, seguridad: 3);
+            Agregar(new Usuario { Id = _luis, Email = "luis@example.com" }, seguridad: 4);
+            Agregar(new Usuario { Email = "mara@example.com" }, seguridad: 4);
+            Agregar(_ana, seguridad: 1, zona: "otra-zona");
 
             var resultado = await _casoDeUso.EjecutarAsync(Zona, usuarioActual: null);
 
-            Assert.Equal(4.5, resultado.Resumen.Promedio);
-            Assert.Equal(2, resultado.Resumen.Total);
-            Assert.Equal(new PromedioAspectoDto(AspectoZona.Seguridad, 3.5), resultado.Resumen.Aspectos[0]);
+            // Puntajes generales 3,6 + 3,8 + 3,8 = 11,2 / 3 = 3,73...
+            Assert.Equal(3.7, resultado.Resumen.Promedio);
+            Assert.Equal(3, resultado.Resumen.Total);
+            Assert.Equal(new PromedioAspectoDto(AspectoZona.Seguridad, 3.7), resultado.Resumen.Aspectos[0]);
+            Assert.Equal([3.6, 3.8, 3.8], resultado.Resenas.Select(r => r.Puntaje).Order());
             Assert.All(resultado.Resenas, r => Assert.False(r.EsMia));
         }
 

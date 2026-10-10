@@ -19,23 +19,31 @@ namespace ZonaMatch.Tests.UseCases.Resenas
             _casoDeUso = new GuardarMiResena(_resenas, new FakeZonaRepository(), new FixedTimeProvider(Ahora));
         }
 
-        private static GuardarResenaDto Resena(int puntaje = 4, string[]? temas = null) =>
-            new(puntaje, new PuntajesAspectosDto(3, 5, 4, 4, 2), "  Barrio tranquilo y bien conectado con el centro.  ", 9, temas);
+        private static GuardarResenaDto Resena(int seguridad = 3, string[]? temas = null) =>
+            new(new PuntajesAspectosDto(seguridad, 5, 4, 4, 2), "  Barrio tranquilo y bien conectado con el centro.  ", 9, temas);
 
         [Fact]
         public async Task Guardar_DosVeces_ReemplazaLaResenaDelUsuario()
         {
-            await _casoDeUso.EjecutarAsync(Zona, _ana, Resena(puntaje: 4));
-            var segunda = await _casoDeUso.EjecutarAsync(Zona, _ana, Resena(puntaje: 2, temas: ["Transporte", "seguridad"]));
+            await _casoDeUso.EjecutarAsync(Zona, _ana, Resena(seguridad: 3));
+            var segunda = await _casoDeUso.EjecutarAsync(Zona, _ana, Resena(seguridad: 1, temas: ["Transporte", "seguridad"]));
 
             var guardada = Assert.Single(_resenas.Resenas);
-            Assert.Equal(2, guardada.Puntaje);
+            Assert.Equal(1, guardada.PuntajeSeguridad);
             Assert.Equal(5, guardada.PuntajeTransporte);
             Assert.Equal("Barrio tranquilo y bien conectado con el centro.", guardada.Texto);
             Assert.Equal([AspectoZona.Seguridad, AspectoZona.Transporte], guardada.Temas);
             Assert.Equal(Ahora, guardada.FechaCreacion);
             Assert.True(segunda.EsMia);
             Assert.Equal("AN", segunda.Iniciales);
+        }
+
+        [Fact]
+        public async Task Guardar_DevuelveElPuntajeGeneralCalculadoDeLosAspectos()
+        {
+            var guardada = await _casoDeUso.EjecutarAsync(Zona, _ana, Resena(seguridad: 3));
+
+            Assert.Equal(3.6, guardada.Puntaje);
         }
 
         [Fact]
