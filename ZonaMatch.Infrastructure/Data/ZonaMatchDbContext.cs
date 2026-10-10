@@ -25,6 +25,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Respuesta> Respuestas => Set<Respuesta>();
         public DbSet<Aporte> Aportes => Set<Aporte>();
         public DbSet<AporteValidacion> AportesValidaciones => Set<AporteValidacion>();
+        public DbSet<Group> Groups => Set<Group>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
