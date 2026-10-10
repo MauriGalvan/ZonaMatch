@@ -26,6 +26,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Aporte> Aportes => Set<Aporte>();
         public DbSet<AporteValidacion> AportesValidaciones => Set<AporteValidacion>();
         public DbSet<Group> Groups => Set<Group>();
+        public DbSet<AnalisisDetallado> AnalisisDetallado => Set<AnalisisDetallado>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -86,6 +87,24 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.PasswordHash).HasMaxLength(255).IsRequired();
                 e.Property(x => x.FechaNacimiento).HasColumnType("date");
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
+            });
+
+            modelBuilder.Entity<AnalisisDetallado>(e =>
+            {
+                e.ToTable("analisis_detallado");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
+                // The wizard payload is stored verbatim as jsonb; the API layer validates it.
+                e.Property(x => x.ContextoJson).HasColumnType("jsonb").IsRequired();
+                e.Property(x => x.CriteriosJson).HasColumnType("jsonb").IsRequired();
+                e.Property(x => x.PuntosJson).HasColumnType("jsonb").IsRequired();
+                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
+                e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
+                e.HasIndex(x => x.UsuarioId);
+                e.HasOne<Usuario>()
+                    .WithMany()
+                    .HasForeignKey(x => x.UsuarioId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Comunidad de una zona (resenas, preguntas y aportes). Las zonas no son una tabla: se referencian

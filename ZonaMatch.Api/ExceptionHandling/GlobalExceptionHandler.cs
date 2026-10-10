@@ -36,9 +36,14 @@ namespace ZonaMatch.Api.ExceptionHandling
             {
                 EmailYaRegistradoException => (StatusCodes.Status409Conflict, exception.Message),
                 CredencialesInvalidasException => (StatusCodes.Status401Unauthorized, exception.Message),
+                // Analisis detallado
+                LimiteAnalisisException => (StatusCodes.Status409Conflict, exception.Message),
+                AnalisisNoEncontradoException => (StatusCodes.Status404NotFound, exception.Message),
+                // Comunidad de la zona y grupos
                 DatosInvalidosException => (StatusCodes.Status400BadRequest, exception.Message),
                 NoEncontradoException => (StatusCodes.Status404NotFound, exception.Message),
                 OperacionNoPermitidaException => (StatusCodes.Status409Conflict, exception.Message),
+                ArgumentException => (StatusCodes.Status400BadRequest, exception.Message),
                 // Database unreachable, connection refused, timeouts...
                 _ when IsTransientDbFailure(exception) => (StatusCodes.Status503ServiceUnavailable, "El servicio no esta disponible temporalmente. Intenta nuevamente en unos instantes."),
                 _ => (StatusCodes.Status500InternalServerError, "Ocurrio un error inesperado.")
