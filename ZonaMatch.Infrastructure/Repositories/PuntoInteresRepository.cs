@@ -47,10 +47,15 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         private const string Columnas = "name, amenity, shop, leisure, tourism, railway, public_transport, highway, operator";
 
+        private const string App = ZonaMatchDbOptions.AppSchema;
+
         // Classified points inside an area, with their distance to a reference point. Shared by the list and the
         // summary, for a radius and for a zone. "origen" defines the CTE "o" (prefilter geometry g in 3857 and the
         // reference geography geog); candidates pass the index-friendly "prefiltro" and then the exact "dentro"
         // (on the 4326 point c.punto). Ends with the "en_area" CTE.
+        // Los aportes de vecinos aprobados por otros vecinos (app.aportes) se aplican sobre OSM: los puntos nuevos
+        // se agregan ("a" + id) y las correcciones de un lugar cambian su nombre, categoria o ubicacion, o lo esconden
+        // si cerro. Una correccion por motivo "otro" es solo informativa.
         private static string PuntosEn(string origen, Func<string, string> prefiltro, string dentro) => $"""
             WITH {origen},
             candidatos AS (
@@ -64,13 +69,41 @@ namespace ZonaMatch.Infrastructure.Repositories
                 WHERE {prefiltro("t.way")}
             ),
             clasificados AS (
-                SELECT id, name, operator, {Clasificacion} AS categoria, {Tipo} AS tipo, ST_Transform(punto, 4326) AS punto
+                SELECT id, name, operator, {Clasificacion} AS categoria, {Tipo} AS tipo, ST_Transform(punto, 4326) AS punto,
+                       'osm' AS fuente
                 FROM candidatos
                 WHERE name IS NOT NULL OR highway = 'bus_stop' OR railway = 'subway_entrance'
+                UNION ALL
+                SELECT 'a' || a.id::text, a.nombre, NULL, a.categoria, NULL, a.ubicacion, 'vecinos'
+                FROM {App}.aportes a
+                WHERE a.tipo = 'PuntoNuevo' AND a.estado = 'Aprobado'
+            ),
+            -- La ultima correccion aprobada de cada lugar y motivo
+            correcciones AS (
+                SELECT DISTINCT ON (a.punto_interes_id, a.motivo) a.punto_interes_id, a.motivo, a.nombre, a.categoria, a.ubicacion
+                FROM {App}.aportes a
+                WHERE a.tipo = 'Correccion' AND a.estado = 'Aprobado'
+                ORDER BY a.punto_interes_id, a.motivo, a.fecha_resolucion DESC
+            ),
+            corregidos AS (
+                SELECT c.id,
+                       COALESCE(cn.nombre, c.name) AS name,
+                       c.operator,
+                       COALESCE(cc.categoria, c.categoria) AS categoria,
+                       -- el tipo de OSM ya no describe a un lugar que paso a otra categoria
+                       CASE WHEN cc.categoria IS NULL THEN c.tipo END AS tipo,
+                       COALESCE(cu.ubicacion, c.punto) AS punto,
+                       c.fuente
+                FROM clasificados c
+                LEFT JOIN correcciones cn ON cn.punto_interes_id = c.id AND cn.motivo = 'Nombre'
+                LEFT JOIN correcciones cc ON cc.punto_interes_id = c.id AND cc.motivo = 'Categoria'
+                LEFT JOIN correcciones cu ON cu.punto_interes_id = c.id AND cu.motivo = 'Ubicacion'
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM correcciones x WHERE x.punto_interes_id = c.id AND x.motivo = 'Cerro')
             ),
             en_area AS (
                 SELECT c.*, ST_Distance(c.punto::geography, o.geog) AS distancia
-                FROM clasificados c, o
+                FROM corregidos c, o
                 WHERE c.categoria IS NOT NULL
                   AND {dentro}
             )
@@ -111,7 +144,8 @@ namespace ZonaMatch.Infrastructure.Repositories
                    operator AS "Operador",
                    ST_Y(punto) AS "Latitud",
                    ST_X(punto) AS "Longitud",
-                   distancia AS "DistanciaMetros"
+                   distancia AS "DistanciaMetros",
+                   fuente AS "Fuente"
             FROM en_area
             WHERE categoria = ANY(@categorias)
             ORDER BY distancia
@@ -174,7 +208,7 @@ namespace ZonaMatch.Infrastructure.Repositories
 
             return filas
                 .Select(f => new PuntoInteresDto(
-                    f.Id, f.Nombre, f.Categoria, f.Tipo, f.Operador, f.Latitud, f.Longitud, f.DistanciaMetros))
+                    f.Id, f.Nombre, f.Categoria, f.Tipo, f.Operador, f.Latitud, f.Longitud, f.DistanciaMetros, f.Fuente))
                 .ToList();
         }
 
@@ -206,6 +240,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             public double Latitud { get; set; }
             public double Longitud { get; set; }
             public double DistanciaMetros { get; set; }
+            public string Fuente { get; set; } = string.Empty;
         }
     }
 }

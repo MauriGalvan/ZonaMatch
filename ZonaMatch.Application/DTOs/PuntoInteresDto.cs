@@ -1,8 +1,9 @@
 namespace ZonaMatch.Application.DTOs
 {
-    // A point of interest from OpenStreetMap, classified into one of the app categories (CategoriaPuntoInteres).
-    // Id is the stable OSM id: n<id> node, w<id> way, r<id> relation.
+    // Un punto de interes clasificado en una de las categorias de la app (CategoriaPuntoInteres).
+    // Id es el id estable de OSM: n<id> nodo, w<id> way, r<id> relation; o a<id> para un punto agregado por vecinos.
     // Tipo is the raw OSM value that classified it (bus_stop, school, pharmacy...); Nombre may be missing (e.g. bus stops).
+    // Fuente: "osm", o "vecinos" para un punto agregado por vecinos (aportes aprobados)
     public record PuntoInteresDto(
         string Id,
         string? Nombre,
@@ -11,7 +12,8 @@ namespace ZonaMatch.Application.DTOs
         string? Operador,
         double Latitud,
         double Longitud,
-        double DistanciaMetros);
+        double DistanciaMetros,
+        string Fuente);
 
     // Truncado = there were more points than the limit; only the closest ones are returned
     public record PuntosInteresCercanosDto(IReadOnlyList<PuntoInteresDto> Puntos, bool Truncado);
