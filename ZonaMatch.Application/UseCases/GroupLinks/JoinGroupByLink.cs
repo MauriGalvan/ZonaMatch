@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Enums;
 
 namespace ZonaMatch.Application.UseCases.GroupLinks;
 
@@ -37,7 +38,7 @@ public class JoinGroupByLink
             Id = Guid.CreateVersion7(), // Si usas V7
             GroupId = group.Id,
             UserId = currentUserId,
-            Role = "Member"
+            Role = GroupRole.Guest
         };
 
         group.Participants.Add(newParticipant);

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -13,9 +14,11 @@ using ZonaMatch.Infrastructure.Data;
 namespace ZonaMatch.Infrastructure.Migrations
 {
     [DbContext(typeof(ZonaMatchDbContext))]
-    partial class ZonaMatchDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261010141950_CambioRoleParticipanteAEnum")]
+    partial class CambioRoleParticipanteAEnum
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -514,8 +517,6 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.HasIndex("GroupId");
 
-                    b.HasIndex("UserId");
-
                     b.ToTable("Participant", "app");
                 });
 
@@ -855,15 +856,7 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Group");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Pregunta", b =>

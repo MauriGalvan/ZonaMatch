@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using ZonaMatch.Application.DTOs.Group;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Enums;
 
 namespace ZonaMatch.Application.UseCases.Groups;
 
@@ -23,7 +24,7 @@ public class UpdateGroup
             throw new Exception("Grupo no encontrado");
 
         // Verificamos si el usuario es propietario
-        var esPropietario = grupo.Participants.Any(p => p.UserId == userId && p.Role == "Propietario");
+        var esPropietario = grupo.Participants.Any(p => p.UserId == userId && GroupRole.Owner == p.Role);
 
         if (!esPropietario)
             throw new Exception("No tienes permiso para modificar este grupo");

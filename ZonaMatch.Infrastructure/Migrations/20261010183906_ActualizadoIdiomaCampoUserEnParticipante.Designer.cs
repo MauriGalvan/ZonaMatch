@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -13,9 +14,11 @@ using ZonaMatch.Infrastructure.Data;
 namespace ZonaMatch.Infrastructure.Migrations
 {
     [DbContext(typeof(ZonaMatchDbContext))]
-    partial class ZonaMatchDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261010183906_ActualizadoIdiomaCampoUserEnParticipante")]
+    partial class ActualizadoIdiomaCampoUserEnParticipante
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -57,10 +57,9 @@ public class AcceptInvitation
         // 5. Agregar al usuario como participante (Ajusta el "Role" según cómo lo manejes en tu app)
         var newParticipant = new Participant
         {
-            Id = Guid.CreateVersion7(), // Si usas V7 en Participant
             GroupId = group.Id,
             UserId = currentUserId,
-            Role = "Member" // o "Invitado", "Member", etc.
+            Role = GroupRole.Guest // o "Invitado", "Member", etc.
         };
         group.Participants.Add(newParticipant);
 
@@ -68,7 +67,7 @@ public class AcceptInvitation
         invitation.Status = InvitationStatus.Accepted;
 
         // 7. Guardar los cambios
-        await _groupRepository.UpdateAsync(group, cancellationToken);
+        await _groupRepository.AddParticipantAsync(newParticipant, cancellationToken);
         await _invitationRepository.UpdateAsync(invitation, cancellationToken);
     }
 }

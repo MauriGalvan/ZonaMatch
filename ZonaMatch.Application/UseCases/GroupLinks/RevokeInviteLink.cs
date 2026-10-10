@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Enums;
 
 namespace ZonaMatch.Application.UseCases.GroupLinks;
 
@@ -20,7 +21,7 @@ public class RevokeInviteLink
         if (group == null) throw new Exception("El grupo no existe.");
 
         // Validar que el que revoca es el Propietario
-        bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && p.Role == "Owner");
+        bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && p.Role == GroupRole.Owner);
         if (!isOwner)
         {
             throw new Exception("Solo el propietario puede revocar el enlace de invitación.");

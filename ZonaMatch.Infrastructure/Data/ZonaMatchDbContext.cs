@@ -176,6 +176,10 @@ namespace ZonaMatch.Infrastructure.Data
             modelBuilder.Entity<GroupInvitation>()
                 .Property(i => i.Status)
                 .HasConversion<string>();
+
+            modelBuilder.Entity<Participant>()
+                .Property(p => p.Role)
+                .HasConversion<string>();
         }
 
         private static string ToSnakeCase(string name) =>

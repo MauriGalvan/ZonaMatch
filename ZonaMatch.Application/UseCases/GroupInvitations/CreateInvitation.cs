@@ -36,7 +36,7 @@ public class CreateInvitation
 
         // 2. Validar que el usuario que intenta invitar sea el Propietario (Owner)
         // Asumo que tienes alguna forma de saber si es el dueño, ajusta esta línea a tu lógica real de tu entidad:
-        bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && p.Role == "Owner");
+        bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && p.Role == GroupRole.Owner);
         if (!isOwner)
         {
             throw new Exception("Solo el propietario del grupo puede enviar invitaciones."); // (ForbiddenException)

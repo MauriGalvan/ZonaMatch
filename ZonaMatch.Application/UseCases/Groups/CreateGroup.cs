@@ -4,6 +4,7 @@ using System.Text;
 using ZonaMatch.Application.DTOs.Group;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Enums;
 
 
 namespace ZonaMatch.Application.UseCases.Groups;
@@ -30,14 +31,23 @@ public class CreateGroup
                     new Participant
                     {
                         UserId = userId,      // El ID que extrajimos del Token
-                        Role = "Propietario",       // Le damos el poder total
+                        Role = GroupRole.Owner,       // Le damos el poder total
                     }
                 }
         };
 
         // 2. Lo enviamos al repositorio para que lo guarde
         // Al guardar el grupo, EF Core detecta la lista de Participants y los guarda también.
-        await _groupRepository.AddAsync(nuevoGrupo, cancellationToken);
+        try
+        {
+            await _groupRepository.AddAsync(nuevoGrupo, cancellationToken); // O tu método de guardado
+        }
+        catch (Exception ex)
+        {
+            // ¡Acá está el oro! Esto te dirá exactamente qué regla de la base de datos se rompió
+            Console.WriteLine("ERROR REAL DE POSTGRES: " + ex.InnerException?.Message);
+            throw;
+        }
 
         // 3. Mapeamos la entidad de dominio al DTO de respuesta
         return new GroupResponse

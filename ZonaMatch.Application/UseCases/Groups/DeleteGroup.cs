@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Enums;
 
 namespace ZonaMatch.Application.UseCases.Groups;
 
@@ -27,7 +28,7 @@ public class DeleteGroup
 
         // 2. Verificamos si el usuario actual es "Propietario" de este grupo
         // (Si no es el propietario, no lo dejamos borrar)
-        var esPropietario = grupo.Participants.Any(p => p.UserId == userId && p.Role == "Propietario");
+        var esPropietario = grupo.Participants.Any(p => p.UserId == userId && GroupRole.Owner == p.Role);
 
         if (!esPropietario)
         {

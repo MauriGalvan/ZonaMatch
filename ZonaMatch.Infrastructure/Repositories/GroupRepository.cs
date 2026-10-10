@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using ZonaMatch.Domain.Entities;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Enums;
 using ZonaMatch.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace ZonaMatch.Infrastructure.Repositories;
 
@@ -31,7 +32,7 @@ public class GroupRepository : IGroupRepository
             // Filtramos: "Traeme los grupos donde exista AL MENOS UN participante..."
             .Where(g => g.Participants.Any(p =>
                 p.UserId == userCreatorId &&
-                p.Role == "Propietario")) // <-- Opcional: si solo quieres los que él creó
+                GroupRole.Owner == p.Role)) // <-- Opcional: si solo quieres los que él creó
             .ToListAsync(cancellationToken);
     }
 
@@ -62,5 +63,12 @@ public class GroupRepository : IGroupRepository
     {
         return await _context.Groups
             .FirstOrDefaultAsync(g => g.InviteToken == inviteToken, cancellationToken);
+    }
+
+    public async Task AddParticipantAsync(Participant participant, CancellationToken cancellationToken)
+    {
+        // Le decimos a EF Core explícitamente: "Esto es un INSERT, respeta su ID V7"
+        await _context.Set<Participant>().AddAsync(participant, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }
