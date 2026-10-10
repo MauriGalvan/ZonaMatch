@@ -1,7 +1,7 @@
-namespace ZonaMatch.Application.Services
+namespace ZonaMatch.Application.UseCases.Comunidad
 {
-    // How the community shows who wrote something. Users have no name yet, only an email, which must not be
-    // exposed: the initials come from the part before the "@" ("ana.perez@..." -> "AP", "juan@..." -> "JU").
+    // Como muestra la comunidad quien escribio algo. Los usuarios todavia no tienen nombre, solo email, que no
+    // se debe exponer: las iniciales salen de lo anterior a la "@" ("ana.perez@..." -> "AP", "juan@..." -> "JU").
     public static class Autor
     {
         private static readonly char[] Separadores = ['.', '_', '-', '+'];

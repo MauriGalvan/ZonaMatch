@@ -9,6 +9,9 @@ using ZonaMatch.Api.Authentication;
 using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
+using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.Preguntas;
+using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
@@ -63,9 +66,20 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IResenaRepository, ResenaRepository>();
 builder.Services.AddScoped<IPreguntaRepository, PreguntaRepository>();
 builder.Services.AddScoped<IAporteRepository, AporteRepository>();
-builder.Services.AddScoped<IResenaService, ResenaService>();
-builder.Services.AddScoped<IPreguntaService, PreguntaService>();
-builder.Services.AddScoped<IAporteService, AporteService>();
+
+// Casos de uso de la comunidad: uno por operacion
+builder.Services.AddScoped<ListarResenas>();
+builder.Services.AddScoped<GuardarMiResena>();
+builder.Services.AddScoped<EliminarMiResena>();
+builder.Services.AddScoped<MarcarResenaUtil>();
+builder.Services.AddScoped<ListarPreguntas>();
+builder.Services.AddScoped<CrearPregunta>();
+builder.Services.AddScoped<ResponderPregunta>();
+builder.Services.AddScoped<ResumirAportes>();
+builder.Services.AddScoped<ListarAportesPendientes>();
+builder.Services.AddScoped<CrearPuntoNuevo>();
+builder.Services.AddScoped<CrearCorreccion>();
+builder.Services.AddScoped<ValidarAporte>();
 
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()
@@ -107,7 +121,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-// Enums travel as kebab-case text ("punto-nuevo", "cerro") in requests and responses
+// Los enums viajan como texto en kebab-case ("punto-nuevo", "cerro") en pedidos y respuestas
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)));

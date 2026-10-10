@@ -1,6 +1,6 @@
-using ZonaMatch.Application.Services;
+using ZonaMatch.Application.UseCases.Comunidad;
 
-namespace ZonaMatch.Tests.Services
+namespace ZonaMatch.Tests.UseCases.Comunidad
 {
     public class AutorTests
     {

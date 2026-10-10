@@ -2,17 +2,17 @@ using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Tests.Services
+namespace ZonaMatch.Tests.UseCases
 {
-    // In-memory repositories for the community services. Entities are kept by reference, like tracked
-    // entities: GuardarCambiosAsync only counts the calls.
+    // Repositorios en memoria para los casos de uso de la comunidad. Las entidades se guardan por referencia,
+    // como las que tienen seguimiento de cambios: GuardarCambiosAsync solo cuenta las llamadas.
 
     internal sealed class FixedTimeProvider(DateTimeOffset ahora) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => ahora;
     }
 
-    // One zone, "villa-luro", that contains every point with latitude below 0
+    // Una sola zona, "villa-luro", que contiene todo punto con latitud menor a 0
     internal sealed class FakeZonaRepository : IZonaRepository
     {
         public const string Zona = "villa-luro";

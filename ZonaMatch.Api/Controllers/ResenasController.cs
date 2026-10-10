@@ -2,45 +2,55 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs;
-using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.UseCases.Resenas;
 
 namespace ZonaMatch.Api.Controllers
 {
-    // Neighbors' reviews of a zone. Reading is public; writing needs a logged-in user (Bearer token).
+    // Resenas de los vecinos sobre una zona. Leer es publico; escribir pide un usuario con sesion iniciada (token Bearer).
     [ApiController]
     [Route("Zonas/{slug:regex(" + RutasZona.Slug + ")}/resenas")]
     public class ResenasController : ControllerBase
     {
-        private readonly IResenaService _resenaService;
+        private readonly ListarResenas _listarResenas;
+        private readonly GuardarMiResena _guardarMiResena;
+        private readonly EliminarMiResena _eliminarMiResena;
+        private readonly MarcarResenaUtil _marcarResenaUtil;
 
-        public ResenasController(IResenaService resenaService)
+        public ResenasController(
+            ListarResenas listarResenas,
+            GuardarMiResena guardarMiResena,
+            EliminarMiResena eliminarMiResena,
+            MarcarResenaUtil marcarResenaUtil)
         {
-            _resenaService = resenaService;
+            _listarResenas = listarResenas;
+            _guardarMiResena = guardarMiResena;
+            _eliminarMiResena = eliminarMiResena;
+            _marcarResenaUtil = marcarResenaUtil;
         }
 
         // GET /Zonas/villa-luro/resenas
-        // With a token, each review says whether it is yours (esMia) and whether you marked it useful
+        // Con token, cada resena indica si es tuya (esMia) y si la marcaste como util
         [HttpGet]
         [ProducesResponseType<ResenasZonaDto>(StatusCodes.Status200OK)]
         public async Task<IActionResult> Listar(string slug, CancellationToken cancellationToken) =>
-            Ok(await _resenaService.ListarAsync(slug, User.UsuarioId(), cancellationToken));
+            Ok(await _listarResenas.EjecutarAsync(slug, User.UsuarioId(), cancellationToken));
 
         // PUT /Zonas/villa-luro/resenas/mia
-        // Body: { "puntaje": 4, "aspectos": { "seguridad": 3, "transporte": 5, "conectividad": 4, "comercios": 4,
+        // Cuerpo: { "puntaje": 4, "aspectos": { "seguridad": 3, "transporte": 5, "conectividad": 4, "comercios": 4,
         //         "espaciosVerdes": 3 }, "texto": "...", "aniosEnZona": 9, "temas": ["transporte"] }
-        // Creates your review of the zone or replaces it (one per user and zone)
+        // Crea tu resena de la zona o la reemplaza (una por usuario y zona)
         [Authorize]
         [HttpPut("mia")]
         [ProducesResponseType<ResenaDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GuardarMia(string slug, GuardarResenaDto request, CancellationToken cancellationToken)
+        public async Task<IActionResult> GuardarMia(string slug, GuardarResenaDto solicitud, CancellationToken cancellationToken)
         {
             if (User.Sesion() is not { } sesion)
                 return Unauthorized();
 
-            return Ok(await _resenaService.GuardarMiaAsync(slug, sesion, request, cancellationToken));
+            return Ok(await _guardarMiResena.EjecutarAsync(slug, sesion, solicitud, cancellationToken));
         }
 
         // DELETE /Zonas/villa-luro/resenas/mia
@@ -54,12 +64,12 @@ namespace ZonaMatch.Api.Controllers
             if (User.UsuarioId() is not { } usuarioId)
                 return Unauthorized();
 
-            await _resenaService.EliminarMiaAsync(slug, usuarioId, cancellationToken);
+            await _eliminarMiResena.EjecutarAsync(slug, usuarioId, cancellationToken);
             return NoContent();
         }
 
-        // PUT /Zonas/villa-luro/resenas/{id}/util     marks a review of another user as useful
-        // DELETE /Zonas/villa-luro/resenas/{id}/util  removes the mark (both are idempotent)
+        // PUT /Zonas/villa-luro/resenas/{id}/util     marca como util una resena de otro usuario
+        // DELETE /Zonas/villa-luro/resenas/{id}/util  quita la marca (las dos son idempotentes)
         [Authorize]
         [HttpPut("{id:guid}/util")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -82,7 +92,7 @@ namespace ZonaMatch.Api.Controllers
             if (User.UsuarioId() is not { } usuarioId)
                 return Unauthorized();
 
-            await _resenaService.MarcarUtilAsync(slug, id, usuarioId, util, cancellationToken);
+            await _marcarResenaUtil.EjecutarAsync(slug, id, usuarioId, util, cancellationToken);
             return NoContent();
         }
     }
