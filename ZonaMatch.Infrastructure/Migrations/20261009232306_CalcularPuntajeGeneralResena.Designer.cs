@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -13,9 +14,11 @@ using ZonaMatch.Infrastructure.Data;
 namespace ZonaMatch.Infrastructure.Migrations
 {
     [DbContext(typeof(ZonaMatchDbContext))]
-    partial class ZonaMatchDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261009232306_CalcularPuntajeGeneralResena")]
+    partial class CalcularPuntajeGeneralResena
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -404,27 +407,6 @@ namespace ZonaMatch.Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Group", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Groups", "app");
-                });
-
             modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipioAlias", b =>
                 {
                     b.Property<string>("MunicipioNombre")
@@ -444,33 +426,6 @@ namespace ZonaMatch.Infrastructure.Migrations
                         {
                             t.ExcludeFromMigrations();
                         });
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Participant", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("group_id");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("role");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GroupId");
-
-                    b.ToTable("Participant", "app");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Partido", b =>
@@ -847,22 +802,6 @@ namespace ZonaMatch.Infrastructure.Migrations
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
                 {
                     b.Navigation("Validaciones");
-                });
-            
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Participant", b =>
-                {
-                    b.HasOne("ZonaMatch.Domain.Entities.Group", "Group")
-                        .WithMany("Participants")
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Group");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Group", b =>
-                {
-                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Partido", b =>

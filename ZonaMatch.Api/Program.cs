@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -7,6 +9,9 @@ using ZonaMatch.Api.Authentication;
 using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
+using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.Preguntas;
+using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
@@ -63,6 +68,25 @@ builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Comunidad de cada zona: resenas, preguntas y aportes al mapa
+builder.Services.AddScoped<IResenaRepository, ResenaRepository>();
+builder.Services.AddScoped<IPreguntaRepository, PreguntaRepository>();
+builder.Services.AddScoped<IAporteRepository, AporteRepository>();
+
+// Casos de uso de la comunidad: uno por operacion
+builder.Services.AddScoped<ListarResenas>();
+builder.Services.AddScoped<GuardarMiResena>();
+builder.Services.AddScoped<EliminarMiResena>();
+builder.Services.AddScoped<MarcarResenaUtil>();
+builder.Services.AddScoped<ListarPreguntas>();
+builder.Services.AddScoped<CrearPregunta>();
+builder.Services.AddScoped<ResponderPregunta>();
+builder.Services.AddScoped<ResumirAportes>();
+builder.Services.AddScoped<ListarAportesPendientes>();
+builder.Services.AddScoped<CrearPuntoNuevo>();
+builder.Services.AddScoped<CrearCorreccion>();
+builder.Services.AddScoped<ValidarAporte>();
+
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()
     .BindConfiguration(JwtOptions.SectionName)
@@ -103,7 +127,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-builder.Services.AddControllers();
+// Los enums viajan como texto en kebab-case ("punto-nuevo", "cerro") en pedidos y respuestas
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)));
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi();
