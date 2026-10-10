@@ -10,6 +10,8 @@ using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.GroupInvitations;
+using ZonaMatch.Application.UseCases.GroupLinks;
 using ZonaMatch.Application.UseCases.Groups;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Resenas;
@@ -18,7 +20,6 @@ using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
 using ZonaMatch.Infrastructure.Security;
 using ZonaMatch.Infrastructure.Services;
-using ZonaMatch.Application.UseCases.GroupInvitations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,6 +69,11 @@ builder.Services.AddScoped<UpdateGroup>();
 
 builder.Services.AddScoped<CreateInvitation>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<GetInvitationByToken>();
+builder.Services.AddScoped<AcceptInvitation>();
+builder.Services.AddScoped<GetGroupByLink>();
+builder.Services.AddScoped<JoinGroupByLink>();
+builder.Services.AddScoped<RevokeInviteLink>();
 
 // Registro de usuarios
 builder.Services.AddSingleton(TimeProvider.System);

@@ -27,7 +27,7 @@ public class DeleteGroup
 
         // 2. Verificamos si el usuario actual es "Propietario" de este grupo
         // (Si no es el propietario, no lo dejamos borrar)
-        var esPropietario = grupo.Participants.Any(p => p.UsuarioId == userId && p.Role == "Propietario");
+        var esPropietario = grupo.Participants.Any(p => p.UserId == userId && p.Role == "Propietario");
 
         if (!esPropietario)
         {

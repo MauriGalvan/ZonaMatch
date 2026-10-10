@@ -29,7 +29,7 @@ public class CreateGroup
             {
                     new Participant
                     {
-                        UsuarioId = userId,      // El ID que extrajimos del Token
+                        UserId = userId,      // El ID que extrajimos del Token
                         Role = "Propietario",       // Le damos el poder total
                     }
                 }

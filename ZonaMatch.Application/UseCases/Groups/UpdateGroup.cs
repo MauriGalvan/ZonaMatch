@@ -23,7 +23,7 @@ public class UpdateGroup
             throw new Exception("Grupo no encontrado");
 
         // Verificamos si el usuario es propietario
-        var esPropietario = grupo.Participants.Any(p => p.UsuarioId == userId && p.Role == "Propietario");
+        var esPropietario = grupo.Participants.Any(p => p.UserId == userId && p.Role == "Propietario");
 
         if (!esPropietario)
             throw new Exception("No tienes permiso para modificar este grupo");

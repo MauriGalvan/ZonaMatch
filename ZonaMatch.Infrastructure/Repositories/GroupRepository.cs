@@ -30,7 +30,7 @@ public class GroupRepository : IGroupRepository
         return await _context.Groups
             // Filtramos: "Traeme los grupos donde exista AL MENOS UN participante..."
             .Where(g => g.Participants.Any(p =>
-                p.UsuarioId == userCreatorId &&
+                p.UserId == userCreatorId &&
                 p.Role == "Propietario")) // <-- Opcional: si solo quieres los que él creó
             .ToListAsync(cancellationToken);
     }
