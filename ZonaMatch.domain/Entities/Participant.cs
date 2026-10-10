@@ -14,7 +14,7 @@ public class Participant
 
     // Llave foránea hacia la tabla de tu compañero. 
     // EF Core detectará esto automáticamente sin tocar la clase Usuario.
-    public Guid UsuarioId { get; set; }
+    public Guid UserId { get; set; }
 
     public required string Role { get; set; }
 }

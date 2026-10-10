@@ -18,6 +18,7 @@ using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
 using ZonaMatch.Infrastructure.Security;
 using ZonaMatch.Infrastructure.Services;
+using ZonaMatch.Application.UseCases.GroupInvitations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,6 +66,7 @@ builder.Services.AddScoped<GetGroups>();
 builder.Services.AddScoped<DeleteGroup>();
 builder.Services.AddScoped<UpdateGroup>();
 
+builder.Services.AddScoped<CreateInvitation>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Registro de usuarios
