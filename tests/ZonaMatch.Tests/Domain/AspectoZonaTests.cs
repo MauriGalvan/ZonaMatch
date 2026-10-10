@@ -7,9 +7,9 @@ namespace ZonaMatch.Tests.Domain
         [Fact]
         public void Normaliza_mayusculas_repetidos_y_orden()
         {
-            var ok = AspectoZona.TryNormalizar([" Transporte", "seguridad", "transporte", ""], out var temas, out _);
+            var valido = AspectoZona.TryNormalizar([" Transporte", "seguridad", "transporte", ""], out var temas, out _);
 
-            Assert.True(ok);
+            Assert.True(valido);
             Assert.Equal([AspectoZona.Seguridad, AspectoZona.Transporte], temas);
         }
 
@@ -23,9 +23,9 @@ namespace ZonaMatch.Tests.Domain
         [Fact]
         public void Tema_desconocido_falla_y_lo_nombra()
         {
-            var ok = AspectoZona.TryNormalizar(["seguridad", "ruido"], out var temas, out var error);
+            var valido = AspectoZona.TryNormalizar(["seguridad", "ruido"], out var temas, out var error);
 
-            Assert.False(ok);
+            Assert.False(valido);
             Assert.Empty(temas);
             Assert.Contains("ruido", error);
         }

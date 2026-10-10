@@ -1,10 +1,10 @@
 namespace ZonaMatch.Application.Exceptions
 {
-    // The zone, review, question or contribution of the request does not exist (404)
+    // La zona, resena, pregunta o aporte del pedido no existe (404)
     public class NoEncontradoException : Exception
     {
-        public NoEncontradoException(string message)
-            : base(message)
+        public NoEncontradoException(string mensaje)
+            : base(mensaje)
         {
         }
     }

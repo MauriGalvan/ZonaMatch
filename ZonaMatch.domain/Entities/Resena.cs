@@ -1,6 +1,6 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // A neighbor's review of a zone (table app.resenas). One per user and zone; the author can edit it.
+    // Resena de un vecino sobre una zona (tabla app.resenas). Una por usuario y zona; el autor puede editarla.
     public class Resena
     {
         public const int PuntajeMinimo = 1;
@@ -8,13 +8,13 @@ namespace ZonaMatch.Domain.Entities
 
         public Guid Id { get; set; } = Guid.CreateVersion7();
 
-        // Zone slug, as in GET /Zonas/{slug}
+        // Slug de la zona, como en GET /Zonas/{slug}
         public string ZonaSlug { get; set; } = string.Empty;
 
         public Guid UsuarioId { get; set; }
         public Usuario? Usuario { get; set; }
 
-        // Overall rating and the rating of each aspect (AspectoZona), from 1 to 5
+        // Puntaje general y puntaje de cada aspecto (AspectoZona), de 1 a 5
         public int Puntaje { get; set; }
         public int PuntajeSeguridad { get; set; }
         public int PuntajeTransporte { get; set; }
@@ -24,13 +24,13 @@ namespace ZonaMatch.Domain.Entities
 
         public string Texto { get; set; } = string.Empty;
 
-        // How long the author has lived in the zone, as they state it (null: not said)
+        // Cuanto hace que el autor vive en la zona, segun lo que declara (null: no lo dijo)
         public int? AniosEnZona { get; set; }
 
-        // Codes of AspectoZona the review talks about, used by the review filters
+        // Codigos de AspectoZona de los que habla la resena, usados por los filtros de resenas
         public List<string> Temas { get; set; } = [];
 
-        // Residence checked by the platform. There is no verification process yet: always false.
+        // Residencia verificada por la plataforma. Todavia no hay proceso de verificacion: siempre false.
         public bool Verificada { get; set; }
 
         public DateTimeOffset FechaCreacion { get; set; }
@@ -39,7 +39,7 @@ namespace ZonaMatch.Domain.Entities
         public List<ResenaVotoUtil> VotosUtil { get; set; } = [];
     }
 
-    // "Useful" mark of a user on a review (table app.resenas_votos_util)
+    // Marca de "util" de un usuario en una resena (tabla app.resenas_votos_util)
     public class ResenaVotoUtil
     {
         public Guid ResenaId { get; set; }

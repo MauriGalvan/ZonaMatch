@@ -4,11 +4,11 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // GET /Zonas/{slug}/aportes/resumen. Total counts approved and pending contributions.
+    // GET /Zonas/{slug}/aportes/resumen. Total cuenta los aportes aprobados y los pendientes.
     public record ResumenAportesDto(int Total, int Aprobados, int Pendientes);
 
-    // A contribution as other neighbors see it to validate it.
-    // MiVoto: true confirmed, false rejected, null not voted (or anonymous request).
+    // Un aporte tal como lo ven los otros vecinos para validarlo.
+    // MiVoto: true confirmado, false rechazado, null sin votar (o pedido anonimo).
     public record AporteDto(
         Guid Id,
         TipoAporte Tipo,
@@ -19,20 +19,20 @@ namespace ZonaMatch.Application.DTOs
         bool? MiVoto,
         int Confirmaciones,
         int Rechazos,
-        // New point: its data. Correction: the proposed value.
+        // Punto nuevo: sus datos. Correccion: el valor propuesto.
         string? Nombre,
         string? Categoria,
         CoordenadaDto? Ubicacion,
         string? Horario,
         string? Direccion,
         bool ViveOTrabajaEnZona,
-        // Correction only
+        // Solo correccion
         string? PuntoInteresId,
         string? PuntoInteresNombre,
         MotivoCorreccion? Motivo,
         string? Comentario);
 
-    // POST /Zonas/{slug}/aportes/puntos. The point must be inside the zone.
+    // POST /Zonas/{slug}/aportes/puntos. El punto tiene que estar dentro de la zona.
     public record CrearPuntoNuevoDto(
         [Required(ErrorMessage = "La categoria es obligatoria.")]
         string Categoria,
@@ -49,9 +49,9 @@ namespace ZonaMatch.Application.DTOs
         double Longitud,
         bool ViveOTrabajaEnZona);
 
-    // POST /Zonas/{slug}/aportes/correcciones. What is required depends on Motivo:
-    // nombre -> NombrePropuesto, categoria -> CategoriaPropuesta, ubicacion -> Latitud/Longitud inside the zone,
-    // otro -> Comentario. Cerro needs nothing else.
+    // POST /Zonas/{slug}/aportes/correcciones. Lo obligatorio depende del Motivo:
+    // nombre -> NombrePropuesto, categoria -> CategoriaPropuesta, ubicacion -> Latitud/Longitud dentro de la zona,
+    // otro -> Comentario. Cerro no pide nada mas.
     public record CrearCorreccionDto(
         [Required(ErrorMessage = "Indica el lugar a corregir.")]
         [RegularExpression("^([nwr][0-9]{1,19}|a[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",

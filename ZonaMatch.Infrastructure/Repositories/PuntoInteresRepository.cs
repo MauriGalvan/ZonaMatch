@@ -53,9 +53,9 @@ namespace ZonaMatch.Infrastructure.Repositories
         // summary, for a radius and for a zone. "origen" defines the CTE "o" (prefilter geometry g in 3857 and the
         // reference geography geog); candidates pass the index-friendly "prefiltro" and then the exact "dentro"
         // (on the 4326 point c.punto). Ends with the "en_area" CTE.
-        // Neighbors' contributions approved by other neighbors (app.aportes) are applied on top of OSM: new points
-        // are added ("a" + id) and corrections of a place change its name, category or location, or hide it if
-        // it closed. A correction for "otro" reason is informative only.
+        // Los aportes de vecinos aprobados por otros vecinos (app.aportes) se aplican sobre OSM: los puntos nuevos
+        // se agregan ("a" + id) y las correcciones de un lugar cambian su nombre, categoria o ubicacion, o lo esconden
+        // si cerro. Una correccion por motivo "otro" es solo informativa.
         private static string PuntosEn(string origen, Func<string, string> prefiltro, string dentro) => $"""
             WITH {origen},
             candidatos AS (
@@ -78,7 +78,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 FROM {App}.aportes a
                 WHERE a.tipo = 'PuntoNuevo' AND a.estado = 'Aprobado'
             ),
-            -- The latest approved correction of each place and reason
+            -- La ultima correccion aprobada de cada lugar y motivo
             correcciones AS (
                 SELECT DISTINCT ON (a.punto_interes_id, a.motivo) a.punto_interes_id, a.motivo, a.nombre, a.categoria, a.ubicacion
                 FROM {App}.aportes a
@@ -90,7 +90,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                        COALESCE(cn.nombre, c.name) AS name,
                        c.operator,
                        COALESCE(cc.categoria, c.categoria) AS categoria,
-                       -- the OSM type no longer describes a place moved to another category
+                       -- el tipo de OSM ya no describe a un lugar que paso a otra categoria
                        CASE WHEN cc.categoria IS NULL THEN c.tipo END AS tipo,
                        COALESCE(cu.ubicacion, c.punto) AS punto,
                        c.fuente

@@ -3,7 +3,7 @@ using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // Question with its answers, oldest answer first. EsMia is false for anonymous requests.
+    // Pregunta con sus respuestas, la respuesta mas vieja primero. EsMia es false en pedidos anonimos.
     public record PreguntaDto(
         Guid Id,
         string Texto,

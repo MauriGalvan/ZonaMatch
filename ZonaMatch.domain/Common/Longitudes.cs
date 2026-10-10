@@ -1,6 +1,6 @@
 namespace ZonaMatch.Domain.Common
 {
-    // Text limits of the community of a zone, shared by the database columns and the request validation
+    // Limites de texto de la comunidad de una zona, compartidos por las columnas de la base y la validacion de los pedidos
     public static class Longitudes
     {
         public const int TextoResenaMinimo = 20;

@@ -1,10 +1,10 @@
 namespace ZonaMatch.Application.Exceptions
 {
-    // Input rules that data annotations cannot express, e.g. fields required only for one kind of correction (400)
+    // Reglas de entrada que las data annotations no pueden expresar, p. ej. campos obligatorios solo para un tipo de correccion (400)
     public class DatosInvalidosException : Exception
     {
-        public DatosInvalidosException(string message)
-            : base(message)
+        public DatosInvalidosException(string mensaje)
+            : base(mensaje)
         {
         }
     }

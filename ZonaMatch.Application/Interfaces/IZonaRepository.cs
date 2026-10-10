@@ -10,7 +10,7 @@ namespace ZonaMatch.Application.Interfaces
 
         Task<bool> ExisteAsync(string slug, CancellationToken cancellationToken = default);
 
-        // Whether the point (WGS84) falls inside the zone; false when the zone does not exist
+        // Si el punto (WGS84) cae dentro de la zona; false si la zona no existe
         Task<bool> ContienePuntoAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default);
 
         // Zones whose slug contains "fragmento" (a slug itself, e.g. "villa-l"); names that start with it come first

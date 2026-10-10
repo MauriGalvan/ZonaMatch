@@ -1,6 +1,6 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Question to the neighbors of a zone (table app.preguntas)
+    // Pregunta a los vecinos de una zona (tabla app.preguntas)
     public class Pregunta
     {
         public Guid Id { get; set; } = Guid.CreateVersion7();
@@ -17,7 +17,7 @@ namespace ZonaMatch.Domain.Entities
         public List<Respuesta> Respuestas { get; set; } = [];
     }
 
-    // Answer to a question (table app.respuestas)
+    // Respuesta a una pregunta (tabla app.respuestas)
     public class Respuesta
     {
         public Guid Id { get; set; } = Guid.CreateVersion7();

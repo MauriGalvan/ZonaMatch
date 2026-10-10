@@ -87,8 +87,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
             });
 
-            // Community of a zone (reviews, questions and contributions). Zones are not a table: they are
-            // referenced by slug (see GET /Zonas/{slug}).
+            // Comunidad de una zona (resenas, preguntas y aportes). Las zonas no son una tabla: se referencian
+            // por slug (ver GET /Zonas/{slug}).
             modelBuilder.Entity<Resena>(e =>
             {
                 e.ToTable("resenas", t =>
@@ -144,9 +144,9 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasKey(x => x.Id);
                 e.Property(x => x.ZonaSlug).HasMaxLength(200);
                 e.HasIndex(x => new { x.ZonaSlug, x.Estado });
-                // The points of interest queries look up approved corrections by place
+                // Las consultas de puntos de interes buscan las correcciones aprobadas por lugar
                 e.HasIndex(x => new { x.PuntoInteresId, x.Estado });
-                // Enums as text: readable in the database and usable from the raw SQL of the map
+                // Enums como texto: legibles en la base y usables desde el SQL del mapa
                 e.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(20);
                 e.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
                 e.Property(x => x.Motivo).HasConversion<string>().HasMaxLength(20);

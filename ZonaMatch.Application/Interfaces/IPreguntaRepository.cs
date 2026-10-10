@@ -4,7 +4,7 @@ namespace ZonaMatch.Application.Interfaces
 {
     public interface IPreguntaRepository
     {
-        // Questions of the zone with their answers and authors, newest question first (read only)
+        // Preguntas de la zona con sus respuestas y autores, la pregunta mas nueva primero (solo lectura)
         Task<IReadOnlyList<Pregunta>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default);
 
         Task<bool> ExisteAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default);

@@ -1,6 +1,6 @@
 namespace ZonaMatch.Domain.Common
 {
-    // Aspects a neighbor rates in a review. They are also the topics a review can be about (review filters).
+    // Aspectos que un vecino puntua en una resena. Tambien son los temas de los que puede hablar una resena (filtros de resenas).
     public static class AspectoZona
     {
         public const string Seguridad = "seguridad";
@@ -12,8 +12,8 @@ namespace ZonaMatch.Domain.Common
         public static readonly IReadOnlyList<string> Todos =
             [Seguridad, Transporte, Conectividad, Comercios, EspaciosVerdes];
 
-        // Normalizes a list of codes (lowercase, no repeats, in the order of Todos).
-        // Returns false when some code is unknown, naming it in the error.
+        // Normaliza una lista de codigos (minusculas, sin repetidos, en el orden de Todos).
+        // Devuelve false si algun codigo es desconocido y lo nombra en el error.
         public static bool TryNormalizar(IEnumerable<string>? codigos, out IReadOnlyList<string> normalizados, out string error)
         {
             var pedidos = (codigos ?? [])

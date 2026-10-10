@@ -3,16 +3,16 @@ using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // GET /Zonas/{slug}/resenas: summary and reviews, newest first
+    // GET /Zonas/{slug}/resenas: resumen y resenas, la mas nueva primero
     public record ResenasZonaDto(ResumenResenasDto Resumen, IReadOnlyList<ResenaDto> Resenas);
 
-    // Promedio is 0 when there are no reviews. Aspectos lists every AspectoZona in order.
+    // Promedio es 0 cuando no hay resenas. Aspectos trae cada AspectoZona en orden.
     public record ResumenResenasDto(double Promedio, int Total, int Verificadas, IReadOnlyList<PromedioAspectoDto> Aspectos);
 
     public record PromedioAspectoDto(string Aspecto, double Promedio);
 
-    // Iniciales identify the author without exposing the email.
-    // MarcadaUtilPorMi and EsMia are false for anonymous requests.
+    // Iniciales identifica al autor sin exponer el email.
+    // MarcadaUtilPorMi y EsMia son false en pedidos anonimos.
     public record ResenaDto(
         Guid Id,
         string Iniciales,
@@ -34,8 +34,8 @@ namespace ZonaMatch.Application.DTOs
         [Range(1, 5, ErrorMessage = "El puntaje de comercios y servicios debe estar entre 1 y 5.")] int Comercios,
         [Range(1, 5, ErrorMessage = "El puntaje de espacios verdes debe estar entre 1 y 5.")] int EspaciosVerdes);
 
-    // PUT /Zonas/{slug}/resenas/mia: creates or replaces the review of the current user.
-    // Temas: codes of AspectoZona (seguridad, transporte, conectividad, comercios, espacios-verdes).
+    // PUT /Zonas/{slug}/resenas/mia: crea o reemplaza la resena del usuario actual.
+    // Temas: codigos de AspectoZona (seguridad, transporte, conectividad, comercios, espacios-verdes).
     public record GuardarResenaDto(
         [Range(1, 5, ErrorMessage = "El puntaje debe estar entre 1 y 5.")]
         int Puntaje,
