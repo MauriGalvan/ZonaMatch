@@ -58,4 +58,9 @@ public class GroupRepository : IGroupRepository
         _context.Groups.Update(group);
         await _context.SaveChangesAsync(cancellationToken);
     }
+    public async Task<Group?> GetByInviteTokenAsync(Guid inviteToken, CancellationToken cancellationToken)
+    {
+        return await _context.Groups
+            .FirstOrDefaultAsync(g => g.InviteToken == inviteToken, cancellationToken);
+    }
 }

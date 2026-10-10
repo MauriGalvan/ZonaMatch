@@ -14,4 +14,5 @@ public interface IGroupRepository
     Task<Group?> GetByIdAsync(Guid groupId, CancellationToken cancellationToken);
     Task<IEnumerable<Group>> GetByUserCreatorIdAsync(Guid userCreatorId, CancellationToken cancellationToken);
     Task UpdateAsync(Group group, CancellationToken cancellationToken);
+    Task<Group?> GetByInviteTokenAsync(Guid inviteToken, CancellationToken cancellationToken);
 }
