@@ -87,7 +87,8 @@ CREATE INDEX ON geo.delitos_caba USING gist (geom);
 -- ---------------------------------------------------------------------------------------------------
 -- Zonas de OpenStreetMap
 -- ---------------------------------------------------------------------------------------------------
-DROP TABLE IF EXISTS geo.zona_indicadores, geo.zonas;
+-- Las tablas de transporte (etl/calcular_transporte.sql) tambien dependen de geo.zonas
+DROP TABLE IF EXISTS geo.zona_transporte_lineas, geo.zona_transporte_paradas, geo.zona_indicadores, geo.zonas;
 
 -- Misma regla que ZonaSql.Slug y SlugZona.Generar: minusculas, sin acentos, lo demas pasa a "-"
 CREATE OR REPLACE FUNCTION geo.slug_zona(nombre text) RETURNS text

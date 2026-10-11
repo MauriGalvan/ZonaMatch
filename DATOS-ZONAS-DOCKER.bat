@@ -1,7 +1,8 @@
 @echo off
 setlocal
 
-REM Carga los datos abiertos que completan el detalle de las zonas (censo 2022 y delitos de CABA) en el
+REM Carga los datos abiertos que completan el detalle de las zonas (censo 2022, delitos de CABA y
+REM frecuencias de transporte publico de los GTFS) en el
 REM schema geo. Requiere la base con el mapa de OSM ya importado (OSM-DATA-UPDATER-DOCKER.bat), Python 3
 REM y el paquete duckdb (pip install duckdb). Es seguro volver a ejecutarlo: borra y recalcula las tablas.
 REM Si los CSV ya estan en datos\, no los vuelve a descargar (borrarlos para actualizar).
@@ -30,18 +31,27 @@ goto :wait_db
 :db_ready
 
 echo.
-echo [2/4] Descargando censo 2022 y delitos de CABA en datos\ ...
-if exist "datos\censo_radios_amba.csv" if exist "datos\censo_indicadores_amba.csv" if exist "datos\delitos_2024.csv" (
-    echo Ya estan descargados. Para actualizarlos, borrar los CSV de datos\ y volver a ejecutar.
-    goto :load
-)
+echo [2/4] Descargando censo 2022, delitos de CABA y GTFS de transporte en datos\ ...
 python -c "import duckdb" >nul 2>&1
 if errorlevel 1 (
     echo Instalando duckdb...
     python -m pip install duckdb
     if errorlevel 1 goto :err_python
 )
+if exist "datos\censo_radios_amba.csv" if exist "datos\censo_indicadores_amba.csv" if exist "datos\delitos_2024.csv" (
+    echo Censo y delitos ya descargados. Para actualizarlos, borrar sus CSV de datos\ y volver a ejecutar.
+    goto :gtfs
+)
 python etl\descargar_datos.py
+if errorlevel 1 goto :err_download
+
+:gtfs
+if exist "datos\transporte_salidas.csv" (
+    echo Transporte ya procesado. Para actualizarlo, borrar datos\transporte_salidas.csv.
+    goto :load
+)
+echo Resumiendo los GTFS de colectivos, trenes y subte (descarga unos 210 MB la primera vez)...
+python etl\procesar_gtfs.py
 if errorlevel 1 goto :err_download
 
 :load
@@ -55,10 +65,14 @@ if errorlevel 1 goto :err_load
 if errorlevel 1 goto :err_load
 %PSQL% -c "\copy geo.carga_delitos FROM STDIN WITH (FORMAT csv, HEADER true, NULL 'NULL')" < datos\delitos_2024.csv
 if errorlevel 1 goto :err_load
+%PSQL% -c "\copy geo.carga_transporte_salidas FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\transporte_salidas.csv
+if errorlevel 1 goto :err_load
 
 echo.
 echo [4/4] Calculando los indicadores de cada zona (tarda alrededor de un minuto)...
 %PSQL% < etl\calcular_zonas.sql
+if errorlevel 1 goto :err_calc
+%PSQL% < etl\calcular_transporte.sql
 if errorlevel 1 goto :err_calc
 
 echo.

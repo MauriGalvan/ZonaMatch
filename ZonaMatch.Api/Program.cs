@@ -40,6 +40,7 @@ builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
 builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
 builder.Services.AddScoped<IIndicadoresZonaRepository, IndicadoresZonaRepository>();
+builder.Services.AddScoped<ITransporteZonaRepository, TransporteZonaRepository>();
 
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
@@ -111,6 +112,7 @@ builder.Services.AddScoped<ListarCriterios>();
 
 // Datos abiertos de cada zona (censo, seguridad), cargados por DATOS-ZONAS-DOCKER.bat
 builder.Services.AddScoped<ObtenerIndicadoresZona>();
+builder.Services.AddScoped<ObtenerTransporteZona>();
 
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()

@@ -16,11 +16,14 @@ namespace ZonaMatch.Api.Controllers
 
         private readonly IZonaService _zonaService;
         private readonly ObtenerIndicadoresZona _obtenerIndicadores;
+        private readonly ObtenerTransporteZona _obtenerTransporte;
 
-        public ZonasController(IZonaService zonaService, ObtenerIndicadoresZona obtenerIndicadores)
+        public ZonasController(
+            IZonaService zonaService, ObtenerIndicadoresZona obtenerIndicadores, ObtenerTransporteZona obtenerTransporte)
         {
             _zonaService = zonaService;
             _obtenerIndicadores = obtenerIndicadores;
+            _obtenerTransporte = obtenerTransporte;
         }
 
         // GET /Zonas?buscar=villa l&limite=10
@@ -95,6 +98,21 @@ namespace ZonaMatch.Api.Controllers
                 return BadRequest(SlugInvalido);
 
             return Ok(await _obtenerIndicadores.EjecutarAsync(slug, cancellationToken));
+        }
+
+        // GET /Zonas/villa-luro/transporte
+        // Colectivos, trenes y subte de un dia habil: paradas, lineas y salidas por hora en cada franja horaria
+        // (madrugada, manana, mediodia, tarde y noche), en total y por linea. Sale de los GTFS publicos.
+        [HttpGet("{slug}/transporte")]
+        [ResponseCache(Duration = 3600)]
+        [ProducesResponseType<TransporteZonaDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetTransporte(string slug, CancellationToken cancellationToken)
+        {
+            if (!SlugZona.EsValido(slug))
+                return BadRequest(SlugInvalido);
+
+            return Ok(await _obtenerTransporte.EjecutarAsync(slug, cancellationToken));
         }
 
         private const string SlugInvalido =

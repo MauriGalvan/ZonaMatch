@@ -43,3 +43,17 @@ CREATE TABLE geo.carga_delitos (
     longitud   double precision,
     cantidad   integer
 );
+
+DROP TABLE IF EXISTS geo.carga_transporte_salidas;
+
+-- Resumen de los GTFS (etl/procesar_gtfs.py): salidas por parada, linea y franja de un dia habil
+CREATE TABLE geo.carga_transporte_salidas (
+    modo       text,
+    parada_id  text,
+    parada     text,
+    latitud    double precision,
+    longitud   double precision,
+    linea      text,
+    franja     text,
+    salidas    integer
+);
