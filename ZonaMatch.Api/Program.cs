@@ -10,6 +10,7 @@ using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Infrastructure.Data;
@@ -69,6 +70,7 @@ builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAnalisisService, AnalisisService>();
+builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
 
 // Comunidad de cada zona: resenas, preguntas y aportes al mapa
 builder.Services.AddScoped<IResenaRepository, ResenaRepository>();
@@ -88,6 +90,9 @@ builder.Services.AddScoped<ListarAportesPendientes>();
 builder.Services.AddScoped<CrearPuntoNuevo>();
 builder.Services.AddScoped<CrearCorreccion>();
 builder.Services.AddScoped<ValidarAporte>();
+
+// Catalogo de criterios del wizard (GET /Criterios)
+builder.Services.AddScoped<ListarCriterios>();
 
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()

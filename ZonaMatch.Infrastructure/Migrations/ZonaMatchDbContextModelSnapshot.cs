@@ -231,6 +231,46 @@ namespace ZonaMatch.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Criterio", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("activo");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("descripcion");
+
+                    b.Property<string>("Icono")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("icono");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nombre");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("integer")
+                        .HasColumnName("orden");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Orden");
+
+                    b.ToTable("criterios", "app");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Escuela", b =>
                 {
                     b.Property<string>("ClaveNatural")
@@ -846,6 +886,17 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Navigation("Partido");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Participant", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Group", "Group")
+                        .WithMany("Participants")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Pregunta", b =>
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.Usuario", "Usuario")
@@ -903,17 +954,6 @@ namespace ZonaMatch.Infrastructure.Migrations
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
                 {
                     b.Navigation("Validaciones");
-                });
-            
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Participant", b =>
-                {
-                    b.HasOne("ZonaMatch.Domain.Entities.Group", "Group")
-                        .WithMany("Participants")
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Group");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Group", b =>
