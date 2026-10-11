@@ -11,22 +11,19 @@ namespace ZonaMatch.Application.Services
         // Product rule: a registered user may keep up to 3 saved analyses.
         public const int MaximoPorUsuario = 3;
 
-        private static readonly HashSet<string> CriteriosValidos = new(StringComparer.Ordinal)
-        {
-            "seguridad", "movilidad", "espacios-verdes", "educacion", "salud",
-        };
-
         private static readonly HashSet<string> PrioridadesValidas = new(StringComparer.Ordinal)
         {
             "baja", "media", "alta",
         };
 
         private readonly IAnalisisRepository _repository;
+        private readonly ICriterioRepository _criterios;
         private readonly TimeProvider _timeProvider;
 
-        public AnalisisService(IAnalisisRepository repository, TimeProvider timeProvider)
+        public AnalisisService(IAnalisisRepository repository, ICriterioRepository criterios, TimeProvider timeProvider)
         {
             _repository = repository;
+            _criterios = criterios;
             _timeProvider = timeProvider;
         }
 
@@ -36,7 +33,7 @@ namespace ZonaMatch.Application.Services
             if (cuenta >= MaximoPorUsuario)
                 throw new LimiteAnalisisException();
 
-            ValidarCriterios(request.Criterios);
+            await ValidarCriteriosAsync(request.Criterios, cancellationToken);
 
             var ahora = _timeProvider.GetUtcNow();
             var analisis = new AnalisisDetallado
@@ -83,7 +80,7 @@ namespace ZonaMatch.Application.Services
 
             if (request.Criterios is { } criterios)
             {
-                ValidarCriterios(criterios);
+                await ValidarCriteriosAsync(criterios, cancellationToken);
                 analisis.CriteriosJson = criterios.GetRawText();
             }
 
@@ -104,17 +101,24 @@ namespace ZonaMatch.Application.Services
             await _repository.DeleteAsync(analisis, cancellationToken);
         }
 
-        // Criterios are the only part of the payload the server checks: known ids, known priorities.
+        // Criterios are the only part of the payload the server checks: the id must exist in the catalog
+        // and be active, the priority must be baja|media|alta.
         // Contexto and puntos keep evolving with the frontend, so they are stored verbatim.
-        private static void ValidarCriterios(JsonElement criterios)
+        private async Task ValidarCriteriosAsync(JsonElement criterios, CancellationToken cancellationToken)
         {
             if (criterios.ValueKind != JsonValueKind.Object)
                 throw new ArgumentException("Los criterios deben ser un objeto.", nameof(criterios));
 
+            var catalogo = (await _criterios.ListarAsync(cancellationToken))
+                .ToDictionary(c => c.Id, StringComparer.Ordinal);
+
             foreach (var property in criterios.EnumerateObject())
             {
-                if (!CriteriosValidos.Contains(property.Name))
+                if (!catalogo.TryGetValue(property.Name, out var criterio))
                     throw new ArgumentException($"Criterio desconocido: {property.Name}.", nameof(criterios));
+
+                if (!criterio.Activo)
+                    throw new ArgumentException($"Criterio no disponible: {property.Name}.", nameof(criterios));
 
                 var prioridad = property.Value.GetString();
                 if (prioridad is null || !PrioridadesValidas.Contains(prioridad))

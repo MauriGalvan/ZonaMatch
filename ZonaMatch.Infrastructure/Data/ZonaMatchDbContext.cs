@@ -27,6 +27,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<AporteValidacion> AportesValidaciones => Set<AporteValidacion>();
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<AnalisisDetallado> AnalisisDetallado => Set<AnalisisDetallado>();
+        public DbSet<Criterio> Criterios => Set<Criterio>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -105,6 +106,19 @@ namespace ZonaMatch.Infrastructure.Data
                     .WithMany()
                     .HasForeignKey(x => x.UsuarioId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Criterio>(e =>
+            {
+                e.ToTable("criterios");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Id).HasMaxLength(40);
+                e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
+                e.Property(x => x.Descripcion).HasMaxLength(200).IsRequired();
+                e.Property(x => x.Icono).HasMaxLength(40).IsRequired();
+                e.Property(x => x.Orden);
+                e.Property(x => x.Activo);
+                e.HasIndex(x => x.Orden);
             });
 
             // Comunidad de una zona (resenas, preguntas y aportes). Las zonas no son una tabla: se referencian
