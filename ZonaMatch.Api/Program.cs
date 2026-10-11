@@ -16,6 +16,7 @@ using ZonaMatch.Application.UseCases.Groups;
 using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Resenas;
+using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
@@ -38,6 +39,7 @@ builder.Services.AddScoped<IComunaRepository, ComunaRepository>();
 builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
 builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
+builder.Services.AddScoped<IIndicadoresZonaRepository, IndicadoresZonaRepository>();
 
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
@@ -106,6 +108,9 @@ builder.Services.AddScoped<ValidarAporte>();
 
 // Catalogo de criterios del wizard (GET /Criterios)
 builder.Services.AddScoped<ListarCriterios>();
+
+// Datos abiertos de cada zona (censo, seguridad), cargados por DATOS-ZONAS-DOCKER.bat
+builder.Services.AddScoped<ObtenerIndicadoresZona>();
 
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()
