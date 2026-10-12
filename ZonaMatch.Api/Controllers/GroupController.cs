@@ -18,10 +18,9 @@ namespace ZonaMatch.Api.Controllers
         private readonly GetGroups _getGroups;
         private readonly DeleteGroup _deleteGroup;
         private readonly UpdateGroup _updateGroup;
+        private readonly RemoveParticipant _removeParticipant;
 
-        private readonly RemoveParticipantUseCase _removeParticipant;
-
-        public GroupController(CreateGroup createGroup, GetGroups getGroups, DeleteGroup deleteGroup, UpdateGroup updateGroup, RemoveParticipantUseCase removeParticipant)
+        public GroupController(CreateGroup createGroup, GetGroups getGroups, DeleteGroup deleteGroup, UpdateGroup updateGroup, RemoveParticipant removeParticipant)
         {
             _createGroup = createGroup;
             _getGroups = getGroups;
@@ -138,9 +137,11 @@ namespace ZonaMatch.Api.Controllers
         public async Task<IActionResult> RemoveParticipant(Guid groupId, Guid userIdToRemove, CancellationToken cancellationToken)
         {
             // Obtienes el ID del usuario logueado desde el token JWT (ajusta esto a tu lógica actual)
-            var currentUserId = Guid.Parse(User.FindFirst("id")?.Value ?? throw new UnauthorizedAccessException());
+            var idClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            if (!Guid.TryParse(idClaim, out var userId))
+                return Unauthorized();
 
-            await _removeParticipant.ExecuteAsync(groupId, userIdToRemove, currentUserId, cancellationToken);
+            await _removeParticipant.ExecuteAsync(groupId, userIdToRemove, userId, cancellationToken);
 
             return NoContent(); // 204: Todo salió bien, no hay contenido para devolver
         }
