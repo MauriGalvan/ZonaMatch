@@ -27,6 +27,8 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<AporteValidacion> AportesValidaciones => Set<AporteValidacion>();
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
+        public DbSet<AnalisisDetallado> AnalisisDetallado => Set<AnalisisDetallado>();
+        public DbSet<Criterio> Criterios => Set<Criterio>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -87,6 +89,37 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.PasswordHash).HasMaxLength(255).IsRequired();
                 e.Property(x => x.FechaNacimiento).HasColumnType("date");
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
+            });
+
+            modelBuilder.Entity<AnalisisDetallado>(e =>
+            {
+                e.ToTable("analisis_detallado");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
+                // The wizard payload is stored verbatim as jsonb; the API layer validates it.
+                e.Property(x => x.ContextoJson).HasColumnType("jsonb").IsRequired();
+                e.Property(x => x.CriteriosJson).HasColumnType("jsonb").IsRequired();
+                e.Property(x => x.PuntosJson).HasColumnType("jsonb").IsRequired();
+                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
+                e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
+                e.HasIndex(x => x.UsuarioId);
+                e.HasOne<Usuario>()
+                    .WithMany()
+                    .HasForeignKey(x => x.UsuarioId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Criterio>(e =>
+            {
+                e.ToTable("criterios");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Id).HasMaxLength(40);
+                e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
+                e.Property(x => x.Descripcion).HasMaxLength(200).IsRequired();
+                e.Property(x => x.Icono).HasMaxLength(40).IsRequired();
+                e.Property(x => x.Orden);
+                e.Property(x => x.Activo);
+                e.HasIndex(x => x.Orden);
             });
 
             // Comunidad de una zona (resenas, preguntas y aportes). Las zonas no son una tabla: se referencian
