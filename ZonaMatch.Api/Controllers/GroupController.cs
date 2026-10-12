@@ -19,12 +19,15 @@ namespace ZonaMatch.Api.Controllers
         private readonly DeleteGroup _deleteGroup;
         private readonly UpdateGroup _updateGroup;
 
-        public GroupController(CreateGroup createGroup, GetGroups getGroups, DeleteGroup deleteGroup, UpdateGroup updateGroup)
+        private readonly RemoveParticipantUseCase _removeParticipant;
+
+        public GroupController(CreateGroup createGroup, GetGroups getGroups, DeleteGroup deleteGroup, UpdateGroup updateGroup, RemoveParticipantUseCase removeParticipant)
         {
             _createGroup = createGroup;
             _getGroups = getGroups;
             _deleteGroup = deleteGroup;
             _updateGroup = updateGroup;
+            _removeParticipant = removeParticipant;
         }
 
         // POST /Group
@@ -124,5 +127,23 @@ namespace ZonaMatch.Api.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails { Title = ex.Message });
             }
         }
+
+        // DELETE: api/Groups/{groupId}/Participants/{userIdToRemove}
+        [HttpDelete("{groupId}/Participants/{userIdToRemove}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RemoveParticipant(Guid groupId, Guid userIdToRemove, CancellationToken cancellationToken)
+        {
+            // Obtienes el ID del usuario logueado desde el token JWT (ajusta esto a tu lógica actual)
+            var currentUserId = Guid.Parse(User.FindFirst("id")?.Value ?? throw new UnauthorizedAccessException());
+
+            await _removeParticipant.ExecuteAsync(groupId, userIdToRemove, currentUserId, cancellationToken);
+
+            return NoContent(); // 204: Todo salió bien, no hay contenido para devolver
+        }
+
     }
 }

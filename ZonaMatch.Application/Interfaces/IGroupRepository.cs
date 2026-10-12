@@ -16,4 +16,5 @@ public interface IGroupRepository
     Task UpdateAsync(Group group, CancellationToken cancellationToken);
     Task<Group?> GetByInviteTokenAsync(Guid inviteToken, CancellationToken cancellationToken);
     Task AddParticipantAsync(Participant participant, CancellationToken cancellationToken);
+    Task RemoveParticipantAsync(Participant participantToRemove, CancellationToken cancellationToken);
 }
