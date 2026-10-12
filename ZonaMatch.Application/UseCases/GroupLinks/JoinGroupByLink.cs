@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
@@ -32,17 +33,16 @@ public class JoinGroupByLink
             throw new Exception("Ya eres miembro de este grupo.");
         }
 
-        // Agregarlo a la lista de participantes
+        // Crear el objeto participante
         var newParticipant = new Participant
         {
-            Id = Guid.CreateVersion7(), // Si usas V7
+            Id = Guid.CreateVersion7(),
             GroupId = group.Id,
             UserId = currentUserId,
             Role = GroupRole.Guest
         };
 
-        group.Participants.Add(newParticipant);
-
-        await _groupRepository.UpdateAsync(group, cancellationToken);
+        // Insertar directamente al participante en lugar de intentar actualizar el grupo completo
+        await _groupRepository.AddParticipantAsync(newParticipant, cancellationToken);
     }
 }

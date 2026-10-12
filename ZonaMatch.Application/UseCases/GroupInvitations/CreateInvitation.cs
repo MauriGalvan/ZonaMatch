@@ -36,7 +36,7 @@ public class CreateInvitation
 
         // 2. Validar que el usuario que intenta invitar sea el Propietario (Owner)
         // Asumo que tienes alguna forma de saber si es el dueño, ajusta esta línea a tu lógica real de tu entidad:
-        bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && p.Role == GroupRole.Owner);
+        bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && GroupRole.Owner == p.Role);
         if (!isOwner)
         {
             throw new Exception("Solo el propietario del grupo puede enviar invitaciones."); // (ForbiddenException)
@@ -67,7 +67,7 @@ public class CreateInvitation
                 <p>Haz clic en el siguiente enlace para aceptar la invitación:</p>
                 <a href='{inviteLink}'>Unirme al Grupo</a>
                 <br/><br/>
-                <p>Este enlace expirará en 7 días.</p>
+                <p>Este enlace expirará en {invitation.ExpiresAt.Subtract(DateTime.UtcNow).Days} días.</p>
             ";
 
         await _emailService.SendEmailAsync(request.Email, subject, body, cancellationToken);

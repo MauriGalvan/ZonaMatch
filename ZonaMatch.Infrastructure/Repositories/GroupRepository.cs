@@ -62,6 +62,7 @@ public class GroupRepository : IGroupRepository
     public async Task<Group?> GetByInviteTokenAsync(Guid inviteToken, CancellationToken cancellationToken)
     {
         return await _context.Groups
+            .Include(g => g.Participants)
             .FirstOrDefaultAsync(g => g.InviteToken == inviteToken, cancellationToken);
     }
 
