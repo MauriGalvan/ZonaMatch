@@ -72,4 +72,10 @@ public class GroupRepository : IGroupRepository
         await _context.Set<Participant>().AddAsync(participant, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task RemoveParticipantAsync(Participant participant, CancellationToken cancellationToken)
+    {
+        _context.Set<Participant>().Remove(participant);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

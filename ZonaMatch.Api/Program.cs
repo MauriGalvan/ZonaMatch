@@ -68,6 +68,7 @@ builder.Services.AddScoped<CreateGroup>();
 builder.Services.AddScoped<GetGroups>();
 builder.Services.AddScoped<DeleteGroup>();
 builder.Services.AddScoped<UpdateGroup>();
+builder.Services.AddScoped<RemoveParticipant>();
 
 builder.Services.AddScoped<CreateInvitation>();
 builder.Services.AddScoped<IEmailService, EmailService>();
