@@ -502,6 +502,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<Guid>("InviteToken")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invite_token");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
@@ -510,6 +514,46 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Groups", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.GroupInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("Token")
+                        .HasColumnType("uuid")
+                        .HasColumnName("token");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.ToTable("GroupInvitations", "app");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipioAlias", b =>
@@ -549,13 +593,15 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("role");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id");
 
                     b.HasIndex("GroupId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Participant", "app");
                 });
@@ -875,6 +921,17 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.GroupInvitation", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Group", "Group")
+                        .WithMany("Invitations")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipioAlias", b =>
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.Partido", "Partido")
@@ -894,7 +951,15 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Group");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Pregunta", b =>
@@ -958,6 +1023,8 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Group", b =>
                 {
+                    b.Navigation("Invitations");
+
                     b.Navigation("Participants");
                 });
 

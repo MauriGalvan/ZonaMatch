@@ -26,6 +26,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Aporte> Aportes => Set<Aporte>();
         public DbSet<AporteValidacion> AportesValidaciones => Set<AporteValidacion>();
         public DbSet<Group> Groups => Set<Group>();
+        public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
         public DbSet<AnalisisDetallado> AnalisisDetallado => Set<AnalisisDetallado>();
         public DbSet<Criterio> Criterios => Set<Criterio>();
 
@@ -204,6 +205,14 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Fecha).HasColumnType("timestamptz");
                 e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
             });
+
+            modelBuilder.Entity<GroupInvitation>()
+                .Property(i => i.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<Participant>()
+                .Property(p => p.Role)
+                .HasConversion<string>();
         }
 
         private static string ToSnakeCase(string name) =>

@@ -1,15 +1,18 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.GroupInvitations;
+using ZonaMatch.Application.UseCases.GroupLinks;
+using ZonaMatch.Application.UseCases.Groups;
 using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Resenas;
@@ -17,7 +20,7 @@ using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
 using ZonaMatch.Infrastructure.Security;
-using ZonaMatch.Application.UseCases.Groups;
+using ZonaMatch.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,7 +38,9 @@ builder.Services.AddScoped<IComunaRepository, ComunaRepository>();
 builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
 builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
+
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
 builder.Services.AddScoped<IAnalisisRepository, AnalisisRepository>();
 
 // Reverse geocoding. "Osm" (default) queries the local osm schema; "Nominatim" calls the public OpenStreetMap API.
@@ -63,6 +68,14 @@ builder.Services.AddScoped<CreateGroup>();
 builder.Services.AddScoped<GetGroups>();
 builder.Services.AddScoped<DeleteGroup>();
 builder.Services.AddScoped<UpdateGroup>();
+
+builder.Services.AddScoped<CreateInvitation>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<GetInvitationByToken>();
+builder.Services.AddScoped<AcceptInvitation>();
+builder.Services.AddScoped<GetGroupByLink>();
+builder.Services.AddScoped<JoinGroupByLink>();
+builder.Services.AddScoped<RevokeInviteLink>();
 
 // Registro de usuarios
 builder.Services.AddSingleton(TimeProvider.System);

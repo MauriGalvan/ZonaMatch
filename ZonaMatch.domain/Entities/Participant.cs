@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using ZonaMatch.Domain.Enums;
 
 namespace ZonaMatch.Domain.Entities;
 
@@ -14,7 +15,8 @@ public class Participant
 
     // Llave foránea hacia la tabla de tu compañero. 
     // EF Core detectará esto automáticamente sin tocar la clase Usuario.
-    public Guid UsuarioId { get; set; }
+    public Guid UserId { get; set; }
+    public Usuario User { get; set; } = null!;
 
-    public required string Role { get; set; }
+    public required GroupRole Role { get; set; }
 }
