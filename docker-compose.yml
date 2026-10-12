@@ -11,5 +11,23 @@ services:
       - db_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
 
+  # Motor de ruteo (a pie, bici, auto y transporte publico). DATOS-ZONAS-DOCKER.bat deja la entrada en
+  # datos/motis e importa al volumen motis_data. Hasta que la importacion termina, el contenedor espera.
+  motis:
+    image: ghcr.io/motis-project/motis:2.11.3
+    volumes:
+      - ./datos/motis:/entrada
+      - motis_data:/data
+    ports:
+      - "${MOTIS_PORT:-18080}:8080"
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ ! -f /data/importacion-ok ]; then echo "MOTIS: faltan los datos de ruteo, correr DATOS-ZONAS-DOCKER.bat"; fi
+        until [ -f /data/importacion-ok ]; do sleep 15; done
+        exec /motis server -d /data
+
 volumes:
   db_data:
+  motis_data:
