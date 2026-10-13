@@ -7,8 +7,9 @@ namespace ZonaMatch.Application.Services
 {
     public class GeolocationService : IGeolocationService
     {
-        // Keeps the payload and the markers drawn on the map reasonable
-        public const int MaxPuntosInteres = 1_500;
+        // Keeps the payload reasonable: covers whole barrios and localidades (Palermo has about 4,100 points with
+        // every category). The map groups markers into clusters, so drawing them is not the bottleneck.
+        public const int MaxPuntosInteres = 5_000;
         public const double MaxRadioPuntosInteresMetros = 5_000;
 
         private readonly IEscuelaRepository _escuelaRepository;
