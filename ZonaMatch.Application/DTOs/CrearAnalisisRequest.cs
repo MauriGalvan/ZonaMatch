@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
 
 namespace ZonaMatch.Application.DTOs
 {
@@ -10,16 +9,14 @@ namespace ZonaMatch.Application.DTOs
         [StringLength(50, MinimumLength = 1, ErrorMessage = "El nombre debe tener entre 1 y 50 caracteres.")]
         public string Nombre { get; set; } = string.Empty;
 
-        // { personas, edades[], movilidad[], mascotas[] }
         [Required(ErrorMessage = "El contexto es obligatorio.")]
-        public JsonElement Contexto { get; set; }
+        public ContextoRequest Contexto { get; set; } = null!;
 
-        // { "seguridad": "alta", ... }
+        // Clave: id del catalogo de criterios; valor: baja|media|alta
         [Required(ErrorMessage = "Los criterios son obligatorios.")]
-        public JsonElement Criterios { get; set; }
+        public Dictionary<string, string?> Criterios { get; set; } = null!;
 
-        // { lugares[], alquilerMaximo }
         [Required(ErrorMessage = "Los puntos son obligatorios.")]
-        public JsonElement Puntos { get; set; }
+        public PuntosRequest Puntos { get; set; } = null!;
     }
 }

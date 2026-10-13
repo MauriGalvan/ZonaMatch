@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -11,6 +10,10 @@ namespace ZonaMatch.Application.Services
         // Product rule: a registered user may keep up to 3 saved analyses.
         public const int MaximoPorUsuario = 3;
 
+        // El wizard deja elegir de 1 a 8 personas.
+        public const int MinimoPersonas = 1;
+        public const int MaximoPersonas = 8;
+
         private static readonly HashSet<string> PrioridadesValidas = new(StringComparer.Ordinal)
         {
             "baja", "media", "alta",
@@ -20,7 +23,10 @@ namespace ZonaMatch.Application.Services
         private readonly ICriterioRepository _criterios;
         private readonly TimeProvider _timeProvider;
 
-        public AnalisisService(IAnalisisRepository repository, ICriterioRepository criterios, TimeProvider timeProvider)
+        public AnalisisService(
+            IAnalisisRepository repository,
+            ICriterioRepository criterios,
+            TimeProvider timeProvider)
         {
             _repository = repository;
             _criterios = criterios;
@@ -33,22 +39,22 @@ namespace ZonaMatch.Application.Services
             if (cuenta >= MaximoPorUsuario)
                 throw new LimiteAnalisisException();
 
-            await ValidarCriteriosAsync(request.Criterios, cancellationToken);
-
             var ahora = _timeProvider.GetUtcNow();
-            var analisis = new AnalisisDetallado
+            var contexto = new Contexto
             {
                 UsuarioId = usuarioId,
                 Nombre = request.Nombre.Trim(),
-                ContextoJson = request.Contexto.GetRawText(),
-                CriteriosJson = request.Criterios.GetRawText(),
-                PuntosJson = request.Puntos.GetRawText(),
                 FechaCreacion = ahora,
                 FechaActualizacion = ahora,
             };
 
-            await _repository.AddAsync(analisis, cancellationToken);
-            return ToDto(analisis);
+            // Toda la validacion ocurre antes de guardar: si algo falla, no se persiste nada.
+            AplicarContexto(contexto, request.Contexto);
+            await AplicarCriteriosAsync(contexto, request.Criterios, cancellationToken);
+            AplicarPuntos(contexto, request.Puntos);
+
+            await _repository.AddAsync(contexto, cancellationToken);
+            return ToDto(contexto);
         }
 
         public async Task<IReadOnlyList<AnalisisDetalladoDto>> ObtenerTodosAsync(Guid usuarioId, CancellationToken cancellationToken = default)
@@ -67,75 +73,179 @@ namespace ZonaMatch.Application.Services
 
         public async Task<AnalisisDetalladoDto> ActualizarAsync(Guid id, Guid usuarioId, ActualizarAnalisisRequest request, CancellationToken cancellationToken = default)
         {
-            var analisis = await _repository.ObtenerPorIdAsync(id, usuarioId, cancellationToken)
+            var contexto = await _repository.ObtenerPorIdAsync(id, usuarioId, cancellationToken)
                 ?? throw new AnalisisNoEncontradoException();
 
             if (!string.IsNullOrWhiteSpace(request.Nombre))
-                analisis.Nombre = request.Nombre.Trim();
+                contexto.Nombre = request.Nombre.Trim();
 
-            if (request.Contexto is { } contexto)
-            {
-                analisis.ContextoJson = contexto.GetRawText();
-            }
+            if (request.Contexto is { } contextoBloque)
+                AplicarContexto(contexto, contextoBloque);
 
-            if (request.Criterios is { } criterios)
-            {
-                await ValidarCriteriosAsync(criterios, cancellationToken);
-                analisis.CriteriosJson = criterios.GetRawText();
-            }
+            if (request.Criterios is { } criteriosBloque)
+                await AplicarCriteriosAsync(contexto, criteriosBloque, cancellationToken);
 
-            if (request.Puntos is { } puntos)
-            {
-                analisis.PuntosJson = puntos.GetRawText();
-            }
+            if (request.Puntos is { } puntosBloque)
+                AplicarPuntos(contexto, puntosBloque);
 
-            await _repository.UpdateAsync(analisis, cancellationToken);
-            return ToDto(analisis);
+            await _repository.UpdateAsync(contexto, cancellationToken);
+            return ToDto(contexto);
         }
 
         public async Task EliminarAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default)
         {
-            var analisis = await _repository.ObtenerPorIdAsync(id, usuarioId, cancellationToken)
+            var contexto = await _repository.ObtenerPorIdAsync(id, usuarioId, cancellationToken)
                 ?? throw new AnalisisNoEncontradoException();
 
-            await _repository.DeleteAsync(analisis, cancellationToken);
+            await _repository.DeleteAsync(contexto, cancellationToken);
         }
 
-        // Criterios are the only part of the payload the server checks: the id must exist in the catalog
-        // and be active, the priority must be baja|media|alta.
-        // Contexto and puntos keep evolving with the frontend, so they are stored verbatim.
-        private async Task ValidarCriteriosAsync(JsonElement criterios, CancellationToken cancellationToken)
+        // Contexto: personas (1..8) + rangos etarios por integrante; movilidad y mascotas
+        // se guardan verbatim, igual que cualquier otra lista simple. Reemplaza el bloque.
+        private static void AplicarContexto(Contexto contexto, ContextoRequest? request)
         {
-            if (criterios.ValueKind != JsonValueKind.Object)
+            if (request is null)
+                throw new ArgumentException("El contexto es obligatorio.", nameof(request));
+
+            if (request.Personas < MinimoPersonas || request.Personas > MaximoPersonas)
+                throw new ArgumentException($"La cantidad de personas debe estar entre {MinimoPersonas} y {MaximoPersonas}.", nameof(request));
+
+            if (request.Edades.Count > request.Personas)
+                throw new ArgumentException("Hay más edades que personas en el contexto.", nameof(request));
+
+            if (request.Edades.Any(e => e is { Length: > 40 }))
+                throw new ArgumentException("Un rango etario no puede superar 40 caracteres.", nameof(request));
+
+            contexto.Personas = request.Personas;
+            contexto.Mascotas = request.Mascotas.Distinct(StringComparer.Ordinal).ToArray();
+            contexto.Movilidad = request.Movilidad.Distinct(StringComparer.Ordinal).ToArray();
+
+            contexto.Integrantes.Clear();
+            for (var orden = 1; orden <= request.Personas; orden++)
+            {
+                contexto.Integrantes.Add(new Persona
+                {
+                    Orden = orden,
+                    Edad = orden <= request.Edades.Count ? request.Edades[orden - 1] : null,
+                });
+            }
+        }
+
+        // Criterios: la unica regla de negocio que ya existia. La clave debe estar en el
+        // catalogo y activa; el valor debe ser baja|media|alta. Reemplaza el bloque completo.
+        private async Task AplicarCriteriosAsync(Contexto contexto, Dictionary<string, string?>? criterios, CancellationToken cancellationToken)
+        {
+            if (criterios is null)
                 throw new ArgumentException("Los criterios deben ser un objeto.", nameof(criterios));
 
             var catalogo = (await _criterios.ListarAsync(cancellationToken))
                 .ToDictionary(c => c.Id, StringComparer.Ordinal);
 
-            foreach (var property in criterios.EnumerateObject())
+            var filas = new List<ContextoCriterio>(criterios.Count);
+
+            foreach (var (id, prioridad) in criterios)
             {
-                if (!catalogo.TryGetValue(property.Name, out var criterio))
-                    throw new ArgumentException($"Criterio desconocido: {property.Name}.", nameof(criterios));
+                if (!catalogo.TryGetValue(id, out var criterio))
+                    throw new ArgumentException($"Criterio desconocido: {id}.", nameof(criterios));
 
                 if (!criterio.Activo)
-                    throw new ArgumentException($"Criterio no disponible: {property.Name}.", nameof(criterios));
+                    throw new ArgumentException($"Criterio no disponible: {id}.", nameof(criterios));
 
-                var prioridad = property.Value.GetString();
                 if (prioridad is null || !PrioridadesValidas.Contains(prioridad))
-                    throw new ArgumentException($"Prioridad inválida para el criterio {property.Name}.", nameof(criterios));
+                    throw new ArgumentException($"Prioridad inválida para el criterio {id}.", nameof(criterios));
+
+                filas.Add(new ContextoCriterio { CriterioId = id, Prioridad = prioridad });
+            }
+
+            contexto.Criterios.Clear();
+            foreach (var fila in filas)
+            {
+                contexto.Criterios.Add(fila);
             }
         }
 
-        private static AnalisisDetalladoDto ToDto(AnalisisDetallado analisis)
+        // Puntos: lugares validados de a uno (nombre obligatorio) y alquilerMaximo
+        // verbatim. Reemplaza el bloque completo.
+        private static void AplicarPuntos(Contexto contexto, PuntosRequest? request)
+        {
+            if (request is null)
+                throw new ArgumentException("Los puntos son obligatorios.", nameof(request));
+
+            if (request.AlquilerMaximo?.Length > 30)
+                throw new ArgumentException("El alquiler máximo no puede superar 30 caracteres.", nameof(request));
+
+            var lugares = new List<PuntoDeInteres>(request.Lugares.Count);
+
+            for (var i = 0; i < request.Lugares.Count; i++)
+            {
+                var lugar = request.Lugares[i];
+                var nombre = lugar.Nombre?.Trim() ?? string.Empty;
+                if (nombre.Length == 0)
+                    throw new ArgumentException($"El nombre del lugar {i + 1} es obligatorio.", nameof(request));
+
+                lugares.Add(new PuntoDeInteres
+                {
+                    Orden = i + 1,
+                    Nombre = nombre,
+                    Direccion = lugar.Direccion,
+                    Latitude = lugar.Latitude,
+                    Longitude = lugar.Longitude,
+                    Tipo = lugar.Tipo,
+                    QuienVa = lugar.QuienVa,
+                    Frecuencia = lugar.Frecuencia,
+                    Prioridad = lugar.Prioridad,
+                    TiempoMax = lugar.TiempoMax,
+                });
+            }
+
+            contexto.AlquilerMaximo = request.AlquilerMaximo;
+            contexto.Puntos.Clear();
+            foreach (var lugar in lugares)
+            {
+                contexto.Puntos.Add(lugar);
+            }
+        }
+
+        // Response: se reconstruye desde las filas normalizadas manteniendo la misma
+        // forma de JSON que ya consume el frontend (personas/edades/movilidad/mascotas,
+        // criterios como objeto, lugares con alquilerMaximo).
+        private static AnalisisDetalladoDto ToDto(Contexto contexto)
         {
             return new AnalisisDetalladoDto(
-                analisis.Id,
-                analisis.Nombre,
-                JsonDocument.Parse(analisis.ContextoJson).RootElement,
-                JsonDocument.Parse(analisis.CriteriosJson).RootElement,
-                JsonDocument.Parse(analisis.PuntosJson).RootElement,
-                analisis.FechaCreacion,
-                analisis.FechaActualizacion);
+                contexto.Id,
+                contexto.Nombre,
+                new ContextoDto(
+                    contexto.Personas,
+                    contexto.Integrantes
+                        .OrderBy(p => p.Orden)
+                        .Select(p => p.Edad)
+                        .ToList(),
+                    contexto.Movilidad?.ToList() ?? [],
+                    contexto.Mascotas?.ToList() ?? []),
+                contexto.Criterios
+                    .ToDictionary(c => c.CriterioId, c => c.Prioridad, StringComparer.Ordinal),
+                new PuntosDto(
+                    contexto.AlquilerMaximo,
+                    contexto.Puntos
+                        .OrderBy(p => p.Orden)
+                        .Select(ToDto)
+                        .ToList()),
+                contexto.FechaCreacion,
+                contexto.FechaActualizacion);
         }
+
+        private static LugarDto ToDto(PuntoDeInteres punto) =>
+            new(
+                punto.Id,
+                punto.Nombre,
+                punto.Direccion,
+                punto.Latitude,
+                punto.Longitude,
+                punto.Tipo,
+                punto.QuienVa,
+                punto.Frecuencia,
+                punto.Prioridad,
+                punto.TiempoMax,
+                punto.Orden);
     }
 }
