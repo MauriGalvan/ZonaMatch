@@ -86,8 +86,8 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IAnalisisService, AnalisisService>();
-builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
+    builder.Services.AddScoped<IAnalisisService, AnalisisService>();
+    builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
 
 // Comunidad de cada zona: resenas, preguntas y aportes al mapa
 builder.Services.AddScoped<IResenaRepository, ResenaRepository>();

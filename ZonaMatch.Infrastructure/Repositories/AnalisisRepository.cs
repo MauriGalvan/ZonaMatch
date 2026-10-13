@@ -14,41 +14,51 @@ namespace ZonaMatch.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IReadOnlyList<AnalisisDetallado>> ObtenerPorUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+        // El analisis se lee siempre con su detalle: integrantes, lugares y criterios
+        // elegidos. Split query: dos colecciones en una sola consulta multiplicarian
+        // las filas del cross join.
+        private IQueryable<Contexto> ConDetalle =>
+            _context.Contextos
+                .Include(c => c.Integrantes)
+                .Include(c => c.Puntos)
+                .Include(c => c.Criterios)
+                .AsSplitQuery();
+
+        public async Task<IReadOnlyList<Contexto>> ObtenerPorUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default)
         {
-            return await _context.AnalisisDetallado
-                .Where(a => a.UsuarioId == usuarioId)
-                .OrderByDescending(a => a.FechaActualizacion)
+            return await ConDetalle
+                .Where(c => c.UsuarioId == usuarioId)
+                .OrderByDescending(c => c.FechaActualizacion)
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<AnalisisDetallado?> ObtenerPorIdAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default)
+        public async Task<Contexto?> ObtenerPorIdAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default)
         {
-            return await _context.AnalisisDetallado
-                .FirstOrDefaultAsync(a => a.Id == id && a.UsuarioId == usuarioId, cancellationToken);
+            return await ConDetalle
+                .FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId, cancellationToken);
         }
 
         public async Task<int> ContarPorUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default)
         {
-            return await _context.AnalisisDetallado
-                .CountAsync(a => a.UsuarioId == usuarioId, cancellationToken);
+            return await _context.Contextos
+                .CountAsync(c => c.UsuarioId == usuarioId, cancellationToken);
         }
 
-        public async Task AddAsync(AnalisisDetallado analisis, CancellationToken cancellationToken = default)
+        public async Task AddAsync(Contexto contexto, CancellationToken cancellationToken = default)
         {
-            await _context.AnalisisDetallado.AddAsync(analisis, cancellationToken);
+            await _context.Contextos.AddAsync(contexto, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task UpdateAsync(AnalisisDetallado analisis, CancellationToken cancellationToken = default)
+        public async Task UpdateAsync(Contexto contexto, CancellationToken cancellationToken = default)
         {
-            analisis.FechaActualizacion = DateTimeOffset.UtcNow;
+            contexto.FechaActualizacion = DateTimeOffset.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task DeleteAsync(AnalisisDetallado analisis, CancellationToken cancellationToken = default)
+        public async Task DeleteAsync(Contexto contexto, CancellationToken cancellationToken = default)
         {
-            _context.AnalisisDetallado.Remove(analisis);
+            _context.Contextos.Remove(contexto);
             await _context.SaveChangesAsync(cancellationToken);
         }
     }

@@ -1,18 +1,19 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // PUT /Analisis/{id} — update name and/or payload of an existing saved analysis.
+    // PUT /Analisis/{id} — update name and/or any of the payload blocks.
+    // A block sent as null is left untouched; a block sent with a value replaces
+    // its rows entirely (same semantics as the old jsonb columns).
     public class ActualizarAnalisisRequest
     {
         [StringLength(50, MinimumLength = 1, ErrorMessage = "El nombre debe tener entre 1 y 50 caracteres.")]
         public string? Nombre { get; set; }
 
-        public JsonElement? Contexto { get; set; }
+        public ContextoRequest? Contexto { get; set; }
 
-        public JsonElement? Criterios { get; set; }
+        public Dictionary<string, string?>? Criterios { get; set; }
 
-        public JsonElement? Puntos { get; set; }
+        public PuntosRequest? Puntos { get; set; }
     }
 }

@@ -28,6 +28,10 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
         public DbSet<AnalisisDetallado> AnalisisDetallado => Set<AnalisisDetallado>();
+        public DbSet<Contexto> Contextos => Set<Contexto>();
+        public DbSet<Persona> Personas => Set<Persona>();
+        public DbSet<PuntoDeInteres> PuntosInteres => Set<PuntoDeInteres>();
+        public DbSet<ContextoCriterio> ContextoCriterios => Set<ContextoCriterio>();
         public DbSet<Criterio> Criterios => Set<Criterio>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -91,15 +95,16 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
             });
 
-            modelBuilder.Entity<AnalisisDetallado>(e =>
+            // Analisis guardado: cabecera normalizada (antes era una fila con tres jsonb)
+            modelBuilder.Entity<Contexto>(e =>
             {
-                e.ToTable("analisis_detallado");
+                e.ToTable("contextos");
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
-                // The wizard payload is stored verbatim as jsonb; the API layer validates it.
-                e.Property(x => x.ContextoJson).HasColumnType("jsonb").IsRequired();
-                e.Property(x => x.CriteriosJson).HasColumnType("jsonb").IsRequired();
-                e.Property(x => x.PuntosJson).HasColumnType("jsonb").IsRequired();
+                e.Property(x => x.Personas).IsRequired();
+                e.Property(x => x.Mascotas).HasColumnType("text[]");
+                e.Property(x => x.Movilidad).HasColumnType("text[]");
+                e.Property(x => x.AlquilerMaximo).HasMaxLength(30);
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
                 e.HasIndex(x => x.UsuarioId);
@@ -107,6 +112,70 @@ namespace ZonaMatch.Infrastructure.Data
                     .WithMany()
                     .HasForeignKey(x => x.UsuarioId)
                     .OnDelete(DeleteBehavior.Cascade);
+                e.HasMany(x => x.Integrantes)
+                    .WithOne(p => p.Contexto)
+                    .HasForeignKey(p => p.ContextoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                e.HasMany(x => x.Puntos)
+                    .WithOne(p => p.Contexto)
+                    .HasForeignKey(p => p.ContextoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                e.HasMany(x => x.Criterios)
+                    .WithOne()
+                    .HasForeignKey(x => x.ContextoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Persona>(e =>
+            {
+                e.ToTable("personas");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Orden);
+                e.Property(x => x.Nombre).HasMaxLength(50);
+                e.Property(x => x.Edad).HasMaxLength(40);
+                e.HasIndex(x => new { x.ContextoId, x.Orden });
+                e.HasOne(x => x.Contexto)
+                    .WithMany(c => c.Integrantes)
+                    .HasForeignKey(x => x.ContextoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PuntoDeInteres>(e =>
+            {
+                e.ToTable("puntos_interes");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Orden);
+                e.Property(x => x.Nombre).HasMaxLength(100).IsRequired();
+                e.Property(x => x.Direccion).HasMaxLength(200);
+                e.Property(x => x.Tipo).HasMaxLength(30);
+                e.Property(x => x.QuienVa).HasMaxLength(20);
+                e.Property(x => x.Frecuencia).HasMaxLength(20);
+                e.Property(x => x.Prioridad).HasMaxLength(20);
+                e.Property(x => x.TiempoMax).HasMaxLength(10);
+                e.HasIndex(x => new { x.ContextoId, x.Orden });
+                e.HasOne(x => x.Contexto)
+                    .WithMany(c => c.Puntos)
+                    .HasForeignKey(x => x.ContextoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ContextoCriterio>(e =>
+            {
+                e.ToTable("contexto_criterios", t =>
+                    t.HasCheckConstraint("ck_contexto_criterios_prioridad", "prioridad IN ('baja', 'media', 'alta')"));
+                e.HasKey(x => new { x.ContextoId, x.CriterioId });
+                e.Property(x => x.CriterioId).HasMaxLength(40);
+                e.Property(x => x.Prioridad).HasMaxLength(10).IsRequired();
+                e.HasOne(x => x.Contexto)
+                    .WithMany(c => c.Criterios)
+                    .HasForeignKey(x => x.ContextoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                // Un criterio borrado del catalogo no deberia existir, pero si pasa:
+                // la fila del analisis no se toca
+                e.HasOne(x => x.Criterio)
+                    .WithMany()
+                    .HasForeignKey(x => x.CriterioId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Criterio>(e =>
