@@ -27,7 +27,6 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<AporteValidacion> AportesValidaciones => Set<AporteValidacion>();
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
-        public DbSet<AnalisisDetallado> AnalisisDetallado => Set<AnalisisDetallado>();
         public DbSet<Contexto> Contextos => Set<Contexto>();
         public DbSet<Persona> Personas => Set<Persona>();
         public DbSet<PuntoDeInteres> PuntosInteres => Set<PuntoDeInteres>();
