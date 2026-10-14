@@ -10,7 +10,7 @@ using ZonaMatch.Application.UseCases.GroupLinks;
 namespace ZonaMatch.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class InvitationsController : ControllerBase
 {
     private Guid GetCurrentUserId()
