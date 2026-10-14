@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Perfil;
 
 namespace ZonaMatch.Api.Controllers
@@ -31,7 +32,10 @@ namespace ZonaMatch.Api.Controllers
             if (User.UsuarioId() is not { } usuarioId)
                 return Unauthorized();
 
-            return Ok(await _obtenerMiPerfil.EjecutarAsync(usuarioId, cancellationToken));
+            // Sin perfil, el mismo 404 que armaria el manejador global, pero sin lanzar una excepcion
+            return await _obtenerMiPerfil.EjecutarAsync(usuarioId, cancellationToken) is { } perfil
+                ? Ok(perfil)
+                : Problem(statusCode: StatusCodes.Status404NotFound, title: PerfilNoEncontradoException.Mensaje);
         }
 
         // PUT /Perfil
