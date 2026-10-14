@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Services;
+using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Api.Controllers
 {
@@ -52,6 +54,43 @@ namespace ZonaMatch.Api.Controllers
 
             var escuelas = await _geolocationService.GetEscuelasMasCercanasAsync(latitud, longitud, cantidad);
             return Ok(escuelas);
+        }
+
+        // GET /Geolocation/puntos-interes?latitud=&longitud=&radioMetros=1000&categorias=transporte,salud
+        // Without categorias it returns every category (see CategoriaPuntoInteres)
+        [HttpGet("puntos-interes")]
+        public async Task<IActionResult> GetPuntosInteresCercanos(
+            [FromQuery] double latitud, [FromQuery] double longitud, [FromQuery] double radioMetros = 1000,
+            [FromQuery] string? categorias = null, CancellationToken cancellationToken = default)
+        {
+            if (!CoordenadasValidas(latitud, longitud, radioMetros, out var error))
+                return BadRequest(error);
+
+            if (radioMetros > GeolocationService.MaxRadioPuntosInteresMetros)
+                return BadRequest($"El radio no puede superar los {GeolocationService.MaxRadioPuntosInteresMetros} metros.");
+
+            if (!CategoriaPuntoInteres.TryParseLista(categorias, out var codigos, out error))
+                return BadRequest(error);
+
+            var puntos = await _geolocationService.GetPuntosInteresCercanosAsync(
+                latitud, longitud, radioMetros, codigos, cancellationToken);
+            return Ok(puntos);
+        }
+
+        // GET /Geolocation/puntos-interes/resumen?latitud=&longitud=&radioMetros=1000
+        [HttpGet("puntos-interes/resumen")]
+        public async Task<IActionResult> GetResumenPuntosInteres(
+            [FromQuery] double latitud, [FromQuery] double longitud, [FromQuery] double radioMetros = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            if (!CoordenadasValidas(latitud, longitud, radioMetros, out var error))
+                return BadRequest(error);
+
+            if (radioMetros > GeolocationService.MaxRadioPuntosInteresMetros)
+                return BadRequest($"El radio no puede superar los {GeolocationService.MaxRadioPuntosInteresMetros} metros.");
+
+            var resumen = await _geolocationService.GetResumenPuntosInteresAsync(latitud, longitud, radioMetros, cancellationToken);
+            return Ok(resumen);
         }
 
         // GET /Geolocation/partido?latitud=&longitud=

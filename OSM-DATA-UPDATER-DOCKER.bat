@@ -30,8 +30,9 @@ goto :wait_db
 :db_ready
 
 echo.
-echo [2/7] Creando schemas app, geo y osm (si no existen)...
-%PSQL% -v ON_ERROR_STOP=1 -c "CREATE SCHEMA IF NOT EXISTS app; CREATE SCHEMA IF NOT EXISTS geo; CREATE SCHEMA IF NOT EXISTS osm;"
+echo [2/7] Habilitando PostGIS y creando schemas app, geo y osm (si no existen)...
+rem db/init solo corre al crear el volumen por primera vez; aca se asegura PostGIS tambien en bases ya creadas.
+%PSQL% -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE SCHEMA IF NOT EXISTS app; CREATE SCHEMA IF NOT EXISTS geo; CREATE SCHEMA IF NOT EXISTS osm;"
 if errorlevel 1 goto :err_schemas
 
 echo.

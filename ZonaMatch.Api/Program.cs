@@ -1,10 +1,31 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using ZonaMatch.Api.Authentication;
+using ZonaMatch.Api.Background;
+using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
+using ZonaMatch.Application.UseCases.AnalisisGuardados;
+using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.GroupInvitations;
+using ZonaMatch.Application.UseCases.GroupLinks;
+using ZonaMatch.Application.UseCases.Groups;
+using ZonaMatch.Application.UseCases.Perfil;
+using ZonaMatch.Application.UseCases.Criterios;
+using ZonaMatch.Application.UseCases.Preguntas;
+using ZonaMatch.Application.UseCases.Puntajes;
+using ZonaMatch.Application.UseCases.Resenas;
+using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
+using ZonaMatch.Infrastructure.Security;
+using ZonaMatch.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +41,14 @@ builder.Services.AddScoped<IEscuelaRepository, EscuelaRepository>();
 builder.Services.AddScoped<IPartidoRepository, PartidoRepository>();
 builder.Services.AddScoped<IComunaRepository, ComunaRepository>();
 builder.Services.AddScoped<IMapaRepository, MapaRepository>();
+builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
+builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
+builder.Services.AddScoped<IIndicadoresZonaRepository, IndicadoresZonaRepository>();
+builder.Services.AddScoped<ITransporteZonaRepository, TransporteZonaRepository>();
+
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
+builder.Services.AddScoped<IAnalisisRepository, AnalisisRepository>();
 
 // Reverse geocoding. "Osm" (default) queries the local osm schema; "Nominatim" calls the public OpenStreetMap API.
 if (string.Equals(builder.Configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
@@ -41,6 +70,95 @@ else
 // Servicios de aplicacion
 builder.Services.AddScoped<IGeolocationService, GeolocationService>();
 builder.Services.AddScoped<IMapaService, MapaService>();
+builder.Services.AddScoped<IZonaService, ZonaService>();
+builder.Services.AddScoped<CreateGroup>();
+builder.Services.AddScoped<GetGroups>();
+builder.Services.AddScoped<DeleteGroup>();
+builder.Services.AddScoped<UpdateGroup>();
+builder.Services.AddScoped<RemoveParticipant>();
+
+builder.Services.AddScoped<CreateInvitation>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<GetInvitationByToken>();
+builder.Services.AddScoped<AcceptInvitation>();
+builder.Services.AddScoped<GetGroupByLink>();
+builder.Services.AddScoped<JoinGroupByLink>();
+builder.Services.AddScoped<RevokeInviteLink>();
+
+// Registro de usuarios
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+    builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
+
+// Comunidad de cada zona: resenas, preguntas y aportes al mapa
+builder.Services.AddScoped<IResenaRepository, ResenaRepository>();
+builder.Services.AddScoped<IPreguntaRepository, PreguntaRepository>();
+builder.Services.AddScoped<IAporteRepository, AporteRepository>();
+
+// Casos de uso de la comunidad: uno por operacion
+builder.Services.AddScoped<ListarResenas>();
+builder.Services.AddScoped<GuardarMiResena>();
+builder.Services.AddScoped<EliminarMiResena>();
+builder.Services.AddScoped<MarcarResenaUtil>();
+builder.Services.AddScoped<ListarPreguntas>();
+builder.Services.AddScoped<CrearPregunta>();
+builder.Services.AddScoped<ResponderPregunta>();
+builder.Services.AddScoped<ResumirAportes>();
+builder.Services.AddScoped<ListarAportesPendientes>();
+builder.Services.AddScoped<CrearPuntoNuevo>();
+builder.Services.AddScoped<CrearCorreccion>();
+builder.Services.AddScoped<ValidarAporte>();
+
+// Catalogo de criterios del wizard (GET /Criterios)
+builder.Services.AddScoped<ListarCriterios>();
+
+// Perfil del usuario y analisis guardados (con sus versiones)
+builder.Services.AddScoped<IPerfilRepository, PerfilRepository>();
+builder.Services.AddScoped<ObtenerMiPerfil>();
+builder.Services.AddScoped<GuardarMiPerfil>();
+builder.Services.AddScoped<ListarMisAnalisis>();
+builder.Services.AddScoped<ObtenerAnalisis>();
+builder.Services.AddScoped<CrearAnalisis>();
+builder.Services.AddScoped<CrearVersionAnalisis>();
+builder.Services.AddScoped<RenombrarAnalisis>();
+builder.Services.AddScoped<EliminarAnalisis>();
+
+// Motor de puntaje: perfiles de todas las zonas en memoria y tiempos de viaje con MOTIS
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<PerfilesZonaCache>();
+builder.Services.AddScoped<IPerfilesZonaRepository, PerfilesZonaRepository>();
+builder.Services.AddHttpClient<IRuteoClient, MotisRuteoClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Motis:Url"] ?? "http://localhost:18080/");
+    client.Timeout = TimeSpan.FromSeconds(8);
+});
+builder.Services.AddScoped<CalcularPuntajes>();
+builder.Services.AddHostedService<PrecalcularPerfilesZona>();
+
+// Datos abiertos de cada zona (censo, seguridad), cargados por DATOS-ZONAS-DOCKER.bat
+builder.Services.AddScoped<ObtenerIndicadoresZona>();
+builder.Services.AddScoped<ObtenerTransporteZona>();
+
+// JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
+builder.Services.AddOptions<JwtOptions>()
+    .BindConfiguration(JwtOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddSingleton<ITokenService, JwtTokenService>();
+builder.Services.ConfigureOptions<ConfigureJwtBearerOptions>();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+builder.Services.AddAuthorization();
+
+// Slows down password guessing on /Auth/login: 10 attempts per minute per IP
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+});
 
 // GeoJSON compresses very well; "application/geo+json" is not in the default MIME list
 builder.Services.AddResponseCompression(options =>
@@ -59,12 +177,21 @@ builder.Services.AddCors(options =>
         .AllowAnyHeader()
         .AllowAnyMethod()));
 
-builder.Services.AddControllers();
+// Centralized error handling: every unhandled exception becomes a ProblemDetails response
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+// Los enums viajan como texto en kebab-case ("punto-nuevo", "cerro") en pedidos y respuestas
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)));
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
@@ -78,6 +205,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseResponseCompression();
 app.UseCors(FrontendCorsPolicy);
+app.UseRateLimiter();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
