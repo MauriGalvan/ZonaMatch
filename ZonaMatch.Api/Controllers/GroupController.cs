@@ -8,7 +8,7 @@ using ZonaMatch.Application.UseCases.Groups;
 
 namespace ZonaMatch.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     [Authorize]
     public class GroupController : ControllerBase
