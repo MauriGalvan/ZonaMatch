@@ -124,6 +124,7 @@ builder.Services.AddScoped<ObtenerMiPerfil>();
 builder.Services.AddScoped<GuardarMiPerfil>();
 builder.Services.AddScoped<ListarMisAnalisis>();
 builder.Services.AddScoped<ObtenerAnalisis>();
+builder.Services.AddScoped<CompararAnalisis>();
 builder.Services.AddScoped<CrearAnalisis>();
 builder.Services.AddScoped<CrearVersionAnalisis>();
 builder.Services.AddScoped<RenombrarAnalisis>();
