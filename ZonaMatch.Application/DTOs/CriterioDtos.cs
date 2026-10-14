@@ -1,15 +1,29 @@
 namespace ZonaMatch.Application.DTOs
 {
-    // Response for one saved analysis, rebuilt from the normalized tables.
-    // The field names keep the shape the frontend already sends and reads.
-    public record AnalisisDetalladoDto(
+    // Respuestas del perfil y de los analisis, armadas desde las tablas normalizadas.
+    // Los nombres de campos mantienen la forma que ya usaba el frontend.
+
+    // GET /Perfil
+    public record PerfilDto(
+        ContextoDto Contexto,
+        Dictionary<string, string> Criterios,
+        PuntosDto Puntos,
+        DateTimeOffset FechaActualizacion);
+
+    // Un analisis guardado; en el listado, cada original trae sus versiones
+    public record AnalisisDto(
         Guid Id,
         string Nombre,
+        Guid? AnalisisOrigenId,
+        IReadOnlyList<ZonaAnalisisDto> Zonas,
         ContextoDto Contexto,
         Dictionary<string, string> Criterios,
         PuntosDto Puntos,
         DateTimeOffset FechaCreacion,
-        DateTimeOffset FechaActualizacion);
+        DateTimeOffset FechaActualizacion,
+        IReadOnlyList<AnalisisDto> Versiones);
+
+    public record ZonaAnalisisDto(string Slug, string Nombre, bool EsInicial);
 
     public record ContextoDto(
         int Personas,

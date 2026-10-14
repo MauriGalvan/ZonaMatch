@@ -36,9 +36,9 @@ namespace ZonaMatch.Api.ExceptionHandling
             {
                 EmailYaRegistradoException => (StatusCodes.Status409Conflict, exception.Message),
                 CredencialesInvalidasException => (StatusCodes.Status401Unauthorized, exception.Message),
-                // Analisis detallado
-                LimiteAnalisisException => (StatusCodes.Status409Conflict, exception.Message),
+                // Perfil y analisis guardados
                 AnalisisNoEncontradoException => (StatusCodes.Status404NotFound, exception.Message),
+                PerfilNoEncontradoException => (StatusCodes.Status404NotFound, exception.Message),
                 // Comunidad de la zona y grupos
                 DatosInvalidosException => (StatusCodes.Status400BadRequest, exception.Message),
                 NoEncontradoException => (StatusCodes.Status404NotFound, exception.Message),

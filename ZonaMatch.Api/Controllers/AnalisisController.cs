@@ -1,88 +1,119 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.JsonWebTokens;
+using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs;
-using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.UseCases.AnalisisGuardados;
 
 namespace ZonaMatch.Api.Controllers
 {
+    // Analisis guardados del usuario: zonas comparadas con la copia de su criterio, y sus versiones ajustadas
     [ApiController]
     [Route("[controller]")]
     [Authorize]
     public class AnalisisController : ControllerBase
     {
-        private readonly IAnalisisService _analisisService;
+        private readonly ListarMisAnalisis _listarMisAnalisis;
+        private readonly ObtenerAnalisis _obtenerAnalisis;
+        private readonly CrearAnalisis _crearAnalisis;
+        private readonly CrearVersionAnalisis _crearVersionAnalisis;
+        private readonly RenombrarAnalisis _renombrarAnalisis;
+        private readonly EliminarAnalisis _eliminarAnalisis;
 
-        public AnalisisController(IAnalisisService analisisService)
+        public AnalisisController(
+            ListarMisAnalisis listarMisAnalisis,
+            ObtenerAnalisis obtenerAnalisis,
+            CrearAnalisis crearAnalisis,
+            CrearVersionAnalisis crearVersionAnalisis,
+            RenombrarAnalisis renombrarAnalisis,
+            EliminarAnalisis eliminarAnalisis)
         {
-            _analisisService = analisisService;
+            _listarMisAnalisis = listarMisAnalisis;
+            _obtenerAnalisis = obtenerAnalisis;
+            _crearAnalisis = crearAnalisis;
+            _crearVersionAnalisis = crearVersionAnalisis;
+            _renombrarAnalisis = renombrarAnalisis;
+            _eliminarAnalisis = eliminarAnalisis;
         }
 
-        // GET /Analisis — list the current user's saved analyses
+        // GET /Analisis — originales, cada uno con sus versiones, el mas reciente primero
         [HttpGet]
-        [ProducesResponseType<IReadOnlyList<AnalisisDetalladoDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<IReadOnlyList<AnalisisDto>>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> ObtenerTodos(CancellationToken cancellationToken)
+        public async Task<IActionResult> Listar(CancellationToken cancellationToken)
         {
-            var usuarioId = ObtenerUsuarioId();
-            var analisis = await _analisisService.ObtenerTodosAsync(usuarioId, cancellationToken);
-            return Ok(analisis);
+            if (User.UsuarioId() is not { } usuarioId)
+                return Unauthorized();
+
+            return Ok(await _listarMisAnalisis.EjecutarAsync(usuarioId, cancellationToken));
         }
 
         // GET /Analisis/{id}
         [HttpGet("{id:guid}")]
-        [ProducesResponseType<AnalisisDetalladoDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<AnalisisDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ObtenerPorId(Guid id, CancellationToken cancellationToken)
+        public async Task<IActionResult> Obtener(Guid id, CancellationToken cancellationToken)
         {
-            var usuarioId = ObtenerUsuarioId();
-            var analisis = await _analisisService.ObtenerPorIdAsync(id, usuarioId, cancellationToken);
-            return Ok(analisis);
+            if (User.UsuarioId() is not { } usuarioId)
+                return Unauthorized();
+
+            return Ok(await _obtenerAnalisis.EjecutarAsync(id, usuarioId, cancellationToken));
         }
 
         // POST /Analisis
-        // Body: { "nombre": "", "contexto": {}, "criterios": {}, "puntos": {} }
+        // Body: { "nombre": "Cerca del trabajo", "zonas": [{ "slug": "villa-luro", "nombre": "Villa Luro, CABA", "esInicial": true }] }
+        // El criterio se copia del perfil (404 si el usuario todavia no lo armo)
         [HttpPost]
-        [ProducesResponseType<AnalisisDetalladoDto>(StatusCodes.Status201Created)]
-        [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-        public async Task<IActionResult> Crear(CrearAnalisisRequest request, CancellationToken cancellationToken)
-        {
-            var usuarioId = ObtenerUsuarioId();
-            var analisis = await _analisisService.CrearAsync(usuarioId, request, cancellationToken);
-            return StatusCode(StatusCodes.Status201Created, analisis);
-        }
-
-        // PUT /Analisis/{id} — update name and/or any of the payload blocks
-        [HttpPut("{id:guid}")]
-        [ProducesResponseType<AnalisisDetalladoDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<AnalisisDto>(StatusCodes.Status201Created)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Actualizar(Guid id, ActualizarAnalisisRequest request, CancellationToken cancellationToken)
+        public async Task<IActionResult> Crear(CrearAnalisisRequest solicitud, CancellationToken cancellationToken)
         {
-            var usuarioId = ObtenerUsuarioId();
-            var analisis = await _analisisService.ActualizarAsync(id, usuarioId, request, cancellationToken);
-            return Ok(analisis);
+            if (User.UsuarioId() is not { } usuarioId)
+                return Unauthorized();
+
+            var analisis = await _crearAnalisis.EjecutarAsync(usuarioId, solicitud, cancellationToken);
+            return CreatedAtAction(nameof(Obtener), new { id = analisis.Id }, analisis);
         }
 
-        // DELETE /Analisis/{id}
+        // POST /Analisis/{id}/versiones
+        // Body: { "nombre": null, "criterio": { "contexto": {}, "criterios": {}, "puntos": {} }, "zonas": null }
+        // Guarda una version con el criterio ajustado; cuelga del original aunque {id} sea otra version
+        [HttpPost("{id:guid}/versiones")]
+        [ProducesResponseType<AnalisisDto>(StatusCodes.Status201Created)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> CrearVersion(Guid id, CrearVersionAnalisisRequest solicitud, CancellationToken cancellationToken)
+        {
+            if (User.UsuarioId() is not { } usuarioId)
+                return Unauthorized();
+
+            var version = await _crearVersionAnalisis.EjecutarAsync(id, usuarioId, solicitud, cancellationToken);
+            return CreatedAtAction(nameof(Obtener), new { id = version.Id }, version);
+        }
+
+        // PUT /Analisis/{id} — Body: { "nombre": "..." }
+        [HttpPut("{id:guid}")]
+        [ProducesResponseType<AnalisisDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Renombrar(Guid id, RenombrarAnalisisRequest solicitud, CancellationToken cancellationToken)
+        {
+            if (User.UsuarioId() is not { } usuarioId)
+                return Unauthorized();
+
+            return Ok(await _renombrarAnalisis.EjecutarAsync(id, usuarioId, solicitud, cancellationToken));
+        }
+
+        // DELETE /Analisis/{id} — borrar un original borra sus versiones
         [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Eliminar(Guid id, CancellationToken cancellationToken)
         {
-            var usuarioId = ObtenerUsuarioId();
-            await _analisisService.EliminarAsync(id, usuarioId, cancellationToken);
+            if (User.UsuarioId() is not { } usuarioId)
+                return Unauthorized();
+
+            await _eliminarAnalisis.EjecutarAsync(id, usuarioId, cancellationToken);
             return NoContent();
-        }
-
-        // The JWT always carries "sub"; [Authorize] already rejected anonymous requests.
-        private Guid ObtenerUsuarioId()
-        {
-            var id = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-            if (!Guid.TryParse(id, out var usuarioId))
-                throw new UnauthorizedAccessException();
-
-            return usuarioId;
         }
     }
 }
