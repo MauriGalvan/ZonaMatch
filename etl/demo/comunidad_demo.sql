@@ -1,9 +1,14 @@
 -- DATOS DE DEMO de la comunidad de las zonas. Generado por etl/demo/generar_comunidad_demo.py: no editar a mano.
 -- Todo es inventado. Autores: usuarios @demo.zonamatch.ar (contrasena: ZonaMatchDemo2026).
 -- Borra los datos de demo anteriores y vuelve a cargarlos; las zonas que no existen en geo.zonas se saltean.
--- Uso: docker compose exec -T db psql -U zonamatch -d zonamatch_docker < etl\demo\comunidad_demo.sql
+-- Uso con Docker (sirve en PowerShell, que no tiene "<"):
+--   docker cp etl/demo/comunidad_demo.sql zonamatch-db-1:/tmp/comunidad_demo.sql
+--   docker exec zonamatch-db-1 psql -U zonamatch -d zonamatch_docker -f /tmp/comunidad_demo.sql
+-- Uso con psql contra cualquier base: psql "host=... port=... dbname=... user=..." -f etl/demo/comunidad_demo.sql
 
 \set ON_ERROR_STOP on
+-- El archivo es UTF-8: sin esto, psql en Windows lo lee con la codificacion del sistema y rompe las tildes
+SET client_encoding = 'UTF8';
 BEGIN;
 
 -- Borrar un usuario borra en cascada sus resenas, votos, preguntas, respuestas, aportes y validaciones
