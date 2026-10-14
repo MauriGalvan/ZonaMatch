@@ -31,20 +31,31 @@ namespace ZonaMatch.Tests.Domain
         }
 
         [Theory]
+        [InlineData(0.0, 50.0)]
+        [InlineData(0.1, 40.0)]
+        [InlineData(0.2, 30.0)]
+        [InlineData(0.4, 11.0)]
+        [InlineData(1.0, 0.5)]
+        public void Pasarse_un_poco_descuenta_un_punto_por_ciento_y_mucho_cae_exponencial(double exceso, double esperado)
+        {
+            Assert.Equal(esperado, MotorPuntaje.Penalizar(50, exceso), 1);
+        }
+
+        [Theory]
         [InlineData(0, 100)]
         [InlineData(45, 80)]
-        [InlineData(60, 53)]
-        [InlineData(90, 0)]
-        [InlineData(200, 0)]
-        public void Viaje_vale_80_en_el_maximo_y_0_al_doble(int minutos, int esperado)
+        [InlineData(54, 60)]
+        [InlineData(63, 22)]
+        [InlineData(90, 1)]
+        public void Viaje_vale_80_en_el_maximo_y_despues_se_penaliza_como_un_limite(int minutos, int esperado)
         {
             Assert.Equal(esperado, MotorPuntaje.PuntajeViaje(minutos, 45));
         }
 
         [Fact]
-        public void Viaje_sin_recorrido_vale_0()
+        public void Viaje_sin_recorrido_no_tiene_puntaje()
         {
-            Assert.Equal(0, MotorPuntaje.PuntajeViaje(null, 45));
+            Assert.Null(MotorPuntaje.PuntajeViaje(null, 45));
         }
 
         [Fact]
@@ -85,28 +96,40 @@ namespace ZonaMatch.Tests.Domain
         }
 
         [Fact]
-        public void Pasarse_del_tope_de_alquiler_descuenta_hasta_40_puntos()
+        public void Pasarse_del_tope_de_alquiler_descuenta_poco_si_es_poco_y_casi_todo_si_es_mucho()
         {
-            var cara = Zona("cara", alquiler: 2_000_000);
+            // Todas tienen la misma cantidad de escuelas: sin tope, cada una vale 50
             var poco = Zona("poco", alquiler: 1_100_000);
+            var limite = Zona("limite", alquiler: 1_200_000);
+            var mucho = Zona("mucho", alquiler: 1_500_000);
+            var doble = Zona("doble", alquiler: 2_000_000);
             var barata = Zona("barata", alquiler: 500_000);
-            var motor = new MotorPuntaje([cara, poco, barata]);
+            var motor = new MotorPuntaje([poco, limite, mucho, doble, barata]);
             var criterios = new Dictionary<string, string> { [MotorPuntaje.Educacion] = "media" };
 
-            int? Descuento(PerfilZona z) => motor.Calcular(z, Pedido(criterios)).Puntaje - motor.Calcular(z, Pedido(criterios, 1_000_000)).Puntaje;
+            int? ConTope(PerfilZona z) => motor.Calcular(z, Pedido(criterios, 1_000_000)).Puntaje;
 
-            Assert.Equal(MotorPuntaje.DescuentoMaximoAlquiler, Descuento(cara));
-            Assert.Equal(10, Descuento(poco));
-            Assert.Equal(0, Descuento(barata));
+            Assert.Equal(50, motor.Calcular(poco, Pedido(criterios)).Puntaje);
+            Assert.Equal(40, ConTope(poco));
+            Assert.Equal(30, ConTope(limite));
+            Assert.Equal(7, ConTope(mucho));
+            Assert.Equal(1, ConTope(doble));
+            Assert.Equal(50, ConTope(barata));
             Assert.True(motor.Calcular(barata, Pedido(criterios, 1_000_000)).Limites.Single().Cumple);
+            Assert.Contains("en un 50 %", motor.Calcular(mucho, Pedido(criterios, 1_000_000)).Limites.Single().Detalle);
         }
 
         [Fact]
-        public void Sin_dato_de_alquiler_el_limite_queda_sin_saber()
+        public void Sin_dato_de_alquiler_el_limite_no_suma_ni_resta()
         {
             var zona = Zona("zona");
-            var limite = new MotorPuntaje([zona]).Calcular(zona, Pedido([], 800_000)).Limites.Single();
+            var motor = new MotorPuntaje([zona]);
+            var criterios = new Dictionary<string, string> { [MotorPuntaje.Educacion] = "media" };
 
+            var conTope = motor.Calcular(zona, Pedido(criterios, 800_000));
+
+            Assert.Equal(motor.Calcular(zona, Pedido(criterios)).Puntaje, conTope.Puntaje);
+            var limite = conTope.Limites.Single();
             Assert.Equal(MotorPuntaje.LimiteAlquiler, limite.Tipo);
             Assert.Null(limite.Cumple);
         }
@@ -140,11 +163,30 @@ namespace ZonaMatch.Tests.Domain
 
             var componente = Assert.Single(resultado.Componentes);
             Assert.Equal(MotorPuntaje.Lugares, componente.Criterio);
-            // Trabajo 87 (peso 4) y Club 27 (peso 1)
-            Assert.Equal(75, componente.Puntaje);
+            // Trabajo 87 (peso 4) y Club, un 67 % pasado de su maximo, 6 (peso 1)
+            Assert.Equal(71, componente.Puntaje);
             var limite = Assert.Single(resultado.Limites);
             Assert.False(limite.Cumple);
             Assert.Contains("Club", limite.Detalle);
+        }
+
+        [Fact]
+        public void Un_viaje_que_no_se_pudo_calcular_no_suma_ni_resta()
+        {
+            var zona = Zona("zona");
+            var motor = new MotorPuntaje([zona]);
+            var lugares = new List<LugarDelUsuario>
+            {
+                new("Trabajo", -34.6, -58.4, "Alta", 45),
+                new("Facultad", -34.6, -58.5, "Alta", 45),
+            };
+
+            var resultado = motor.Calcular(zona, Pedido([], lugares: lugares), [new TiempoViaje(45, false), new TiempoViaje(null, false)]);
+            var soloTrabajo = motor.Calcular(zona, Pedido([], lugares: [lugares[0]]), [new TiempoViaje(45, false)]);
+
+            Assert.Equal(soloTrabajo.Puntaje, resultado.Puntaje);
+            Assert.Null(resultado.Lugares[1].Puntaje);
+            Assert.Contains(resultado.Limites, l => l.Cumple is null && l.Detalle.Contains("Facultad"));
         }
     }
 }

@@ -21,7 +21,8 @@ namespace ZonaMatch.Domain.Puntaje
 
     public sealed record ResultadoLimite(string Tipo, bool? Cumple, string Detalle);
 
-    public sealed record ResultadoLugar(string Nombre, string? Prioridad, int? Minutos, int MaximoMinutos, bool Estimado, int Puntaje);
+    // Puntaje null si no se pudo calcular el viaje: no suma ni resta
+    public sealed record ResultadoLugar(string Nombre, string? Prioridad, int? Minutos, int MaximoMinutos, bool Estimado, int? Puntaje);
 
     public sealed record ResultadoZona(
         PerfilZona Zona,
@@ -34,8 +35,10 @@ namespace ZonaMatch.Domain.Puntaje
     // Cada criterio vale el percentil de la zona entre las de su tipo (barrios y localidades por un lado, comunas y
     // partidos por el otro): 80 quiere decir que la zona esta mejor que el 80 % de las demas en ese criterio.
     // El puntaje es el promedio de los criterios ponderado por la prioridad del usuario (baja 1, media 2, alta 3);
-    // los criterios sin dato no cuentan. Los lugares del usuario suman un criterio propio, con prioridad alta,
-    // segun cuanto se tarda en llegar. Pasarse del tope de alquiler descuenta hasta 40 puntos.
+    // los criterios sin dato (por ejemplo, seguridad fuera de CABA) no cuentan: ni suman ni restan. Los lugares del
+    // usuario suman un criterio propio, con prioridad alta, segun cuanto se tarda en llegar.
+    // Limites (tope de alquiler y tiempo maximo a cada lugar): pasarse un poco (hasta ExcesoLeve) descuenta un punto
+    // por cada 1 %; pasarse mucho hace caer exponencialmente lo que queda. Un limite sin dato no suma ni resta.
     public sealed class MotorPuntaje
     {
         public const string Seguridad = "seguridad";
@@ -48,8 +51,9 @@ namespace ZonaMatch.Domain.Puntaje
         public const string LimiteAlquiler = "alquiler";
         public const string LimiteTiempo = "tiempo";
 
-        // Lo maximo que descuenta pasarse del tope de alquiler
-        public const int DescuentoMaximoAlquiler = 40;
+        // Hasta cuanto exceso (20 %) el descuento es lineal; despues, cada EscalaExceso mas divide lo que queda por e
+        public const double ExcesoLeve = 0.20;
+        public const double EscalaExceso = 0.20;
 
         // Horas de la franja de la manana (6 a 9) en la que se cuentan las salidas de hora pico
         private const int HorasHoraPico = 3;
@@ -114,19 +118,19 @@ namespace ZonaMatch.Domain.Puntaje
                 componentes.Add(ComponenteLugares(lugares));
 
             var limites = new List<ResultadoLimite>();
-            var descuento = 0;
+            var excesoAlquiler = 0.0;
 
             if (pedido.AlquilerMaximo is { } maximo && maximo > 0)
             {
-                var (limite, descuentoAlquiler) = LimiteDeAlquiler(zona, maximo);
+                var (limite, exceso) = LimiteDeAlquiler(zona, maximo);
                 limites.Add(limite);
-                descuento = descuentoAlquiler;
+                excesoAlquiler = exceso;
             }
 
             if (lugares.Count > 0)
                 limites.AddRange(LimitesDeTiempo(lugares));
 
-            return new ResultadoZona(zona, PuntajeTotal(componentes, descuento), componentes, limites, lugares);
+            return new ResultadoZona(zona, PuntajeTotal(componentes, excesoAlquiler), componentes, limites, lugares);
         }
 
         // Percentil del valor entre los de la distribucion (los empates cuentan la mitad), de 0 a 100
@@ -146,16 +150,29 @@ namespace ZonaMatch.Domain.Puntaje
             return (int)Redondear(100.0 * (menores + 0.5 * iguales) / ordenados.Count);
         }
 
-        // De 100 (llega enseguida) a 80 (justo en el maximo); despues baja hasta 0 al doble del maximo
-        public static int PuntajeViaje(int? minutos, int maximo)
+        // Puntaje tras pasarse un limite por "exceso" (0,1 = 10 % por encima): un punto menos por cada 1 % hasta
+        // ExcesoLeve; despues, lo que queda cae exponencialmente. Sin exceso, el puntaje no cambia.
+        public static double Penalizar(double puntaje, double exceso)
+        {
+            if (exceso <= 0)
+                return puntaje;
+
+            var restante = Math.Max(0, puntaje - Math.Min(exceso, ExcesoLeve) * 100);
+
+            return exceso <= ExcesoLeve ? restante : restante * Math.Exp(-(exceso - ExcesoLeve) / EscalaExceso);
+        }
+
+        // De 100 (llega enseguida) a 80 (justo en el maximo); pasado el maximo, se penaliza como cualquier limite.
+        // Null si no se pudo calcular el viaje.
+        public static int? PuntajeViaje(int? minutos, int maximo)
         {
             if (minutos is not { } m)
-                return 0;
+                return null;
 
             if (m <= maximo)
                 return (int)Redondear(100 - 20.0 * m / maximo);
 
-            return (int)Redondear(Math.Max(0, 80.0 * (2 * maximo - m) / maximo));
+            return (int)Redondear(Penalizar(80, (double)m / maximo - 1));
         }
 
         private ComponentePuntaje Componente(PerfilZona zona, string criterio, string prioridad)
@@ -200,19 +217,24 @@ namespace ZonaMatch.Domain.Puntaje
 
         private static ComponentePuntaje ComponenteLugares(IReadOnlyList<ResultadoLugar> lugares)
         {
-            // Pesa mas el lugar mas importante para el usuario
-            var pesos = lugares.Select(l => PesoDeLugar(l.Prioridad)).ToList();
-            var puntaje = (int)Redondear(lugares.Select((l, i) => (double)l.Puntaje * pesos[i]).Sum() / pesos.Sum());
-            var aTiempo = lugares.Count(l => l.Minutos is { } m && m <= l.MaximoMinutos);
+            // Solo cuentan los viajes calculados; pesa mas el lugar mas importante para el usuario
+            var medidos = lugares.Where(l => l.Puntaje is not null).ToList();
+            if (medidos.Count == 0)
+                return new ComponentePuntaje(Lugares, "alta", null, "No pudimos calcular los viajes a tus lugares");
 
-            return new ComponentePuntaje(Lugares, "alta", puntaje, $"{aTiempo} de {lugares.Count} lugares dentro de tu tiempo máximo");
+            var pesos = medidos.Select(l => PesoDeLugar(l.Prioridad)).ToList();
+            var puntaje = (int)Redondear(medidos.Select((l, i) => (double)l.Puntaje!.Value * pesos[i]).Sum() / pesos.Sum());
+            var aTiempo = medidos.Count(l => l.Minutos <= l.MaximoMinutos);
+
+            return new ComponentePuntaje(Lugares, "alta", puntaje, $"{aTiempo} de {medidos.Count} lugares dentro de tu tiempo máximo");
         }
 
         // Sin prioridad (o una desconocida), el lugar pesa como uno de prioridad media
         private static int PesoDeLugar(string? prioridad) =>
             prioridad is not null && PesoLugar.TryGetValue(prioridad, out var peso) ? peso : PesoLugar["Media"];
 
-        private static (ResultadoLimite Limite, int Descuento) LimiteDeAlquiler(PerfilZona zona, decimal maximo)
+        // El limite y cuanto se pasa del tope (0,1 = 10 %); sin dato de alquiler, ni suma ni resta
+        private static (ResultadoLimite Limite, double Exceso) LimiteDeAlquiler(PerfilZona zona, decimal maximo)
         {
             if (zona.AlquilerPromedio is not { } promedio)
                 return (new ResultadoLimite(LimiteAlquiler, null, "Sin datos de alquiler para esta zona"), 0);
@@ -222,31 +244,29 @@ namespace ZonaMatch.Domain.Puntaje
             if (promedio <= maximo)
                 return (new ResultadoLimite(LimiteAlquiler, true, $"{detallePromedio}: dentro de tu tope de {Pesos(maximo)}"), 0);
 
-            // Un punto por cada 1 % que se pasa, hasta el maximo
             var exceso = (double)(promedio / maximo - 1);
-            var descuento = (int)Math.Min(DescuentoMaximoAlquiler, Math.Ceiling(exceso * 100));
+            var porcentaje = (int)Math.Ceiling(exceso * 100);
 
-            return (new ResultadoLimite(LimiteAlquiler, false, $"{detallePromedio}: supera tu tope de {Pesos(maximo)}"), descuento);
+            return (new ResultadoLimite(LimiteAlquiler, false, $"{detallePromedio}: supera tu tope de {Pesos(maximo)} en un {porcentaje} %"), exceso);
         }
 
         private static IEnumerable<ResultadoLimite> LimitesDeTiempo(IReadOnlyList<ResultadoLugar> lugares)
         {
-            var fuera = lugares.Where(l => l.Minutos is not { } m || m > l.MaximoMinutos).ToList();
+            var fuera = lugares.Where(l => l.Minutos > l.MaximoMinutos).ToList();
+            var sinDato = lugares.Where(l => l.Minutos is null).ToList();
 
-            if (fuera.Count == 0)
-            {
-                yield return new ResultadoLimite(LimiteTiempo, true, "Llegás a todos tus lugares dentro de tu tiempo máximo");
-                yield break;
-            }
+            if (fuera.Count == 0 && sinDato.Count < lugares.Count)
+                yield return new ResultadoLimite(LimiteTiempo, true,
+                    sinDato.Count == 0 ? "Llegás a todos tus lugares dentro de tu tiempo máximo" : "Llegás a tiempo a los lugares que pudimos medir");
 
             foreach (var lugar in fuera)
-            {
-                var duracion = lugar.Minutos is { } m ? $"{m} min" : "más de 2 h";
-                yield return new ResultadoLimite(LimiteTiempo, false, $"A {lugar.Nombre}: {duracion} (tu máximo es {lugar.MaximoMinutos} min)");
-            }
+                yield return new ResultadoLimite(LimiteTiempo, false, $"A {lugar.Nombre}: {lugar.Minutos} min (tu máximo es {lugar.MaximoMinutos} min)");
+
+            foreach (var lugar in sinDato)
+                yield return new ResultadoLimite(LimiteTiempo, null, $"A {lugar.Nombre}: no pudimos calcular el viaje");
         }
 
-        private static int? PuntajeTotal(IReadOnlyList<ComponentePuntaje> componentes, int descuento)
+        private static int? PuntajeTotal(IReadOnlyList<ComponentePuntaje> componentes, double excesoAlquiler)
         {
             var conDato = componentes.Where(c => c.Puntaje is not null).ToList();
             if (conDato.Count == 0)
@@ -255,7 +275,7 @@ namespace ZonaMatch.Domain.Puntaje
             var pesoTotal = conDato.Sum(c => PesoPrioridad[c.Prioridad]);
             var promedio = conDato.Sum(c => c.Puntaje!.Value * PesoPrioridad[c.Prioridad]) / (double)pesoTotal;
 
-            return (int)Math.Clamp(Redondear(promedio) - descuento, 0, 100);
+            return (int)Math.Clamp(Redondear(Penalizar(promedio, excesoAlquiler)), 0, 100);
         }
 
         // Los puntajes redondean el medio hacia arriba (12,5 -> 13), no al par como Math.Round por defecto
