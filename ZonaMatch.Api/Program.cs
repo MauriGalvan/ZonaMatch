@@ -1,23 +1,27 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.GroupInvitations;
+using ZonaMatch.Application.UseCases.GroupLinks;
+using ZonaMatch.Application.UseCases.Groups;
 using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Resenas;
+using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
 using ZonaMatch.Infrastructure.Security;
-using ZonaMatch.Application.UseCases.Groups;
+using ZonaMatch.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,7 +39,11 @@ builder.Services.AddScoped<IComunaRepository, ComunaRepository>();
 builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
 builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
+builder.Services.AddScoped<IIndicadoresZonaRepository, IndicadoresZonaRepository>();
+builder.Services.AddScoped<ITransporteZonaRepository, TransporteZonaRepository>();
+
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
 builder.Services.AddScoped<IAnalisisRepository, AnalisisRepository>();
 
 // Reverse geocoding. "Osm" (default) queries the local osm schema; "Nominatim" calls the public OpenStreetMap API.
@@ -63,14 +71,23 @@ builder.Services.AddScoped<CreateGroup>();
 builder.Services.AddScoped<GetGroups>();
 builder.Services.AddScoped<DeleteGroup>();
 builder.Services.AddScoped<UpdateGroup>();
+builder.Services.AddScoped<RemoveParticipant>();
+
+builder.Services.AddScoped<CreateInvitation>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<GetInvitationByToken>();
+builder.Services.AddScoped<AcceptInvitation>();
+builder.Services.AddScoped<GetGroupByLink>();
+builder.Services.AddScoped<JoinGroupByLink>();
+builder.Services.AddScoped<RevokeInviteLink>();
 
 // Registro de usuarios
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IAnalisisService, AnalisisService>();
-builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
+    builder.Services.AddScoped<IAnalisisService, AnalisisService>();
+    builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
 
 // Comunidad de cada zona: resenas, preguntas y aportes al mapa
 builder.Services.AddScoped<IResenaRepository, ResenaRepository>();
@@ -93,6 +110,10 @@ builder.Services.AddScoped<ValidarAporte>();
 
 // Catalogo de criterios del wizard (GET /Criterios)
 builder.Services.AddScoped<ListarCriterios>();
+
+// Datos abiertos de cada zona (censo, seguridad), cargados por DATOS-ZONAS-DOCKER.bat
+builder.Services.AddScoped<ObtenerIndicadoresZona>();
+builder.Services.AddScoped<ObtenerTransporteZona>();
 
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()

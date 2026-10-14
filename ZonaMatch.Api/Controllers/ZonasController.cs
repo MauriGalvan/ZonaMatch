@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Services;
+using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Api.Controllers
@@ -13,10 +15,15 @@ namespace ZonaMatch.Api.Controllers
         private const string GeoJson = "application/geo+json";
 
         private readonly IZonaService _zonaService;
+        private readonly ObtenerIndicadoresZona _obtenerIndicadores;
+        private readonly ObtenerTransporteZona _obtenerTransporte;
 
-        public ZonasController(IZonaService zonaService)
+        public ZonasController(
+            IZonaService zonaService, ObtenerIndicadoresZona obtenerIndicadores, ObtenerTransporteZona obtenerTransporte)
         {
             _zonaService = zonaService;
+            _obtenerIndicadores = obtenerIndicadores;
+            _obtenerTransporte = obtenerTransporte;
         }
 
         // GET /Zonas?buscar=villa l&limite=10
@@ -76,6 +83,36 @@ namespace ZonaMatch.Api.Controllers
 
             var resumen = await _zonaService.GetResumenPuntosInteresAsync(slug, cancellationToken);
             return Ok(resumen);
+        }
+
+        // GET /Zonas/villa-luro/indicadores
+        // Poblacion, conectividad, condiciones de vida (Censo 2022) y seguridad (Mapa del Delito, solo CABA),
+        // con la fuente y el nivel geografico de cada dato. 404 si la zona no tiene datos cargados.
+        [HttpGet("{slug}/indicadores")]
+        [ResponseCache(Duration = 3600)]
+        [ProducesResponseType<IndicadoresZonaDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetIndicadores(string slug, CancellationToken cancellationToken)
+        {
+            if (!SlugZona.EsValido(slug))
+                return BadRequest(SlugInvalido);
+
+            return Ok(await _obtenerIndicadores.EjecutarAsync(slug, cancellationToken));
+        }
+
+        // GET /Zonas/villa-luro/transporte
+        // Colectivos, trenes y subte de un dia habil: paradas, lineas y salidas por hora en cada franja horaria
+        // (madrugada, manana, mediodia, tarde y noche), en total y por linea. Sale de los GTFS publicos.
+        [HttpGet("{slug}/transporte")]
+        [ResponseCache(Duration = 3600)]
+        [ProducesResponseType<TransporteZonaDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetTransporte(string slug, CancellationToken cancellationToken)
+        {
+            if (!SlugZona.EsValido(slug))
+                return BadRequest(SlugInvalido);
+
+            return Ok(await _obtenerTransporte.EjecutarAsync(slug, cancellationToken));
         }
 
         private const string SlugInvalido =
