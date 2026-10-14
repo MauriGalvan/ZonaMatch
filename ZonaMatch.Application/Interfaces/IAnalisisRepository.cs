@@ -2,19 +2,24 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.Interfaces
 {
+    // Analisis guardados. Se leen siempre con su criterio y sus zonas, y con seguimiento de cambios:
+    // lo modificado se guarda con GuardarCambiosAsync.
     public interface IAnalisisRepository
     {
-        Task<IReadOnlyList<Contexto>> ObtenerPorUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+        // Originales y versiones del usuario, el mas reciente primero
+        Task<IReadOnlyList<Analisis>> ListarDeUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default);
 
-        // Returns null when there is no such analysis for that user.
-        Task<Contexto?> ObtenerPorIdAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default);
+        // null si no existe o es de otro usuario
+        Task<Analisis?> ObtenerAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default);
 
-        Task<int> ContarPorUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+        // Versiones derivadas de un original, la mas vieja primero
+        Task<IReadOnlyList<Analisis>> ListarVersionesAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default);
 
-        Task AddAsync(Contexto contexto, CancellationToken cancellationToken = default);
+        void Agregar(Analisis analisis);
 
-        Task UpdateAsync(Contexto contexto, CancellationToken cancellationToken = default);
+        // Borra el analisis junto con la copia de su criterio
+        void Eliminar(Analisis analisis);
 
-        Task DeleteAsync(Contexto contexto, CancellationToken cancellationToken = default);
+        Task GuardarCambiosAsync(CancellationToken cancellationToken = default);
     }
 }

@@ -14,52 +14,41 @@ namespace ZonaMatch.Infrastructure.Repositories
             _context = context;
         }
 
-        // El analisis se lee siempre con su detalle: integrantes, lugares y criterios
-        // elegidos. Split query: dos colecciones en una sola consulta multiplicarian
-        // las filas del cross join.
-        private IQueryable<Contexto> ConDetalle =>
-            _context.Contextos
-                .Include(c => c.Integrantes)
-                .Include(c => c.Puntos)
-                .Include(c => c.Criterios)
+        // El analisis se lee siempre con sus zonas y su criterio completo (integrantes, lugares y
+        // criterios). Split query: varias colecciones en una sola consulta multiplicarian las filas.
+        private IQueryable<Analisis> ConDetalle =>
+            _context.Analisis
+                .Include(a => a.Zonas)
+                .Include(a => a.Contexto).ThenInclude(c => c.Integrantes)
+                .Include(a => a.Contexto).ThenInclude(c => c.Puntos)
+                .Include(a => a.Contexto).ThenInclude(c => c.Criterios)
                 .AsSplitQuery();
 
-        public async Task<IReadOnlyList<Contexto>> ObtenerPorUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default)
-        {
-            return await ConDetalle
-                .Where(c => c.UsuarioId == usuarioId)
-                .OrderByDescending(c => c.FechaActualizacion)
+        public async Task<IReadOnlyList<Analisis>> ListarDeUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
+            await ConDetalle
+                .Where(a => a.UsuarioId == usuarioId)
+                .OrderByDescending(a => a.FechaActualizacion)
                 .ToListAsync(cancellationToken);
+
+        public async Task<Analisis?> ObtenerAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default) =>
+            await ConDetalle.FirstOrDefaultAsync(a => a.Id == id && a.UsuarioId == usuarioId, cancellationToken);
+
+        public async Task<IReadOnlyList<Analisis>> ListarVersionesAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default) =>
+            await ConDetalle
+                .Where(a => a.AnalisisOrigenId == analisisOrigenId)
+                .OrderBy(a => a.FechaCreacion)
+                .ToListAsync(cancellationToken);
+
+        public void Agregar(Analisis analisis) => _context.Analisis.Add(analisis);
+
+        public void Eliminar(Analisis analisis)
+        {
+            _context.Analisis.Remove(analisis);
+            // La copia del criterio es solo de este analisis
+            _context.Contextos.Remove(analisis.Contexto);
         }
 
-        public async Task<Contexto?> ObtenerPorIdAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default)
-        {
-            return await ConDetalle
-                .FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId, cancellationToken);
-        }
-
-        public async Task<int> ContarPorUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default)
-        {
-            return await _context.Contextos
-                .CountAsync(c => c.UsuarioId == usuarioId, cancellationToken);
-        }
-
-        public async Task AddAsync(Contexto contexto, CancellationToken cancellationToken = default)
-        {
-            await _context.Contextos.AddAsync(contexto, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-
-        public async Task UpdateAsync(Contexto contexto, CancellationToken cancellationToken = default)
-        {
-            contexto.FechaActualizacion = DateTimeOffset.UtcNow;
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-
-        public async Task DeleteAsync(Contexto contexto, CancellationToken cancellationToken = default)
-        {
-            _context.Contextos.Remove(contexto);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
+        public Task GuardarCambiosAsync(CancellationToken cancellationToken = default) =>
+            _context.SaveChangesAsync(cancellationToken);
     }
 }

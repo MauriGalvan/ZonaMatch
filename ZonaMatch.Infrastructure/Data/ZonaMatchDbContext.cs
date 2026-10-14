@@ -28,6 +28,8 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
         public DbSet<Contexto> Contextos => Set<Contexto>();
+        public DbSet<Analisis> Analisis => Set<Analisis>();
+        public DbSet<AnalisisZona> AnalisisZonas => Set<AnalisisZona>();
         public DbSet<Persona> Personas => Set<Persona>();
         public DbSet<PuntoDeInteres> PuntosInteres => Set<PuntoDeInteres>();
         public DbSet<ContextoCriterio> ContextoCriterios => Set<ContextoCriterio>();
@@ -94,19 +96,24 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
             });
 
-            // Analisis guardado: cabecera normalizada (antes era una fila con tres jsonb)
+            // Criterio de busqueda: el perfil del usuario o la copia guardada con un analisis
             modelBuilder.Entity<Contexto>(e =>
             {
-                e.ToTable("contextos");
+                e.ToTable("contextos", t =>
+                    t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')"));
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
+                e.Property(x => x.Tipo).HasMaxLength(10).IsRequired();
                 e.Property(x => x.Personas).IsRequired();
                 e.Property(x => x.Mascotas).HasColumnType("text[]");
                 e.Property(x => x.Movilidad).HasColumnType("text[]");
                 e.Property(x => x.AlquilerMaximo).HasMaxLength(30);
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
-                e.HasIndex(x => x.UsuarioId);
+                // Un solo perfil por usuario; copias de analisis puede tener todas las que quiera
+                e.HasIndex(x => x.UsuarioId)
+                    .IsUnique()
+                    .HasFilter("tipo = 'perfil'")
+                    .HasDatabaseName("ux_contextos_perfil_usuario");
                 e.HasOne<Usuario>()
                     .WithMany()
                     .HasForeignKey(x => x.UsuarioId)
@@ -123,6 +130,45 @@ namespace ZonaMatch.Infrastructure.Data
                     .WithOne()
                     .HasForeignKey(x => x.ContextoId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Analisis guardado: zonas comparadas + la copia del criterio con que se calculo
+            modelBuilder.Entity<Analisis>(e =>
+            {
+                e.ToTable("analisis");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
+                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
+                e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
+                e.HasIndex(x => x.UsuarioId);
+                e.HasIndex(x => x.AnalisisOrigenId);
+                e.HasIndex(x => x.ContextoId).IsUnique();
+                e.HasOne<Usuario>()
+                    .WithMany()
+                    .HasForeignKey(x => x.UsuarioId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                // Cada analisis tiene su propia copia del criterio; se borran juntos (ver EliminarAnalisis)
+                e.HasOne(x => x.Contexto)
+                    .WithMany()
+                    .HasForeignKey(x => x.ContextoId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                // Borrar un original borra sus versiones
+                e.HasOne<Analisis>()
+                    .WithMany()
+                    .HasForeignKey(x => x.AnalisisOrigenId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                e.HasMany(x => x.Zonas)
+                    .WithOne()
+                    .HasForeignKey(x => x.AnalisisId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AnalisisZona>(e =>
+            {
+                e.ToTable("analisis_zonas");
+                e.HasKey(x => new { x.AnalisisId, x.Orden });
+                e.Property(x => x.ZonaSlug).HasMaxLength(100).IsRequired();
+                e.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
             });
 
             modelBuilder.Entity<Persona>(e =>

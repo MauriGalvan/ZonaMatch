@@ -9,10 +9,12 @@ using ZonaMatch.Api.Authentication;
 using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
+using ZonaMatch.Application.UseCases.AnalisisGuardados;
 using ZonaMatch.Application.UseCases.Aportes;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
 using ZonaMatch.Application.UseCases.Groups;
+using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Resenas;
@@ -86,7 +88,6 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-    builder.Services.AddScoped<IAnalisisService, AnalisisService>();
     builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
 
 // Comunidad de cada zona: resenas, preguntas y aportes al mapa
@@ -110,6 +111,17 @@ builder.Services.AddScoped<ValidarAporte>();
 
 // Catalogo de criterios del wizard (GET /Criterios)
 builder.Services.AddScoped<ListarCriterios>();
+
+// Perfil del usuario y analisis guardados (con sus versiones)
+builder.Services.AddScoped<IPerfilRepository, PerfilRepository>();
+builder.Services.AddScoped<ObtenerMiPerfil>();
+builder.Services.AddScoped<GuardarMiPerfil>();
+builder.Services.AddScoped<ListarMisAnalisis>();
+builder.Services.AddScoped<ObtenerAnalisis>();
+builder.Services.AddScoped<CrearAnalisis>();
+builder.Services.AddScoped<CrearVersionAnalisis>();
+builder.Services.AddScoped<RenombrarAnalisis>();
+builder.Services.AddScoped<EliminarAnalisis>();
 
 // Datos abiertos de cada zona (censo, seguridad), cargados por DATOS-ZONAS-DOCKER.bat
 builder.Services.AddScoped<ObtenerIndicadoresZona>();

@@ -26,6 +26,82 @@ namespace ZonaMatch.Infrastructure.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AnalisisOrigenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("analisis_origen_id");
+
+                    b.Property<Guid>("ContextoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contexto_id");
+
+                    b.Property<DateTimeOffset>("FechaActualizacion")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_actualizacion");
+
+                    b.Property<DateTimeOffset>("FechaCreacion")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nombre");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnalisisOrigenId");
+
+                    b.HasIndex("ContextoId")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("analisis", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.AnalisisZona", b =>
+                {
+                    b.Property<Guid>("AnalisisId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("analisis_id");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("integer")
+                        .HasColumnName("orden");
+
+                    b.Property<bool>("EsInicial")
+                        .HasColumnType("boolean")
+                        .HasColumnName("es_inicial");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("ZonaSlug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("zona_slug");
+
+                    b.HasKey("AnalisisId", "Orden");
+
+                    b.ToTable("analisis_zonas", "app");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
                 {
                     b.Property<Guid>("Id")
@@ -212,15 +288,15 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text[]")
                         .HasColumnName("movilidad");
 
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("nombre");
-
                     b.Property<int>("Personas")
                         .HasColumnType("integer")
                         .HasColumnName("personas");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("tipo");
 
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid")
@@ -228,9 +304,15 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UsuarioId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_contextos_perfil_usuario")
+                        .HasFilter("tipo = 'perfil'");
 
-                    b.ToTable("contextos", "app");
+                    b.ToTable("contextos", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
+                        });
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.ContextoCriterio", b =>
@@ -1013,6 +1095,37 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("usuarios", "app");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Analisis", null)
+                        .WithMany()
+                        .HasForeignKey("AnalisisOrigenId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("ZonaMatch.Domain.Entities.Contexto", "Contexto")
+                        .WithMany()
+                        .HasForeignKey("ContextoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Contexto");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.AnalisisZona", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Analisis", null)
+                        .WithMany("Zonas")
+                        .HasForeignKey("AnalisisId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.Usuario", "Usuario")
@@ -1037,17 +1150,6 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.GroupInvitation", b =>
-                {
-                    b.HasOne("ZonaMatch.Domain.Entities.Group", "Group")
-                        .WithMany("Invitations")
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Group");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Contexto", b =>
@@ -1076,6 +1178,17 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Navigation("Contexto");
 
                     b.Navigation("Criterio");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.GroupInvitation", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Group", "Group")
+                        .WithMany("Invitations")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipioAlias", b =>
@@ -1182,6 +1295,11 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>
+                {
+                    b.Navigation("Zonas");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
