@@ -139,6 +139,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.ToTable("analisis");
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
+                e.Property(x => x.PuntajesEnGrupoJson).HasColumnType("jsonb");
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
                 e.HasIndex(x => x.UsuarioId);

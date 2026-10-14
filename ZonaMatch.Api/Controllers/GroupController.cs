@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.JsonWebTokens;
 using ZonaMatch.Api.Authentication;
+using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Group;
 using ZonaMatch.Application.UseCases.Groups;
 
@@ -21,6 +22,8 @@ namespace ZonaMatch.Api.Controllers
         private readonly DeleteGroup _deleteGroup;
         private readonly UpdateGroup _updateGroup;
         private readonly RemoveParticipant _removeParticipant;
+        private readonly CalcularPuntajeEnGrupo _calcularPuntajeEnGrupo;
+        private readonly GuardarAnalisisEnGrupo _guardarAnalisisEnGrupo;
 
         public GroupController(
             CreateGroup createGroup,
@@ -28,7 +31,9 @@ namespace ZonaMatch.Api.Controllers
             GetGroups getGroups,
             DeleteGroup deleteGroup,
             UpdateGroup updateGroup,
-            RemoveParticipant removeParticipant)
+            RemoveParticipant removeParticipant,
+            CalcularPuntajeEnGrupo calcularPuntajeEnGrupo,
+            GuardarAnalisisEnGrupo guardarAnalisisEnGrupo)
         {
             _createGroup = createGroup;
             _getGroupDetails = getGroupDetails;
@@ -36,6 +41,8 @@ namespace ZonaMatch.Api.Controllers
             _deleteGroup = deleteGroup;
             _updateGroup = updateGroup;
             _removeParticipant = removeParticipant;
+            _calcularPuntajeEnGrupo = calcularPuntajeEnGrupo;
+            _guardarAnalisisEnGrupo = guardarAnalisisEnGrupo;
         }
 
         // GET /Group/{groupId} — detalle del grupo para sus participantes
@@ -51,6 +58,44 @@ namespace ZonaMatch.Api.Controllers
 
             var response = await _getGroupDetails.ExecuteAsync(groupId, userId, cancellationToken);
             return Ok(response);
+        }
+
+        // POST /Group/{groupId}/CalcularPuntajeEnGrupo
+        [HttpPost("{groupId:guid}/CalcularPuntajeEnGrupo")]
+        [ProducesResponseType<PuntajesEnGrupoResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> CalcularPuntajeEnGrupo(
+            [FromRoute] Guid groupId,
+            [FromBody] CalcularPuntajeEnGrupoRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (User.UsuarioId() is not { } userId)
+                return Unauthorized();
+
+            var response = await _calcularPuntajeEnGrupo.EjecutarAsync(groupId, userId, request, cancellationToken);
+            return Ok(response);
+        }
+
+        // POST /Group/{groupId}/Analisis — guarda el resultado compartido en los análisis del usuario actual.
+        [HttpPost("{groupId:guid}/Analisis")]
+        [ProducesResponseType<AnalisisDto>(StatusCodes.Status201Created)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GuardarAnalisisEnGrupo(
+            [FromRoute] Guid groupId,
+            [FromBody] GuardarAnalisisEnGrupoRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (User.UsuarioId() is not { } userId)
+                return Unauthorized();
+
+            var analysis = await _guardarAnalisisEnGrupo.EjecutarAsync(groupId, userId, request, cancellationToken);
+            return StatusCode(StatusCodes.Status201Created, analysis);
         }
 
         // POST /Group

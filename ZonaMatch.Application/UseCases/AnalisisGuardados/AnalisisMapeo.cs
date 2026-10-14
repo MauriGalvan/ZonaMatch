@@ -1,4 +1,6 @@
+using System.Text.Json;
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Group;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Comunidad;
@@ -9,6 +11,8 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
 {
     public static class AnalisisMapeo
     {
+        private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
         public static AnalisisDto ADto(Analisis analisis, IEnumerable<Analisis>? versiones = null) =>
             new(
                 analisis.Id,
@@ -23,6 +27,9 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 CriterioUsuario.PuntosADto(analisis.Contexto),
                 analisis.FechaCreacion,
                 analisis.FechaActualizacion,
+                analisis.PuntajesEnGrupoJson is null
+                    ? null
+                    : JsonSerializer.Deserialize<PuntajesEnGrupoResponse>(analisis.PuntajesEnGrupoJson, JsonOptions),
                 (versiones ?? [])
                     .OrderBy(v => v.FechaCreacion)
                     .Select(v => ADto(v))

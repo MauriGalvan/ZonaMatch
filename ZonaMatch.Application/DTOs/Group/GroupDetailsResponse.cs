@@ -16,7 +16,18 @@ public sealed record GroupParticipantResponse(
     string Initials,
     string Role,
     GroupParticipantStatsResponse Stats,
-    IReadOnlyDictionary<string, string?> Preferences);
+    IReadOnlyDictionary<string, string?> Preferences,
+    IReadOnlyList<GroupParticipantPointResponse> Points);
+
+public sealed record GroupParticipantPointResponse(
+    Guid Id,
+    string Name,
+    string? Address,
+    double? Latitude,
+    double? Longitude,
+    string? Type,
+    string? Priority,
+    string? MaximumTime);
 
 public sealed record GroupParticipantStatsResponse(
     int Criteria,

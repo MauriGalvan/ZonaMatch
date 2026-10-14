@@ -90,6 +90,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("nombre");
 
+                    b.Property<string>("PuntajesEnGrupoJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("puntajes_en_grupo_json");
+
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid")
                         .HasColumnName("usuario_id");

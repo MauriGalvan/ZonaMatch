@@ -73,6 +73,8 @@ builder.Services.AddScoped<IMapaService, MapaService>();
 builder.Services.AddScoped<IZonaService, ZonaService>();
 builder.Services.AddScoped<CreateGroup>();
 builder.Services.AddScoped<GetGroupDetails>();
+builder.Services.AddScoped<CalcularPuntajeEnGrupo>();
+builder.Services.AddScoped<GuardarAnalisisEnGrupo>();
 builder.Services.AddScoped<GetGroups>();
 builder.Services.AddScoped<DeleteGroup>();
 builder.Services.AddScoped<UpdateGroup>();

@@ -70,7 +70,19 @@ public sealed class GetGroupDetails
                         preferences.Count,
                         profile?.Puntos.Count ?? 0,
                         restrictionCount),
-                    preferences);
+                    preferences,
+                    profile?.Puntos
+                        .OrderBy(point => point.Orden)
+                        .Select(point => new GroupParticipantPointResponse(
+                            point.Id,
+                            point.Nombre,
+                            point.Direccion,
+                            point.Latitude,
+                            point.Longitude,
+                            point.Tipo,
+                            point.Prioridad,
+                            point.TiempoMax))
+                        .ToArray() ?? []);
             })
             .ToArray();
 
