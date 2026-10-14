@@ -94,10 +94,9 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         }
 
         [Fact]
-        public async Task ObtenerMiPerfil_SinPerfil_LanzaNoEncontrado()
+        public async Task ObtenerMiPerfil_SinPerfil_DevuelveNull()
         {
-            await Assert.ThrowsAsync<PerfilNoEncontradoException>(
-                () => new ObtenerMiPerfil(_perfiles).EjecutarAsync(Usuario));
+            Assert.Null(await new ObtenerMiPerfil(_perfiles).EjecutarAsync(Usuario));
         }
     }
 }

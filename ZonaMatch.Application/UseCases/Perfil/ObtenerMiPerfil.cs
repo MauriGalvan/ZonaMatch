@@ -1,10 +1,10 @@
 using ZonaMatch.Application.DTOs;
-using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.Perfil
 {
-    // Criterio base del usuario. Sin perfil responde 404: el front lo usa para mandarlo a armarlo.
+    // Criterio base del usuario, o null si todavia no lo armo. No tenerlo es lo normal en el primer ingreso,
+    // asi que no es una excepcion: el controlador responde 404 y el front manda al usuario a armarlo.
     public class ObtenerMiPerfil
     {
         private readonly IPerfilRepository _perfiles;
@@ -14,12 +14,11 @@ namespace ZonaMatch.Application.UseCases.Perfil
             _perfiles = perfiles;
         }
 
-        public async Task<PerfilDto> EjecutarAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+        public async Task<PerfilDto?> EjecutarAsync(Guid usuarioId, CancellationToken cancellationToken = default)
         {
-            var perfil = await _perfiles.ObtenerDeUsuarioAsync(usuarioId, cancellationToken)
-                ?? throw new PerfilNoEncontradoException();
+            var perfil = await _perfiles.ObtenerDeUsuarioAsync(usuarioId, cancellationToken);
 
-            return PerfilMapeo.ADto(perfil);
+            return perfil is null ? null : PerfilMapeo.ADto(perfil);
         }
     }
 }
