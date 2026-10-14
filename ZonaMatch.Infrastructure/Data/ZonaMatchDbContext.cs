@@ -34,6 +34,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<PuntoDeInteres> PuntosInteres => Set<PuntoDeInteres>();
         public DbSet<ContextoCriterio> ContextoCriterios => Set<ContextoCriterio>();
         public DbSet<Criterio> Criterios => Set<Criterio>();
+        public DbSet<AlquilerZona> AlquileresZona => Set<AlquilerZona>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -234,6 +235,21 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Orden);
                 e.Property(x => x.Activo);
                 e.HasIndex(x => x.Orden);
+            });
+
+            // Temporal: alquiler promedio por zona base hasta que lo llene el scraping de Argenprop
+            modelBuilder.Entity<AlquilerZona>(e =>
+            {
+                e.ToTable("alquileres_zona", t =>
+                {
+                    t.HasCheckConstraint("ck_alquileres_zona_promedio", "alquiler_promedio >= 0");
+                    t.HasCheckConstraint("ck_alquileres_zona_propiedades", "propiedades_disponibles >= 0");
+                });
+                e.HasKey(x => x.ZonaSlug);
+                e.Property(x => x.ZonaSlug).HasMaxLength(100);
+                e.Property(x => x.AlquilerPromedio).HasColumnType("numeric(12,0)");
+                e.Property(x => x.Fuente).HasMaxLength(30).IsRequired();
+                e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
             });
 
             // Comunidad de una zona (resenas, preguntas y aportes). Las zonas no son una tabla: se referencian

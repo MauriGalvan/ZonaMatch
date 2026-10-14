@@ -26,6 +26,41 @@ namespace ZonaMatch.Infrastructure.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.AlquilerZona", b =>
+                {
+                    b.Property<string>("ZonaSlug")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("zona_slug");
+
+                    b.Property<decimal>("AlquilerPromedio")
+                        .HasColumnType("numeric(12,0)")
+                        .HasColumnName("alquiler_promedio");
+
+                    b.Property<DateTimeOffset>("FechaActualizacion")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_actualizacion");
+
+                    b.Property<string>("Fuente")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("fuente");
+
+                    b.Property<int>("PropiedadesDisponibles")
+                        .HasColumnType("integer")
+                        .HasColumnName("propiedades_disponibles");
+
+                    b.HasKey("ZonaSlug");
+
+                    b.ToTable("alquileres_zona", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_alquileres_zona_promedio", "alquiler_promedio >= 0");
+
+                            t.HasCheckConstraint("ck_alquileres_zona_propiedades", "propiedades_disponibles >= 0");
+                        });
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>
                 {
                     b.Property<Guid>("Id")

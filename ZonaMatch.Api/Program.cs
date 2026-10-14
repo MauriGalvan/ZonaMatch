@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using ZonaMatch.Api.Authentication;
+using ZonaMatch.Api.Background;
 using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
@@ -17,6 +18,7 @@ using ZonaMatch.Application.UseCases.Groups;
 using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Preguntas;
+using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Infrastructure.Data;
@@ -122,6 +124,18 @@ builder.Services.AddScoped<CrearAnalisis>();
 builder.Services.AddScoped<CrearVersionAnalisis>();
 builder.Services.AddScoped<RenombrarAnalisis>();
 builder.Services.AddScoped<EliminarAnalisis>();
+
+// Motor de puntaje: perfiles de todas las zonas en memoria y tiempos de viaje con MOTIS
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<PerfilesZonaCache>();
+builder.Services.AddScoped<IPerfilesZonaRepository, PerfilesZonaRepository>();
+builder.Services.AddHttpClient<IRuteoClient, MotisRuteoClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Motis:Url"] ?? "http://localhost:18080/");
+    client.Timeout = TimeSpan.FromSeconds(8);
+});
+builder.Services.AddScoped<CalcularPuntajes>();
+builder.Services.AddHostedService<PrecalcularPerfilesZona>();
 
 // Datos abiertos de cada zona (censo, seguridad), cargados por DATOS-ZONAS-DOCKER.bat
 builder.Services.AddScoped<ObtenerIndicadoresZona>();
