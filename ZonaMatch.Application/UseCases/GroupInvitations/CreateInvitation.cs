@@ -25,7 +25,11 @@ public class CreateInvitation
     }
 
     // Le pasamos el currentUserId que sacaremos del JWT en el Controlador
-    public async Task ExecuteAsync(CreateInvitationRequest request, Guid currentUserId, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(
+        CreateInvitationRequest request,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        string? frontendBaseUrl = null)
     {
         // 1. Buscar el grupo y validar que exista
         var group = await _groupRepository.GetByIdAsync(request.GroupId, cancellationToken);
@@ -56,8 +60,10 @@ public class CreateInvitation
         await _invitationRepository.AddAsync(invitation, cancellationToken);
 
         // 5. Enviar el correo usando tu IEmailService
-        // Más adelante cambiaremos el "localhost" por la URL de tu frontend real
-        string inviteLink = $"http://localhost:3000/invitations/email/{invitation.Token}";
+        var frontendUrl = string.IsNullOrWhiteSpace(frontendBaseUrl)
+            ? "http://localhost:5173"
+            : frontendBaseUrl.TrimEnd('/');
+        string inviteLink = $"{frontendUrl}/invitations/email/{invitation.Token}";
         string subject = $"¡Te han invitado al grupo {group.Name} en ZonaMatch!";
 
         // Armamos un mini HTML para que el correo se vea más presentable

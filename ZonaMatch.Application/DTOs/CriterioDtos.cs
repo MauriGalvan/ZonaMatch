@@ -1,3 +1,5 @@
+using ZonaMatch.Application.DTOs.Group;
+
 namespace ZonaMatch.Application.DTOs
 {
     // Respuestas del perfil y de los analisis, armadas desde las tablas normalizadas.
@@ -21,6 +23,7 @@ namespace ZonaMatch.Application.DTOs
         PuntosDto Puntos,
         DateTimeOffset FechaCreacion,
         DateTimeOffset FechaActualizacion,
+        PuntajesEnGrupoResponse? PuntajesEnGrupo,
         IReadOnlyList<AnalisisDto> Versiones);
 
     public record ZonaAnalisisDto(string Slug, string Nombre, bool EsInicial);

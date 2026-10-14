@@ -18,6 +18,9 @@ namespace ZonaMatch.Domain.Entities
 
         public Contexto Contexto { get; set; } = null!;
 
+        // Snapshot del resultado ponderado cuando el análisis se generó desde un grupo.
+        public string? PuntajesEnGrupoJson { get; set; }
+
         // null en los originales; en una version, el analisis del que deriva (siempre un original)
         public Guid? AnalisisOrigenId { get; set; }
 

@@ -18,6 +18,7 @@ namespace ZonaMatch.Api.Controllers
         private readonly CrearVersionAnalisis _crearVersionAnalisis;
         private readonly RenombrarAnalisis _renombrarAnalisis;
         private readonly EliminarAnalisis _eliminarAnalisis;
+        private readonly CompararAnalisis _compararAnalisis;
 
         public AnalisisController(
             ListarMisAnalisis listarMisAnalisis,
@@ -25,7 +26,8 @@ namespace ZonaMatch.Api.Controllers
             CrearAnalisis crearAnalisis,
             CrearVersionAnalisis crearVersionAnalisis,
             RenombrarAnalisis renombrarAnalisis,
-            EliminarAnalisis eliminarAnalisis)
+            EliminarAnalisis eliminarAnalisis,
+            CompararAnalisis compararAnalisis)
         {
             _listarMisAnalisis = listarMisAnalisis;
             _obtenerAnalisis = obtenerAnalisis;
@@ -33,6 +35,7 @@ namespace ZonaMatch.Api.Controllers
             _crearVersionAnalisis = crearVersionAnalisis;
             _renombrarAnalisis = renombrarAnalisis;
             _eliminarAnalisis = eliminarAnalisis;
+            _compararAnalisis = compararAnalisis;
         }
 
         // GET /Analisis — originales, cada uno con sus versiones, el mas reciente primero
@@ -45,6 +48,19 @@ namespace ZonaMatch.Api.Controllers
                 return Unauthorized();
 
             return Ok(await _listarMisAnalisis.EjecutarAsync(usuarioId, cancellationToken));
+        }
+
+        // POST /Analisis/Comparar — recalcula las zonas guardadas con cada análisis elegido
+        [HttpPost("Comparar")]
+        [ProducesResponseType<ComparacionAnalisisDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Comparar(CompararAnalisisRequest solicitud, CancellationToken cancellationToken)
+        {
+            if (User.UsuarioId() is not { } usuarioId)
+                return Unauthorized();
+
+            return Ok(await _compararAnalisis.EjecutarAsync(usuarioId, solicitud, cancellationToken));
         }
 
         // GET /Analisis/{id}

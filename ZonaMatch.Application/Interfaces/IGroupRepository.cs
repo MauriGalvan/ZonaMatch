@@ -12,6 +12,8 @@ public interface IGroupRepository
     Task DeleteAsync(Group group, CancellationToken cancellationToken);
     // Necesitamos un método para buscar un solo grupo por ID
     Task<Group?> GetByIdAsync(Guid groupId, CancellationToken cancellationToken);
+    // Detalle de lectura del grupo con sus participantes y los usuarios asociados.
+    Task<Group?> GetDetailsByIdAsync(Guid groupId, CancellationToken cancellationToken);
     Task<IEnumerable<Group>> GetByUserCreatorIdAsync(Guid userCreatorId, CancellationToken cancellationToken);
     Task UpdateAsync(Group group, CancellationToken cancellationToken);
     Task<Group?> GetByInviteTokenAsync(Guid inviteToken, CancellationToken cancellationToken);

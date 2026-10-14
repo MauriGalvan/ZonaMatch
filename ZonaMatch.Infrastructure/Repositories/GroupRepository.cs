@@ -45,6 +45,16 @@ public class GroupRepository : IGroupRepository
             .FirstOrDefaultAsync(g => g.Id == groupId, cancellationToken);
     }
 
+    public async Task<Group?> GetDetailsByIdAsync(Guid groupId, CancellationToken cancellationToken)
+    {
+        return await _context.Groups
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(g => g.Participants)
+                .ThenInclude(p => p.User)
+            .FirstOrDefaultAsync(g => g.Id == groupId, cancellationToken);
+    }
+
     public async Task DeleteAsync(Group group, CancellationToken cancellationToken)
     {
         // Eliminamos el grupo del contexto
