@@ -14,8 +14,6 @@ namespace ZonaMatch.Infrastructure.Data
             => options.UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.UseNetTopologySuite();
-                // Retries transient failures (e.g. a stale pooled connection after the DB container restarted)
-                npgsql.EnableRetryOnFailure(3);
                 npgsql.MigrationsHistoryTable(HistoryRepository.DefaultTableName, AppSchema);
             });
     }

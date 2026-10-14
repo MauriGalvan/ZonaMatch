@@ -8,20 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentAssertions" Version="8.11.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="Moq.EntityFrameworkCore" Version="10.0.0.2" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\ZonaMatch.Application\ZonaMatch.Application.csproj" />
-    <ProjectReference Include="..\..\ZonaMatch.domain\ZonaMatch.Domain.csproj" />
   </ItemGroup>
 
 </Project>
