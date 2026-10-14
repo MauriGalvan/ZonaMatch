@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.JsonWebTokens;
+using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs.Group;
 using ZonaMatch.Application.UseCases.Groups;
 
@@ -15,18 +16,41 @@ namespace ZonaMatch.Api.Controllers
     {
 
         private readonly CreateGroup _createGroup;
+        private readonly GetGroupDetails _getGroupDetails;
         private readonly GetGroups _getGroups;
         private readonly DeleteGroup _deleteGroup;
         private readonly UpdateGroup _updateGroup;
         private readonly RemoveParticipant _removeParticipant;
 
-        public GroupController(CreateGroup createGroup, GetGroups getGroups, DeleteGroup deleteGroup, UpdateGroup updateGroup, RemoveParticipant removeParticipant)
+        public GroupController(
+            CreateGroup createGroup,
+            GetGroupDetails getGroupDetails,
+            GetGroups getGroups,
+            DeleteGroup deleteGroup,
+            UpdateGroup updateGroup,
+            RemoveParticipant removeParticipant)
         {
             _createGroup = createGroup;
+            _getGroupDetails = getGroupDetails;
             _getGroups = getGroups;
             _deleteGroup = deleteGroup;
             _updateGroup = updateGroup;
             _removeParticipant = removeParticipant;
+        }
+
+        // GET /Group/{groupId} — detalle del grupo para sus participantes
+        [HttpGet("{groupId:guid}")]
+        [ProducesResponseType<GroupDetailsResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetGroupDetails([FromRoute] Guid groupId, CancellationToken cancellationToken)
+        {
+            if (User.UsuarioId() is not { } userId)
+                return Unauthorized();
+
+            var response = await _getGroupDetails.ExecuteAsync(groupId, userId, cancellationToken);
+            return Ok(response);
         }
 
         // POST /Group

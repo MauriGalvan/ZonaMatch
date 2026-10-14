@@ -72,6 +72,7 @@ builder.Services.AddScoped<IGeolocationService, GeolocationService>();
 builder.Services.AddScoped<IMapaService, MapaService>();
 builder.Services.AddScoped<IZonaService, ZonaService>();
 builder.Services.AddScoped<CreateGroup>();
+builder.Services.AddScoped<GetGroupDetails>();
 builder.Services.AddScoped<GetGroups>();
 builder.Services.AddScoped<DeleteGroup>();
 builder.Services.AddScoped<UpdateGroup>();
@@ -82,6 +83,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<GetInvitationByToken>();
 builder.Services.AddScoped<AcceptInvitation>();
 builder.Services.AddScoped<GetGroupByLink>();
+builder.Services.AddScoped<GetGroupInviteLink>();
 builder.Services.AddScoped<JoinGroupByLink>();
 builder.Services.AddScoped<RevokeInviteLink>();
 

@@ -27,6 +27,12 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         public Task<Contexto?> ObtenerDeUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
             Task.FromResult(Perfiles.FirstOrDefault(p => p.UsuarioId == usuarioId));
 
+        public Task<IReadOnlyList<Contexto>> ObtenerDeUsuariosAsync(
+            IReadOnlyCollection<Guid> usuarioIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Contexto>>(
+                Perfiles.Where(perfil => usuarioIds.Contains(perfil.UsuarioId)).ToList());
+
         public void Agregar(Contexto perfil) => Perfiles.Add(perfil);
 
         public Task GuardarCambiosAsync(CancellationToken cancellationToken = default)
