@@ -76,6 +76,9 @@ echo [4/5] Calculando los indicadores de cada zona (tarda alrededor de un minuto
 if errorlevel 1 goto :err_calc
 %PSQL% < etl\calcular_transporte.sql
 if errorlevel 1 goto :err_calc
+rem Alquileres estimados por zona (temporal, hasta el scraping de Argenprop)
+%PSQL% < etl\estimar_alquileres.sql
+if errorlevel 1 goto :err_calc
 
 echo.
 echo [5/5] Preparando el motor de ruteo MOTIS...

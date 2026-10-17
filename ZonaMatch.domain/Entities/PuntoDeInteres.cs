@@ -4,7 +4,7 @@ namespace ZonaMatch.Domain.Entities
     // geograficos del dump: este pertenece a un contexto y desaparece con el.
     public class PuntoDeInteres
     {
-        public Guid Id { get; set; } = Guid.CreateVersion7();
+        public Guid Id { get; set; }
 
         public Guid ContextoId { get; set; }
 

@@ -2,13 +2,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // POST /Analisis — create a new saved analysis for the current user.
-    public class CrearAnalisisRequest
+    // Criterio completo de un usuario: el perfil (PUT /Perfil) o el ajuste de una version de analisis.
+    // Body: { "contexto": { personas, edades[], movilidad[], mascotas[] }, "criterios": { "seguridad": "alta" },
+    //         "puntos": { "alquilerMaximo": "800000", "lugares": [] } }
+    public class CriterioUsuarioRequest
     {
-        [Required(ErrorMessage = "El nombre es obligatorio.")]
-        [StringLength(50, MinimumLength = 1, ErrorMessage = "El nombre debe tener entre 1 y 50 caracteres.")]
-        public string Nombre { get; set; } = string.Empty;
-
         [Required(ErrorMessage = "El contexto es obligatorio.")]
         public ContextoRequest Contexto { get; set; } = null!;
 

@@ -6,15 +6,19 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using ZonaMatch.Api.Authentication;
+using ZonaMatch.Api.Background;
 using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
+using ZonaMatch.Application.UseCases.AnalisisGuardados;
 using ZonaMatch.Application.UseCases.Aportes;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
 using ZonaMatch.Application.UseCases.Groups;
+using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Preguntas;
+using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Infrastructure.Data;
@@ -68,6 +72,9 @@ builder.Services.AddScoped<IGeolocationService, GeolocationService>();
 builder.Services.AddScoped<IMapaService, MapaService>();
 builder.Services.AddScoped<IZonaService, ZonaService>();
 builder.Services.AddScoped<CreateGroup>();
+builder.Services.AddScoped<GetGroupDetails>();
+builder.Services.AddScoped<CalcularPuntajeEnGrupo>();
+builder.Services.AddScoped<GuardarAnalisisEnGrupo>();
 builder.Services.AddScoped<GetGroups>();
 builder.Services.AddScoped<DeleteGroup>();
 builder.Services.AddScoped<UpdateGroup>();
@@ -78,6 +85,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<GetInvitationByToken>();
 builder.Services.AddScoped<AcceptInvitation>();
 builder.Services.AddScoped<GetGroupByLink>();
+builder.Services.AddScoped<GetGroupInviteLink>();
 builder.Services.AddScoped<JoinGroupByLink>();
 builder.Services.AddScoped<RevokeInviteLink>();
 
@@ -86,7 +94,6 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-    builder.Services.AddScoped<IAnalisisService, AnalisisService>();
     builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
 
 // Comunidad de cada zona: resenas, preguntas y aportes al mapa
@@ -110,6 +117,30 @@ builder.Services.AddScoped<ValidarAporte>();
 
 // Catalogo de criterios del wizard (GET /Criterios)
 builder.Services.AddScoped<ListarCriterios>();
+
+// Perfil del usuario y analisis guardados (con sus versiones)
+builder.Services.AddScoped<IPerfilRepository, PerfilRepository>();
+builder.Services.AddScoped<ObtenerMiPerfil>();
+builder.Services.AddScoped<GuardarMiPerfil>();
+builder.Services.AddScoped<ListarMisAnalisis>();
+builder.Services.AddScoped<ObtenerAnalisis>();
+builder.Services.AddScoped<CompararAnalisis>();
+builder.Services.AddScoped<CrearAnalisis>();
+builder.Services.AddScoped<CrearVersionAnalisis>();
+builder.Services.AddScoped<RenombrarAnalisis>();
+builder.Services.AddScoped<EliminarAnalisis>();
+
+// Motor de puntaje: perfiles de todas las zonas en memoria y tiempos de viaje con MOTIS
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<PerfilesZonaCache>();
+builder.Services.AddScoped<IPerfilesZonaRepository, PerfilesZonaRepository>();
+builder.Services.AddHttpClient<IRuteoClient, MotisRuteoClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Motis:Url"] ?? "http://localhost:18080/");
+    client.Timeout = TimeSpan.FromSeconds(8);
+});
+builder.Services.AddScoped<CalcularPuntajes>();
+builder.Services.AddHostedService<PrecalcularPerfilesZona>();
 
 // Datos abiertos de cada zona (censo, seguridad), cargados por DATOS-ZONAS-DOCKER.bat
 builder.Services.AddScoped<ObtenerIndicadoresZona>();

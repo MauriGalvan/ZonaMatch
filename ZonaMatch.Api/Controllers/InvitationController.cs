@@ -10,7 +10,7 @@ using ZonaMatch.Application.UseCases.GroupLinks;
 namespace ZonaMatch.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class InvitationsController : ControllerBase
 {
     private Guid GetCurrentUserId()
@@ -31,11 +31,33 @@ public class InvitationsController : ControllerBase
     public async Task<IActionResult> CreateEmailInvitation(
         [FromBody] CreateInvitationRequest request,
         [FromServices] CreateInvitation createInvitation,
+        [FromServices] IConfiguration configuration,
+        [FromServices] IHostEnvironment environment,
         CancellationToken cancellationToken)
     {
+        var frontendBaseUrl = configuration["Frontend:BaseUrl"]?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+        {
+            var requestOrigin = Request.Headers["Origin"].ToString().TrimEnd('/');
+            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+            frontendBaseUrl = allowedOrigins.FirstOrDefault(origin =>
+                string.Equals(origin.TrimEnd('/'), requestOrigin, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (string.IsNullOrWhiteSpace(frontendBaseUrl) && environment.IsDevelopment())
+            frontendBaseUrl = "http://localhost:5173";
+
+        if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                Error = "Configura Frontend:BaseUrl para generar el enlace de invitación."
+            });
+        }
+
         try
         {
-            await createInvitation.ExecuteAsync(request, GetCurrentUserId(), cancellationToken);
+            await createInvitation.ExecuteAsync(request, GetCurrentUserId(), cancellationToken, frontendBaseUrl);
             return Ok(new { Message = "Invitación enviada por correo exitosamente." });
         }
         catch (Exception ex)
@@ -87,6 +109,21 @@ public class InvitationsController : ControllerBase
     // ==========================================
     // INVITACIONES POR LINK PÚBLICO (ESTILO WHATSAPP)
     // ==========================================
+
+    [Authorize]
+    [HttpGet("Link/Group/{groupId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCurrentGroupInviteLink(
+        [FromRoute] Guid groupId,
+        [FromServices] GetGroupInviteLink getGroupInviteLink,
+        CancellationToken cancellationToken)
+    {
+        var token = await getGroupInviteLink.ExecuteAsync(groupId, GetCurrentUserId(), cancellationToken);
+        return Ok(new { InviteToken = token });
+    }
 
     [HttpGet("Link/{token:guid}")]
     [ProducesResponseType(typeof(GroupLinkDetailsResponse), StatusCodes.Status200OK)]

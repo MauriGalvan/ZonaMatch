@@ -3,7 +3,7 @@ namespace ZonaMatch.Domain.Entities
     // Integrante del hogar de un contexto (tabla app.personas), una fila por persona.
     public class Persona
     {
-        public Guid Id { get; set; } = Guid.CreateVersion7();
+        public Guid Id { get; set; }
 
         public Guid ContextoId { get; set; }
 
