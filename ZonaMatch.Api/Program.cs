@@ -8,12 +8,14 @@ using System.Threading.RateLimiting;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Api.Background;
 using ZonaMatch.Api.ExceptionHandling;
+using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.AnalisisGuardados;
 using ZonaMatch.Application.UseCases.Aportes;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
+using ZonaMatch.Application.UseCases.Contacto;
 using ZonaMatch.Application.UseCases.Groups;
 using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Application.UseCases.Criterios;
@@ -146,6 +148,10 @@ builder.Services.AddHostedService<PrecalcularPerfilesZona>();
 builder.Services.AddScoped<ObtenerIndicadoresZona>();
 builder.Services.AddScoped<ObtenerTransporteZona>();
 
+// Formulario de contacto de la landing: cada envio genera un mail al equipo
+builder.Services.AddSingleton(new ContactoOpciones(builder.Configuration["Contacto:Destinatario"] ?? "zonamatchtpi@gmail.com"));
+builder.Services.AddScoped<EnviarFormularioContacto>();
+
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()
     .BindConfiguration(JwtOptions.SectionName)
@@ -163,6 +169,10 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("login", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+    // El formulario de contacto es publico y manda un mail por envio: 5 cada 10 minutos por IP
+    options.AddPolicy("contacto", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10) }));
 });
 
 // GeoJSON compresses very well; "application/geo+json" is not in the default MIME list
