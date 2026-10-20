@@ -9,14 +9,13 @@ using ZonaMatch.Domain.Puntaje;
 namespace ZonaMatch.Application.UseCases.Groups;
 
 /// <summary>
-/// Calcula el puntaje individual de cada integrante con el mismo motor que el análisis personal,
-/// y combina los resultados por zona usando los pesos configurados en el grupo.
+/// Scores zones containing group members' places and their contiguous neighbors, then combines the results using the configured weights.
 /// </summary>
 public sealed partial class CalcularPuntajeEnGrupo
 {
     private const int ViajesEnParalelo = 6;
-    private const int VecinasCandidatas = 6;
-    private const int VecinasDevueltas = 4;
+    private const int RecomendadasDevueltas = 4;
+    private const int ZonasTopAutomatico = 5;
 
     private readonly IGroupRepository _groups;
     private readonly IPerfilRepository _profiles;
@@ -49,19 +48,17 @@ public sealed partial class CalcularPuntajeEnGrupo
 
         var participantIds = group.Participants.Select(participant => participant.Id).ToHashSet();
         var weights = ValidateWeights(request.PesosParticipantes, participantIds);
-        var slugs = request.Zonas
+        var slugs = (request.ZonasAgregadas ?? [])
             .Select(slug => slug?.Trim() ?? string.Empty)
             .Where(slug => slug.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        if (slugs.Length == 0)
-            throw new DatosInvalidosException("Elegí al menos una zona.");
 
         var universe = await _zoneProfiles.ListarAsync(cancellationToken);
         var zonesBySlug = universe.ToDictionary(zone => zone.Slug, StringComparer.Ordinal);
-        var selectedZones = slugs.Where(zonesBySlug.ContainsKey).Select(slug => zonesBySlug[slug]).ToArray();
-        if (selectedZones.Length == 0)
-            throw new NoEncontradoException("Todavía no hay datos para calcular el puntaje de estas zonas.");
+        var addedZones = slugs.Where(zonesBySlug.ContainsKey).Select(slug => zonesBySlug[slug]).ToArray();
+        if (addedZones.Length != slugs.Length)
+            throw new NoEncontradoException("No se encontraron una o más zonas agregadas al análisis.");
 
         var profiles = await _profiles.ObtenerDeUsuariosAsync(
             group.Participants.Select(participant => participant.UserId).Distinct().ToArray(),
@@ -83,21 +80,26 @@ public sealed partial class CalcularPuntajeEnGrupo
             })
             .ToArray();
 
-        var selectedSlugs = selectedZones.Select(zone => zone.Slug).ToHashSet(StringComparer.Ordinal);
-        var neighborSlugs = await _zoneProfiles.ListarVecinasAsync(selectedSlugs, cancellationToken);
-        var candidateZones = neighborSlugs
-            .Where(slug => !selectedSlugs.Contains(slug) && zonesBySlug.ContainsKey(slug))
-            .Distinct(StringComparer.Ordinal)
-            .Select(slug => zonesBySlug[slug])
-            .Select(zone => (Zone: zone, Score: CalculateCandidateScore(zone, members, weights, motor)))
-            .Where(candidate => candidate.Score is not null)
-            .OrderByDescending(candidate => candidate.Score)
-            .ThenBy(candidate => candidate.Zone.Nombre, StringComparer.CurrentCulture)
-            .Take(VecinasCandidatas)
-            .Select(candidate => candidate.Zone)
+        var locations = members
+            .Where(member => weights[member.Participant.Id] > 0)
+            .SelectMany(member => member.Request.Lugares)
+            .Where(place => place.TieneUbicacion)
+            .Select(place => (Latitud: place.Latitud!.Value, Longitud: place.Longitud!.Value))
             .ToArray();
+        var nearbySlugs = locations.Length == 0
+            ? universe.Select(zone => zone.Slug).ToArray()
+            : await _zoneProfiles.ListarZonasDelEntornoAsync(locations, cancellationToken);
+        var nearbyZones = nearbySlugs
+            .Where(zonesBySlug.ContainsKey)
+            .Select(slug => zonesBySlug[slug])
+            .ToArray();
+        if (locations.Length > 0 && nearbyZones.Length == 0)
+            throw new DatosInvalidosException("No se encontraron zonas del catálogo que contengan los puntos de interés de los participantes.");
 
-        var zonesToCalculate = selectedZones.Concat(candidateZones).ToArray();
+        var zonesToCalculate = nearbyZones
+            .Concat(addedZones)
+            .DistinctBy(zone => zone.Slug, StringComparer.Ordinal)
+            .ToArray();
         var calculations = members
             .Select(async member =>
             {
@@ -117,30 +119,37 @@ public sealed partial class CalcularPuntajeEnGrupo
             .ToArray();
 
         var memberScores = await Task.WhenAll(calculations);
-        var hasAnyRanking = selectedZones.Any(zone => memberScores.Any(member =>
+        var hasAnyRanking = zonesToCalculate.Any(zone => memberScores.Any(member =>
             weights[member.Participant.Id] > 0 && member.Zones[zone.Slug].Resultado.Puntaje is not null));
         if (!hasAnyRanking)
-            throw new DatosInvalidosException("Ningún participante con peso positivo tiene datos suficientes para puntuar las zonas elegidas.");
+            throw new DatosInvalidosException("Ningún participante con peso positivo tiene datos suficientes para puntuar las zonas disponibles.");
 
-        var excluded = group.Participants
-            .Select(participant => Exclusion(participant, weights[participant.Id], profilesByUserId, selectedZones, memberScores))
-            .Where(exclusion => exclusion is not null)
-            .Select(exclusion => exclusion!)
-            .ToArray();
-
-        var rankedZones = selectedZones
+        var rankedCandidates = zonesToCalculate
             .Select(zone => BuildZoneResult(zone, group.Participants, weights, memberScores))
             .OrderByDescending(zone => zone.Puntaje.HasValue)
             .ThenByDescending(zone => zone.Puntaje)
             .ThenBy(zone => zone.Nombre, StringComparer.CurrentCulture)
             .ToArray();
 
-        var nearby = candidateZones
-            .Select(zone => BuildZoneResult(zone, group.Participants, weights, memberScores))
-            .Where(zone => zone.Puntaje is not null)
-            .OrderByDescending(zone => zone.Puntaje)
+        var rankedZones = rankedCandidates
+            .Take(ZonasTopAutomatico)
+            .Concat(addedZones.Select(zone => rankedCandidates.Single(result => result.Slug == zone.Slug)))
+            .DistinctBy(zone => zone.Slug, StringComparer.Ordinal)
+            .OrderByDescending(zone => zone.Puntaje.HasValue)
+            .ThenByDescending(zone => zone.Puntaje)
             .ThenBy(zone => zone.Nombre, StringComparer.CurrentCulture)
-            .Take(VecinasDevueltas)
+            .ToArray();
+        var zonesForExclusion = rankedZones.Select(zone => zonesBySlug[zone.Slug]).ToArray();
+        var excluded = group.Participants
+            .Select(participant => Exclusion(participant, weights[participant.Id], profilesByUserId, zonesForExclusion, memberScores))
+            .Where(exclusion => exclusion is not null)
+            .Select(exclusion => exclusion!)
+            .ToArray();
+
+        var includedSlugs = rankedZones.Select(zone => zone.Slug).ToHashSet(StringComparer.Ordinal);
+        var nearby = rankedCandidates
+            .Where(zone => !includedSlugs.Contains(zone.Slug) && zone.Puntaje is not null)
+            .Take(RecomendadasDevueltas)
             .ToArray();
 
         var groupPoints = group.Participants
@@ -248,25 +257,6 @@ public sealed partial class CalcularPuntajeEnGrupo
         return match.Success && int.TryParse(match.Value, out var minutes) && minutes > 0
             ? minutes
             : 45;
-    }
-
-    private static int? CalculateCandidateScore(
-        PerfilZona zone,
-        IReadOnlyList<MemberInput> members,
-        IReadOnlyDictionary<Guid, decimal> weights,
-        MotorPuntaje motor)
-    {
-        var available = members
-            .Select(member => (Weight: weights[member.Participant.Id], Score: motor.Calcular(zone, member.Request).Puntaje))
-            .Where(entry => entry.Weight > 0 && entry.Score is not null)
-            .ToArray();
-        var totalWeight = available.Sum(entry => entry.Weight);
-
-        return totalWeight == 0
-            ? null
-            : (int)Math.Clamp(decimal.Round(
-                available.Sum(entry => entry.Score!.Value * entry.Weight) / totalWeight,
-                0, MidpointRounding.AwayFromZero), 0, 100);
     }
 
     private static IReadOnlyList<ViajeParticipanteEnGrupoResponse> BuildPlaceDetails(
@@ -408,7 +398,7 @@ public sealed partial class CalcularPuntajeEnGrupo
             reason = "Tiene un peso asignado de 0.";
         else if (!memberScores.Any(member => member.Participant.Id == participant.Id && selectedZones.Any(zone =>
                      member.Zones.TryGetValue(zone.Slug, out var result) && result.Resultado.Puntaje is not null)))
-            reason = "No obtuvo puntajes con los datos disponibles en las zonas elegidas.";
+            reason = "No obtuvo puntajes con los datos disponibles en las zonas del ranking.";
 
         return reason is null
             ? null

@@ -47,5 +47,7 @@ namespace ZonaMatch.Application.DTOs
         public string Nombre { get; set; } = string.Empty;
 
         public bool EsInicial { get; set; }
+
+        public bool EsAgregada { get; set; }
     }
 }

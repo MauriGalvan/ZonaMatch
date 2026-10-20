@@ -60,7 +60,7 @@ namespace ZonaMatch.Api.Controllers
             return Ok(response);
         }
 
-        // POST /Group/{groupId}/CalcularPuntajeEnGrupo
+        // POST /Group/{groupId}/CalcularPuntajeEnGrupo — calculates the automatic top five and recommendations.
         [HttpPost("{groupId:guid}/CalcularPuntajeEnGrupo")]
         [ProducesResponseType<PuntajesEnGrupoResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]

@@ -26,7 +26,7 @@ namespace ZonaMatch.Application.DTOs
         PuntajesEnGrupoResponse? PuntajesEnGrupo,
         IReadOnlyList<AnalisisDto> Versiones);
 
-    public record ZonaAnalisisDto(string Slug, string Nombre, bool EsInicial);
+    public record ZonaAnalisisDto(string Slug, string Nombre, bool EsInicial, bool EsAgregada);
 
     public record ContextoDto(
         int Personas,

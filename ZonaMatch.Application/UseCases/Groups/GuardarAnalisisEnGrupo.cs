@@ -48,7 +48,7 @@ public sealed class GuardarAnalisisEnGrupo
             currentUserId,
             new CalcularPuntajeEnGrupoRequest
             {
-                Zonas = request.Zonas.Select(zone => zone.Slug).ToList(),
+                ZonasAgregadas = request.ZonasAgregadas ?? [],
                 PesosParticipantes = request.PesosParticipantes,
                 AlquilerMaximo = request.AlquilerMaximo,
             },

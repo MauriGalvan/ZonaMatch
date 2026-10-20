@@ -20,7 +20,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 analisis.AnalisisOrigenId,
                 analisis.Zonas
                     .OrderBy(z => z.Orden)
-                    .Select(z => new ZonaAnalisisDto(z.ZonaSlug, z.Nombre, z.EsInicial))
+                    .Select(z => new ZonaAnalisisDto(z.ZonaSlug, z.Nombre, z.EsInicial, z.EsAgregada))
                     .ToList(),
                 CriterioUsuario.ContextoADto(analisis.Contexto),
                 CriterioUsuario.CriteriosADto(analisis.Contexto),
@@ -58,6 +58,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     ZonaSlug = zona.Slug,
                     Nombre = zona.Nombre.Trim(),
                     EsInicial = zona.EsInicial,
+                    EsAgregada = zona.EsAgregada,
                 })
                 .ToList();
         }

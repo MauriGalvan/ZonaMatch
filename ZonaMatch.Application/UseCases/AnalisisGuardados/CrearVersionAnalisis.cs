@@ -52,7 +52,14 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 ? await AnalisisMapeo.ArmarZonasAsync(pedidas, _zonas, cancellationToken)
                 : pedido.Zonas
                     .OrderBy(z => z.Orden)
-                    .Select(z => new AnalisisZona { Orden = z.Orden, ZonaSlug = z.ZonaSlug, Nombre = z.Nombre, EsInicial = z.EsInicial })
+                    .Select(z => new AnalisisZona
+                    {
+                        Orden = z.Orden,
+                        ZonaSlug = z.ZonaSlug,
+                        Nombre = z.Nombre,
+                        EsInicial = z.EsInicial,
+                        EsAgregada = z.EsAgregada,
+                    })
                     .ToList();
 
             var versiones = await _analisis.ListarVersionesAsync(original.Id, cancellationToken);

@@ -5,10 +5,8 @@ namespace ZonaMatch.Application.DTOs.Group;
 
 public sealed class CalcularPuntajeEnGrupoRequest
 {
-    [Required]
-    [MinLength(1, ErrorMessage = "Elegí al menos una zona.")]
-    [MaxLength(10, ErrorMessage = "Se pueden comparar hasta 10 zonas.")]
-    public List<string> Zonas { get; set; } = [];
+    [MaxLength(5, ErrorMessage = "Se pueden agregar hasta 5 zonas después del ranking.")]
+    public List<string> ZonasAgregadas { get; set; } = [];
 
     [Required]
     [MinLength(1, ErrorMessage = "Indicá el peso de cada participante.")]
@@ -39,6 +37,9 @@ public sealed class GuardarAnalisisEnGrupoRequest
     [MinLength(1, ErrorMessage = "Elegí al menos una zona.")]
     [MaxLength(10, ErrorMessage = "Se pueden comparar hasta 10 zonas.")]
     public List<ZonaAnalisisRequest> Zonas { get; set; } = [];
+
+    [MaxLength(5, ErrorMessage = "Se pueden agregar hasta 5 zonas después del ranking.")]
+    public List<string> ZonasAgregadas { get; set; } = [];
 
     [Required]
     [MinLength(1, ErrorMessage = "Indicá el peso de cada participante.")]
