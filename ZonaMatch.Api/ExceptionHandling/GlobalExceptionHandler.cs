@@ -45,6 +45,8 @@ namespace ZonaMatch.Api.ExceptionHandling
                 NoEncontradoException => (StatusCodes.Status404NotFound, exception.Message),
                 OperacionNoPermitidaException => (StatusCodes.Status409Conflict, exception.Message),
                 ArgumentException => (StatusCodes.Status400BadRequest, exception.Message),
+                // Servicios externos caidos, p. ej. el servidor de correo
+                ServicioNoDisponibleException => (StatusCodes.Status503ServiceUnavailable, exception.Message),
                 // Database unreachable, connection refused, timeouts...
                 _ when IsTransientDbFailure(exception) => (StatusCodes.Status503ServiceUnavailable, "El servicio no esta disponible temporalmente. Intenta nuevamente en unos instantes."),
                 _ => (StatusCodes.Status500InternalServerError, "Ocurrio un error inesperado.")
