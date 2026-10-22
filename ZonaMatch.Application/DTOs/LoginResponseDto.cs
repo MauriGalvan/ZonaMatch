@@ -1,5 +1,5 @@
 namespace ZonaMatch.Application.DTOs
 {
-    // The frontend sends AccessToken as "Authorization: Bearer <token>" and should ask for a new login after ExpiraEn
-    public record LoginResponseDto(string AccessToken, DateTimeOffset ExpiraEn, UsuarioDto Usuario);
+    // Public login response. The access token is delivered only in the HttpOnly authentication cookie.
+    public record LoginResponseDto(DateTimeOffset ExpiraEn, UsuarioDto Usuario);
 }

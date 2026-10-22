@@ -190,7 +190,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy(FrontendCorsPolicy, policy => policy
         .WithOrigins(allowedOrigins)
         .AllowAnyHeader()
-        .AllowAnyMethod()));
+        .AllowAnyMethod()
+        .AllowCredentials()));
 
 // Centralized error handling: every unhandled exception becomes a ProblemDetails response
 builder.Services.AddProblemDetails();
@@ -220,6 +221,26 @@ if (app.Environment.IsDevelopment())
 
 app.UseResponseCompression();
 app.UseCors(FrontendCorsPolicy);
+app.Use(async (context, next) =>
+{
+    var isStateChangingMethod = HttpMethods.IsPost(context.Request.Method)
+        || HttpMethods.IsPut(context.Request.Method)
+        || HttpMethods.IsPatch(context.Request.Method)
+        || HttpMethods.IsDelete(context.Request.Method);
+    var origin = context.Request.Headers["Origin"].ToString();
+    var requestOrigin = $"{context.Request.Scheme}://{context.Request.Host}";
+
+    if (isStateChangingMethod
+        && !string.IsNullOrWhiteSpace(origin)
+        && !allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)
+        && !string.Equals(origin, requestOrigin, StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return;
+    }
+
+    await next();
+});
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

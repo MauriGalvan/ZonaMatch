@@ -8,6 +8,6 @@ namespace ZonaMatch.Application.Interfaces
         Task<UsuarioDto> RegistrarAsync(RegistroUsuarioDto request, CancellationToken cancellationToken = default);
 
         // Throws CredencialesInvalidasException when the email or the password is wrong
-        Task<LoginResponseDto> LoginAsync(LoginDto request, CancellationToken cancellationToken = default);
+        Task<LoginResultDto> LoginAsync(LoginDto request, CancellationToken cancellationToken = default);
     }
 }

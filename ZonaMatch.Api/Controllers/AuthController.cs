@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.JsonWebTokens;
+using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
 
@@ -33,7 +34,7 @@ namespace ZonaMatch.Api.Controllers
 
         // POST /Auth/login
         // Body: { "email": "", "password": "" }
-        // Response: { "accessToken": "...", "expiraEn": "...", "usuario": { ... } }
+        // Response: { "expiraEn": "...", "usuario": { ... } }; the access token is an HttpOnly cookie.
         [HttpPost("login")]
         [EnableRateLimiting("login")]
         [ProducesResponseType<LoginResponseDto>(StatusCodes.Status200OK)]
@@ -44,11 +45,15 @@ namespace ZonaMatch.Api.Controllers
         public async Task<IActionResult> Login(LoginDto request, CancellationToken cancellationToken)
         {
             var respuesta = await _authService.LoginAsync(request, cancellationToken);
-            return Ok(respuesta);
+            Response.Cookies.Append(
+                AuthCookieDefaults.Name,
+                respuesta.AccessToken,
+                AuthCookieDefaults.CreateOptions(respuesta.ExpiraEn));
+
+            return Ok(new LoginResponseDto(respuesta.ExpiraEn, respuesta.Usuario));
         }
 
-        // GET /Auth/me   (header: Authorization: Bearer <token>)
-        // Lets the frontend check that its token is still valid. Example of a protected endpoint.
+        // GET /Auth/me (authenticated by the HttpOnly cookie or an Authorization bearer token)
         [Authorize]
         [HttpGet("me")]
         [ProducesResponseType<SesionDto>(StatusCodes.Status200OK)]
@@ -62,6 +67,15 @@ namespace ZonaMatch.Api.Controllers
                 return Unauthorized();
 
             return Ok(new SesionDto(usuarioId, email));
+        }
+
+        [HttpPost("logout")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [AllowAnonymous]
+        public IActionResult Logout()
+        {
+            Response.Cookies.Delete(AuthCookieDefaults.Name, AuthCookieDefaults.CreateOptions());
+            return NoContent();
         }
     }
 }

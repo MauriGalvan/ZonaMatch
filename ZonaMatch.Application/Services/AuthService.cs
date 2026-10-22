@@ -44,7 +44,7 @@ namespace ZonaMatch.Application.Services
             return new UsuarioDto(usuario.Id, usuario.Email, usuario.FechaNacimiento);
         }
 
-        public async Task<LoginResponseDto> LoginAsync(LoginDto request, CancellationToken cancellationToken = default)
+        public async Task<LoginResultDto> LoginAsync(LoginDto request, CancellationToken cancellationToken = default)
         {
             var usuario = await _usuarios.ObtenerPorEmailAsync(NormalizarEmail(request.Email), cancellationToken);
 
@@ -54,7 +54,7 @@ namespace ZonaMatch.Application.Services
 
             var (token, expiraEn) = _tokens.Generar(usuario);
 
-            return new LoginResponseDto(token, expiraEn, new UsuarioDto(usuario.Id, usuario.Email, usuario.FechaNacimiento));
+            return new LoginResultDto(token, expiraEn, new UsuarioDto(usuario.Id, usuario.Email, usuario.FechaNacimiento));
         }
 
         private static string NormalizarEmail(string email) => email.Trim().ToLowerInvariant();

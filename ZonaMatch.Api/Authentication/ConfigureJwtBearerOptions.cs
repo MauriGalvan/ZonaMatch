@@ -5,7 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace ZonaMatch.Api.Authentication
 {
-    // Validation rules applied to the Bearer token of EVERY request that reaches the authentication middleware.
+    // Validation rules applied to every bearer token or authentication cookie accepted by the middleware.
     // Done here (instead of inline in Program.cs) so the rules read the validated JwtOptions.
     public sealed class ConfigureJwtBearerOptions(IOptions<JwtOptions> jwtOptions) : IConfigureNamedOptions<JwtBearerOptions>
     {
@@ -36,6 +36,20 @@ namespace ZonaMatch.Api.Authentication
                 ClockSkew = TimeSpan.FromSeconds(30),
 
                 NameClaimType = JwtRegisteredClaimNames.Email
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var authorization = context.Request.Headers["Authorization"].ToString();
+                    var hasBearerToken = authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
+
+                    if (!hasBearerToken && context.Request.Cookies.TryGetValue(AuthCookieDefaults.Name, out var token))
+                        context.Token = token;
+
+                    return Task.CompletedTask;
+                }
             };
         }
 
