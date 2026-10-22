@@ -5,7 +5,7 @@ using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.AnalisisGuardados
 {
-    // Un analisis del usuario; si es un original, con sus versiones
+    // Returns one of the user's analyses and, for originals, its versions.
     public class ObtenerAnalisis
     {
         private readonly IAnalisisRepository _analisis;
@@ -18,7 +18,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
         public async Task<AnalysisResponse> EjecutarAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default)
         {
             var analisis = await _analisis.ObtenerAsync(id, usuarioId, cancellationToken)
-                ?? throw new AnalisisNoEncontradoException();
+                ?? throw new NotFoundException("El análisis no existe.");
 
             var versiones = analisis.AnalisisOrigenId is null
                 ? await _analisis.ListarVersionesAsync(analisis.Id, cancellationToken)

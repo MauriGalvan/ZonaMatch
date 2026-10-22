@@ -39,16 +39,16 @@ namespace ZonaMatch.Application.UseCases.Perfil
         private static List<Persona> ArmarIntegrantes(ContextoRequest? solicitud)
         {
             if (solicitud is null)
-                throw new DatosInvalidosException("El contexto es obligatorio.");
+                throw new BadRequestException("El contexto es obligatorio.");
 
             if (solicitud.Personas < MinimoPersonas || solicitud.Personas > MaximoPersonas)
-                throw new DatosInvalidosException($"La cantidad de personas debe estar entre {MinimoPersonas} y {MaximoPersonas}.");
+                throw new BadRequestException($"La cantidad de personas debe estar entre {MinimoPersonas} y {MaximoPersonas}.");
 
             if (solicitud.Edades.Count > solicitud.Personas)
-                throw new DatosInvalidosException("Hay más edades que personas en el contexto.");
+                throw new BadRequestException("Hay más edades que personas en el contexto.");
 
             if (solicitud.Edades.Any(e => e is { Length: > 40 }))
-                throw new DatosInvalidosException("Un rango etario no puede superar 40 caracteres.");
+                throw new BadRequestException("Un rango etario no puede superar 40 caracteres.");
 
             return Enumerable.Range(1, solicitud.Personas)
                 .Select(orden => new Persona
@@ -63,7 +63,7 @@ namespace ZonaMatch.Application.UseCases.Perfil
         private static List<ContextoCriterio> ArmarCriterios(Dictionary<string, string?>? criterios, IReadOnlyList<Criterio> catalogo)
         {
             if (criterios is null)
-                throw new DatosInvalidosException("Los criterios deben ser un objeto.");
+                throw new BadRequestException("Los criterios deben ser un objeto.");
 
             var porId = catalogo.ToDictionary(c => c.Id, StringComparer.Ordinal);
             var filas = new List<ContextoCriterio>(criterios.Count);
@@ -71,13 +71,13 @@ namespace ZonaMatch.Application.UseCases.Perfil
             foreach (var (id, prioridad) in criterios)
             {
                 if (!porId.TryGetValue(id, out var criterio))
-                    throw new DatosInvalidosException($"Criterio desconocido: {id}.");
+                    throw new BadRequestException($"Criterio desconocido: {id}.");
 
                 if (!criterio.Activo)
-                    throw new DatosInvalidosException($"Criterio no disponible: {id}.");
+                    throw new BadRequestException($"Criterio no disponible: {id}.");
 
                 if (prioridad is null || !PrioridadesValidas.Contains(prioridad))
-                    throw new DatosInvalidosException($"Prioridad inválida para el criterio {id}.");
+                    throw new BadRequestException($"Prioridad inválida para el criterio {id}.");
 
                 filas.Add(new ContextoCriterio { CriterioId = id, Prioridad = prioridad });
             }
@@ -89,10 +89,10 @@ namespace ZonaMatch.Application.UseCases.Perfil
         private static List<PuntoDeInteres> ArmarLugares(PuntosRequest? solicitud)
         {
             if (solicitud is null)
-                throw new DatosInvalidosException("Los puntos son obligatorios.");
+                throw new BadRequestException("Los puntos son obligatorios.");
 
             if (solicitud.AlquilerMaximo?.Length > 30)
-                throw new DatosInvalidosException("El alquiler máximo no puede superar 30 caracteres.");
+                throw new BadRequestException("El alquiler máximo no puede superar 30 caracteres.");
 
             var lugares = new List<PuntoDeInteres>(solicitud.Lugares.Count);
 
@@ -101,7 +101,7 @@ namespace ZonaMatch.Application.UseCases.Perfil
                 var lugar = solicitud.Lugares[i];
                 var nombre = lugar.Nombre?.Trim() ?? string.Empty;
                 if (nombre.Length == 0)
-                    throw new DatosInvalidosException($"El nombre del lugar {i + 1} es obligatorio.");
+                    throw new BadRequestException($"El nombre del lugar {i + 1} es obligatorio.");
 
                 lugares.Add(new PuntoDeInteres
                 {

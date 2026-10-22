@@ -34,19 +34,13 @@ namespace ZonaMatch.Api.ExceptionHandling
 
             var (status, title) = exception switch
             {
-                EmailYaRegistradoException => (StatusCodes.Status409Conflict, exception.Message),
-                CredencialesInvalidasException => (StatusCodes.Status401Unauthorized, exception.Message),
-                AccesoDenegadoException => (StatusCodes.Status403Forbidden, exception.Message),
-                // Perfil y analisis guardados
-                AnalisisNoEncontradoException => (StatusCodes.Status404NotFound, exception.Message),
-                PerfilNoEncontradoException => (StatusCodes.Status404NotFound, exception.Message),
-                // Comunidad de la zona y grupos
-                DatosInvalidosException => (StatusCodes.Status400BadRequest, exception.Message),
-                NoEncontradoException => (StatusCodes.Status404NotFound, exception.Message),
-                OperacionNoPermitidaException => (StatusCodes.Status409Conflict, exception.Message),
-                ArgumentException => (StatusCodes.Status400BadRequest, exception.Message),
-                // Servicios externos caidos, p. ej. el servidor de correo
-                ServicioNoDisponibleException => (StatusCodes.Status503ServiceUnavailable, exception.Message),
+                ConflictException => (StatusCodes.Status409Conflict, exception.Message),
+                UnauthorizedException => (StatusCodes.Status401Unauthorized, exception.Message),
+                ForbiddenException => (StatusCodes.Status403Forbidden, exception.Message),
+                NotFoundException => (StatusCodes.Status404NotFound, exception.Message),
+                BadRequestException => (StatusCodes.Status400BadRequest, exception.Message),
+                // External services are unavailable, such as the email provider.
+                ServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, exception.Message),
                 // Database unreachable, connection refused, timeouts...
                 _ when IsTransientDbFailure(exception) => (StatusCodes.Status503ServiceUnavailable, "El servicio no esta disponible temporalmente. Intenta nuevamente en unos instantes."),
                 _ => (StatusCodes.Status500InternalServerError, "Ocurrio un error inesperado.")

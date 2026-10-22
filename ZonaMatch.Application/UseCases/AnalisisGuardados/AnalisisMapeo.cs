@@ -37,18 +37,18 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     .Select(v => ToResponse(v))
                     .ToList());
 
-        // Zonas del pedido: existentes, sin repetir y con a lo sumo una inicial
+        // Request zones must exist, be unique, and include at most one initial zone.
         public static async Task<List<AnalisisZona>> ArmarZonasAsync(
             IReadOnlyList<AnalysisZoneRequest> zones, IZonaRepository repository, CancellationToken cancellationToken)
         {
             if (zones.Count == 0)
-                throw new DatosInvalidosException("Elegí al menos una zona.");
+                throw new BadRequestException("Elegí al menos una zona.");
 
             if (zones.Select(zone => zone.Slug).Distinct(StringComparer.Ordinal).Count() != zones.Count)
-                throw new DatosInvalidosException("Hay zonas repetidas en el análisis.");
+                throw new BadRequestException("Hay zonas repetidas en el análisis.");
 
             if (zones.Count(zone => zone.IsInitial) > 1)
-                throw new DatosInvalidosException("Solo puede haber una zona inicial.");
+                throw new BadRequestException("Solo puede haber una zona inicial.");
 
             foreach (var zone in zones)
                 await repository.ValidarExisteAsync(zone.Slug, cancellationToken);

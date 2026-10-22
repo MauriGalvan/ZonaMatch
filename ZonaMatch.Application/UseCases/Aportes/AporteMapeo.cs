@@ -14,7 +14,7 @@ namespace ZonaMatch.Application.UseCases.Aportes
         {
             var codigo = categoria?.Trim().ToLowerInvariant();
             if (codigo is null || !CategoriaPuntoInteres.Todas.Contains(codigo))
-                throw new DatosInvalidosException(
+                throw new BadRequestException(
                     $"Categoria desconocida. Validas: {string.Join(", ", CategoriaPuntoInteres.Todas)}.");
 
             return codigo;

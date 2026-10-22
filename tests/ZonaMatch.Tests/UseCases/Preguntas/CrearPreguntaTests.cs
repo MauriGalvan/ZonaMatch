@@ -1,5 +1,6 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Preguntas;
 
 namespace ZonaMatch.Tests.UseCases.Preguntas
@@ -11,7 +12,7 @@ namespace ZonaMatch.Tests.UseCases.Preguntas
 
         private readonly FakePreguntaRepository _preguntas = new();
         private readonly CrearPregunta _casoDeUso;
-        private readonly SesionDto _ana = new(Guid.NewGuid(), "ana@example.com");
+        private readonly AuthenticatedUserContext _ana = new(Guid.NewGuid(), "ana@example.com");
 
         public CrearPreguntaTests()
         {
@@ -36,7 +37,7 @@ namespace ZonaMatch.Tests.UseCases.Preguntas
         [Fact]
         public async Task Preguntar_ZonaInexistente_NoEncontrada()
         {
-            await Assert.ThrowsAsync<NoEncontradoException>(
+            await Assert.ThrowsAsync<NotFoundException>(
                 () => _casoDeUso.EjecutarAsync("no-existe", _ana, new CrearPreguntaDto("¿Como es el barrio de noche?")));
             Assert.Empty(_preguntas.Preguntas);
         }

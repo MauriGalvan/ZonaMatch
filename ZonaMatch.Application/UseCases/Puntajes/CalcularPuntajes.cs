@@ -11,12 +11,12 @@ namespace ZonaMatch.Application.UseCases.Puntajes
     {
         public const int ZonasTopAutomatico = 5;
 
-        // Tiempo maximo de viaje si el lugar no lo indica
+        // Maximum travel time when a place does not specify one.
         public const int TiempoMaximoPorDefecto = 45;
 
         public const int RecomendadasDevueltas = 4;
 
-        // Viajes que se piden al ruteo a la vez
+        // Number of routing requests sent concurrently.
         private const int ViajesEnParalelo = 6;
 
         private readonly IPerfilesZonaRepository _perfiles;
@@ -33,7 +33,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
             var universo = await _perfiles.ListarAsync(cancellationToken);
             var porSlug = universo.ToDictionary(z => z.Slug);
             if (universo.Count == 0)
-                throw new NoEncontradoException("Todavía no hay zonas disponibles para calcular el ranking.");
+                throw new NotFoundException("Todavía no hay zonas disponibles para calcular el ranking.");
 
             var pedido = ArmarPedido(solicitud);
             var modo = ModosViaje.DesdeMovilidad(solicitud.Movilidad);
@@ -44,7 +44,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 ? null
                 : porSlug.TryGetValue(zonaInicialSlug, out var encontrada)
                     ? encontrada
-                    : throw new NoEncontradoException("No hay datos para la zona inicial indicada.");
+                    : throw new NotFoundException("No hay datos para la zona inicial indicada.");
 
             var ubicaciones = pedido.Lugares
                 .Where(lugar => lugar.TieneUbicacion)
@@ -58,7 +58,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 .Select(slug => porSlug[slug])
                 .ToArray();
             if (ubicaciones.Length > 0 && zonasDelEntorno.Length == 0)
-                throw new DatosInvalidosException("No se encontraron zonas del catálogo que contengan los puntos de interés indicados.");
+                throw new BadRequestException("No se encontraron zonas del catálogo que contengan los puntos de interés indicados.");
 
             var candidatas = zonasDelEntorno
                 .Concat(zonasAgregadas)
@@ -117,12 +117,12 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 .ToArray();
             var faltantes = slugs.Where(slug => !porSlug.ContainsKey(slug)).ToArray();
             if (faltantes.Length > 0)
-                throw new NoEncontradoException("No se encontraron una o más zonas agregadas al análisis.");
+                throw new NotFoundException("No se encontraron una o más zonas agregadas al análisis.");
 
             return slugs.Select(slug => porSlug[slug]).ToArray();
         }
 
-        // Un viaje por zona y lugar con ubicacion, desde el centro de la zona. Si el ruteo no responde, se estima.
+        // One trip per zone and located place, starting at the zone center. Estimate the time if routing is unavailable.
         private async Task<Dictionary<string, IReadOnlyList<TiempoViaje?>>> MedirViajesAsync(
             IReadOnlyList<PerfilZona> zonas, IReadOnlyList<LugarDelUsuario> lugares, ModoViaje modo,
             CancellationToken cancellationToken)
@@ -168,13 +168,13 @@ namespace ZonaMatch.Application.UseCases.Puntajes
             return new PedidoPuntaje(criterios, lugares, Pesos(solicitud.AlquilerMaximo));
         }
 
-        // "45 min" -> 45
+        // "45 min" -> 45.
         private static int Minutos(string? tiempo) =>
             tiempo is not null && Numero().Match(tiempo) is { Success: true } m && int.TryParse(m.Value, out var minutos) && minutos > 0
                 ? minutos
                 : TiempoMaximoPorDefecto;
 
-        // "$ 800.000" o "800000" -> 800000; null si no hay numero
+        // "$ 800.000" or "800000" -> 800000; null when no number is present.
         private static decimal? Pesos(string? monto)
         {
             var digitos = new string((monto ?? string.Empty).Where(char.IsDigit).ToArray());

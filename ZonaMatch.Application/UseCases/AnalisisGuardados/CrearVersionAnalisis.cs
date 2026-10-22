@@ -8,8 +8,8 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.AnalisisGuardados
 {
-    // Ajusta el criterio solo para un analisis y lo guarda como version derivada; el original y el
-    // perfil no cambian. Las versiones siempre cuelgan del original, aunque se ajuste otra version.
+    // Adjusts criteria for one analysis and saves a derived version; the original and the profile stay unchanged.
+    // Versions always belong to the original, even when another version was adjusted.
     public class CrearVersionAnalisis
     {
         private const int LargoNombre = 50;
@@ -32,10 +32,10 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             Guid analisisId, Guid usuarioId, CreateAnalysisVersionRequest solicitud, CancellationToken cancellationToken = default)
         {
             var pedido = await _analisis.ObtenerAsync(analisisId, usuarioId, cancellationToken)
-                ?? throw new AnalisisNoEncontradoException();
+                ?? throw new NotFoundException("El análisis no existe.");
 
             var original = pedido.AnalisisOrigenId is { } origenId
-                ? await _analisis.ObtenerAsync(origenId, usuarioId, cancellationToken) ?? throw new AnalisisNoEncontradoException()
+                ? await _analisis.ObtenerAsync(origenId, usuarioId, cancellationToken) ?? throw new NotFoundException("El análisis no existe.")
                 : pedido;
 
             var catalogo = await _criterios.ListarAsync(cancellationToken);
@@ -85,7 +85,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             return AnalisisMapeo.ToResponse(version);
         }
 
-        // "Cerca del trabajo (2)": el original cuenta como la 1; se recorta el nombre para no pasar el maximo
+        // "Near work (2)": the original counts as version 1; trim the name to stay within the maximum length.
         public static string NombreDeVersion(string nombreOriginal, int numero)
         {
             var sufijo = $" ({numero})";

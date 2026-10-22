@@ -42,10 +42,10 @@ public sealed partial class CalcularPuntajeEnGrupo
         CancellationToken cancellationToken = default)
     {
         var group = await _groups.GetDetailsByIdAsync(groupId, cancellationToken)
-            ?? throw new NoEncontradoException("No se encontró el grupo.");
+            ?? throw new NotFoundException("No se encontró el grupo.");
 
         if (!group.Participants.Any(participant => participant.UserId == currentUserId))
-            throw new AccesoDenegadoException("No pertenecés a este grupo.");
+            throw new ForbiddenException("No pertenecés a este grupo.");
 
         var participantIds = group.Participants.Select(participant => participant.Id).ToHashSet();
         var weights = ValidateWeights(request.ParticipantWeights, participantIds);
@@ -59,7 +59,7 @@ public sealed partial class CalcularPuntajeEnGrupo
         var zonesBySlug = universe.ToDictionary(zone => zone.Slug, StringComparer.Ordinal);
         var addedZones = slugs.Where(zonesBySlug.ContainsKey).Select(slug => zonesBySlug[slug]).ToArray();
         if (addedZones.Length != slugs.Length)
-            throw new NoEncontradoException("No se encontraron una o más zonas agregadas al análisis.");
+            throw new NotFoundException("No se encontraron una o más zonas agregadas al análisis.");
 
         var profiles = await _profiles.ObtenerDeUsuariosAsync(
             group.Participants.Select(participant => participant.UserId).Distinct().ToArray(),
@@ -95,7 +95,7 @@ public sealed partial class CalcularPuntajeEnGrupo
             .Select(slug => zonesBySlug[slug])
             .ToArray();
         if (locations.Length > 0 && nearbyZones.Length == 0)
-            throw new DatosInvalidosException("No se encontraron zonas del catálogo que contengan los puntos de interés de los participantes.");
+            throw new BadRequestException("No se encontraron zonas del catálogo que contengan los puntos de interés de los participantes.");
 
         var zonesToCalculate = nearbyZones
             .Concat(addedZones)
@@ -123,7 +123,7 @@ public sealed partial class CalcularPuntajeEnGrupo
         var hasAnyRanking = zonesToCalculate.Any(zone => memberScores.Any(member =>
             weights[member.Participant.Id] > 0 && member.Zones[zone.Slug].Resultado.Puntaje is not null));
         if (!hasAnyRanking)
-            throw new DatosInvalidosException("Ningún participante con peso positivo tiene datos suficientes para puntuar las zonas disponibles.");
+            throw new BadRequestException("Ningún participante con peso positivo tiene datos suficientes para puntuar las zonas disponibles.");
 
         var rankedCandidates = zonesToCalculate
             .Select(zone => BuildZoneResult(zone, group.Participants, weights, memberScores))
@@ -178,21 +178,21 @@ public sealed partial class CalcularPuntajeEnGrupo
         IReadOnlySet<Guid> groupParticipantIds)
     {
         if (requestedWeights.Count != groupParticipantIds.Count)
-            throw new DatosInvalidosException("Indicá un peso para cada participante del grupo.");
+            throw new BadRequestException("Indicá un peso para cada participante del grupo.");
 
         var weights = new Dictionary<Guid, decimal>();
         foreach (var entry in requestedWeights)
         {
             if (!groupParticipantIds.Contains(entry.ParticipantId))
-                throw new DatosInvalidosException("El pedido incluye a alguien que no pertenece al grupo.");
+                throw new BadRequestException("El pedido incluye a alguien que no pertenece al grupo.");
             if (entry.Weight is < 0 or > 100)
-                throw new DatosInvalidosException("Cada peso debe estar entre 0 y 100.");
+                throw new BadRequestException("Cada peso debe estar entre 0 y 100.");
             if (!weights.TryAdd(entry.ParticipantId, entry.Weight))
-                throw new DatosInvalidosException("Hay participantes repetidos en la configuración de pesos.");
+                throw new BadRequestException("Hay participantes repetidos en la configuración de pesos.");
         }
 
         if (weights.Keys.Count != groupParticipantIds.Count || weights.Values.All(weight => weight == 0))
-            throw new DatosInvalidosException("Asigná un peso mayor a cero a por lo menos un participante.");
+            throw new BadRequestException("Asigná un peso mayor a cero a por lo menos un participante.");
 
         return weights;
     }

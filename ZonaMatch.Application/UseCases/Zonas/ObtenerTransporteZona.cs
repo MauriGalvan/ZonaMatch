@@ -6,10 +6,10 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Zonas
 {
-    // Paradas, lineas y frecuencias por franja horaria del transporte publico de una zona
+    // Public transport stops, routes, and frequencies by time window for a zone.
     public class ObtenerTransporteZona
     {
-        // Orden en que se muestran los modos
+        // Display order for transport modes.
         private static readonly string[] Modos = ["subte", "tren", "colectivo"];
 
         private readonly ITransporteZonaRepository _transporte;
@@ -25,9 +25,9 @@ namespace ZonaMatch.Application.UseCases.Zonas
         {
             var paradas = await _transporte.ListarParadasAsync(slug, cancellationToken);
 
-            // Sin paradas puede ser una zona sin transporte o una que no existe
+            // No stops may mean the zone has no transit service or does not exist.
             if (paradas.Count == 0 && !await _zonas.ExisteAsync(slug, cancellationToken))
-                throw new NoEncontradoException("No se encontro una zona con ese identificador.");
+                throw new NotFoundException("No se encontro una zona con ese identificador.");
 
             var salidas = paradas.Count == 0 ? [] : await _transporte.ListarSalidasAsync(slug, cancellationToken);
 

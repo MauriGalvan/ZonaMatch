@@ -1,12 +1,13 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Comunidad;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Aportes
 {
-    // Sugiere una correccion de un lugar del mapa: cerro, o su nombre, ubicacion o categoria estan mal
+    // Suggests a map correction when a place closed or its name, location, or category is incorrect.
     public class CrearCorreccion
     {
         private readonly IAporteRepository _aportes;
@@ -21,14 +22,14 @@ namespace ZonaMatch.Application.UseCases.Aportes
         }
 
         public async Task<AporteDto> EjecutarAsync(
-            string zonaSlug, SesionDto usuario, CrearCorreccionDto solicitud, CancellationToken cancellationToken = default)
+            string zonaSlug, AuthenticatedUserContext currentUser, CrearCorreccionDto solicitud, CancellationToken cancellationToken = default)
         {
-            var motivo = solicitud.Motivo!.Value; // garantizado por [Required] en el DTO
+            var motivo = solicitud.Motivo!.Value; // Required by DTO validation.
 
             var aporte = new Aporte
             {
                 ZonaSlug = zonaSlug,
-                UsuarioId = usuario.Id,
+                UsuarioId = currentUser.Id,
                 Tipo = TipoAporte.Correccion,
                 PuntoInteresId = solicitud.PuntoInteresId,
                 PuntoInteresNombre = solicitud.PuntoInteresNombre.Trim(),
@@ -37,12 +38,12 @@ namespace ZonaMatch.Application.UseCases.Aportes
                 FechaCreacion = _reloj.GetUtcNow()
             };
 
-            // Solo se guarda el valor que corresponde al motivo
+            // Store only the value associated with the selected reason.
             switch (motivo)
             {
                 case MotivoCorreccion.Nombre:
                     aporte.Nombre = AporteMapeo.Limpiar(solicitud.NombrePropuesto)
-                        ?? throw new DatosInvalidosException("Indica el nombre correcto del lugar.");
+                        ?? throw new BadRequestException("Indica el nombre correcto del lugar.");
                     break;
 
                 case MotivoCorreccion.Categoria:
@@ -51,23 +52,23 @@ namespace ZonaMatch.Application.UseCases.Aportes
 
                 case MotivoCorreccion.Ubicacion:
                     if (solicitud.Latitud is not { } latitud || solicitud.Longitud is not { } longitud)
-                        throw new DatosInvalidosException("Marca en el mapa la ubicacion correcta del lugar.");
+                        throw new BadRequestException("Marca en el mapa la ubicacion correcta del lugar.");
                     await _zonas.ValidarContienePuntoAsync(zonaSlug, latitud, longitud, cancellationToken);
                     aporte.Ubicacion = AporteMapeo.Punto(latitud, longitud);
                     break;
 
                 case MotivoCorreccion.Otro when aporte.Comentario is null:
-                    throw new DatosInvalidosException("Contanos que hay que corregir en el comentario.");
+                    throw new BadRequestException("Contanos que hay que corregir en el comentario.");
             }
 
-            // La validacion de ubicacion de arriba ya cubre la zona; los otros motivos la validan aca
+            // Location validation above already checks the zone; other reasons are validated here.
             if (motivo != MotivoCorreccion.Ubicacion)
                 await _zonas.ValidarExisteAsync(zonaSlug, cancellationToken);
 
             _aportes.Agregar(aporte);
             await _aportes.GuardarCambiosAsync(cancellationToken);
 
-            return AporteMapeo.ADto(aporte, usuario.Email, usuario.Id);
+            return AporteMapeo.ADto(aporte, currentUser.Email, currentUser.Id);
         }
     }
 }

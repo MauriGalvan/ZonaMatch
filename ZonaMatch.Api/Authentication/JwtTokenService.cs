@@ -22,28 +22,28 @@ namespace ZonaMatch.Api.Authentication
             _credentials = new SigningCredentials(_options.CreateSigningKey(), SecurityAlgorithms.HmacSha256);
         }
 
-        public (string Token, DateTimeOffset ExpiraEn) Generar(Usuario usuario)
+        public (string Token, DateTimeOffset ExpiresAt) Generate(Usuario user)
         {
-            var ahora = _timeProvider.GetUtcNow();
-            var expiraEn = ahora.AddMinutes(_options.ExpirationMinutes);
+            var issuedAt = _timeProvider.GetUtcNow();
+            var expiresAt = issuedAt.AddMinutes(_options.ExpirationMinutes);
 
             var descriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
-                    new(JwtRegisteredClaimNames.Email, usuario.Email),
+                    new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                    new(JwtRegisteredClaimNames.Email, user.Email),
                     new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
                 }),
                 Issuer = _options.Issuer,
                 Audience = _options.Audience,
-                IssuedAt = ahora.UtcDateTime,
-                NotBefore = ahora.UtcDateTime,
-                Expires = expiraEn.UtcDateTime,
+                IssuedAt = issuedAt.UtcDateTime,
+                NotBefore = issuedAt.UtcDateTime,
+                Expires = expiresAt.UtcDateTime,
                 SigningCredentials = _credentials
             };
 
-            return (_handler.CreateToken(descriptor), expiraEn);
+            return (_handler.CreateToken(descriptor), expiresAt);
         }
     }
 }

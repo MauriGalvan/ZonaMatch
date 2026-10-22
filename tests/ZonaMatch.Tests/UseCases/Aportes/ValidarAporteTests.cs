@@ -32,7 +32,7 @@ namespace ZonaMatch.Tests.UseCases.Aportes
         [Fact]
         public async Task Validar_TuPropioAporte_NoSePermite()
         {
-            await Assert.ThrowsAsync<OperacionNoPermitidaException>(
+            await Assert.ThrowsAsync<ConflictException>(
                 () => _casoDeUso.EjecutarAsync(Zona, _aporte.Id, _autor, confirma: true));
             Assert.Empty(_aporte.Validaciones);
         }
@@ -46,7 +46,7 @@ namespace ZonaMatch.Tests.UseCases.Aportes
             Assert.Equal(EstadoAporte.Aprobado, _aporte.Estado);
             Assert.Equal(Ahora, _aporte.FechaResolucion);
             Assert.Equal(Aporte.DiferenciaParaResolver, _aportes.Guardados);
-            await Assert.ThrowsAsync<OperacionNoPermitidaException>(
+            await Assert.ThrowsAsync<ConflictException>(
                 () => _casoDeUso.EjecutarAsync(Zona, _aporte.Id, Guid.NewGuid(), confirma: false));
         }
 
@@ -64,7 +64,7 @@ namespace ZonaMatch.Tests.UseCases.Aportes
         [Fact]
         public async Task Validar_AporteInexistente_NoEncontrado()
         {
-            await Assert.ThrowsAsync<NoEncontradoException>(() => _casoDeUso.EjecutarAsync(Zona, Guid.NewGuid(), Guid.NewGuid(), true));
+            await Assert.ThrowsAsync<NotFoundException>(() => _casoDeUso.EjecutarAsync(Zona, Guid.NewGuid(), Guid.NewGuid(), true));
         }
     }
 }

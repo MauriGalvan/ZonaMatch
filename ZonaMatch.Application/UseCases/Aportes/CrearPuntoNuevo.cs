@@ -1,11 +1,12 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Comunidad;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Aportes
 {
-    // Sugiere un lugar que falta en el mapa; tiene que estar dentro de la zona
+    // Suggests a place missing from the map; it must be inside the zone.
     public class CrearPuntoNuevo
     {
         private readonly IAporteRepository _aportes;
@@ -20,7 +21,7 @@ namespace ZonaMatch.Application.UseCases.Aportes
         }
 
         public async Task<AporteDto> EjecutarAsync(
-            string zonaSlug, SesionDto usuario, CrearPuntoNuevoDto solicitud, CancellationToken cancellationToken = default)
+            string zonaSlug, AuthenticatedUserContext currentUser, CrearPuntoNuevoDto solicitud, CancellationToken cancellationToken = default)
         {
             var categoria = AporteMapeo.ValidarCategoria(solicitud.Categoria);
             await _zonas.ValidarContienePuntoAsync(zonaSlug, solicitud.Latitud, solicitud.Longitud, cancellationToken);
@@ -28,7 +29,7 @@ namespace ZonaMatch.Application.UseCases.Aportes
             var aporte = new Aporte
             {
                 ZonaSlug = zonaSlug,
-                UsuarioId = usuario.Id,
+                UsuarioId = currentUser.Id,
                 Tipo = TipoAporte.PuntoNuevo,
                 Categoria = categoria,
                 Nombre = solicitud.Nombre.Trim(),
@@ -42,7 +43,7 @@ namespace ZonaMatch.Application.UseCases.Aportes
             _aportes.Agregar(aporte);
             await _aportes.GuardarCambiosAsync(cancellationToken);
 
-            return AporteMapeo.ADto(aporte, usuario.Email, usuario.Id);
+            return AporteMapeo.ADto(aporte, currentUser.Email, currentUser.Id);
         }
     }
 }

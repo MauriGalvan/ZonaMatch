@@ -1,6 +1,7 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Preguntas
@@ -17,15 +18,15 @@ namespace ZonaMatch.Application.UseCases.Preguntas
         }
 
         public async Task<RespuestaDto> EjecutarAsync(
-            string zonaSlug, Guid preguntaId, SesionDto usuario, CrearRespuestaDto solicitud, CancellationToken cancellationToken = default)
+            string zonaSlug, Guid preguntaId, AuthenticatedUserContext currentUser, CrearRespuestaDto solicitud, CancellationToken cancellationToken = default)
         {
             if (!await _preguntas.ExisteAsync(zonaSlug, preguntaId, cancellationToken))
-                throw new NoEncontradoException("La pregunta no existe.");
+                throw new NotFoundException("La pregunta no existe.");
 
             var respuesta = new Respuesta
             {
                 PreguntaId = preguntaId,
-                UsuarioId = usuario.Id,
+                UsuarioId = currentUser.Id,
                 Texto = solicitud.Texto.Trim(),
                 FechaCreacion = _reloj.GetUtcNow()
             };
@@ -33,7 +34,7 @@ namespace ZonaMatch.Application.UseCases.Preguntas
             _preguntas.Agregar(respuesta);
             await _preguntas.GuardarCambiosAsync(cancellationToken);
 
-            return RespuestaMapeo.ADto(respuesta, usuario.Email, usuario.Id);
+            return RespuestaMapeo.ADto(respuesta, currentUser.Email, currentUser.Id);
         }
     }
 }

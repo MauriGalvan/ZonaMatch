@@ -5,7 +5,7 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Aportes
 {
-    // Confirma o rechaza un aporte pendiente de otro usuario; el voto puede aprobarlo o rechazarlo
+    // Confirms or rejects another user's pending contribution; the vote can approve or reject it.
     public class ValidarAporte
     {
         private readonly IAporteRepository _aportes;
@@ -21,13 +21,13 @@ namespace ZonaMatch.Application.UseCases.Aportes
             string zonaSlug, Guid aporteId, Guid usuarioId, bool confirma, CancellationToken cancellationToken = default)
         {
             var aporte = await _aportes.ObtenerAsync(zonaSlug, aporteId, cancellationToken)
-                ?? throw new NoEncontradoException("El aporte no existe.");
+                ?? throw new NotFoundException("El aporte no existe.");
 
             if (aporte.Estado != EstadoAporte.Pendiente)
-                throw new OperacionNoPermitidaException("El aporte ya fue resuelto por otros vecinos.");
+                throw new ConflictException("El aporte ya fue resuelto por otros vecinos.");
 
             if (aporte.UsuarioId == usuarioId)
-                throw new OperacionNoPermitidaException("No podes validar tu propio aporte.");
+                throw new ConflictException("No podes validar tu propio aporte.");
 
             aporte.Validar(usuarioId, confirma, _reloj.GetUtcNow());
             await _aportes.GuardarCambiosAsync(cancellationToken);

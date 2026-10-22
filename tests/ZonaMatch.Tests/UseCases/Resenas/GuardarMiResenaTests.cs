@@ -1,5 +1,6 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Domain.Common;
 
@@ -12,7 +13,7 @@ namespace ZonaMatch.Tests.UseCases.Resenas
 
         private readonly FakeResenaRepository _resenas = new();
         private readonly GuardarMiResena _casoDeUso;
-        private readonly SesionDto _ana = new(Guid.NewGuid(), "ana@example.com");
+        private readonly AuthenticatedUserContext _ana = new(Guid.NewGuid(), "ana@example.com");
 
         public GuardarMiResenaTests()
         {
@@ -49,14 +50,14 @@ namespace ZonaMatch.Tests.UseCases.Resenas
         [Fact]
         public async Task Guardar_TemaDesconocido_EsInvalido()
         {
-            await Assert.ThrowsAsync<DatosInvalidosException>(() => _casoDeUso.EjecutarAsync(Zona, _ana, Resena(temas: ["ruido"])));
+            await Assert.ThrowsAsync<BadRequestException>(() => _casoDeUso.EjecutarAsync(Zona, _ana, Resena(temas: ["ruido"])));
             Assert.Empty(_resenas.Resenas);
         }
 
         [Fact]
         public async Task Guardar_ZonaInexistente_NoEncontrada()
         {
-            await Assert.ThrowsAsync<NoEncontradoException>(() => _casoDeUso.EjecutarAsync("no-existe", _ana, Resena()));
+            await Assert.ThrowsAsync<NotFoundException>(() => _casoDeUso.EjecutarAsync("no-existe", _ana, Resena()));
             Assert.Empty(_resenas.Resenas);
         }
     }

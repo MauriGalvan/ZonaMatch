@@ -66,7 +66,7 @@ namespace ZonaMatch.Tests.UseCases.Zonas
         [Fact]
         public async Task Zona_inexistente_no_encontrada()
         {
-            await Assert.ThrowsAsync<NoEncontradoException>(() => _casoDeUso.EjecutarAsync("no-existe"));
+            await Assert.ThrowsAsync<NotFoundException>(() => _casoDeUso.EjecutarAsync("no-existe"));
         }
 
         private sealed class FakeTransporteZonaRepository : ITransporteZonaRepository

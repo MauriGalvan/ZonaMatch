@@ -49,7 +49,7 @@ namespace ZonaMatch.Tests.UseCases.Resenas
         [Fact]
         public async Task MarcarUtil_TuPropiaResena_NoSePermite()
         {
-            await Assert.ThrowsAsync<OperacionNoPermitidaException>(
+            await Assert.ThrowsAsync<ConflictException>(
                 () => _casoDeUso.EjecutarAsync(Zona, _resenaDeAna.Id, _ana, util: true));
             Assert.Empty(_resenaDeAna.VotosUtil);
         }
@@ -57,7 +57,7 @@ namespace ZonaMatch.Tests.UseCases.Resenas
         [Fact]
         public async Task MarcarUtil_ResenaInexistente_NoEncontrada()
         {
-            await Assert.ThrowsAsync<NoEncontradoException>(() => _casoDeUso.EjecutarAsync(Zona, Guid.NewGuid(), _luis, util: true));
+            await Assert.ThrowsAsync<NotFoundException>(() => _casoDeUso.EjecutarAsync(Zona, Guid.NewGuid(), _luis, util: true));
         }
     }
 }

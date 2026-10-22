@@ -7,8 +7,8 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.AnalisisGuardados
 {
-    // Guarda un analisis original: las zonas que el usuario eligio comparar y una copia de su perfil,
-    // que es el criterio con el que se calcula. Sin perfil no hay analisis (PerfilNoEncontradoException).
+    // Saves an original analysis with the user's selected zones and a snapshot of their profile.
+    // The user's saved profile is required before creating an analysis.
     public class CrearAnalisis
     {
         private readonly IAnalisisRepository _analisis;
@@ -28,7 +28,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             Guid usuarioId, CreateAnalysisRequest solicitud, CancellationToken cancellationToken = default)
         {
             var perfil = await _perfiles.ObtenerDeUsuarioAsync(usuarioId, cancellationToken)
-                ?? throw new PerfilNoEncontradoException();
+                ?? throw new NotFoundException("Todavía no armaste tu perfil.");
 
             var zonas = await AnalisisMapeo.ArmarZonasAsync(solicitud.Zones, _zonas, cancellationToken);
             var ahora = _reloj.GetUtcNow();

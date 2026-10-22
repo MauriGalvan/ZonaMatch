@@ -62,7 +62,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         [InlineData("seguridad", null, "Prioridad inválida")]
         public async Task CriterioInvalido_LanzaErrorYNoGuarda(string criterio, string? prioridad, string mensaje)
         {
-            var error = await Assert.ThrowsAsync<DatosInvalidosException>(
+            var error = await Assert.ThrowsAsync<BadRequestException>(
                 () => _sut.EjecutarAsync(Usuario, Pedidos.Criterio(new() { [criterio] = prioridad })));
 
             Assert.Contains(mensaje, error.Message);
@@ -74,7 +74,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         [InlineData(9)]
         public async Task PersonasFueraDeRango_LanzaError(int personas)
         {
-            await Assert.ThrowsAsync<DatosInvalidosException>(
+            await Assert.ThrowsAsync<BadRequestException>(
                 () => _sut.EjecutarAsync(Usuario, Pedidos.Criterio(personas: personas)));
 
             Assert.Empty(_perfiles.Perfiles);
@@ -85,7 +85,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         {
             await _sut.EjecutarAsync(Usuario, Pedidos.Criterio(new() { ["seguridad"] = "alta" }));
 
-            await Assert.ThrowsAsync<DatosInvalidosException>(() => _sut.EjecutarAsync(Usuario, Pedidos.Criterio(
+            await Assert.ThrowsAsync<BadRequestException>(() => _sut.EjecutarAsync(Usuario, Pedidos.Criterio(
                 new() { ["salud"] = "media" },
                 lugares: [new LugarRequest { Nombre = "  " }])));
 

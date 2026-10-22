@@ -3,16 +3,16 @@ using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.Comunidad
 {
-    // Validaciones que comparten los casos de uso de la comunidad que escriben sobre una zona
+    // Validations shared by community use cases that write to a zone.
     internal static class ZonaRepositoryExtensions
     {
         public static async Task ValidarExisteAsync(this IZonaRepository zonas, string zonaSlug, CancellationToken cancellationToken)
         {
             if (!await zonas.ExisteAsync(zonaSlug, cancellationToken))
-                throw new NoEncontradoException("No se encontro una zona con ese identificador.");
+                throw new NotFoundException("No se encontro una zona con ese identificador.");
         }
 
-        // Una zona desconocida es NoEncontradoException; un punto fuera de una zona conocida, DatosInvalidosException
+        // A missing zone is a NotFoundException; a point outside a known zone is a BadRequestException.
         public static async Task ValidarContienePuntoAsync(
             this IZonaRepository zonas, string zonaSlug, double latitud, double longitud, CancellationToken cancellationToken)
         {
@@ -20,7 +20,7 @@ namespace ZonaMatch.Application.UseCases.Comunidad
                 return;
 
             await zonas.ValidarExisteAsync(zonaSlug, cancellationToken);
-            throw new DatosInvalidosException("El punto tiene que estar dentro de la zona.");
+            throw new BadRequestException("El punto tiene que estar dentro de la zona.");
         }
     }
 }

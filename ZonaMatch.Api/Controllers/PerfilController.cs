@@ -7,49 +7,46 @@ using ZonaMatch.Application.UseCases.Perfil;
 
 namespace ZonaMatch.Api.Controllers
 {
-    // Perfil del usuario: su criterio base (hogar, prioridades, lugares y alquiler), el que usan todos sus analisis
+    // User profile: the base criteria (home, priorities, places, and rent) used by all analyses.
     [ApiController]
     [Route("[controller]")]
     [Authorize]
     public class PerfilController : ControllerBase
     {
-        private readonly ObtenerMiPerfil _obtenerMiPerfil;
-        private readonly GuardarMiPerfil _guardarMiPerfil;
-
-        public PerfilController(ObtenerMiPerfil obtenerMiPerfil, GuardarMiPerfil guardarMiPerfil)
-        {
-            _obtenerMiPerfil = obtenerMiPerfil;
-            _guardarMiPerfil = guardarMiPerfil;
-        }
-
-        // GET /Perfil — 404 si todavia no lo armo
+        // GET /Perfil returns 404 if the user has not created a profile yet.
         [HttpGet]
         [ProducesResponseType<PerfilDto>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Obtener(CancellationToken cancellationToken)
+        public async Task<IActionResult> Obtener(
+            [FromServices] ObtenerMiPerfil obtenerMiPerfil,
+            CancellationToken cancellationToken)
         {
-            if (User.UsuarioId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } usuarioId)
                 return Unauthorized();
 
-            // Sin perfil, el mismo 404 que armaria el manejador global, pero sin lanzar una excepcion
-            return await _obtenerMiPerfil.EjecutarAsync(usuarioId, cancellationToken) is { } perfil
-                ? Ok(perfil)
-                : Problem(statusCode: StatusCodes.Status404NotFound, title: PerfilNoEncontradoException.Mensaje);
+            var profile = await obtenerMiPerfil.EjecutarAsync(usuarioId, cancellationToken);
+            if (profile is null)
+                throw new NotFoundException("Todavía no armaste tu perfil.");
+
+            return Ok(profile);
         }
 
         // PUT /Perfil
-        // Body: { "contexto": {}, "criterios": {}, "puntos": {} } — lo crea o lo reemplaza completo
+        // Body: { "contexto": {}, "criterios": {}, "puntos": {} } creates or fully replaces the profile.
         [HttpPut]
         [ProducesResponseType<PerfilDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> Guardar(CriterioUsuarioRequest solicitud, CancellationToken cancellationToken)
+        public async Task<IActionResult> Guardar(
+            [FromBody] CriterioUsuarioRequest solicitud,
+            [FromServices] GuardarMiPerfil guardarMiPerfil,
+            CancellationToken cancellationToken)
         {
-            if (User.UsuarioId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } usuarioId)
                 return Unauthorized();
 
-            return Ok(await _guardarMiPerfil.EjecutarAsync(usuarioId, solicitud, cancellationToken));
+            return Ok(await guardarMiPerfil.EjecutarAsync(usuarioId, solicitud, cancellationToken));
         }
     }
 }
