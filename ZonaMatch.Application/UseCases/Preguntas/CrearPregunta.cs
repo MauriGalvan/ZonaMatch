@@ -1,5 +1,6 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Comunidad;
 using ZonaMatch.Domain.Entities;
 
@@ -19,14 +20,14 @@ namespace ZonaMatch.Application.UseCases.Preguntas
         }
 
         public async Task<PreguntaDto> EjecutarAsync(
-            string zonaSlug, SesionDto usuario, CrearPreguntaDto solicitud, CancellationToken cancellationToken = default)
+            string zonaSlug, AuthenticatedUserContext currentUser, CrearPreguntaDto solicitud, CancellationToken cancellationToken = default)
         {
             await _zonas.ValidarExisteAsync(zonaSlug, cancellationToken);
 
             var pregunta = new Pregunta
             {
                 ZonaSlug = zonaSlug,
-                UsuarioId = usuario.Id,
+                UsuarioId = currentUser.Id,
                 Texto = solicitud.Texto.Trim(),
                 FechaCreacion = _reloj.GetUtcNow()
             };
@@ -34,7 +35,7 @@ namespace ZonaMatch.Application.UseCases.Preguntas
             _preguntas.Agregar(pregunta);
             await _preguntas.GuardarCambiosAsync(cancellationToken);
 
-            return new PreguntaDto(pregunta.Id, pregunta.Texto, Autor.Iniciales(usuario.Email), pregunta.FechaCreacion, EsMia: true, []);
+            return new PreguntaDto(pregunta.Id, pregunta.Texto, Autor.Iniciales(currentUser.Email), pregunta.FechaCreacion, EsMia: true, []);
         }
     }
 }

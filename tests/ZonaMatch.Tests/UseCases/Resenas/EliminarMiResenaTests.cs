@@ -36,7 +36,7 @@ namespace ZonaMatch.Tests.UseCases.Resenas
         {
             _resenas.Agregar(new Resena { ZonaSlug = Zona, UsuarioId = _luis });
 
-            await Assert.ThrowsAsync<NoEncontradoException>(() => _casoDeUso.EjecutarAsync(Zona, _ana));
+            await Assert.ThrowsAsync<NotFoundException>(() => _casoDeUso.EjecutarAsync(Zona, _ana));
             Assert.Single(_resenas.Resenas);
         }
     }

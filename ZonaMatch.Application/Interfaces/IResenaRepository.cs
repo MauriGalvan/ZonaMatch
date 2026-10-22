@@ -4,19 +4,19 @@ namespace ZonaMatch.Application.Interfaces
 {
     public interface IResenaRepository
     {
-        // Resenas de la zona con su autor y sus votos de "util", la mas nueva primero (solo lectura)
+        // Zone reviews with their authors and "useful" votes, newest first (read-only).
         Task<IReadOnlyList<Resena>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default);
 
-        // Con seguimiento de cambios: se guardan con GuardarCambiosAsync
+        // Tracked entities are persisted by the repository.
         Task<Resena?> ObtenerDeUsuarioAsync(string zonaSlug, Guid usuarioId, CancellationToken cancellationToken = default);
 
-        // Con seguimiento de cambios, con sus votos de "util"
+        // Tracked entities with their "useful" votes.
         Task<Resena?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default);
 
         void Agregar(Resena resena);
         void Eliminar(Resena resena);
 
-        // Lanza OperacionNoPermitidaException si un pedido simultaneo ya creo la resena del usuario
+        // Throws ConflictException when a concurrent request already created the user's review.
         Task GuardarCambiosAsync(CancellationToken cancellationToken = default);
     }
 }

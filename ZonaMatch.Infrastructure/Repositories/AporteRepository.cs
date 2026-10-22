@@ -55,8 +55,8 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
             catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
-                // El mismo usuario voto dos veces al mismo tiempo
-                throw new OperacionNoPermitidaException("Tu voto ya se habia registrado. Actualiza la pagina.");
+                // The same user submitted two votes at the same time.
+                throw new ConflictException("Tu voto ya se habia registrado. Actualiza la pagina.");
             }
         }
     }

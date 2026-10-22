@@ -11,7 +11,7 @@ using ZonaMatch.Domain.Puntaje;
 namespace ZonaMatch.Application.UseCases.AnalisisGuardados
 {
     /// <summary>
-    /// Recalcula las zonas elegidas en cada análisis usando la copia de criterios que quedó guardada con él.
+    /// Recalculates each analysis's selected zones using the criteria snapshot saved with it.
     /// </summary>
     public sealed class CompararAnalisis
     {
@@ -40,24 +40,24 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             CancellationToken cancellationToken = default)
         {
             if (solicitud.AnalisisIds.Count is < 2 or > MaximoAnalisis)
-                throw new DatosInvalidosException("Elegí entre dos y cinco análisis para comparar.");
+                throw new BadRequestException("Elegí entre dos y cinco análisis para comparar.");
 
             if (solicitud.AnalisisIds.Distinct().Count() != solicitud.AnalisisIds.Count)
-                throw new DatosInvalidosException("No se puede comparar el mismo análisis más de una vez.");
+                throw new BadRequestException("No se puede comparar el mismo análisis más de una vez.");
 
             var ownedAnalyses = await _analisis.ListarDeUsuarioAsync(usuarioId, cancellationToken);
             var byId = ownedAnalyses.ToDictionary(analysis => analysis.Id);
             if (solicitud.AnalisisIds.Any(id => !byId.ContainsKey(id)))
-                throw new AnalisisNoEncontradoException();
+                throw new NotFoundException("El análisis no existe.");
 
             var selectedAnalyses = solicitud.AnalisisIds.Select(id => byId[id]).ToArray();
             var analysesWithoutZones = selectedAnalyses.Where(analysis => analysis.Zonas.Count == 0).ToArray();
             if (analysesWithoutZones.Length > 0)
-                throw new DatosInvalidosException("Todos los análisis elegidos deben tener al menos una zona.");
+                throw new BadRequestException("Todos los análisis elegidos deben tener al menos una zona.");
 
             var analysesWithTooManyZones = selectedAnalyses.Where(analysis => analysis.Zonas.Count > MaximoZonas).ToArray();
             if (analysesWithTooManyZones.Length > 0)
-                throw new DatosInvalidosException("Cada análisis puede incluir hasta diez zonas en la comparación.");
+                throw new BadRequestException("Cada análisis puede incluir hasta diez zonas en la comparación.");
 
             var personalAnalyses = selectedAnalyses
                 .Where(analysis => analysis.PuntajesEnGrupoJson is null)
@@ -79,7 +79,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     .Select(zone => zone.Nombre)
                     .ToArray();
                 if (unavailableZones.Length > 0)
-                    throw new DatosInvalidosException($"No hay datos para calcular estas zonas: {string.Join(", ", unavailableZones)}.");
+                    throw new BadRequestException($"No hay datos para calcular estas zonas: {string.Join(", ", unavailableZones)}.");
 
                 motor = new MotorPuntaje(universe);
             }
@@ -115,7 +115,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             }));
 
             if (calculations.All(result => result.Zonas.All(zone => zone.Puntaje is null)))
-                throw new DatosInvalidosException("No hay datos suficientes para puntuar las zonas de los análisis elegidos.");
+                throw new BadRequestException("No hay datos suficientes para puntuar las zonas de los análisis elegidos.");
 
             return new ComparacionAnalisisDto(calculations);
         }
@@ -129,11 +129,11 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             }
             catch (JsonException)
             {
-                throw new DatosInvalidosException($"El análisis de grupo '{analysis.Nombre}' no tiene un resultado válido guardado.");
+                throw new BadRequestException($"El análisis de grupo '{analysis.Nombre}' no tiene un resultado válido guardado.");
             }
 
             if (snapshot?.Zones is not { } snapshotZones)
-                throw new DatosInvalidosException($"El análisis de grupo '{analysis.Nombre}' no tiene un resultado válido guardado.");
+                throw new BadRequestException($"El análisis de grupo '{analysis.Nombre}' no tiene un resultado válido guardado.");
 
             var scoresBySlug = snapshotZones
                 .GroupBy(zone => zone.Slug, StringComparer.Ordinal)
@@ -144,7 +144,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 .Select(zone => zone.ZonaSlug)
                 .ToArray();
             if (missingSlugs.Length > 0)
-                throw new DatosInvalidosException(
+                throw new BadRequestException(
                     $"El análisis de grupo '{analysis.Nombre}' no tiene puntajes guardados para todas sus zonas. Volvé a calcular y guardar ese ranking.");
 
             var rankedGroupZones = savedZones

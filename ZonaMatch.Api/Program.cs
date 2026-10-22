@@ -8,10 +8,12 @@ using System.Threading.RateLimiting;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Api.Background;
 using ZonaMatch.Api.ExceptionHandling;
+using ZonaMatch.Api.Middleware;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.AnalisisGuardados;
+using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.UseCases.Aportes;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
@@ -31,14 +33,14 @@ using ZonaMatch.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// se configura PostgreSQL y PostGIS
+// Configure PostgreSQL and PostGIS.
 builder.Services.AddDbContext<ZonaMatchDbContext>(options =>
     options.UseZonaMatchNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Repositorio generico
+// Generic repository.
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
-// Repositorios geograficos especificos
+// Specialized geographic repositories.
 builder.Services.AddScoped<IEscuelaRepository, EscuelaRepository>();
 builder.Services.AddScoped<IPartidoRepository, PartidoRepository>();
 builder.Services.AddScoped<IComunaRepository, ComunaRepository>();
@@ -69,7 +71,7 @@ else
     builder.Services.AddScoped<IGeocodingClient, OsmGeocodingClient>();
 }
 
-// Servicios de aplicacion
+// Application services.
 builder.Services.AddScoped<IGeolocationService, GeolocationService>();
 builder.Services.AddScoped<IMapaService, MapaService>();
 builder.Services.AddScoped<IZonaService, ZonaService>();
@@ -91,19 +93,20 @@ builder.Services.AddScoped<GetGroupInviteLink>();
 builder.Services.AddScoped<JoinGroupByLink>();
 builder.Services.AddScoped<RevokeInviteLink>();
 
-// Registro de usuarios
+// Authentication use cases
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
-builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-    builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<LoginUser>();
+builder.Services.AddScoped<RegisterUser>();
+builder.Services.AddScoped<ICriterioRepository, CriterioRepository>();
 
-// Comunidad de cada zona: resenas, preguntas y aportes al mapa
+// Community features for each zone: reviews, questions, and map contributions.
 builder.Services.AddScoped<IResenaRepository, ResenaRepository>();
 builder.Services.AddScoped<IPreguntaRepository, PreguntaRepository>();
 builder.Services.AddScoped<IAporteRepository, AporteRepository>();
 
-// Casos de uso de la comunidad: uno por operacion
+// Community use cases, one per operation.
 builder.Services.AddScoped<ListarResenas>();
 builder.Services.AddScoped<GuardarMiResena>();
 builder.Services.AddScoped<EliminarMiResena>();
@@ -117,10 +120,10 @@ builder.Services.AddScoped<CrearPuntoNuevo>();
 builder.Services.AddScoped<CrearCorreccion>();
 builder.Services.AddScoped<ValidarAporte>();
 
-// Catalogo de criterios del wizard (GET /Criterios)
+// Criteria catalog for the wizard (GET /Criterios).
 builder.Services.AddScoped<ListarCriterios>();
 
-// Perfil del usuario y analisis guardados (con sus versiones)
+// User profile and saved analyses with their versions.
 builder.Services.AddScoped<IPerfilRepository, PerfilRepository>();
 builder.Services.AddScoped<ObtenerMiPerfil>();
 builder.Services.AddScoped<GuardarMiPerfil>();
@@ -132,7 +135,7 @@ builder.Services.AddScoped<CrearVersionAnalisis>();
 builder.Services.AddScoped<RenombrarAnalisis>();
 builder.Services.AddScoped<EliminarAnalisis>();
 
-// Motor de puntaje: perfiles de todas las zonas en memoria y tiempos de viaje con MOTIS
+// Scoring engine: zone profiles are cached in memory; travel times come from MOTIS.
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<PerfilesZonaCache>();
 builder.Services.AddScoped<IPerfilesZonaRepository, PerfilesZonaRepository>();
@@ -144,11 +147,11 @@ builder.Services.AddHttpClient<IRuteoClient, MotisRuteoClient>(client =>
 builder.Services.AddScoped<CalcularPuntajes>();
 builder.Services.AddHostedService<PrecalcularPerfilesZona>();
 
-// Datos abiertos de cada zona (censo, seguridad), cargados por DATOS-ZONAS-DOCKER.bat
+// Open data for each zone (census and safety), loaded by DATOS-ZONAS-DOCKER.bat.
 builder.Services.AddScoped<ObtenerIndicadoresZona>();
 builder.Services.AddScoped<ObtenerTransporteZona>();
 
-// Formulario de contacto de la landing: cada envio genera un mail al equipo
+// Landing page contact form; each submission sends an email to the team.
 builder.Services.AddSingleton(new ContactoOpciones(builder.Configuration["Contacto:Destinatario"] ?? "zonamatchtpi@gmail.com"));
 builder.Services.AddScoped<EnviarFormularioContacto>();
 
@@ -169,7 +172,7 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("login", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
-    // El formulario de contacto es publico y manda un mail por envio: 5 cada 10 minutos por IP
+    // The public contact form sends an email per submission: 5 requests per 10 minutes per IP.
     options.AddPolicy("contacto", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10) }));
@@ -197,7 +200,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-// Los enums viajan como texto en kebab-case ("punto-nuevo", "cerro") en pedidos y respuestas
+// Enums are serialized as kebab-case strings ("punto-nuevo", "cerro") in requests and responses.
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)));
@@ -221,26 +224,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseResponseCompression();
 app.UseCors(FrontendCorsPolicy);
-app.Use(async (context, next) =>
-{
-    var isStateChangingMethod = HttpMethods.IsPost(context.Request.Method)
-        || HttpMethods.IsPut(context.Request.Method)
-        || HttpMethods.IsPatch(context.Request.Method)
-        || HttpMethods.IsDelete(context.Request.Method);
-    var origin = context.Request.Headers["Origin"].ToString();
-    var requestOrigin = $"{context.Request.Scheme}://{context.Request.Host}";
-
-    if (isStateChangingMethod
-        && !string.IsNullOrWhiteSpace(origin)
-        && !allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)
-        && !string.Equals(origin, requestOrigin, StringComparison.OrdinalIgnoreCase))
-    {
-        context.Response.StatusCode = StatusCodes.Status403Forbidden;
-        return;
-    }
-
-    await next();
-});
+app.UseMiddleware<OriginValidationMiddleware>(new object[] { allowedOrigins });
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

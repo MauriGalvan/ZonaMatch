@@ -6,7 +6,7 @@ using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.AnalisisGuardados
 {
-    // Cambia el nombre de un analisis o de una version. El criterio no se edita: se ajusta con una version nueva.
+    // Renames an analysis or a version. Criteria are adjusted by creating a new version.
     public class RenombrarAnalisis
     {
         private readonly IAnalisisRepository _analisis;
@@ -22,7 +22,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             Guid id, Guid usuarioId, RenameAnalysisRequest solicitud, CancellationToken cancellationToken = default)
         {
             var analisis = await _analisis.ObtenerAsync(id, usuarioId, cancellationToken)
-                ?? throw new AnalisisNoEncontradoException();
+                ?? throw new NotFoundException("El análisis no existe.");
 
             analisis.Nombre = solicitud.Name.Trim();
             analisis.FechaActualizacion = _reloj.GetUtcNow();

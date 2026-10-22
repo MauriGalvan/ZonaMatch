@@ -43,7 +43,7 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
             var pedido = Pedido();
             pedido.ZonasAgregadas = ["no-existe"];
 
-            await Assert.ThrowsAsync<NoEncontradoException>(() => _casoDeUso.EjecutarAsync(pedido));
+            await Assert.ThrowsAsync<NotFoundException>(() => _casoDeUso.EjecutarAsync(pedido));
         }
 
         [Fact]

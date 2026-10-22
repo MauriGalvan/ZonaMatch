@@ -5,10 +5,10 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Zonas
 {
-    // Poblacion, conectividad, condiciones de vida y seguridad de una zona, con sus fuentes
+    // Population, connectivity, living conditions, and safety data for a zone, with sources.
     public class ObtenerIndicadoresZona
     {
-        // Anio de los datos cargados por etl/descargar_datos.py
+        // Year of the data loaded by etl/descargar_datos.py.
         public const int AnioCenso = 2022;
         public const int AnioDelitos = 2024;
 
@@ -24,9 +24,9 @@ namespace ZonaMatch.Application.UseCases.Zonas
         public async Task<IndicadoresZonaDto> EjecutarAsync(string slug, CancellationToken cancellationToken = default)
         {
             var zona = await _indicadores.ObtenerPorSlugAsync(slug, cancellationToken)
-                ?? throw new NoEncontradoException("Todavia no hay datos de censo ni de seguridad para esta zona.");
+                ?? throw new NotFoundException("Todavia no hay datos de censo ni de seguridad para esta zona.");
 
-            // Las zonas con delitos estan en CABA: se comparan con la ciudad entera
+            // Crime data is available for CABA, so compare against the whole city.
             var caba = zona.TieneDelitos ? await _indicadores.ObtenerCabaAsync(cancellationToken) : null;
 
             return new IndicadoresZonaDto(
@@ -89,7 +89,7 @@ namespace ZonaMatch.Application.UseCases.Zonas
 
         private static bool EsCaba(IndicadoresZona zona) => zona.Nivel == NivelCaba;
 
-        // admin_level de OSM de la Ciudad Autonoma de Buenos Aires
+        // OSM admin_level for the Autonomous City of Buenos Aires.
         private const int NivelCaba = 4;
     }
 }

@@ -29,10 +29,10 @@ public sealed class GetGroupDetails
         CancellationToken cancellationToken)
     {
         var group = await _groups.GetDetailsByIdAsync(groupId, cancellationToken)
-            ?? throw new NoEncontradoException("No se encontró el grupo.");
+            ?? throw new NotFoundException("No se encontró el grupo.");
 
         if (!group.Participants.Any(participant => participant.UserId == currentUserId))
-            throw new AccesoDenegadoException("No pertenecés a este grupo.");
+            throw new ForbiddenException("No pertenecés a este grupo.");
 
         var participantUserIds = group.Participants
             .Select(participant => participant.UserId)

@@ -51,8 +51,8 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
             catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
-                // Dos pedidos crearon al mismo tiempo el perfil del usuario (indice unico por usuario)
-                throw new OperacionNoPermitidaException("Tu perfil ya se había guardado. Actualizá la página.");
+                // Two requests created the user's profile at the same time (unique index per user).
+                throw new ConflictException("Tu perfil ya se había guardado. Actualizá la página.");
             }
         }
     }

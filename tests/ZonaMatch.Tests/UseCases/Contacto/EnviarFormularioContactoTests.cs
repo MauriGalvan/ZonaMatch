@@ -67,7 +67,7 @@ namespace ZonaMatch.Tests.UseCases.Contacto
         {
             _email.Falla = new InvalidOperationException("SMTP caido");
 
-            var error = await Assert.ThrowsAsync<ServicioNoDisponibleException>(
+            var error = await Assert.ThrowsAsync<ServiceUnavailableException>(
                 () => _casoDeUso.EjecutarAsync(new FormularioContactoDto("ana@example.com", null, null, null)));
             Assert.IsType<InvalidOperationException>(error.InnerException);
         }

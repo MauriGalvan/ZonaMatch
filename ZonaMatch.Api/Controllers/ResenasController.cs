@@ -6,51 +6,41 @@ using ZonaMatch.Application.UseCases.Resenas;
 
 namespace ZonaMatch.Api.Controllers
 {
-    // Resenas de los vecinos sobre una zona. Leer es publico; escribir pide un usuario con sesion iniciada (token Bearer).
+    // Community reviews for a zone. Reading is public; writing requires an authenticated user (Bearer token).
     [ApiController]
     [Route("Zonas/{slug:regex(" + RutasZona.Slug + ")}/resenas")]
     public class ResenasController : ControllerBase
     {
-        private readonly ListarResenas _listarResenas;
-        private readonly GuardarMiResena _guardarMiResena;
-        private readonly EliminarMiResena _eliminarMiResena;
-        private readonly MarcarResenaUtil _marcarResenaUtil;
-
-        public ResenasController(
-            ListarResenas listarResenas,
-            GuardarMiResena guardarMiResena,
-            EliminarMiResena eliminarMiResena,
-            MarcarResenaUtil marcarResenaUtil)
-        {
-            _listarResenas = listarResenas;
-            _guardarMiResena = guardarMiResena;
-            _eliminarMiResena = eliminarMiResena;
-            _marcarResenaUtil = marcarResenaUtil;
-        }
-
         // GET /Zonas/villa-luro/resenas
-        // Con token, cada resena indica si es tuya (esMia) y si la marcaste como util
+        // With a token, each review indicates whether it is yours (esMia) and whether you marked it useful.
         [HttpGet]
         [ProducesResponseType<ResenasZonaDto>(StatusCodes.Status200OK)]
-        public async Task<IActionResult> Listar(string slug, CancellationToken cancellationToken) =>
-            Ok(await _listarResenas.EjecutarAsync(slug, User.UsuarioId(), cancellationToken));
+        public async Task<IActionResult> Listar(
+            string slug,
+            [FromServices] ListarResenas listarResenas,
+            CancellationToken cancellationToken) =>
+            Ok(await listarResenas.EjecutarAsync(slug, User.GetAuthenticatedUserId(), cancellationToken));
 
         // PUT /Zonas/villa-luro/resenas/mia
-        // Cuerpo: { "aspectos": { "seguridad": 3, "transporte": 5, "conectividad": 4, "comercios": 4, "espaciosVerdes": 3 },
+        // Body: { "aspectos": { "seguridad": 3, "transporte": 5, "conectividad": 4, "comercios": 4, "espaciosVerdes": 3 },
         //         "texto": "...", "aniosEnZona": 9, "temas": ["transporte"] }
-        // Crea tu resena de la zona o la reemplaza (una por usuario y zona). El puntaje general es el promedio de los aspectos.
+        // Creates or replaces your review for the zone (one per user and zone). The overall score is the average of its aspects.
         [Authorize]
         [HttpPut("mia")]
         [ProducesResponseType<ResenaDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GuardarMia(string slug, GuardarResenaDto solicitud, CancellationToken cancellationToken)
+        public async Task<IActionResult> GuardarMia(
+            string slug,
+            [FromBody] GuardarResenaDto solicitud,
+            [FromServices] GuardarMiResena guardarMiResena,
+            CancellationToken cancellationToken)
         {
-            if (User.Sesion() is not { } sesion)
+            if (User.GetAuthenticatedUserContext() is not { } currentUser)
                 return Unauthorized();
 
-            return Ok(await _guardarMiResena.EjecutarAsync(slug, sesion, solicitud, cancellationToken));
+            return Ok(await guardarMiResena.EjecutarAsync(slug, currentUser, solicitud, cancellationToken));
         }
 
         // DELETE /Zonas/villa-luro/resenas/mia
@@ -59,40 +49,56 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> EliminarMia(string slug, CancellationToken cancellationToken)
+        public async Task<IActionResult> EliminarMia(
+            string slug,
+            [FromServices] EliminarMiResena eliminarMiResena,
+            CancellationToken cancellationToken)
         {
-            if (User.UsuarioId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            await _eliminarMiResena.EjecutarAsync(slug, usuarioId, cancellationToken);
+            await eliminarMiResena.EjecutarAsync(slug, userId, cancellationToken);
             return NoContent();
         }
 
-        // PUT /Zonas/villa-luro/resenas/{id}/util     marca como util una resena de otro usuario
-        // DELETE /Zonas/villa-luro/resenas/{id}/util  quita la marca (las dos son idempotentes)
+        // PUT /Zonas/villa-luro/resenas/{id}/util marks another user's review as useful.
+        // DELETE /Zonas/villa-luro/resenas/{id}/util removes the mark; both operations are idempotent.
         [Authorize]
         [HttpPut("{id:guid}/util")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-        public Task<IActionResult> MarcarUtil(string slug, Guid id, CancellationToken cancellationToken) =>
-            CambiarUtilAsync(slug, id, util: true, cancellationToken);
+        public Task<IActionResult> MarcarUtil(
+            string slug,
+            Guid id,
+            [FromServices] MarcarResenaUtil marcarResenaUtil,
+            CancellationToken cancellationToken) =>
+            CambiarUtilAsync(slug, id, util: true, marcarResenaUtil, cancellationToken);
 
         [Authorize]
         [HttpDelete("{id:guid}/util")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public Task<IActionResult> DesmarcarUtil(string slug, Guid id, CancellationToken cancellationToken) =>
-            CambiarUtilAsync(slug, id, util: false, cancellationToken);
+        public Task<IActionResult> DesmarcarUtil(
+            string slug,
+            Guid id,
+            [FromServices] MarcarResenaUtil marcarResenaUtil,
+            CancellationToken cancellationToken) =>
+            CambiarUtilAsync(slug, id, util: false, marcarResenaUtil, cancellationToken);
 
-        private async Task<IActionResult> CambiarUtilAsync(string slug, Guid id, bool util, CancellationToken cancellationToken)
+        private async Task<IActionResult> CambiarUtilAsync(
+            string slug,
+            Guid id,
+            bool util,
+            MarcarResenaUtil marcarResenaUtil,
+            CancellationToken cancellationToken)
         {
-            if (User.UsuarioId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            await _marcarResenaUtil.EjecutarAsync(slug, id, usuarioId, util, cancellationToken);
+            await marcarResenaUtil.EjecutarAsync(slug, id, userId, util, cancellationToken);
             return NoContent();
         }
     }

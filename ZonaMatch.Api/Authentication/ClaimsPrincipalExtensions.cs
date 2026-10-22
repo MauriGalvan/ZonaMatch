@@ -1,21 +1,21 @@
 using System.Security.Claims;
 using Microsoft.IdentityModel.JsonWebTokens;
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.Models;
 
-namespace ZonaMatch.Api.Authentication
+namespace ZonaMatch.Api.Authentication;
+
+public static class ClaimsPrincipalExtensions
 {
-    // Lee quien hace el pedido a partir del JWT ya validado (los mismos claims que /Auth/me)
-    public static class ClaimsPrincipalExtensions
+    public static AuthenticatedUserContext? GetAuthenticatedUserContext(this ClaimsPrincipal principal)
     {
-        // Null en pedidos anonimos o con un token sin los claims esperados
-        public static SesionDto? Sesion(this ClaimsPrincipal usuario)
-        {
-            var id = usuario.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            var email = usuario.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+        var userIdClaim = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        var email = principal.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
 
-            return Guid.TryParse(id, out var usuarioId) && email is not null ? new SesionDto(usuarioId, email) : null;
-        }
-
-        public static Guid? UsuarioId(this ClaimsPrincipal usuario) => usuario.Sesion()?.Id;
+        return Guid.TryParse(userIdClaim, out var userId) && email is not null
+            ? new AuthenticatedUserContext(userId, email)
+            : null;
     }
+
+    public static Guid? GetAuthenticatedUserId(this ClaimsPrincipal principal) =>
+        principal.GetAuthenticatedUserContext()?.Id;
 }

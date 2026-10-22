@@ -1,5 +1,6 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Aportes;
 using ZonaMatch.Domain.Entities;
 
@@ -12,7 +13,7 @@ namespace ZonaMatch.Tests.UseCases.Aportes
 
         private readonly FakeAporteRepository _aportes = new();
         private readonly CrearCorreccion _casoDeUso;
-        private readonly SesionDto _autor = new(Guid.NewGuid(), "ana.perez@example.com");
+        private readonly AuthenticatedUserContext _autor = new(Guid.NewGuid(), "ana.perez@example.com");
 
         public CrearCorreccionTests()
         {
@@ -56,14 +57,14 @@ namespace ZonaMatch.Tests.UseCases.Aportes
         [InlineData(MotivoCorreccion.Otro)]
         public async Task Correccion_SinElDatoQuePideElMotivo_EsInvalida(MotivoCorreccion motivo)
         {
-            await Assert.ThrowsAsync<DatosInvalidosException>(() => _casoDeUso.EjecutarAsync(Zona, _autor, Correccion(motivo)));
+            await Assert.ThrowsAsync<BadRequestException>(() => _casoDeUso.EjecutarAsync(Zona, _autor, Correccion(motivo)));
             Assert.Empty(_aportes.Aportes);
         }
 
         [Fact]
         public async Task Correccion_UbicacionFueraDeLaZona_EsInvalida()
         {
-            await Assert.ThrowsAsync<DatosInvalidosException>(
+            await Assert.ThrowsAsync<BadRequestException>(
                 () => _casoDeUso.EjecutarAsync(Zona, _autor, Correccion(MotivoCorreccion.Ubicacion, latitud: 10, longitud: -58.5)));
             Assert.Empty(_aportes.Aportes);
         }
@@ -79,7 +80,7 @@ namespace ZonaMatch.Tests.UseCases.Aportes
         [Fact]
         public async Task Correccion_ZonaInexistente_NoEncontrada()
         {
-            await Assert.ThrowsAsync<NoEncontradoException>(
+            await Assert.ThrowsAsync<NotFoundException>(
                 () => _casoDeUso.EjecutarAsync("no-existe", _autor, Correccion(MotivoCorreccion.Cerro)));
             Assert.Empty(_aportes.Aportes);
         }

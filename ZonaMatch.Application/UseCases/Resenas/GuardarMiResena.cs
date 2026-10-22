@@ -1,13 +1,14 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Comunidad;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Resenas
 {
-    // Crea la resena del usuario sobre la zona o la reemplaza (una por usuario y zona)
+    // Creates or replaces the user's review for a zone (one per user and zone).
     public class GuardarMiResena
     {
         private readonly IResenaRepository _resenas;
@@ -22,23 +23,23 @@ namespace ZonaMatch.Application.UseCases.Resenas
         }
 
         public async Task<ResenaDto> EjecutarAsync(
-            string zonaSlug, SesionDto usuario, GuardarResenaDto solicitud, CancellationToken cancellationToken = default)
+            string zonaSlug, AuthenticatedUserContext currentUser, GuardarResenaDto solicitud, CancellationToken cancellationToken = default)
         {
             await _zonas.ValidarExisteAsync(zonaSlug, cancellationToken);
 
             if (!AspectoZona.TryNormalizar(solicitud.Temas, out var temas, out var error))
-                throw new DatosInvalidosException(error);
+                throw new BadRequestException(error);
 
             var ahora = _reloj.GetUtcNow();
-            var resena = await _resenas.ObtenerDeUsuarioAsync(zonaSlug, usuario.Id, cancellationToken);
+            var resena = await _resenas.ObtenerDeUsuarioAsync(zonaSlug, currentUser.Id, cancellationToken);
 
             if (resena is null)
             {
-                resena = new Resena { ZonaSlug = zonaSlug, UsuarioId = usuario.Id, FechaCreacion = ahora };
+                resena = new Resena { ZonaSlug = zonaSlug, UsuarioId = currentUser.Id, FechaCreacion = ahora };
                 _resenas.Agregar(resena);
             }
 
-            var aspectos = solicitud.Aspectos!; // garantizado por [Required] en el DTO
+            var aspectos = solicitud.Aspectos!; // Required by DTO validation.
             resena.PuntajeSeguridad = aspectos.Seguridad;
             resena.PuntajeTransporte = aspectos.Transporte;
             resena.PuntajeConectividad = aspectos.Conectividad;
@@ -51,7 +52,7 @@ namespace ZonaMatch.Application.UseCases.Resenas
 
             await _resenas.GuardarCambiosAsync(cancellationToken);
 
-            return ResenaMapeo.ADto(resena, usuario.Email, usuario.Id);
+            return ResenaMapeo.ADto(resena, currentUser.Email, currentUser.Id);
         }
     }
 }

@@ -31,7 +31,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         [Fact]
         public async Task Crear_SinPerfil_LanzaPerfilNoEncontrado()
         {
-            await Assert.ThrowsAsync<PerfilNoEncontradoException>(() => Crear.EjecutarAsync(Usuario, Pedido()));
+            await Assert.ThrowsAsync<NotFoundException>(() => Crear.EjecutarAsync(Usuario, Pedido()));
             Assert.Empty(_analisis.Analisis);
         }
 
@@ -60,7 +60,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         {
             await ConPerfil();
 
-            await Assert.ThrowsAsync<NoEncontradoException>(
+            await Assert.ThrowsAsync<NotFoundException>(
                 () => Crear.EjecutarAsync(Usuario, Pedido(zones: Pedidos.Zona("no-existe"))));
             Assert.Empty(_analisis.Analisis);
         }
@@ -70,7 +70,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         {
             await ConPerfil();
 
-            var error = await Assert.ThrowsAsync<DatosInvalidosException>(
+            var error = await Assert.ThrowsAsync<BadRequestException>(
                 () => Crear.EjecutarAsync(Usuario, Pedido(zones: [Pedidos.Zona(), Pedidos.Zona()])));
             Assert.Contains("repetidas", error.Message);
         }
@@ -89,9 +89,9 @@ namespace ZonaMatch.Tests.UseCases.Perfil
             Assert.Equal(original.Id, version.OriginAnalysisId);
             Assert.Equal("Cerca del trabajo (2)", version.Name);
             Assert.Equal("alta", version.Criteria["salud"]);
-            // Sin zonas en el pedido, compara las mismas que el original
+            // When the request has no zones, compare the same zones as the original.
             Assert.Equal(FakeZonaRepository.Zona, Assert.Single(version.Zones).Slug);
-            // El original no cambia
+            // The original remains unchanged.
             var guardado = _analisis.Analisis.Single(a => a.Id == original.Id);
             Assert.Equal("seguridad", Assert.Single(guardado.Contexto.Criterios).CriterioId);
         }
@@ -115,7 +115,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
             await ConPerfil();
             var original = await Crear.EjecutarAsync(Usuario, Pedido());
 
-            await Assert.ThrowsAsync<AnalisisNoEncontradoException>(
+            await Assert.ThrowsAsync<NotFoundException>(
                 () => Versionar.EjecutarAsync(original.Id, Guid.NewGuid(), new() { Criterion = Pedidos.Criterio() }));
         }
 

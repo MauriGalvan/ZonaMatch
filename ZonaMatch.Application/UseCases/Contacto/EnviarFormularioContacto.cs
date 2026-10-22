@@ -49,7 +49,7 @@ namespace ZonaMatch.Application.UseCases.Contacto
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                throw new ServicioNoDisponibleException("No pudimos enviar el formulario en este momento. Intenta de nuevo en unos minutos.", ex);
+                throw new ServiceUnavailableException("No pudimos enviar el formulario en este momento. Intenta de nuevo en unos minutos.", ex);
             }
         }
 

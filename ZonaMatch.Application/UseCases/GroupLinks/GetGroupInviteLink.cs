@@ -16,10 +16,10 @@ public sealed class GetGroupInviteLink
     public async Task<Guid> ExecuteAsync(Guid groupId, Guid currentUserId, CancellationToken cancellationToken)
     {
         var group = await _groupRepository.GetByIdAsync(groupId, cancellationToken)
-            ?? throw new NoEncontradoException("No se encontró el grupo.");
+            ?? throw new NotFoundException("No se encontró el grupo.");
 
         if (!group.Participants.Any(participant => participant.UserId == currentUserId))
-            throw new AccesoDenegadoException("No pertenecés a este grupo.");
+            throw new ForbiddenException("No pertenecés a este grupo.");
 
         // Older groups may have received Guid.Empty when InviteToken was added.
         // Create the token once so subsequent reads return the same active link.

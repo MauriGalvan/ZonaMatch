@@ -1,5 +1,6 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Aportes;
 using ZonaMatch.Domain.Entities;
 
@@ -12,7 +13,7 @@ namespace ZonaMatch.Tests.UseCases.Aportes
 
         private readonly FakeAporteRepository _aportes = new();
         private readonly CrearPuntoNuevo _casoDeUso;
-        private readonly SesionDto _autor = new(Guid.NewGuid(), "ana.perez@example.com");
+        private readonly AuthenticatedUserContext _autor = new(Guid.NewGuid(), "ana.perez@example.com");
 
         public CrearPuntoNuevoTests()
         {
@@ -43,21 +44,21 @@ namespace ZonaMatch.Tests.UseCases.Aportes
         [Fact]
         public async Task CrearPunto_FueraDeLaZona_EsInvalido()
         {
-            await Assert.ThrowsAsync<DatosInvalidosException>(() => _casoDeUso.EjecutarAsync(Zona, _autor, Punto(latitud: 10)));
+            await Assert.ThrowsAsync<BadRequestException>(() => _casoDeUso.EjecutarAsync(Zona, _autor, Punto(latitud: 10)));
             Assert.Empty(_aportes.Aportes);
         }
 
         [Fact]
         public async Task CrearPunto_ZonaInexistente_NoEncontrada()
         {
-            await Assert.ThrowsAsync<NoEncontradoException>(() => _casoDeUso.EjecutarAsync("no-existe", _autor, Punto()));
+            await Assert.ThrowsAsync<NotFoundException>(() => _casoDeUso.EjecutarAsync("no-existe", _autor, Punto()));
             Assert.Empty(_aportes.Aportes);
         }
 
         [Fact]
         public async Task CrearPunto_CategoriaDesconocida_EsInvalida()
         {
-            await Assert.ThrowsAsync<DatosInvalidosException>(() => _casoDeUso.EjecutarAsync(Zona, _autor, Punto(categoria: "boliches")));
+            await Assert.ThrowsAsync<BadRequestException>(() => _casoDeUso.EjecutarAsync(Zona, _autor, Punto(categoria: "boliches")));
             Assert.Empty(_aportes.Aportes);
         }
     }

@@ -41,7 +41,7 @@ public sealed class GuardarAnalisisEnGrupo
     {
         var name = request.Name.Trim();
         if (name.Length == 0)
-            throw new DatosInvalidosException("El nombre es obligatorio.");
+            throw new BadRequestException("El nombre es obligatorio.");
 
         var now = _clock.GetUtcNow();
         var ranked = await _calculateRanking.EjecutarAsync(
