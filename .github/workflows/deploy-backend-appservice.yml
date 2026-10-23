@@ -1,0 +1,66 @@
+# Copiar a .github/workflows/deploy-backend-appservice.yml en el repo del backend
+# (el repo original del backend, no el fork).
+#
+# Compila la API .NET y la despliega en el App Service de dev (Linux)
+# usando un perfil de publicacion: no necesita service principal ni login de Azure.
+# No reemplaza a "Build backend image" (Container App): ambos pueden coexistir.
+#
+# Configuracion en GitHub (repo ORIGINAL del backend > Settings > Environments > "dev";
+# hace falta permiso de administrador en ese repo para crear Environments y secrets):
+#   Environment variables:
+#     AZURE_WEBAPP_NAME -> terraform output -raw backend_appservice_name
+#     API_PROJECT_PATH  -> ruta al .csproj de la API dentro del repo,
+#                          por ejemplo src/ZonaMatch.Api/ZonaMatch.Api.csproj
+#   Environment secrets:
+#     AZURE_WEBAPP_PUBLISH_PROFILE -> contenido completo (XML) del perfil de publicacion
+#                                     (ver docs/deploy-backend-appservice-dev.md)
+#
+# Si el Environment "dev" restringe ramas, permitir "development".
+name: Deploy backend (App Service)
+
+on:
+  push:
+    branches: [Development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-backend-appservice-dev
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+      API_PROJECT_PATH: ${{ vars.API_PROJECT_PATH }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar configuracion
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          for v in AZURE_WEBAPP_NAME API_PROJECT_PATH PUBLISH_PROFILE; do
+            if [ -z "${!v}" ]; then
+              echo "::error::Falta configurar $v en el GitHub Environment 'dev' (ver cabecera del workflow)."
+              exit 1
+            fi
+          done
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publicar
+        run: dotnet publish "$API_PROJECT_PATH" --configuration Release --output ./publish
+
+      - name: Desplegar en App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
