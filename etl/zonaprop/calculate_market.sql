@@ -1,22 +1,23 @@
--- Real estate market of each zone from the Zonaprop scrape (etl/zonaprop/scrape_zonaprop.py).
--- Run by MERCADO-ZONAS-DOCKER.bat after loading datos/zonaprop/totals.csv and listings.csv into the load tables.
+-- Real estate market of each zone from the Zonaprop scrape (etl/zonaprop/scrape_zonaprop.py), written to
+-- app.zone_market. Run by MERCADO-ZONAS-DOCKER.bat after loading datos/zonaprop/totals.csv and listings.csv into
+-- the load tables (create_load_tables.sql).
 --
--- Result: geo.zone_market, one row per zone, operation (venta, alquiler) and property type (departamentos, casas,
--- ph and "todos"), with:
---   listings          active listings Zonaprop reports for the zone (scaled down when Zonaprop only knows the
---                     partido around it, see near_share)
---   sample_size       listings of the sample used for the averages (newest first, up to 60 per combination)
---   avg_rent_ars      monthly rent without expenses, in pesos (USD rents converted at usd_ars)
---   avg_expenses_ars  monthly expenses, in pesos
---   avg_price_usd     sale price, in dollars (peso prices converted at usd_ars)
---   avg_usd_m2        sale price per covered m2 (total m2 when the covered one is missing), in dollars
--- Averages are trimmed means (the cheapest and most expensive 10 % of the sample are left out when it has at least
--- 10 listings); medians are stored next to them.
+-- One row per zone, operation (sale, rent) and property type (apartment, house, ph, and "all" for every type):
+--   listings            active listings Zonaprop reports for the zone (scaled down when Zonaprop only knows the
+--                       partido around it, see near_share)
+--   sample_size         listings used for the averages (newest first, up to 60 per combination)
+--   average_price       rent per month without expenses in ARS, or sale price in USD (other currencies converted
+--   median_price        at the usd_ars rate of the scrape)
+--   average_price_m2    the same per covered m2 (total m2 when the covered one is missing)
+--   median_price_m2
+--   average_expenses_ars  monthly expenses of rentals
+-- Averages are trimmed means: the cheapest and most expensive 10 % of the sample are left out when it has at least
+-- 10 listings.
 --
--- source: 'zonaprop' measured for the zone; 'zonaprop-heredado' the zone has no Zonaprop location of its own and
--- takes the averages of the smallest zone that contains it (listings stays empty); 'zonaprop-suma' partidos and
--- comunas, adding up the zones they contain.
--- Finally it loads app.alquileres_zona (rent limit of the analysis), replacing the estimated rents.
+-- source: 'zonaprop' measured for the zone; 'zonaprop-inherited' the zone has no Zonaprop location of its own and
+-- takes the averages of the smallest measured zone around it (listings stays empty); 'zonaprop-sum' partidos and
+-- comunas, adding up the zones they contain. Previous Zonaprop rows are replaced and estimated rents
+-- (source 'estimated') are overwritten where there is real data now.
 
 \set ON_ERROR_STOP on
 BEGIN;
@@ -24,12 +25,15 @@ BEGIN;
 -- 1. Sample listings with comparable prices
 DROP TABLE IF EXISTS pg_temp.sample;
 CREATE TEMP TABLE sample AS
-SELECT l.zone_slug, l.operation, l.property_type, l.posting_id,
+SELECT l.zone_slug,
+       CASE l.operation WHEN 'venta' THEN 'sale' ELSE 'rent' END AS operation,
+       CASE l.property_type WHEN 'departamentos' THEN 'apartment' WHEN 'casas' THEN 'house' ELSE 'ph' END
+           AS property_type,
        CASE WHEN l.operation = 'alquiler'
-            THEN CASE l.currency WHEN '$' THEN l.price WHEN 'USD' THEN l.price * l.usd_ars END END AS rent_ars,
+            THEN CASE l.currency WHEN '$' THEN l.price WHEN 'USD' THEN l.price * l.usd_ars END
+            ELSE CASE l.currency WHEN 'USD' THEN l.price WHEN '$' THEN l.price / l.usd_ars END
+       END AS price,
        CASE WHEN l.operation = 'alquiler' AND l.expenses_ars > 0 THEN l.expenses_ars END AS expenses_ars,
-       CASE WHEN l.operation = 'venta'
-            THEN CASE l.currency WHEN 'USD' THEN l.price WHEN '$' THEN l.price / l.usd_ars END END AS price_usd,
        CASE WHEN coalesce(l.covered_m2, l.total_m2) BETWEEN 15 AND 3000
             THEN coalesce(l.covered_m2, l.total_m2) END AS m2,
        CASE WHEN l.lat IS NOT NULL AND l.lng IS NOT NULL
@@ -37,10 +41,11 @@ SELECT l.zone_slug, l.operation, l.property_type, l.posting_id,
 FROM geo.load_zonaprop_listings l
 WHERE l.price > 0;
 
--- Prices outside a plausible range are typing errors (a sale published as a rent, a total price as a m2 price...)
+-- Prices outside a plausible range are typing errors (a sale published as a rent, a m2 price as the total...)
 DELETE FROM sample
-WHERE (operation = 'alquiler' AND (rent_ars IS NULL OR rent_ars NOT BETWEEN 50000 AND 30000000))
-   OR (operation = 'venta' AND (price_usd IS NULL OR price_usd NOT BETWEEN 5000 AND 20000000));
+WHERE price IS NULL
+   OR (operation = 'rent' AND price NOT BETWEEN 50000 AND 30000000)
+   OR (operation = 'sale' AND price NOT BETWEEN 5000 AND 20000000);
 
 -- Listings placed more than 2 km away from the zone belong to another one (or the location is wrong)
 ALTER TABLE sample ADD COLUMN near boolean;
@@ -62,19 +67,26 @@ HAVING count(*) >= 10 AND avg(near::int) < 0.5;
 -- the sample that falls in the zone (per combination when it has 10 geolocated listings, otherwise for the zone)
 DROP TABLE IF EXISTS pg_temp.near_share;
 CREATE TEMP TABLE near_share AS
-SELECT t.zone_slug, t.operation, t.property_type,
-       coalesce(c.share, z.share, 1) AS share
+SELECT t.zone_slug,
+       CASE t.operation WHEN 'venta' THEN 'sale' ELSE 'rent' END AS operation,
+       CASE t.property_type WHEN 'departamentos' THEN 'apartment' WHEN 'casas' THEN 'house' ELSE 'ph' END
+           AS property_type,
+       t.listings,
+       t.scraped_at
 FROM geo.load_zonaprop_totals t
-LEFT JOIN (
-    SELECT zone_slug, operation, property_type, avg(near::int) AS share
-    FROM sample WHERE near IS NOT NULL
-    GROUP BY zone_slug, operation, property_type HAVING count(*) >= 10
-) c USING (zone_slug, operation, property_type)
-LEFT JOIN (
-    SELECT zone_slug, avg(near::int) AS share
-    FROM sample WHERE near IS NOT NULL
-    GROUP BY zone_slug HAVING count(*) >= 10
-) z USING (zone_slug);
+WHERE t.zone_slug NOT IN (SELECT zone_slug FROM rejected);
+
+ALTER TABLE near_share ADD COLUMN share numeric;
+UPDATE near_share n
+SET share = coalesce(
+    (SELECT avg(near::int) FROM sample s
+     WHERE s.zone_slug = n.zone_slug AND s.operation = n.operation AND s.property_type = n.property_type
+       AND s.near IS NOT NULL
+     HAVING count(*) >= 10),
+    (SELECT avg(near::int) FROM sample s
+     WHERE s.zone_slug = n.zone_slug AND s.near IS NOT NULL
+     HAVING count(*) >= 10),
+    1);
 
 DELETE FROM sample WHERE near = false OR zone_slug IN (SELECT zone_slug FROM rejected);
 
@@ -82,142 +94,147 @@ DELETE FROM sample WHERE near = false OR zone_slug IN (SELECT zone_slug FROM rej
 DROP TABLE IF EXISTS pg_temp.ranked;
 CREATE TEMP TABLE ranked AS
 SELECT s.*,
+       s.price / s.m2 AS price_m2,
        count(*) OVER w AS n,
-       percent_rank() OVER (PARTITION BY zone_slug, operation, property_type
-                            ORDER BY CASE WHEN operation = 'alquiler' THEN rent_ars ELSE price_usd / m2 END) AS pr
+       count(s.m2) OVER w AS n_m2,
+       percent_rank() OVER (w ORDER BY s.price) AS price_rank,
+       CASE WHEN s.m2 IS NOT NULL
+            THEN percent_rank() OVER (PARTITION BY s.zone_slug, s.operation, s.property_type, s.m2 IS NULL
+                                      ORDER BY s.price / s.m2) END AS m2_rank
 FROM sample s
-WINDOW w AS (PARTITION BY zone_slug, operation, property_type);
+WINDOW w AS (PARTITION BY s.zone_slug, s.operation, s.property_type);
 
-CREATE TABLE IF NOT EXISTS geo.zone_market (
-    osm_id           bigint NOT NULL REFERENCES geo.zonas (osm_id),
-    zone_slug        text NOT NULL,
-    operation        text NOT NULL CHECK (operation IN ('venta', 'alquiler')),
-    property_type    text NOT NULL CHECK (property_type IN ('departamentos', 'casas', 'ph', 'todos')),
-    listings         integer,
-    sample_size      integer NOT NULL DEFAULT 0,
-    avg_rent_ars     numeric(14, 0),
-    median_rent_ars  numeric(14, 0),
-    avg_expenses_ars numeric(14, 0),
-    avg_price_usd    numeric(14, 0),
-    avg_usd_m2       numeric(10, 0),
-    median_usd_m2    numeric(10, 0),
-    source           text NOT NULL,
-    inherited_from   text,
-    scraped_at       timestamptz NOT NULL,
-    PRIMARY KEY (osm_id, operation, property_type)
+DROP TABLE IF EXISTS pg_temp.market;
+CREATE TEMP TABLE market (
+    zone_slug            text NOT NULL,
+    osm_id               bigint NOT NULL,
+    operation            text NOT NULL,
+    property_type        text NOT NULL,
+    listings             integer,
+    sample_size          integer NOT NULL,
+    average_price        numeric,
+    median_price         numeric,
+    average_price_m2     numeric,
+    median_price_m2      numeric,
+    average_expenses_ars numeric,
+    source               text NOT NULL,
+    inherited_from       text,
+    updated_at           timestamptz NOT NULL
 );
-TRUNCATE geo.zone_market;
 
 WITH stats AS (
     SELECT zone_slug, operation, property_type,
            count(*) AS sample_size,
-           avg(rent_ars) FILTER (WHERE n < 10 OR pr BETWEEN 0.1 AND 0.9) AS avg_rent_ars,
-           percentile_cont(0.5) WITHIN GROUP (ORDER BY rent_ars) AS median_rent_ars,
-           avg(expenses_ars) AS avg_expenses_ars,
-           avg(price_usd) FILTER (WHERE n < 10 OR pr BETWEEN 0.1 AND 0.9) AS avg_price_usd,
-           avg(price_usd / m2) FILTER (WHERE m2 IS NOT NULL AND (n < 10 OR pr BETWEEN 0.1 AND 0.9)) AS avg_usd_m2,
-           percentile_cont(0.5) WITHIN GROUP (ORDER BY price_usd / m2) AS median_usd_m2
+           avg(price) FILTER (WHERE n < 10 OR price_rank BETWEEN 0.1 AND 0.9) AS average_price,
+           percentile_cont(0.5) WITHIN GROUP (ORDER BY price) AS median_price,
+           avg(price_m2) FILTER (WHERE price_m2 IS NOT NULL AND (n_m2 < 10 OR m2_rank BETWEEN 0.1 AND 0.9))
+               AS average_price_m2,
+           percentile_cont(0.5) WITHIN GROUP (ORDER BY price_m2) AS median_price_m2,
+           avg(expenses_ars) AS average_expenses_ars
     FROM ranked
     GROUP BY zone_slug, operation, property_type
 )
-INSERT INTO geo.zone_market (osm_id, zone_slug, operation, property_type, listings, sample_size, avg_rent_ars,
-                             median_rent_ars, avg_expenses_ars, avg_price_usd, avg_usd_m2, median_usd_m2, source,
-                             scraped_at)
-SELECT z.osm_id, t.zone_slug, t.operation, t.property_type, round(t.listings * n.share)::int, coalesce(s.sample_size, 0),
-       s.avg_rent_ars, s.median_rent_ars, s.avg_expenses_ars, s.avg_price_usd, s.avg_usd_m2, s.median_usd_m2,
-       'zonaprop', t.scraped_at
-FROM geo.load_zonaprop_totals t
-JOIN geo.zonas z ON z.slug = t.zone_slug AND z.elegida
-JOIN near_share n USING (zone_slug, operation, property_type)
-LEFT JOIN stats s USING (zone_slug, operation, property_type)
-WHERE t.zone_slug NOT IN (SELECT zone_slug FROM rejected);
+INSERT INTO market
+SELECT n.zone_slug, z.osm_id, n.operation, n.property_type, round(n.listings * n.share)::int,
+       coalesce(s.sample_size, 0), s.average_price, s.median_price, s.average_price_m2, s.median_price_m2,
+       s.average_expenses_ars, 'zonaprop', NULL, n.scraped_at
+FROM near_share n
+JOIN geo.zonas z ON z.slug = n.zone_slug AND z.elegida
+LEFT JOIN stats s USING (zone_slug, operation, property_type);
 
--- "todos": every type together, each type's average weighted by its number of listings
-INSERT INTO geo.zone_market (osm_id, zone_slug, operation, property_type, listings, sample_size, avg_rent_ars,
-                             median_rent_ars, avg_expenses_ars, avg_price_usd, avg_usd_m2, median_usd_m2, source,
-                             scraped_at)
-SELECT osm_id, zone_slug, operation, 'todos', sum(listings), sum(sample_size),
-       sum(avg_rent_ars * listings) / nullif(sum(listings) FILTER (WHERE avg_rent_ars IS NOT NULL), 0),
-       sum(median_rent_ars * listings) / nullif(sum(listings) FILTER (WHERE median_rent_ars IS NOT NULL), 0),
-       sum(avg_expenses_ars * listings) / nullif(sum(listings) FILTER (WHERE avg_expenses_ars IS NOT NULL), 0),
-       sum(avg_price_usd * listings) / nullif(sum(listings) FILTER (WHERE avg_price_usd IS NOT NULL), 0),
-       sum(avg_usd_m2 * listings) / nullif(sum(listings) FILTER (WHERE avg_usd_m2 IS NOT NULL), 0),
-       sum(median_usd_m2 * listings) / nullif(sum(listings) FILTER (WHERE median_usd_m2 IS NOT NULL), 0),
-       'zonaprop', min(scraped_at)
-FROM geo.zone_market
-GROUP BY osm_id, zone_slug, operation;
+-- "all": every type together, each type's value weighted by its number of listings
+INSERT INTO market
+SELECT zone_slug, osm_id, operation, 'all', sum(listings), sum(sample_size),
+       sum(average_price * listings) / nullif(sum(listings) FILTER (WHERE average_price IS NOT NULL), 0),
+       sum(median_price * listings) / nullif(sum(listings) FILTER (WHERE median_price IS NOT NULL), 0),
+       sum(average_price_m2 * listings) / nullif(sum(listings) FILTER (WHERE average_price_m2 IS NOT NULL), 0),
+       sum(median_price_m2 * listings) / nullif(sum(listings) FILTER (WHERE median_price_m2 IS NOT NULL), 0),
+       sum(average_expenses_ars * listings)
+           / nullif(sum(listings) FILTER (WHERE average_expenses_ars IS NOT NULL), 0),
+       'zonaprop', NULL, min(updated_at)
+FROM market
+GROUP BY zone_slug, osm_id, operation;
 
 -- 3. Zones without a Zonaprop location of their own take the averages of the smallest measured zone around them
-INSERT INTO geo.zone_market (osm_id, zone_slug, operation, property_type, listings, sample_size, avg_rent_ars,
-                             median_rent_ars, avg_expenses_ars, avg_price_usd, avg_usd_m2, median_usd_m2, source,
-                             inherited_from, scraped_at)
-SELECT c.osm_id, c.slug, m.operation, m.property_type, NULL, m.sample_size, m.avg_rent_ars, m.median_rent_ars,
-       m.avg_expenses_ars, m.avg_price_usd, m.avg_usd_m2, m.median_usd_m2, 'zonaprop-heredado', p.slug, m.scraped_at
+INSERT INTO market
+SELECT c.slug, c.osm_id, m.operation, m.property_type, NULL, m.sample_size, m.average_price, m.median_price,
+       m.average_price_m2, m.median_price_m2, m.average_expenses_ars, 'zonaprop-inherited', p.slug, m.updated_at
 FROM geo.zonas c
 CROSS JOIN LATERAL (
     SELECT z.osm_id, z.slug
     FROM geo.zonas z
     WHERE z.elegida AND z.nivel > 5 AND z.osm_id <> c.osm_id AND z.superficie_km2 > c.superficie_km2
       AND ST_Contains(z.geom, ST_PointOnSurface(c.geom))
-      AND EXISTS (SELECT 1 FROM geo.zone_market m WHERE m.osm_id = z.osm_id AND m.source = 'zonaprop')
+      AND EXISTS (SELECT 1 FROM market m WHERE m.osm_id = z.osm_id)
     ORDER BY z.superficie_km2
     LIMIT 1
 ) p
-JOIN geo.zone_market m ON m.osm_id = p.osm_id
+JOIN market m ON m.osm_id = p.osm_id
 WHERE c.elegida AND c.nivel > 5
-  AND NOT EXISTS (SELECT 1 FROM geo.zone_market x WHERE x.osm_id = c.osm_id);
+  AND NOT EXISTS (SELECT 1 FROM market x WHERE x.osm_id = c.osm_id);
 
 -- 4. Partidos and comunas add up the outermost measured zones inside them (a measured zone inside another measured
 -- zone is already counted by it)
 WITH measured AS (
     SELECT DISTINCT z.osm_id, z.superficie_km2, z.geom, ST_PointOnSurface(z.geom) AS point
     FROM geo.zonas z
-    JOIN geo.zone_market m ON m.osm_id = z.osm_id AND m.source = 'zonaprop'
+    JOIN market m ON m.osm_id = z.osm_id AND m.source = 'zonaprop'
     WHERE z.nivel > 5
 ),
 members AS (
     SELECT p.osm_id AS parent_id, p.slug AS parent_slug, z.osm_id
     FROM geo.zonas p
-    JOIN measured z ON z.superficie_km2 < p.superficie_km2 AND ST_Contains(p.geom, z.point)
+    -- <= because some barrios are a whole comuna (Palermo is Comuna 14)
+    JOIN measured z ON z.osm_id <> p.osm_id AND z.superficie_km2 <= p.superficie_km2 AND ST_Contains(p.geom, z.point)
     WHERE p.elegida AND p.nivel = 5
       AND NOT EXISTS (
           SELECT 1 FROM measured y
-          WHERE y.osm_id <> z.osm_id AND y.superficie_km2 > z.superficie_km2 AND y.superficie_km2 < p.superficie_km2
+          WHERE y.osm_id <> z.osm_id AND y.superficie_km2 > z.superficie_km2 AND y.superficie_km2 <= p.superficie_km2
             AND ST_Contains(y.geom, z.point))
 )
-INSERT INTO geo.zone_market (osm_id, zone_slug, operation, property_type, listings, sample_size, avg_rent_ars,
-                             median_rent_ars, avg_expenses_ars, avg_price_usd, avg_usd_m2, median_usd_m2, source,
-                             scraped_at)
-SELECT b.parent_id, b.parent_slug, m.operation, m.property_type, sum(m.listings), sum(m.sample_size),
-       sum(m.avg_rent_ars * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.avg_rent_ars IS NOT NULL), 0),
-       sum(m.median_rent_ars * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.median_rent_ars IS NOT NULL), 0),
-       sum(m.avg_expenses_ars * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.avg_expenses_ars IS NOT NULL), 0),
-       sum(m.avg_price_usd * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.avg_price_usd IS NOT NULL), 0),
-       sum(m.avg_usd_m2 * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.avg_usd_m2 IS NOT NULL), 0),
-       sum(m.median_usd_m2 * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.median_usd_m2 IS NOT NULL), 0),
-       'zonaprop-suma', min(m.scraped_at)
+INSERT INTO market
+SELECT b.parent_slug, b.parent_id, m.operation, m.property_type, sum(m.listings), sum(m.sample_size),
+       sum(m.average_price * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.average_price IS NOT NULL), 0),
+       sum(m.median_price * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.median_price IS NOT NULL), 0),
+       sum(m.average_price_m2 * m.listings)
+           / nullif(sum(m.listings) FILTER (WHERE m.average_price_m2 IS NOT NULL), 0),
+       sum(m.median_price_m2 * m.listings)
+           / nullif(sum(m.listings) FILTER (WHERE m.median_price_m2 IS NOT NULL), 0),
+       sum(m.average_expenses_ars * m.listings)
+           / nullif(sum(m.listings) FILTER (WHERE m.average_expenses_ars IS NOT NULL), 0),
+       'zonaprop-sum', NULL, min(m.updated_at)
 FROM members b
-JOIN geo.zone_market m ON m.osm_id = b.osm_id
+JOIN market m ON m.osm_id = b.osm_id
 GROUP BY b.parent_id, b.parent_slug, m.operation, m.property_type;
 
--- 5. Rent used by the analysis (limit and available properties). Inherited zones keep their previous number of
--- available properties, since the listings of the zone around them are not theirs.
-SELECT to_regclass('app.alquileres_zona') IS NOT NULL AS has_rent_table \gset
-\if :has_rent_table
-INSERT INTO app.alquileres_zona (zona_slug, alquiler_promedio, propiedades_disponibles, fuente, fecha_actualizacion)
-SELECT zone_slug, round(avg_rent_ars, -3), coalesce(listings, 0), source, scraped_at
-FROM geo.zone_market
-WHERE operation = 'alquiler' AND property_type = 'todos' AND avg_rent_ars IS NOT NULL
-ON CONFLICT (zona_slug) DO UPDATE
-    SET alquiler_promedio = excluded.alquiler_promedio,
-        propiedades_disponibles = CASE WHEN excluded.fuente = 'zonaprop-heredado'
-                                       THEN app.alquileres_zona.propiedades_disponibles
-                                       ELSE excluded.propiedades_disponibles END,
-        fuente = excluded.fuente,
-        fecha_actualizacion = excluded.fecha_actualizacion;
-\endif
+-- 5. Replace the previous Zonaprop rows; real data wins over estimated rents
+DELETE FROM app.zone_market WHERE source LIKE 'zonaprop%';
+
+INSERT INTO app.zone_market (zone_slug, operation, property_type, listings, sample_size, average_price, median_price,
+                             currency, average_price_m2, median_price_m2, average_expenses_ars, source,
+                             inherited_from, updated_at)
+SELECT DISTINCT ON (zone_slug, operation, property_type)
+       zone_slug, operation, property_type, listings, sample_size,
+       round(average_price, CASE operation WHEN 'rent' THEN -3 ELSE 0 END), round(median_price),
+       CASE operation WHEN 'rent' THEN 'ARS' ELSE 'USD' END,
+       round(average_price_m2), round(median_price_m2), round(average_expenses_ars, -2), source, inherited_from,
+       updated_at
+FROM market
+ORDER BY zone_slug, operation, property_type, osm_id
+ON CONFLICT (zone_slug, operation, property_type) DO UPDATE
+    SET listings = excluded.listings,
+        sample_size = excluded.sample_size,
+        average_price = excluded.average_price,
+        median_price = excluded.median_price,
+        currency = excluded.currency,
+        average_price_m2 = excluded.average_price_m2,
+        median_price_m2 = excluded.median_price_m2,
+        average_expenses_ars = excluded.average_expenses_ars,
+        source = excluded.source,
+        inherited_from = excluded.inherited_from,
+        updated_at = excluded.updated_at;
 
 COMMIT;
 
-SELECT source, count(DISTINCT osm_id) AS zones FROM geo.zone_market GROUP BY source ORDER BY source;
+SELECT source, count(DISTINCT zone_slug) AS zones FROM app.zone_market GROUP BY source ORDER BY source;
 SELECT zone_slug AS rejected_zone FROM rejected;

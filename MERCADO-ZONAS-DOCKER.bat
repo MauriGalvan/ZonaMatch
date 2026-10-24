@@ -7,7 +7,7 @@ REM Requiere la base con las zonas calculadas (DATOS-ZONAS-DOCKER.bat) y Python 
 REM
 REM El scraping es lento a proposito (un pedido cada pocos segundos, unas horas para todas las zonas). Si Zonaprop
 REM bloquea, se corta solo: volver a ejecutar retoma donde quedo, porque cada pagina queda en datos\zonaprop\cache.
-REM Resultado: tabla geo.zone_market, CSV datos\zonaprop\market_by_zone.csv y alquileres en app.alquileres_zona.
+REM Resultado: tabla app.zone_market (la que lee la API) y su copia en CSV, datos\zonaprop\market_by_zone.csv.
 REM
 REM Opciones (se pasan al scraper): MERCADO-ZONAS-DOCKER.bat --pages 1      muestra de 30 avisos por combinacion
 REM                                 MERCADO-ZONAS-DOCKER.bat --export-only  recalcular sin descargar nada
@@ -55,6 +55,9 @@ if errorlevel 1 goto :err_load
 %PSQL% -c "\copy geo.load_zonaprop_listings FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\zonaprop\listings.csv
 if errorlevel 1 goto :err_load
 %PSQL% < etl\zonaprop\calculate_market.sql
+if errorlevel 1 goto :err_calc
+rem Zonas que siguen sin datos de Zonaprop: alquiler estimado con el censo
+%PSQL% < etl\estimar_alquileres.sql
 if errorlevel 1 goto :err_calc
 %PSQL% --csv < etl\zonaprop\export_market.sql > datos\zonaprop\market_by_zone.csv
 if errorlevel 1 goto :err_calc
