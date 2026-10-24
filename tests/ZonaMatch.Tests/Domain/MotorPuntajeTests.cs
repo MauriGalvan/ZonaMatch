@@ -171,6 +171,34 @@ namespace ZonaMatch.Tests.Domain
         }
 
         [Fact]
+        public void Conserva_distancia_de_todos_los_lugares_sin_cambiar_el_puntaje()
+        {
+            var zona = Zona("recoleta");
+            var motor = new MotorPuntaje([zona]);
+            var pedido = Pedido([], lugares:
+            [
+                new("Trabajo", -34.6, -58.4, "Alta", 45),
+                new("Facultad", -34.5, -58.3, "Media", 45),
+            ]);
+
+            var conDistancias = motor.Calcular(zona, pedido,
+                [new TiempoViaje(25, false, 8.75), new TiempoViaje(30, false, 12.5)]);
+            var sinDistancias = motor.Calcular(zona, pedido,
+                [new TiempoViaje(25, false), new TiempoViaje(30, false)]);
+
+            Assert.Equal(new double?[] { 8.75, 12.5 }, conDistancias.Lugares.Select(l => l.DistanciaKm));
+            Assert.Equal(sinDistancias.Puntaje, conDistancias.Puntaje);
+        }
+
+        [Fact]
+        public void Sin_lugares_devuelve_lista_vacia()
+        {
+            var zona = Zona("recoleta");
+
+            Assert.Empty(new MotorPuntaje([zona]).Calcular(zona, Pedido([])).Lugares);
+        }
+
+        [Fact]
         public void Un_viaje_que_no_se_pudo_calcular_no_suma_ni_resta()
         {
             var zona = Zona("zona");
