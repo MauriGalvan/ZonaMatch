@@ -76,7 +76,7 @@ echo [4/5] Calculando los indicadores de cada zona (tarda alrededor de un minuto
 if errorlevel 1 goto :err_calc
 %PSQL% < etl\calcular_transporte.sql
 if errorlevel 1 goto :err_calc
-rem Alquileres estimados por zona (temporal, hasta el scraping de Argenprop)
+rem Alquileres estimados por zona, donde todavia no hay datos de Zonaprop (MERCADO-ZONAS-DOCKER.bat)
 %PSQL% < etl\estimar_alquileres.sql
 if errorlevel 1 goto :err_calc
 

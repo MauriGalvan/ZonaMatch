@@ -26,41 +26,6 @@ namespace ZonaMatch.Infrastructure.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.AlquilerZona", b =>
-                {
-                    b.Property<string>("ZonaSlug")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("zona_slug");
-
-                    b.Property<decimal>("AlquilerPromedio")
-                        .HasColumnType("numeric(12,0)")
-                        .HasColumnName("alquiler_promedio");
-
-                    b.Property<DateTimeOffset>("FechaActualizacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_actualizacion");
-
-                    b.Property<string>("Fuente")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("fuente");
-
-                    b.Property<int>("PropiedadesDisponibles")
-                        .HasColumnType("integer")
-                        .HasColumnName("propiedades_disponibles");
-
-                    b.HasKey("ZonaSlug");
-
-                    b.ToTable("alquileres_zona", "app", t =>
-                        {
-                            t.HasCheckConstraint("ck_alquileres_zona_promedio", "alquiler_promedio >= 0");
-
-                            t.HasCheckConstraint("ck_alquileres_zona_propiedades", "propiedades_disponibles >= 0");
-                        });
-                });
-
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1220,6 +1185,88 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("usuarios", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ZoneMarket", b =>
+                {
+                    b.Property<string>("ZoneSlug")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("zone_slug");
+
+                    b.Property<string>("Operation")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("PropertyType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("property_type");
+
+                    b.Property<decimal?>("AverageExpensesArs")
+                        .HasColumnType("numeric(12,0)")
+                        .HasColumnName("average_expenses_ars");
+
+                    b.Property<decimal?>("AveragePrice")
+                        .HasColumnType("numeric(14,0)")
+                        .HasColumnName("average_price");
+
+                    b.Property<decimal?>("AveragePriceM2")
+                        .HasColumnType("numeric(12,0)")
+                        .HasColumnName("average_price_m2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("InheritedFrom")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("inherited_from");
+
+                    b.Property<int?>("Listings")
+                        .HasColumnType("integer")
+                        .HasColumnName("listings");
+
+                    b.Property<decimal?>("MedianPrice")
+                        .HasColumnType("numeric(14,0)")
+                        .HasColumnName("median_price");
+
+                    b.Property<decimal?>("MedianPriceM2")
+                        .HasColumnType("numeric(12,0)")
+                        .HasColumnName("median_price_m2");
+
+                    b.Property<int>("SampleSize")
+                        .HasColumnType("integer")
+                        .HasColumnName("sample_size");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("source");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ZoneSlug", "Operation", "PropertyType");
+
+                    b.ToTable("zone_market", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_zone_market_counts", "listings >= 0 AND sample_size >= 0");
+
+                            t.HasCheckConstraint("ck_zone_market_currency", "currency IN ('ARS', 'USD')");
+
+                            t.HasCheckConstraint("ck_zone_market_operation", "operation IN ('sale', 'rent')");
+
+                            t.HasCheckConstraint("ck_zone_market_prices", "average_price >= 0 AND median_price >= 0");
+
+                            t.HasCheckConstraint("ck_zone_market_property_type", "property_type IN ('apartment', 'house', 'ph', 'all')");
+                        });
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>
