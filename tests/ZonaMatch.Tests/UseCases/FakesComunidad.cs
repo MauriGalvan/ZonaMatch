@@ -17,7 +17,7 @@ namespace ZonaMatch.Tests.UseCases
     {
         public const string Zona = "villa-luro";
 
-        public Task<bool> ExisteAsync(string slug, CancellationToken cancellationToken = default) =>
+        public Task<bool> ExistsAsync(string slug, CancellationToken cancellationToken = default) =>
             Task.FromResult(slug == Zona);
 
         public Task<bool> ContienePuntoAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default) =>

@@ -133,7 +133,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 WHERE ST_Intersects(z.geom, ST_SetSRID(ST_MakePoint(@lon, @lat), 4326))) AS "Value"
             """;
 
-        public Task<bool> ExisteAsync(string slug, CancellationToken cancellationToken = default) =>
+        public Task<bool> ExistsAsync(string slug, CancellationToken cancellationToken = default) =>
             _dbContext.Database
                 .SqlQueryRaw<bool>(SqlExiste, new NpgsqlParameter("slug", slug))
                 .SingleAsync(cancellationToken);

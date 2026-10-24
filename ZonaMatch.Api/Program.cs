@@ -26,6 +26,7 @@ using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Application.UseCases.Zonas;
+using ZonaMatch.Application.UseCases.SavedZones;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
@@ -54,6 +55,7 @@ builder.Services.AddScoped<ITransporteZonaRepository, TransporteZonaRepository>(
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
 builder.Services.AddScoped<IAnalisisRepository, AnalisisRepository>();
+builder.Services.AddScoped<ISavedZoneRepository, SavedZoneRepository>();
 
 // Reverse geocoding. "Osm" (default) queries the local osm schema; "Nominatim" uses the configured Nominatim instance.
 if (string.Equals(builder.Configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
@@ -141,6 +143,9 @@ builder.Services.AddScoped<CrearAnalisis>();
 builder.Services.AddScoped<CrearVersionAnalisis>();
 builder.Services.AddScoped<RenombrarAnalisis>();
 builder.Services.AddScoped<EliminarAnalisis>();
+builder.Services.AddScoped<ListSavedZones>();
+builder.Services.AddScoped<SaveZone>();
+builder.Services.AddScoped<RemoveSavedZone>();
 
 // Scoring engine: zone profiles are cached in memory; travel times come from MOTIS.
 builder.Services.AddMemoryCache();

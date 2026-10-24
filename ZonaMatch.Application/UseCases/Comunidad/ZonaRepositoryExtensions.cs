@@ -8,7 +8,7 @@ namespace ZonaMatch.Application.UseCases.Comunidad
     {
         public static async Task ValidarExisteAsync(this IZonaRepository zonas, string zonaSlug, CancellationToken cancellationToken)
         {
-            if (!await zonas.ExisteAsync(zonaSlug, cancellationToken))
+            if (!await zonas.ExistsAsync(zonaSlug, cancellationToken))
                 throw new NotFoundException("No se encontro una zona con ese identificador.");
         }
 

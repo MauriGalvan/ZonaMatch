@@ -35,6 +35,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<ContextoCriterio> ContextoCriterios => Set<ContextoCriterio>();
         public DbSet<Criterio> Criterios => Set<Criterio>();
         public DbSet<AlquilerZona> AlquileresZona => Set<AlquilerZona>();
+        public DbSet<SavedZone> SavedZones => Set<SavedZone>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -172,6 +173,17 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.ZonaSlug).HasMaxLength(100).IsRequired();
                 e.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
                 e.Property(x => x.EsAgregada).HasDefaultValue(false);
+            });
+
+            modelBuilder.Entity<SavedZone>(e =>
+            {
+                e.ToTable("saved_zones");
+                e.HasKey(x => new { x.UserId, x.ZoneSlug });
+                e.Property(x => x.ZoneSlug).HasMaxLength(100).IsRequired();
+                e.Property(x => x.Name).HasMaxLength(150).IsRequired();
+                e.Property(x => x.Subtitle).HasMaxLength(300).IsRequired();
+                e.Property(x => x.SavedAt).HasColumnType("timestamptz");
+                e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Persona>(e =>
