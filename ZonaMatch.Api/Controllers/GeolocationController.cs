@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using ZonaMatch.Application.DTOs.Geolocation.Requests;
+using ZonaMatch.Application.DTOs.Geolocation.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
+using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Api.Controllers
@@ -14,6 +17,18 @@ namespace ZonaMatch.Api.Controllers
         public GeolocationController(IGeolocationService geolocationService)
         {
             _geolocationService = geolocationService;
+        }
+
+        [HttpGet("~/v1/geolocation/places")]
+        [ProducesResponseType(typeof(IReadOnlyList<PlaceSearchResultResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<IReadOnlyList<PlaceSearchResultResponse>>> SearchPlaces(
+            [FromQuery] SearchPlacesRequest request,
+            [FromServices] SearchPlaces searchPlaces,
+            CancellationToken cancellationToken)
+        {
+            var results = await searchPlaces.ExecuteAsync(request.Search, cancellationToken);
+            return Ok(results);
         }
 
         // GET /Geolocation/resumen?latitud=-34.6&longitud=-58.45&radioMetros=1000
