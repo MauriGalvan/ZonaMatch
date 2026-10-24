@@ -8,7 +8,7 @@ namespace ZonaMatch.Application.Interfaces
         // "tolerancia" is the simplification tolerance of the boundary, in degrees.
         Task<string?> GetPorSlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default);
 
-        Task<bool> ExisteAsync(string slug, CancellationToken cancellationToken = default);
+        Task<bool> ExistsAsync(string slug, CancellationToken cancellationToken = default);
 
         // Si el punto (WGS84) cae dentro de la zona; false si la zona no existe
         Task<bool> ContienePuntoAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default);

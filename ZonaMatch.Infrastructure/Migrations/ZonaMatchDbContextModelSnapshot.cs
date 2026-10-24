@@ -1105,6 +1105,38 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("respuestas", "app");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.SavedZone", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("ZoneSlug")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("zone_slug");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset>("SavedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("saved_at");
+
+                    b.Property<string>("Subtitle")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("subtitle");
+
+                    b.HasKey("UserId", "ZoneSlug");
+
+                    b.ToTable("saved_zones", "app");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Usuario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1340,6 +1372,15 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.SavedZone", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>

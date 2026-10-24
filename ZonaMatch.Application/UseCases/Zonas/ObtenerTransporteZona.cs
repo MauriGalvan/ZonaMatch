@@ -26,7 +26,7 @@ namespace ZonaMatch.Application.UseCases.Zonas
             var paradas = await _transporte.ListarParadasAsync(slug, cancellationToken);
 
             // No stops may mean the zone has no transit service or does not exist.
-            if (paradas.Count == 0 && !await _zonas.ExisteAsync(slug, cancellationToken))
+            if (paradas.Count == 0 && !await _zonas.ExistsAsync(slug, cancellationToken))
                 throw new NotFoundException("No se encontro una zona con ese identificador.");
 
             var salidas = paradas.Count == 0 ? [] : await _transporte.ListarSalidasAsync(slug, cancellationToken);
