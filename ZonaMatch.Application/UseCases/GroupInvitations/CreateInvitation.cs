@@ -12,16 +12,25 @@ public class CreateInvitation
 {
     private readonly IGroupRepository _groupRepository;
     private readonly IGroupInvitationRepository _invitationRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly INotificationRepository _notifications;
     private readonly IEmailService _emailService;
+    private readonly TimeProvider _timeProvider;
 
     public CreateInvitation(
         IGroupRepository groupRepository,
         IGroupInvitationRepository invitationRepository,
-        IEmailService emailService)
+        IUserRepository userRepository,
+        INotificationRepository notifications,
+        IEmailService emailService,
+        TimeProvider timeProvider)
     {
         _groupRepository = groupRepository;
         _invitationRepository = invitationRepository;
+        _userRepository = userRepository;
+        _notifications = notifications;
         _emailService = emailService;
+        _timeProvider = timeProvider;
     }
 
     // Le pasamos el currentUserId que sacaremos del JWT en el Controlador
@@ -55,6 +64,23 @@ public class CreateInvitation
             Status = InvitationStatus.Pending,
             ExpiresAt = DateTime.UtcNow.AddDays(7) // Le damos 7 días de validez a la invitación
         };
+
+        var invitedUser = await _userRepository.GetByEmailAsync(
+            request.Email.Trim().ToLowerInvariant(), cancellationToken);
+        if (invitedUser is not null && invitedUser.Id != currentUserId)
+        {
+            _notifications.AddRange([
+                new UserNotification
+                {
+                    UserId = invitedUser.Id,
+                    Type = NotificationType.GroupInvitation,
+                    Title = "Te invitaron a un grupo",
+                    Message = $"Te invitaron a unirte a {group.Name}.",
+                    Link = $"/invitations/email/{invitation.Token}",
+                    CreatedAt = _timeProvider.GetUtcNow()
+                }
+            ]);
+        }
 
         // 4. Guardar en la base de datos
         await _invitationRepository.AddAsync(invitation, cancellationToken);

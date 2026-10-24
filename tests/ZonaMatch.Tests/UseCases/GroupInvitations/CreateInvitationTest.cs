@@ -13,6 +13,8 @@ public class CreateInvitationTests
     // 1. Declaramos los "Falsos" (Mocks) que vamos a usar
     private readonly Mock<IGroupRepository> _groupRepositoryMock;
     private readonly Mock<IGroupInvitationRepository> _invitationRepositoryMock;
+    private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<INotificationRepository> _notificationRepositoryMock;
     private readonly Mock<IEmailService> _emailServiceMock;
 
     // El caso de uso real que vamos a testear
@@ -23,13 +25,18 @@ public class CreateInvitationTests
         // 2. Inicializamos los Mocks
         _groupRepositoryMock = new Mock<IGroupRepository>();
         _invitationRepositoryMock = new Mock<IGroupInvitationRepository>();
+        _userRepositoryMock = new Mock<IUserRepository>();
+        _notificationRepositoryMock = new Mock<INotificationRepository>();
         _emailServiceMock = new Mock<IEmailService>();
 
         // 3. Le inyectamos los Mocks a la clase real
         _useCase = new CreateInvitation(
             _groupRepositoryMock.Object,
             _invitationRepositoryMock.Object,
-            _emailServiceMock.Object);
+            _userRepositoryMock.Object,
+            _notificationRepositoryMock.Object,
+            _emailServiceMock.Object,
+            TimeProvider.System);
     }
 
     [Fact]
@@ -73,6 +80,9 @@ public class CreateInvitationTests
         _groupRepositoryMock
             .Setup(repo => repo.GetByIdAsync(request.GroupId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(group);
+        _userRepositoryMock
+            .Setup(repo => repo.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Usuario?)null);
 
         // Act
         Func<Task> action = async () => await _useCase.ExecuteAsync(request, currentUserId, CancellationToken.None);

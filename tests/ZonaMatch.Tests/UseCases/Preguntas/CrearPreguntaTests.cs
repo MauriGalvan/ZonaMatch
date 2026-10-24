@@ -16,7 +16,12 @@ namespace ZonaMatch.Tests.UseCases.Preguntas
 
         public CrearPreguntaTests()
         {
-            _casoDeUso = new CrearPregunta(_preguntas, new FakeZonaRepository(), new FixedTimeProvider(Ahora));
+            _casoDeUso = new CrearPregunta(
+                _preguntas,
+                new FakeZonaRepository(),
+                new FakeSavedZoneRepository(),
+                new FakeNotificationRepository(),
+                new FixedTimeProvider(Ahora));
         }
 
         [Fact]

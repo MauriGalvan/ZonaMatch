@@ -3,6 +3,7 @@ using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Domain.Entities;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ZonaMatch.Tests.UseCases.Preguntas
 {
@@ -18,7 +19,12 @@ namespace ZonaMatch.Tests.UseCases.Preguntas
 
         public ResponderPreguntaTests()
         {
-            _casoDeUso = new ResponderPregunta(_preguntas, new FixedTimeProvider(Ahora));
+            _casoDeUso = new ResponderPregunta(
+                _preguntas,
+                new FakeNotificationRepository(),
+                new FakeEmailService(),
+                NullLogger<ResponderPregunta>.Instance,
+                new FixedTimeProvider(Ahora));
             _preguntas.Agregar(_pregunta);
         }
 

@@ -1137,6 +1137,56 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("saved_zones", "app");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.UserNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Link")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("link");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("message");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("read_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ReadAt", "CreatedAt");
+
+                    b.ToTable("notifications", "app");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Usuario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1375,6 +1425,15 @@ namespace ZonaMatch.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.SavedZone", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.UserNotification", b =>
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
                         .WithMany()
