@@ -13,6 +13,10 @@ public sealed class RegisterUser(
 {
     public async Task<UserResponse> ExecuteAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
+        // The DTO already marks it as [Required]; this keeps a direct call from ending in a NullReferenceException (500)
+        if (request.BirthDate is not { } birthDate)
+            throw new BadRequestException("La fecha de nacimiento es obligatoria.");
+
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
         if (await users.EmailExistsAsync(normalizedEmail, cancellationToken))
@@ -22,7 +26,7 @@ public sealed class RegisterUser(
         {
             Email = normalizedEmail,
             PasswordHash = passwordHasher.Hash(request.Password),
-            FechaNacimiento = request.BirthDate!.Value,
+            FechaNacimiento = birthDate,
             FechaCreacion = timeProvider.GetUtcNow()
         };
 

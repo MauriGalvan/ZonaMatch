@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ZonaMatch.Application.DTOs.Auth.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -21,8 +22,11 @@ public sealed class AuthUseCasesTests
         _loginUser = new LoginUser(_users, passwordHasher, new FakeTokenService());
     }
 
-    private static RegisterRequest CreateRegisterRequest(string email = "ana@example.com", string password = "Secreta123") =>
-        new(email, password, password, new DateOnly(1990, 5, 31));
+    private static RegisterRequest CreateRegisterRequest(
+        string email = "ana@example.com",
+        string password = "Secreta123",
+        DateOnly? birthDate = null) =>
+        new(email, password, password, birthDate ?? new DateOnly(1990, 5, 31));
 
     [Fact]
     public async Task Register_WithNewEmail_SavesUser()
@@ -71,6 +75,65 @@ public sealed class AuthUseCasesTests
         _users.ThrowConflictOnAdd = true;
 
         await Assert.ThrowsAsync<ConflictException>(() => _registerUser.ExecuteAsync(CreateRegisterRequest()));
+    }
+
+    [Fact]
+    public async Task Register_WithoutBirthDate_ThrowsBadRequest()
+    {
+        var request = CreateRegisterRequest() with { BirthDate = null };
+
+        await Assert.ThrowsAsync<BadRequestException>(() => _registerUser.ExecuteAsync(request));
+
+        Assert.Empty(_users.SavedUsers);
+    }
+
+    [Fact]
+    public void Validate_WhenUserIsUnderage_ReportsBirthDateError()
+    {
+        var request = CreateRegisterRequest(birthDate: new DateOnly(2015, 3, 10));
+
+        var error = Assert.Single(Validate(request));
+
+        Assert.Equal("Debes ser mayor de edad para registrarte.", error.ErrorMessage);
+        Assert.Equal([nameof(RegisterRequest.BirthDate)], error.MemberNames);
+    }
+
+    [Fact]
+    public void Validate_TheDayBeforeTurning18_ReportsBirthDateError()
+    {
+        var request = CreateRegisterRequest(birthDate: new DateOnly(2008, 10, 6));
+
+        var error = Assert.Single(Validate(request));
+
+        Assert.Equal([nameof(RegisterRequest.BirthDate)], error.MemberNames);
+    }
+
+    [Fact]
+    public void Validate_OnThe18thBirthday_IsValid()
+    {
+        var request = CreateRegisterRequest(birthDate: new DateOnly(2008, 10, 5));
+
+        Assert.Empty(Validate(request));
+    }
+
+    [Theory]
+    [InlineData(2026, 10, 6)] // tomorrow
+    [InlineData(1906, 10, 4)] // more than 120 years ago
+    public void Validate_WithImplausibleBirthDate_ReportsInvalidDate(int year, int month, int day)
+    {
+        var request = CreateRegisterRequest(birthDate: new DateOnly(year, month, day));
+
+        var error = Assert.Single(Validate(request));
+
+        Assert.Equal("La fecha de nacimiento no es valida.", error.ErrorMessage);
+    }
+
+    private static List<ValidationResult> Validate(RegisterRequest request)
+    {
+        var results = new List<ValidationResult>();
+        var context = new ValidationContext(request, new FixedTimeServiceProvider(), items: null);
+        Validator.TryValidateObject(request, context, results, validateAllProperties: true);
+        return results;
     }
 
     [Fact]
@@ -149,6 +212,12 @@ public sealed class AuthUseCasesTests
 
         public (string Token, DateTimeOffset ExpiresAt) Generate(Usuario user) =>
             (TokenPrefix + user.Id, CurrentTime.AddHours(1));
+    }
+
+    private sealed class FixedTimeServiceProvider : IServiceProvider
+    {
+        public object? GetService(Type serviceType) =>
+            serviceType == typeof(TimeProvider) ? new FixedTimeProvider(CurrentTime) : null;
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset currentTime) : TimeProvider
