@@ -45,4 +45,32 @@ Tarda unos minutos y se puede volver a ejecutar. Los datos se consultan en GET /
 
 Los GTFS públicos son de 2019 (colectivos y subte) y 2020 (trenes) y sus fechas no se superponen, así que MOTIS los usa con un calendario semanal proyectado a una semana de referencia (2 al 8 de marzo de 2026, ver etl\motis\config.yml): los viajes en transporte público se consultan en esas fechas. Hasta que se corre la importación, el contenedor de MOTIS queda esperando sin fallar.
 
+6. Buscador de direcciones con Nominatim local
+
+La búsqueda de calles, alturas y lugares usa una instancia local de Nominatim con el recorte OSM del AMBA. No requiere un servicio de geocodificación externo. El servicio está en el perfil `nominatim`, así que los `docker compose up -d` de los pasos anteriores no lo arrancan antes de que el archivo del mapa esté preparado.
+
+Después de ejecutar `DATOS-ZONAS-DOCKER.bat`, verificá que exista `datos\motis\amba.osm.pbf`. Si no existe, revisá que la preparación de MOTIS del paso anterior haya terminado. Desde PowerShell, en la raíz del repositorio, ejecutá estos comandos para crear automáticamente la carpeta de Nominatim si hace falta y copiar el recorte:
+
+```powershell
+New-Item -ItemType Directory -Force .\datos\nominatim
+Copy-Item .\datos\motis\amba.osm.pbf .\datos\nominatim\amba.osm.pbf -Force
+```
+
+Iniciá Nominatim y seguí los logs de la importación inicial:
+
+```powershell
+docker compose up -d nominatim
+docker compose logs -f nominatim
+```
+
+La importación puede tardar varios minutos. Cuando aparezca que el servidor está listo, salí de la vista de logs con `Ctrl+C`; eso no detiene el contenedor. El índice se conserva en el volumen `nominatim_data`, así que los próximos inicios reutilizan la importación.
+
+Podés comprobar la búsqueda local abriendo:
+
+```text
+http://localhost:8080/search?format=jsonv2&addressdetails=1&q=Gutenberg%20666%2C%20Villa%20Luzuriaga
+```
+
+La API, ejecutada desde Visual Studio en la computadora, consulta `http://localhost:8080/`. Mantené el servicio de Nominatim activo mientras usás la búsqueda de direcciones en la SPA. Si la API se ejecuta dentro de Docker, configurá `Nominatim:BaseUrl` como `http://nominatim:8080/`.
+
 Esquemas de la base: app (modelo de la aplicación, EF Core), geo (datos GIS externos), osm (importación cruda de OpenStreetMap). PostGIS vive en public.

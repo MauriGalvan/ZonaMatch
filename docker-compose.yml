@@ -11,8 +11,7 @@ services:
       - db_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
 
-  # Motor de ruteo (a pie, bici, auto y transporte publico). DATOS-ZONAS-DOCKER.bat deja la entrada en
-  # datos/motis e importa al volumen motis_data. Hasta que la importacion termina, el contenedor espera.
+  # Motor de ruteo (a pie, bici, auto y transporte público).
   motis:
     image: ghcr.io/motis-project/motis:2.11.3
     volumes:
@@ -28,6 +27,22 @@ services:
         until [ -f /data/importacion-ok ]; do sleep 15; done
         exec /motis server -d /data
 
+  nominatim:
+    image: mediagis/nominatim:5.3
+    profiles: ["nominatim"]
+    environment:
+      PBF_PATH: /nominatim/data/amba.osm.pbf
+      THREADS: 4
+      NOMINATIM_PASSWORD: zonamatch_nominatim_local
+      IMPORT_WIKIPEDIA: "false"
+    volumes:
+      - ./datos/nominatim:/nominatim/data
+      - nominatim_data:/var/lib/postgresql/16/main
+    ports:
+      - "127.0.0.1:8080:8080"
+    shm_size: 1gb
+
 volumes:
   db_data:
   motis_data:
+  nominatim_data:

@@ -19,6 +19,7 @@ using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
 using ZonaMatch.Application.UseCases.Contacto;
 using ZonaMatch.Application.UseCases.Groups;
+using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Preguntas;
@@ -54,7 +55,7 @@ builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
 builder.Services.AddScoped<IAnalisisRepository, AnalisisRepository>();
 
-// Reverse geocoding. "Osm" (default) queries the local osm schema; "Nominatim" calls the public OpenStreetMap API.
+// Reverse geocoding. "Osm" (default) queries the local osm schema; "Nominatim" uses the configured Nominatim instance.
 if (string.Equals(builder.Configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
 {
     // Its usage policy requires an identifying User-Agent
@@ -73,6 +74,12 @@ else
 
 // Application services.
 builder.Services.AddScoped<IGeolocationService, GeolocationService>();
+builder.Services.AddHttpClient<IPlaceSearchClient, NominatimPlaceSearchClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Nominatim:BaseUrl"] ?? "http://localhost:8080/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddScoped<SearchPlaces>();
 builder.Services.AddScoped<IMapaService, MapaService>();
 builder.Services.AddScoped<IZonaService, ZonaService>();
 builder.Services.AddScoped<CreateGroup>();

@@ -16,7 +16,6 @@ namespace ZonaMatch.Infrastructure.Geo
     public class OsmGeocodingClient : IGeocodingClient
     {
         private const string Schema = ZonaMatchDbOptions.OsmSchema;
-
         // Web Mercator meters are stretched by 1/cos(lat), so metric radii are scaled by k
         private const string Sql = $"""
             WITH p AS (
@@ -98,7 +97,7 @@ namespace ZonaMatch.Infrastructure.Geo
                 DireccionCompleta: completa.Length > 0 ? completa : null);
         }
 
-        // Keyless result of the query above; property names match the column aliases
+        // Keyless result of the query above; property names match the column aliases.
         private sealed class OsmFila
         {
             public string? Nombre { get; set; }

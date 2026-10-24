@@ -73,7 +73,7 @@ def descargar_censo(conexion: duckdb.DuckDBPyConnection) -> None:
     """)
     conexion.sql(f"COPY indicadores TO '{indicadores.as_posix()}' (HEADER)")
 
-    cantidad = conexion.sql("SELECT count(*), sum(poblacion) FROM radios").fetchone()
+    cantidad = conexion.sql("SELECT count(*), sum(poblacion) FROM radios").fetchall()[0]
     print(f"  {cantidad[0]} radios, {cantidad[1]} habitantes")
 
 
