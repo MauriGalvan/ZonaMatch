@@ -18,6 +18,7 @@ public sealed record RegisterRequest(
     [Required(ErrorMessage = "La fecha de nacimiento es obligatoria.")]
     DateOnly? BirthDate) : IValidatableObject
 {
+    private const int MinimumAgeYears = 18;
     private const int MaximumAgeYears = 120;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -25,9 +26,16 @@ public sealed record RegisterRequest(
         if (Password != ConfirmPassword)
             yield return new ValidationResult("Las contrasenas no coinciden.", [nameof(ConfirmPassword)]);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        if (BirthDate > today || BirthDate < today.AddYears(-MaximumAgeYears))
+        if (BirthDate is not { } birthDate)
+            yield break; // [Required] already reports it
+
+        var timeProvider = validationContext.GetService(typeof(TimeProvider)) as TimeProvider ?? TimeProvider.System;
+        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+
+        if (birthDate > today || birthDate < today.AddYears(-MaximumAgeYears))
             yield return new ValidationResult("La fecha de nacimiento no es valida.", [nameof(BirthDate)]);
+        else if (birthDate > today.AddYears(-MinimumAgeYears))
+            yield return new ValidationResult("Debes ser mayor de edad para registrarte.", [nameof(BirthDate)]);
     }
 
     public override string ToString() => $"{nameof(RegisterRequest)} {{ Email = {Email} }}";
