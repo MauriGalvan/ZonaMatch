@@ -17,6 +17,7 @@ using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.UseCases.Aportes;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
+using ZonaMatch.Application.UseCases.Notifications;
 using ZonaMatch.Application.UseCases.Contacto;
 using ZonaMatch.Application.UseCases.Groups;
 using ZonaMatch.Application.UseCases.Geolocation;
@@ -54,6 +55,7 @@ builder.Services.AddScoped<ITransporteZonaRepository, TransporteZonaRepository>(
 
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IAnalisisRepository, AnalisisRepository>();
 builder.Services.AddScoped<ISavedZoneRepository, SavedZoneRepository>();
 
@@ -92,6 +94,9 @@ builder.Services.AddScoped<GetGroups>();
 builder.Services.AddScoped<DeleteGroup>();
 builder.Services.AddScoped<UpdateGroup>();
 builder.Services.AddScoped<RemoveParticipant>();
+builder.Services.AddScoped<GetNotifications>();
+builder.Services.AddScoped<MarkNotificationAsRead>();
+builder.Services.AddScoped<MarkAllNotificationsAsRead>();
 
 builder.Services.AddScoped<CreateInvitation>();
 builder.Services.AddScoped<IEmailService, EmailService>();

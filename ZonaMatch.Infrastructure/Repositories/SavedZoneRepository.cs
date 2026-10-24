@@ -25,6 +25,13 @@ namespace ZonaMatch.Infrastructure.Repositories
             _context.SavedZones.FirstOrDefaultAsync(
                 zone => zone.UserId == userId && zone.ZoneSlug == zoneSlug, cancellationToken);
 
+        public async Task<IReadOnlyList<SavedZone>> GetForZoneAsync(
+            string zoneSlug, Guid excludedUserId, CancellationToken cancellationToken = default) =>
+            await _context.SavedZones
+                .AsNoTracking()
+                .Where(zone => zone.ZoneSlug == zoneSlug && zone.UserId != excludedUserId)
+                .ToListAsync(cancellationToken);
+
         public void Add(SavedZone savedZone) => _context.SavedZones.Add(savedZone);
 
         public void Remove(SavedZone savedZone) => _context.SavedZones.Remove(savedZone);

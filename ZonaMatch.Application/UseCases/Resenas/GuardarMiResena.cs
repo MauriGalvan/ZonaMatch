@@ -5,6 +5,7 @@ using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Comunidad;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Enums;
 
 namespace ZonaMatch.Application.UseCases.Resenas
 {
@@ -13,12 +14,21 @@ namespace ZonaMatch.Application.UseCases.Resenas
     {
         private readonly IResenaRepository _resenas;
         private readonly IZonaRepository _zonas;
+        private readonly ISavedZoneRepository _savedZones;
+        private readonly INotificationRepository _notifications;
         private readonly TimeProvider _reloj;
 
-        public GuardarMiResena(IResenaRepository resenas, IZonaRepository zonas, TimeProvider reloj)
+        public GuardarMiResena(
+            IResenaRepository resenas,
+            IZonaRepository zonas,
+            ISavedZoneRepository savedZones,
+            INotificationRepository notifications,
+            TimeProvider reloj)
         {
             _resenas = resenas;
             _zonas = zonas;
+            _savedZones = savedZones;
+            _notifications = notifications;
             _reloj = reloj;
         }
 
@@ -32,6 +42,7 @@ namespace ZonaMatch.Application.UseCases.Resenas
 
             var ahora = _reloj.GetUtcNow();
             var resena = await _resenas.ObtenerDeUsuarioAsync(zonaSlug, currentUser.Id, cancellationToken);
+            var isNewReview = resena is null;
 
             if (resena is null)
             {
@@ -49,6 +60,20 @@ namespace ZonaMatch.Application.UseCases.Resenas
             resena.AniosEnZona = solicitud.AniosEnZona;
             resena.Temas = temas.ToList();
             resena.FechaActualizacion = ahora;
+
+            if (isNewReview)
+            {
+                var savedZones = await _savedZones.GetForZoneAsync(zonaSlug, currentUser.Id, cancellationToken);
+                _notifications.AddRange(savedZones.Select(savedZone => new UserNotification
+                {
+                    UserId = savedZone.UserId,
+                    Type = NotificationType.SavedZoneReview,
+                    Title = "Nueva reseña en una zona guardada",
+                    Message = $"Publicaron una nueva reseña en {savedZone.Name}.",
+                    Link = $"/zonas/{Uri.EscapeDataString(zonaSlug)}?tab=comunidad",
+                    CreatedAt = ahora
+                }));
+            }
 
             await _resenas.GuardarCambiosAsync(cancellationToken);
 

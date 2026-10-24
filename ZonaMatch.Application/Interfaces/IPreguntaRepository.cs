@@ -9,6 +9,8 @@ namespace ZonaMatch.Application.Interfaces
 
         Task<bool> ExisteAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default);
 
+        Task<Pregunta?> GetByIdAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default);
+
         void Agregar(Pregunta pregunta);
         void Agregar(Respuesta respuesta);
 

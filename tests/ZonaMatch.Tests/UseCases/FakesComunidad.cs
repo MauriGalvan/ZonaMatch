@@ -93,11 +93,61 @@ namespace ZonaMatch.Tests.UseCases
         public Task<bool> ExisteAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Preguntas.Any(p => p.ZonaSlug == zonaSlug && p.Id == id));
 
+        public Task<Pregunta?> GetByIdAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Preguntas.FirstOrDefault(p => p.ZonaSlug == zonaSlug && p.Id == id));
+
         public void Agregar(Pregunta pregunta) => Preguntas.Add(pregunta);
 
         public void Agregar(Respuesta respuesta) =>
             Preguntas.Single(p => p.Id == respuesta.PreguntaId).Respuestas.Add(respuesta);
 
         public Task GuardarCambiosAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    internal sealed class FakeSavedZoneRepository : ISavedZoneRepository
+    {
+        public Task<IReadOnlyList<SavedZone>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<SavedZone?> GetAsync(Guid userId, string zoneSlug, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<SavedZone>> GetForZoneAsync(
+            string zoneSlug, Guid excludedUserId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SavedZone>>([]);
+
+        public void Add(SavedZone savedZone) => throw new NotSupportedException();
+
+        public void Remove(SavedZone savedZone) => throw new NotSupportedException();
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    internal sealed class FakeNotificationRepository : INotificationRepository
+    {
+        public List<UserNotification> Notifications { get; } = [];
+
+        public Task<IReadOnlyList<UserNotification>> GetForUserAsync(
+            Guid userId, int limit, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<int> GetUnreadCountAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<UserNotification?> GetAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public void AddRange(IEnumerable<UserNotification> notifications) => Notifications.AddRange(notifications);
+
+        public Task MarkAllAsReadAsync(Guid userId, DateTimeOffset readAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    internal sealed class FakeEmailService : IEmailService
+    {
+        public Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

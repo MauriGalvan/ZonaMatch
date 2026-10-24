@@ -17,7 +17,12 @@ namespace ZonaMatch.Tests.UseCases.Resenas
 
         public GuardarMiResenaTests()
         {
-            _casoDeUso = new GuardarMiResena(_resenas, new FakeZonaRepository(), new FixedTimeProvider(Ahora));
+            _casoDeUso = new GuardarMiResena(
+                _resenas,
+                new FakeZonaRepository(),
+                new FakeSavedZoneRepository(),
+                new FakeNotificationRepository(),
+                new FixedTimeProvider(Ahora));
         }
 
         private static GuardarResenaDto Resena(int seguridad = 3, string[]? temas = null) =>

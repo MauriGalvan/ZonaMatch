@@ -27,6 +27,11 @@ namespace ZonaMatch.Infrastructure.Repositories
         public Task<bool> ExisteAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Preguntas.AnyAsync(p => p.ZonaSlug == zonaSlug && p.Id == id, cancellationToken);
 
+        public Task<Pregunta?> GetByIdAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+            _dbContext.Preguntas
+                .Include(question => question.Usuario)
+                .FirstOrDefaultAsync(question => question.ZonaSlug == zonaSlug && question.Id == id, cancellationToken);
+
         public void Agregar(Pregunta pregunta) => _dbContext.Preguntas.Add(pregunta);
 
         public void Agregar(Respuesta respuesta) => _dbContext.Respuestas.Add(respuesta);

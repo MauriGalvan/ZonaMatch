@@ -36,6 +36,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Criterio> Criterios => Set<Criterio>();
         public DbSet<AlquilerZona> AlquileresZona => Set<AlquilerZona>();
         public DbSet<SavedZone> SavedZones => Set<SavedZone>();
+        public DbSet<UserNotification> Notifications => Set<UserNotification>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -183,6 +184,20 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Name).HasMaxLength(150).IsRequired();
                 e.Property(x => x.Subtitle).HasMaxLength(300).IsRequired();
                 e.Property(x => x.SavedAt).HasColumnType("timestamptz");
+                e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<UserNotification>(e =>
+            {
+                e.ToTable("notifications");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Type).HasConversion<string>().HasMaxLength(40).IsRequired();
+                e.Property(x => x.Title).HasMaxLength(150).IsRequired();
+                e.Property(x => x.Message).HasMaxLength(500).IsRequired();
+                e.Property(x => x.Link).HasMaxLength(500).IsRequired();
+                e.Property(x => x.CreatedAt).HasColumnType("timestamptz");
+                e.Property(x => x.ReadAt).HasColumnType("timestamptz");
+                e.HasIndex(x => new { x.UserId, x.ReadAt, x.CreatedAt });
                 e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 

@@ -8,6 +8,9 @@ namespace ZonaMatch.Application.Interfaces
 
         Task<SavedZone?> GetAsync(Guid userId, string zoneSlug, CancellationToken cancellationToken = default);
 
+        Task<IReadOnlyList<SavedZone>> GetForZoneAsync(
+            string zoneSlug, Guid excludedUserId, CancellationToken cancellationToken = default);
+
         void Add(SavedZone savedZone);
 
         void Remove(SavedZone savedZone);
