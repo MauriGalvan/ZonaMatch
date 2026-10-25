@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using NpgsqlTypes;
@@ -10,7 +10,7 @@ namespace ZonaMatch.Infrastructure.Repositories
 {
     // Arma el perfil de todas las zonas elegidas de geo.zonas para el motor de puntaje: censo y delitos
     // (geo.zona_indicadores), transporte (geo.zona_transporte_*), equipamiento de OSM y alquiler
-    // (app.alquileres_zona). Contar el equipamiento de todas las zonas tarda unos segundos, asi que el resultado
+    // (app.zone_market). Contar el equipamiento de todas las zonas tarda unos segundos, asi que el resultado
     // se guarda en PerfilesZonaCache: los datos solo cambian cuando se vuelve a correr el ETL.
     public class PerfilesZonaRepository : IPerfilesZonaRepository
     {
@@ -76,25 +76,31 @@ namespace ZonaMatch.Infrastructure.Repositories
                 SELECT osm_id, sum(salidas)::int AS salidas FROM {Geo}.zona_transporte_lineas
                 WHERE franja = 'manana' GROUP BY osm_id
             ),
-            -- Un registro por zona base; las comunas y los partidos suman los de las zonas que contienen
-            -- (promedio ponderado por propiedades disponibles)
+            -- Rent of every property type together (app.zone_market). Partidos and comunas without a row of their
+            -- own add up the zones they contain (average weighted by listings).
+            alquileres AS (
+                SELECT zone_slug, average_price, listings
+                FROM {App}.zone_market
+                WHERE operation = 'rent' AND property_type = 'all' AND average_price IS NOT NULL
+            ),
             alquiler AS (
                 SELECT z.osm_id,
-                       CASE WHEN z.nivel > 5 THEN a.alquiler_promedio ELSE agregado.promedio END AS promedio,
-                       CASE WHEN z.nivel > 5 THEN a.propiedades_disponibles ELSE agregado.propiedades END AS propiedades
+                       COALESCE(a.average_price, agregado.promedio) AS promedio,
+                       COALESCE(a.listings, agregado.propiedades) AS propiedades
                 FROM zonas z
-                LEFT JOIN {App}.alquileres_zona a ON a.zona_slug = z.slug
+                LEFT JOIN alquileres a ON a.zone_slug = z.slug
                 LEFT JOIN LATERAL (
-                    SELECT round(sum(b.alquiler_promedio * greatest(b.propiedades_disponibles, 1))
-                                 / sum(greatest(b.propiedades_disponibles, 1))) AS promedio,
-                           sum(b.propiedades_disponibles)::int AS propiedades
+                    SELECT round(sum(b.average_price * greatest(b.listings, 1))
+                                 / sum(greatest(b.listings, 1))) AS promedio,
+                           sum(b.listings)::int AS propiedades
                     FROM zonas h
-                    JOIN {App}.alquileres_zona b ON b.zona_slug = h.slug
-                    WHERE z.nivel <= 5 AND h.nivel > 5 AND ST_Contains(z.geom, ST_PointOnSurface(h.geom))
+                    JOIN alquileres b ON b.zone_slug = h.slug
+                    WHERE a.zone_slug IS NULL AND z.nivel <= 5 AND h.nivel > 5
+                      AND ST_Contains(z.geom, ST_PointOnSurface(h.geom))
                 ) agregado ON true
             )
             SELECT z.slug AS "Slug", z.nombre AS "Nombre", z.nivel AS "Nivel", z.superficie_km2 AS "SuperficieKm2",
-                   COALESCE(i.poblacion, 0) AS "Poblacion", i.delitos_anio AS "Delitos",
+                   COALESCE(i.poblacion, 0) AS "Poblacion", i.delitos_comparables AS "Delitos",
                    COALESCE(l.lineas, 0) AS "LineasTransporte", COALESCE(p.salidas, 0) AS "SalidasHoraPico",
                    e.escuelas AS "Escuelas", e.salud AS "CentrosSalud", e.verdes AS "EspaciosVerdes",
                    v.m2 AS "SuperficieVerdeM2",

@@ -9,7 +9,7 @@ namespace ZonaMatch.Application.DTOs
         PoblacionZonaDto Poblacion,
         ConectividadZonaDto Conectividad,
         CondicionesZonaDto Condiciones,
-        // Null cuando la zona no tiene delitos con ubicacion (hoy, fuera de CABA)
+        // Null when the zone has no crime data
         SeguridadZonaDto? Seguridad,
         IReadOnlyList<FuenteDatoDto> Fuentes);
 
@@ -36,8 +36,12 @@ namespace ZonaMatch.Application.DTOs
         double? PorcentajeCoberturaSalud,
         double? PorcentajeUniversitario);
 
+    // Fuente: "mapa-delito" (CABA, geolocated events) or "snic" (province: crimes of the partido spread by
+    // population). Ambito: the partidos the SNIC data comes from; null for the Mapa del Delito.
     public record SeguridadZonaDto(
         int Anio,
+        string Fuente,
+        string? Ambito,
         int Delitos,
         double? DelitosCada1000Habitantes,
         int Robos,

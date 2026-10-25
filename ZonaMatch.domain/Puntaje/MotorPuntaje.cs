@@ -194,8 +194,8 @@ namespace ZonaMatch.Domain.Puntaje
         private static string Detalle(PerfilZona zona, string criterio) => criterio switch
         {
             Seguridad => zona.DelitosCadaMilHabitantes is { } delitos
-                ? $"{delitos.ToString("N1", Es)} delitos cada 1.000 hab. en un año"
-                : "Sin datos de delitos (por ahora solo hay datos de CABA)",
+                ? $"{delitos.ToString("N1", Es)} delitos estimados cada 1.000 hab. en un año, incluidos los no denunciados"
+                : "Sin datos de delitos",
             Movilidad => $"{zona.LineasTransporte} líneas · {(zona.SalidasHoraPico / HorasHoraPico).ToString("N0", Es)} salidas por hora en hora pico",
             EspaciosVerdes => zona.VerdePorHabitanteM2 is { } verde
                 ? $"{verde.ToString("N1", Es)} m² de plazas y parques por habitante"
