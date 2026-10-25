@@ -53,9 +53,9 @@ namespace ZonaMatch.Infrastructure.Repositories
         // summary, for a radius and for a zone. "origen" defines the CTE "o" (prefilter geometry g in 3857 and the
         // reference geography geog); candidates pass the index-friendly "prefiltro" and then the exact "dentro"
         // (on the 4326 point c.punto). Ends with the "en_area" CTE.
-        // Los aportes de vecinos aprobados por otros vecinos (app.aportes) se aplican sobre OSM: los puntos nuevos
-        // se agregan ("a" + id) y las correcciones de un lugar cambian su nombre, categoria o ubicacion, o lo esconden
-        // si cerro. Una correccion por motivo "otro" es solo informativa.
+        // The approved community contributions, persisted in app.community_pois, are applied over OSM: the points
+        // added by users ("a" + contribution id) join the candidates, and the changes to an OSM point replace its
+        // name, category or location, or hide it if it closed.
         private static string PuntosEn(string origen, Func<string, string> prefiltro, string dentro) => $"""
             WITH {origen},
             candidatos AS (
@@ -74,32 +74,22 @@ namespace ZonaMatch.Infrastructure.Repositories
                 FROM candidatos
                 WHERE name IS NOT NULL OR highway = 'bus_stop' OR railway = 'subway_entrance'
                 UNION ALL
-                SELECT 'a' || a.id::text, a.nombre, NULL, a.categoria, NULL, a.ubicacion, 'vecinos'
-                FROM {App}.aportes a
-                WHERE a.tipo = 'PuntoNuevo' AND a.estado = 'Aprobado'
-            ),
-            -- La ultima correccion aprobada de cada lugar y motivo
-            correcciones AS (
-                SELECT DISTINCT ON (a.punto_interes_id, a.motivo) a.punto_interes_id, a.motivo, a.nombre, a.categoria, a.ubicacion
-                FROM {App}.aportes a
-                WHERE a.tipo = 'Correccion' AND a.estado = 'Aprobado'
-                ORDER BY a.punto_interes_id, a.motivo, a.fecha_resolucion DESC
+                SELECT p.id, p.name, NULL, p.category, NULL, p.location, 'vecinos'
+                FROM {App}.community_pois p
+                WHERE p.is_new AND NOT p.removed
             ),
             corregidos AS (
                 SELECT c.id,
-                       COALESCE(cn.nombre, c.name) AS name,
+                       COALESCE(p.name, c.name) AS name,
                        c.operator,
-                       COALESCE(cc.categoria, c.categoria) AS categoria,
-                       -- el tipo de OSM ya no describe a un lugar que paso a otra categoria
-                       CASE WHEN cc.categoria IS NULL THEN c.tipo END AS tipo,
-                       COALESCE(cu.ubicacion, c.punto) AS punto,
+                       COALESCE(p.category, c.categoria) AS categoria,
+                       -- the OSM type no longer describes a place moved to another category
+                       CASE WHEN p.category IS NULL OR p.is_new THEN c.tipo END AS tipo,
+                       COALESCE(p.location, c.punto) AS punto,
                        c.fuente
                 FROM clasificados c
-                LEFT JOIN correcciones cn ON cn.punto_interes_id = c.id AND cn.motivo = 'Nombre'
-                LEFT JOIN correcciones cc ON cc.punto_interes_id = c.id AND cc.motivo = 'Categoria'
-                LEFT JOIN correcciones cu ON cu.punto_interes_id = c.id AND cu.motivo = 'Ubicacion'
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM correcciones x WHERE x.punto_interes_id = c.id AND x.motivo = 'Cerro')
+                LEFT JOIN {App}.community_pois p ON p.id = c.id
+                WHERE p.removed IS NOT TRUE
             ),
             en_area AS (
                 SELECT c.*, ST_Distance(c.punto::geography, o.geog) AS distancia

@@ -35,7 +35,8 @@ namespace ZonaMatch.Api.Authentication
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.FromSeconds(30),
 
-                NameClaimType = JwtRegisteredClaimNames.Email
+                NameClaimType = JwtRegisteredClaimNames.Email,
+                RoleClaimType = AppRoles.ClaimType
             };
 
             options.Events = new JwtBearerEvents

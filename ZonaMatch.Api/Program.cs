@@ -137,6 +137,9 @@ builder.Services.AddScoped<ListarAportesPendientes>();
 builder.Services.AddScoped<CrearPuntoNuevo>();
 builder.Services.AddScoped<CrearCorreccion>();
 builder.Services.AddScoped<ValidarAporte>();
+builder.Services.AddScoped<ICommunityPoiRepository, CommunityPoiRepository>();
+builder.Services.AddScoped<CommunityPoiUpdater>();
+builder.Services.AddScoped<ResolveContribution>();
 
 // Criteria catalog for the wizard (GET /Criterios).
 builder.Services.AddScoped<ListarCriterios>();

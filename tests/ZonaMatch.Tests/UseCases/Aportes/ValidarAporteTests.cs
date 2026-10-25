@@ -10,13 +10,14 @@ namespace ZonaMatch.Tests.UseCases.Aportes
         private static readonly DateTimeOffset Ahora = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
         private readonly FakeAporteRepository _aportes = new();
+        private readonly FakeCommunityPoiRepository _puntos = new();
         private readonly ValidarAporte _casoDeUso;
         private readonly Guid _autor = Guid.NewGuid();
         private readonly Aporte _aporte;
 
         public ValidarAporteTests()
         {
-            _casoDeUso = new ValidarAporte(_aportes, new FixedTimeProvider(Ahora));
+            _casoDeUso = new ValidarAporte(_aportes, new CommunityPoiUpdater(_puntos), new FixedTimeProvider(Ahora));
             _aporte = new Aporte
             {
                 ZonaSlug = Zona,
@@ -48,6 +49,35 @@ namespace ZonaMatch.Tests.UseCases.Aportes
             Assert.Equal(Aporte.DiferenciaParaResolver, _aportes.Guardados);
             await Assert.ThrowsAsync<ConflictException>(
                 () => _casoDeUso.EjecutarAsync(Zona, _aporte.Id, Guid.NewGuid(), confirma: false));
+        }
+
+        [Fact]
+        public async Task Validate_WhenTheVotesApproveANewPoint_PersistsItAsAPointOfInterest()
+        {
+            _aporte.Ubicacion = new NetTopologySuite.Geometries.Point(-58.5, -34.63) { SRID = 4326 };
+
+            for (var i = 0; i < Aporte.DiferenciaParaResolver; i++)
+            {
+                Assert.Empty(_puntos.Pois);
+                await _casoDeUso.EjecutarAsync(Zona, _aporte.Id, Guid.NewGuid(), confirma: true);
+            }
+
+            var poi = Assert.Single(_puntos.Pois);
+            Assert.Equal("a" + _aporte.Id, poi.Id);
+            Assert.True(poi.IsNew);
+            Assert.Equal("Farmacia Nueva", poi.Name);
+            Assert.Equal("salud", poi.Category);
+            Assert.Equal(_aporte.Ubicacion, poi.Location);
+        }
+
+        [Fact]
+        public async Task Validate_WhenTheVotesReject_DoesNotPersistAnything()
+        {
+            for (var i = 0; i < Aporte.DiferenciaParaResolver; i++)
+                await _casoDeUso.EjecutarAsync(Zona, _aporte.Id, Guid.NewGuid(), confirma: false);
+
+            Assert.Equal(EstadoAporte.Rechazado, _aporte.Estado);
+            Assert.Empty(_puntos.Pois);
         }
 
         [Fact]

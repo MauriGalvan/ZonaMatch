@@ -189,6 +189,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("punto_interes_nombre");
 
+                    b.Property<Guid?>("ResueltoPorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resuelto_por_id");
+
                     b.Property<string>("Tipo")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -214,6 +218,8 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnName("zona_slug");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ResueltoPorId");
 
                     b.HasIndex("UsuarioId");
 
@@ -247,6 +253,60 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("aportes_validaciones", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.CommunityPoi", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("category");
+
+                    b.Property<bool>("IsNew")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_new");
+
+                    b.Property<Guid?>("LastContributionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_contribution_id");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geometry(Point,4326)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<bool>("Removed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("removed");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("ZoneSlug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("zone_slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastContributionId");
+
+                    b.HasIndex("Location");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Location"), "gist");
+
+                    b.ToTable("community_pois", "app");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Comuna", b =>
@@ -1181,6 +1241,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("character varying(254)")
                         .HasColumnName("email");
 
+                    b.Property<bool>("EsAdministrador")
+                        .HasColumnType("boolean")
+                        .HasColumnName("es_administrador");
+
                     b.Property<DateTimeOffset>("FechaCreacion")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_creacion");
@@ -1318,6 +1382,11 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
                 {
+                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("ResueltoPorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ZonaMatch.Domain.Entities.Usuario", "Usuario")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
@@ -1340,6 +1409,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.CommunityPoi", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Aporte", null)
+                        .WithMany()
+                        .HasForeignKey("LastContributionId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Contexto", b =>

@@ -19,7 +19,7 @@ public sealed class LoginUser(
             throw new UnauthorizedException("Email o contrasena incorrectos.");
 
         var (accessToken, expiresAt) = tokenService.Generate(user);
-        var userResponse = new UserResponse(user.Id, user.Email, user.FechaNacimiento);
+        var userResponse = new UserResponse(user.Id, user.Email, user.FechaNacimiento, user.EsAdministrador);
 
         return new LoginResult(accessToken, expiresAt, userResponse);
     }
