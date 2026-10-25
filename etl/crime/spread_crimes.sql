@@ -39,16 +39,16 @@ zonas AS (
     GROUP BY z.osm_id
 )
 UPDATE geo.zona_indicadores i
-SET delitos_anio = CASE WHEN s.snic THEN round(i.delitos_anio * z.factor) ELSE i.delitos_anio END,
-    delitos_robos = CASE WHEN s.snic THEN round(i.delitos_robos * z.factor) ELSE i.delitos_robos END,
-    delitos_hurtos = CASE WHEN s.snic THEN round(i.delitos_hurtos * z.factor) ELSE i.delitos_hurtos END,
-    delitos_lesiones = CASE WHEN s.snic THEN round(i.delitos_lesiones * z.factor) ELSE i.delitos_lesiones END,
-    delitos_homicidios = CASE WHEN s.snic THEN round(i.delitos_homicidios * z.homicidios) ELSE i.delitos_homicidios END,
-    delitos_amenazas = CASE WHEN s.snic THEN round(i.delitos_amenazas * z.factor) ELSE i.delitos_amenazas END,
-    delitos_comparables = round(i.delitos_comparables * sqrt(CASE WHEN s.snic THEN z.factor ELSE 1 END * z.homicidios)),
-    delitos_reparto = CASE WHEN s.snic THEN z.factor END,
+SET delitos_anio = CASE WHEN i.delitos_fuente = 'snic' THEN round(i.delitos_anio * z.factor) ELSE i.delitos_anio END,
+    delitos_robos = CASE WHEN i.delitos_fuente = 'snic' THEN round(i.delitos_robos * z.factor) ELSE i.delitos_robos END,
+    delitos_hurtos = CASE WHEN i.delitos_fuente = 'snic' THEN round(i.delitos_hurtos * z.factor) ELSE i.delitos_hurtos END,
+    delitos_lesiones = CASE WHEN i.delitos_fuente = 'snic' THEN round(i.delitos_lesiones * z.factor) ELSE i.delitos_lesiones END,
+    delitos_homicidios = CASE WHEN i.delitos_fuente = 'snic' THEN round(i.delitos_homicidios * z.homicidios) ELSE i.delitos_homicidios END,
+    delitos_amenazas = CASE WHEN i.delitos_fuente = 'snic' THEN round(i.delitos_amenazas * z.factor) ELSE i.delitos_amenazas END,
+    delitos_comparables = round(i.delitos_comparables * sqrt(CASE WHEN i.delitos_fuente = 'snic' THEN z.factor ELSE 1 END * z.homicidios)),
+    delitos_reparto = CASE WHEN i.delitos_fuente = 'snic' THEN z.factor END,
     delitos_reparto_homicidios = z.homicidios
-FROM zonas z, LATERAL (SELECT i.delitos_fuente = 'snic' AS snic) s
+FROM zonas z
 -- Only once per calcular_zonas.sql run: a second run would multiply again
 WHERE i.osm_id = z.osm_id AND i.delitos_fuente IS NOT NULL AND i.delitos_reparto_homicidios IS NULL;
 
