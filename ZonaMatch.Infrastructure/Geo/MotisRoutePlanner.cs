@@ -12,7 +12,8 @@ namespace ZonaMatch.Infrastructure.Geo
     // Trip plans from MOTIS (the "motis" container of docker-compose, GET /api/v1/plan), with every leg and its
     // geometry. Like MotisRuteoClient, it asks for a weekday of the loaded reference week at 8 in the morning and
     // keeps each plan in memory for a day. Of the itineraries MOTIS offers, the best one is kept: the fastest, with
-    // every transfer counted as TransferPenaltySeconds more, so a one-stop bus does not win by a minute.
+    // every transfer counted as TransferPenaltySeconds more and every public transport leg shorter than ten blocks as
+    // ShortRidePenaltySeconds more, so a bus for three blocks or an unnecessary transfer does not win by a minute.
     public class MotisRoutePlanner(HttpClient http, IMemoryCache cache, IConfiguration configuration) : IRoutePlanner
     {
         // Tuesday, March 3, 2026, 8:00 in Buenos Aires (UTC-3), as in MotisRuteoClient
@@ -21,6 +22,9 @@ namespace ZonaMatch.Infrastructure.Geo
         private static readonly TimeSpan PlanLifetime = TimeSpan.FromDays(1);
 
         private const int TransferPenaltySeconds = 300;
+
+        // A ride of ten blocks or less (ModosViaje.DistanciaACaminarKm) is better walked
+        private const int ShortRidePenaltySeconds = 600;
 
         // Longest direct walk or bike ride searched (seconds)
         private const int MaxDirectSeconds = 7200;
@@ -53,9 +57,12 @@ namespace ZonaMatch.Infrastructure.Geo
             // The best of the transit itineraries and the direct trip (walking can beat a bus)
             var best = (plan?.Itineraries ?? []).Concat(plan?.Direct ?? [])
                 .Where(itinerary => itinerary.Legs is { Count: > 0 })
-                .MinBy(itinerary => itinerary.Duration + TransferPenaltySeconds * itinerary.Transfers);
+                .Select(itinerary => (itinerary.Duration, itinerary.Transfers, Legs: itinerary.Legs!.Select(ToLeg).ToList()))
+                .MinBy(option => option.Duration
+                                 + TransferPenaltySeconds * option.Transfers
+                                 + ShortRidePenaltySeconds * option.Legs.Count(IsShortRide));
 
-            var result = best is null ? null : new RoutePlan(best.Duration, best.Legs!.Select(ToLeg).ToList());
+            var result = best.Legs is null ? null : new RoutePlan(best.Duration, best.Legs);
             cache.Set(key, result, PlanLifetime);
             return result;
         }
@@ -85,6 +92,15 @@ namespace ZonaMatch.Infrastructure.Geo
                 isTransit && !string.IsNullOrWhiteSpace(leg.RouteColor) ? leg.RouteColor : null,
                 leg.Geometry is { Points: { } points } geometry ? Polyline.Decode(points, geometry.Precision ?? 6) : []);
         }
+
+        private static readonly HashSet<string> WalkingModes = ["walk", "bike", "car"];
+
+        // A public transport leg shorter than ten blocks along its path
+        private static bool IsShortRide(RouteLeg leg) =>
+            !WalkingModes.Contains(leg.Mode) && leg.Path.Count > 1 && PathKm(leg.Path) <= ModosViaje.DistanciaACaminarKm;
+
+        private static double PathKm(IReadOnlyList<RoutePoint> path) =>
+            path.Zip(path.Skip(1), (a, b) => ModosViaje.DistanciaKm(a.Latitude, a.Longitude, b.Latitude, b.Longitude)).Sum();
 
         // MOTIS names the ends of the trip START and END
         private static string? PlaceName(string? name) => name is null or "START" or "END" ? null : name;

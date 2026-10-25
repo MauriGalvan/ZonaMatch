@@ -26,13 +26,14 @@ namespace ZonaMatch.Domain.Puntaje
             return ModoViaje.APie;
         }
 
-        // Ten blocks of 100 m or less are walked, whatever the household's mobility: nobody takes a bus or the car
-        // for that. Straight-line distance, as in Estimar.
+        // In public transport, ten blocks of 100 m or less are walked: nobody takes a bus for three blocks. A household
+        // that moves by car or bike keeps its mode. Straight-line distance, as in Estimar.
         public const double DistanciaACaminarKm = 1.0;
 
         public static ModoViaje ParaDistancia(
             ModoViaje modo, double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino) =>
-            DistanciaKm(latitudOrigen, longitudOrigen, latitudDestino, longitudDestino) <= DistanciaACaminarKm
+            modo == ModoViaje.TransportePublico
+            && DistanciaKm(latitudOrigen, longitudOrigen, latitudDestino, longitudDestino) <= DistanciaACaminarKm
                 ? ModoViaje.APie
                 : modo;
 

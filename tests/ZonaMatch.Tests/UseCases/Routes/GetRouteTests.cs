@@ -63,10 +63,10 @@ namespace ZonaMatch.Tests.UseCases.Routes
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenPlaceIsTenBlocksAwayOrLess_WalksWhateverTheMode()
+        public async Task ExecuteAsync_WhenPlaceIsTenBlocksAwayOrLessByPublicTransport_Walks()
         {
             _planner.Plan = new RoutePlan(600, [new RouteLeg("walk", 600, 800, null, null, null, null, null, null, [])]);
-            var request = Request("auto");
+            var request = Request("transporte-publico");
             request.ToLatitude = request.FromLatitude + 0.007; // about 780 m north
             request.ToLongitude = request.FromLongitude;
 
@@ -74,6 +74,20 @@ namespace ZonaMatch.Tests.UseCases.Routes
 
             Assert.Equal(ModoViaje.APie, _planner.RequestedMode);
             Assert.Equal("a-pie", response.Mode);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenPlaceIsTenBlocksAwayOrLessByCar_KeepsTheCar()
+        {
+            _planner.Plan = new RoutePlan(240, [new RouteLeg("car", 240, 800, null, null, null, null, null, null, [])]);
+            var request = Request("auto");
+            request.ToLatitude = request.FromLatitude + 0.007;
+            request.ToLongitude = request.FromLongitude;
+
+            var response = await new GetRoute(_planner).ExecuteAsync(request);
+
+            Assert.Equal(ModoViaje.Auto, _planner.RequestedMode);
+            Assert.Equal("auto", response.Mode);
         }
 
         [Fact]
