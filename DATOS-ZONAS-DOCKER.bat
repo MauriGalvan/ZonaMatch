@@ -86,6 +86,21 @@ echo [4/5] Calculando los indicadores de cada zona (tarda alrededor de un minuto
 if errorlevel 1 goto :err_calc
 %PSQL% < etl\calcular_transporte.sql
 if errorlevel 1 goto :err_calc
+rem Delitos de provincia: se reparten entre las localidades de cada partido con un modelo ajustado en CABA
+python -c "import numpy" >nul 2>&1
+if errorlevel 1 (
+    echo Instalando numpy...
+    python -m pip install numpy
+    if errorlevel 1 goto :err_python
+)
+%PSQL% --csv < etl\crime\fraction_features.sql > datos\delitos_fracciones_entrada.csv
+if errorlevel 1 goto :err_calc
+python etl\crime\fit_crime_model.py datos\delitos_fracciones_entrada.csv datos\delitos_fracciones.csv
+if errorlevel 1 goto :err_calc
+%PSQL% -c "\copy geo.carga_delitos_fracciones FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\delitos_fracciones.csv
+if errorlevel 1 goto :err_load
+%PSQL% < etl\crime\spread_crimes.sql
+if errorlevel 1 goto :err_calc
 rem Alquileres estimados por zona (temporal, hasta el scraping de Argenprop)
 %PSQL% < etl\estimar_alquileres.sql
 if errorlevel 1 goto :err_calc
@@ -152,7 +167,7 @@ exit /b 1
 echo ERROR: PostgreSQL no respondio a tiempo.
 exit /b 1
 :err_python
-echo ERROR: no se pudo instalar duckdb. Verifica que Python 3 este instalado y en el PATH.
+echo ERROR: no se pudo instalar duckdb o numpy. Verifica que Python 3 este instalado y en el PATH.
 exit /b 1
 :err_download
 echo ERROR: fallo la descarga de los datos abiertos. Revisa la conexion y volve a intentar.

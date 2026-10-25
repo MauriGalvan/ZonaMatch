@@ -177,7 +177,10 @@ CREATE TABLE geo.zona_indicadores (
     -- los del Mapa del Delito por el cociente SNIC / Mapa del Delito de toda la ciudad (asi se conserva la
     -- diferencia entre barrios); en provincia, los del SNIC corregidos con la encuesta de victimizacion. En las dos,
     -- combinados con los homicidios de 5 anios del partido o la comuna para corregir cuanto se denuncia en cada uno
-    delitos_comparables          integer
+    delitos_comparables          integer,
+    -- Provincia: factor con el que etl/crime/spread_crimes.sql repartio los delitos del partido entre sus
+    -- localidades (1 = la tasa del partido); null en CABA y hasta que corre ese paso
+    delitos_reparto              double precision
 );
 
 WITH asignacion AS (
@@ -351,7 +354,7 @@ SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
        d.total, d.robos, d.hurtos, d.lesiones, d.homicidios, d.amenazas, d.viales,
        -- Con muy pocos habitantes (clubes, countries chicos) una tasa por habitante no dice nada: el puntaje la
        -- toma como dato faltante
-       d.fuente, d.periodo, d.ambito, CASE WHEN t.poblacion >= 500 THEN d.comparables END
+       d.fuente, d.periodo, d.ambito, CASE WHEN t.poblacion >= 500 THEN d.comparables END, NULL
 FROM totales t
 JOIN censo c USING (osm_id)
 LEFT JOIN delitos d USING (osm_id);
