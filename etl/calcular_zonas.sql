@@ -175,7 +175,8 @@ CREATE TABLE geo.zona_indicadores (
     delitos_ambito               text,
     -- Delitos en la escala del SNIC de CABA, comparables entre CABA y provincia: los usa el puntaje. En CABA son
     -- los del Mapa del Delito por el cociente SNIC / Mapa del Delito de toda la ciudad (asi se conserva la
-    -- diferencia entre barrios); en provincia, los del SNIC corregidos con la encuesta de victimizacion
+    -- diferencia entre barrios); en provincia, los del SNIC corregidos con la encuesta de victimizacion. En las dos,
+    -- combinados con los homicidios de 5 anios del partido o la comuna para corregir cuanto se denuncia en cada uno
     delitos_comparables          integer
 );
 
@@ -269,8 +270,9 @@ delitos_snic AS (
     SELECT a.osm_id,
            max(s.year) AS periodo,
            round(sum(s.hechos * CASE WHEN s.en_caba THEN 1 ELSE coalesce(c.factor, 1) END)
-                 FILTER (WHERE s.crime_group <> 'road'))::int AS comparables,
-           round(sum(s.hechos) FILTER (WHERE s.crime_group <> 'road'))::int AS total,
+                 FILTER (WHERE s.crime_group NOT IN ('road', 'homicides_5y')))::int AS comparables,
+           round(sum(s.hechos) FILTER (WHERE s.crime_group NOT IN ('road', 'homicides_5y')))::int AS total,
+           sum(s.hechos) FILTER (WHERE s.crime_group = 'homicides_5y') AS homicidios_5a,
            round(sum(s.hechos) FILTER (WHERE s.crime_group = 'robberies'))::int AS robos,
            round(sum(s.hechos) FILTER (WHERE s.crime_group = 'thefts'))::int AS hurtos,
            round(sum(s.hechos) FILTER (WHERE s.crime_group = 'injuries'))::int AS lesiones,
@@ -303,17 +305,39 @@ escala_caba AS (
     ORDER BY caba.superficie_km2 DESC
     LIMIT 1
 ),
-delitos AS (
+delitos_base AS (
     SELECT m.osm_id, m.total, m.robos, m.hurtos, m.lesiones, m.homicidios, m.amenazas, m.viales,
            'mapa-delito' AS fuente, (SELECT max(anio) FROM geo.carga_delitos) AS periodo, NULL::text AS ambito,
-           round(m.total * (SELECT factor FROM escala_caba))::int AS comparables
+           m.total * (SELECT factor FROM escala_caba) AS estimados, s.homicidios_5a
     FROM delitos_mapa m
+    LEFT JOIN delitos_snic s USING (osm_id)
     UNION ALL
     SELECT s.osm_id, s.total, s.robos, s.hurtos, s.lesiones, s.homicidios, s.amenazas, s.viales,
-           'snic', s.periodo, b.ambito, s.comparables
+           'snic', s.periodo, b.ambito, s.comparables, s.homicidios_5a
     FROM delitos_snic s
     LEFT JOIN ambitos b USING (osm_id)
     WHERE s.osm_id NOT IN (SELECT osm_id FROM delitos_mapa)
+),
+-- Dentro de cada region tambien se denuncia distinto: Moron registra mas robos y hurtos por habitante que Moreno
+-- pero tiene la mitad de homicidios, y en CABA pasa lo mismo entre las comunas del norte y del sur. Los
+-- homicidios se registran casi siempre: el valor final es la media geometrica de los delitos estimados y de los
+-- homicidios de 2021-2025 (SNIC, por partido o comuna), llevados a la escala de los delitos de su region para que el
+-- nivel de CABA y de la provincia siga siendo el de la encuesta. Las diferencias entre barrios de una misma comuna
+-- (Mapa del Delito) se conservan.
+escala_homicidios AS (
+    SELECT d.fuente, sum(d.estimados) / nullif(sum(d.homicidios_5a), 0) AS factor
+    FROM delitos_base d
+    JOIN geo.zonas z USING (osm_id)
+    WHERE z.elegida AND z.nivel = 5
+    GROUP BY d.fuente
+),
+delitos AS (
+    SELECT d.*,
+           round(CASE WHEN d.homicidios_5a > 0 AND e.factor IS NOT NULL
+                      THEN sqrt(d.estimados * d.homicidios_5a * e.factor)
+                      ELSE d.estimados END)::int AS comparables
+    FROM delitos_base d
+    LEFT JOIN escala_homicidios e USING (fuente)
 )
 INSERT INTO geo.zona_indicadores
 SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,

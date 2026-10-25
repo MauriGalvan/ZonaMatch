@@ -8,7 +8,9 @@ These are crimes reported to the police, aggregated by partido (comuna in CABA);
 etl/calcular_zonas.sql spreads them over the localidades of each partido by population.
 
 Output: datos/snic_departamentos.csv with year, department_id (INDEC code, as in the census radios),
-department_name, crime_group, events and rate_per_100k (rate on the population projected for that year).
+department_name, crime_group, events and rate_per_100k (rate on the population projected for that year). The
+group "homicides_5y" is the yearly average of the last five years of homicides: homicides are almost always
+recorded, so etl/calcular_zonas.sql uses them to correct the differences in reporting between partidos.
 
 Usage: python etl/download_snic.py   (from backend/ZonaMatch). No dependencies beyond the standard library.
 """
@@ -25,6 +27,10 @@ from pathlib import Path
 SNIC_URL = "https://cloud-snic.minseg.gob.ar/Bases/SNIC/snic-departamentos-anual.csv"
 OUTPUT = Path(__file__).resolve().parent.parent / "datos" / "snic_departamentos.csv"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZonaMatch-ETL/1.0"
+
+# Years of homicides averaged into "homicides_5y": a single year has few homicides per partido or comuna
+HOMICIDE_YEARS = 5
+HOMICIDE_CODE = "1"
 
 # CABA and Buenos Aires province (INDEC province codes)
 PROVINCES = {"02", "06"}
@@ -85,6 +91,15 @@ def main():
         totals[key][0] += number(row["cantidad_hechos"])
         totals[key][1] += number(row["tasa_hechos"])
         names[department_id] = row["departamento_nombre"]
+
+    # Homicides of the last HOMICIDE_YEARS years: average events and average rate per year
+    for row in rows:
+        if row["codigo_delito_snic_id"] != HOMICIDE_CODE or int(row["anio"]) <= year - HOMICIDE_YEARS:
+            continue
+        department_id = DEPARTMENT_ID_FIXES.get(row["departamento_id"], row["departamento_id"])
+        key = (department_id, "homicides_5y")
+        totals[key][0] += number(row["cantidad_hechos"]) / HOMICIDE_YEARS
+        totals[key][1] += number(row["tasa_hechos"]) / HOMICIDE_YEARS
 
     OUTPUT.parent.mkdir(exist_ok=True)
     with OUTPUT.open("w", encoding="utf-8", newline="") as handle:
