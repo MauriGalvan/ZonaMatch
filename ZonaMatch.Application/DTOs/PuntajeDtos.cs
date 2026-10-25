@@ -24,6 +24,24 @@ namespace ZonaMatch.Application.DTOs
 
         // Mobility options (walking, public transit, car, cycling) determine how trips are measured.
         public List<string> Movilidad { get; set; } = [];
+
+        // Starting point chosen by the user inside a zone (a point on the map instead of its center): the trips to
+        // the places, the time limits and the score of that zone are measured from there.
+        [MaxLength(10, ErrorMessage = "Se pueden elegir hasta 10 puntos de partida.")]
+        public List<OrigenZonaRequest> OrigenesZona { get; set; } = [];
+    }
+
+    public class OrigenZonaRequest
+    {
+        [Required]
+        [StringLength(100, MinimumLength = 1)]
+        public string Slug { get; set; } = string.Empty;
+
+        [Range(-90, 90)]
+        public double Latitude { get; set; }
+
+        [Range(-180, 180)]
+        public double Longitude { get; set; }
     }
 
     public class LugarPuntajeRequest
