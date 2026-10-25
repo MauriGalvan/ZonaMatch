@@ -70,7 +70,7 @@ namespace ZonaMatch.Tests.Domain
         }
 
         [Fact]
-        public void La_prioridad_alta_pesa_el_triple_que_la_baja()
+        public void La_prioridad_alta_pesa_nueve_veces_la_baja()
         {
             // Mejor en seguridad (percentil 83) y peor en educacion (percentil 17)
             var zona = Zona("zona", delitos: 10, escuelas: 1);
@@ -78,7 +78,7 @@ namespace ZonaMatch.Tests.Domain
 
             var resultado = motor.Calcular(zona, Pedido(new() { [MotorPuntaje.Seguridad] = "alta", [MotorPuntaje.Educacion] = "baja" }));
 
-            Assert.Equal(67, resultado.Puntaje); // (83 * 3 + 17 * 1) / 4
+            Assert.Equal(76, resultado.Puntaje); // (83 * 9 + 17 * 1) / 10
         }
 
         [Fact]
