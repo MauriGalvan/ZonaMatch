@@ -26,6 +26,16 @@ namespace ZonaMatch.Domain.Puntaje
             return ModoViaje.APie;
         }
 
+        // Inverse of Codigo; no code means public transport, as in DesdeMovilidad. Null for an unknown code.
+        public static ModoViaje? DesdeCodigo(string? codigo) => codigo?.Trim().ToLowerInvariant() switch
+        {
+            null or "" or "transporte-publico" => ModoViaje.TransportePublico,
+            "auto" => ModoViaje.Auto,
+            "bici" => ModoViaje.Bici,
+            "a-pie" => ModoViaje.APie,
+            _ => null,
+        };
+
         public static string Codigo(ModoViaje modo) => modo switch
         {
             ModoViaje.Auto => "auto",

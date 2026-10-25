@@ -27,6 +27,7 @@ using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Application.UseCases.Zonas;
+using ZonaMatch.Application.UseCases.Routes;
 using ZonaMatch.Application.UseCases.SavedZones;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
@@ -162,6 +163,14 @@ builder.Services.AddHttpClient<IRuteoClient, MotisRuteoClient>(client =>
     client.Timeout = TimeSpan.FromSeconds(8);
 });
 builder.Services.AddScoped<CalcularPuntajes>();
+
+// Trips from a zone to the user's places, leg by leg, to draw them on the analysis map (MOTIS).
+builder.Services.AddHttpClient<IRoutePlanner, MotisRoutePlanner>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Motis:Url"] ?? "http://localhost:18080/");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddScoped<GetRoute>();
 builder.Services.AddHostedService<PrecalcularPerfilesZona>();
 
 // Open data for each zone (census and safety), loaded by DATOS-ZONAS-DOCKER.bat.
