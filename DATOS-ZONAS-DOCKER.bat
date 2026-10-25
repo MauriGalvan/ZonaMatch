@@ -1,8 +1,8 @@
 @echo off
 setlocal
 
-REM Carga los datos abiertos que completan el detalle de las zonas (censo 2022, delitos de CABA y
-REM frecuencias de transporte publico de los GTFS) en el schema geo, y prepara el motor de ruteo MOTIS
+REM Carga los datos abiertos que completan el detalle de las zonas (censo 2022, delitos de CABA y del SNIC
+REM por partido para provincia, frecuencias de transporte publico de los GTFS) en el schema geo, y prepara el motor de ruteo MOTIS
 REM (tiempos de viaje a pie, en bici, en auto y en transporte publico). Requiere la base con el mapa de OSM
 REM ya importado (OSM-DATA-UPDATER-DOCKER.bat), Python 3 y el paquete duckdb (pip install duckdb).
 REM Es seguro volver a ejecutarlo: borra y recalcula las tablas. Si los CSV ya estan en datos\, no los vuelve
@@ -33,7 +33,7 @@ goto :wait_db
 :db_ready
 
 echo.
-echo [2/5] Descargando censo 2022, delitos de CABA y GTFS de transporte en datos\ ...
+echo [2/5] Descargando censo 2022, delitos de CABA, delitos por partido del SNIC y GTFS en datos\ ...
 python -c "import duckdb" >nul 2>&1
 if errorlevel 1 (
     echo Instalando duckdb...
@@ -48,6 +48,14 @@ python etl\descargar_datos.py
 if errorlevel 1 goto :err_download
 
 :gtfs
+if exist "datos\snic_departamentos.csv" (
+    echo Delitos por partido del SNIC ya descargados. Para actualizarlos, borrar datos\snic_departamentos.csv.
+    goto :transporte
+)
+python etl\download_snic.py
+if errorlevel 1 goto :err_download
+
+:transporte
 if exist "datos\transporte_salidas.csv" (
     echo Transporte ya procesado. Para actualizarlo, borrar datos\transporte_salidas.csv.
     goto :load
@@ -66,6 +74,8 @@ if errorlevel 1 goto :err_load
 %PSQL% -c "\copy geo.carga_censo_indicadores FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\censo_indicadores_amba.csv
 if errorlevel 1 goto :err_load
 %PSQL% -c "\copy geo.carga_delitos FROM STDIN WITH (FORMAT csv, HEADER true, NULL 'NULL')" < datos\delitos_2024.csv
+if errorlevel 1 goto :err_load
+%PSQL% -c "\copy geo.carga_snic FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\snic_departamentos.csv
 if errorlevel 1 goto :err_load
 %PSQL% -c "\copy geo.carga_transporte_salidas FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\transporte_salidas.csv
 if errorlevel 1 goto :err_load

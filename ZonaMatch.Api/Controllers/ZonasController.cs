@@ -86,7 +86,8 @@ namespace ZonaMatch.Api.Controllers
         }
 
         // GET /Zonas/villa-luro/indicadores
-        // Poblacion, conectividad, condiciones de vida (Censo 2022) y seguridad (Mapa del Delito, solo CABA),
+        // Poblacion, conectividad, condiciones de vida (Censo 2022) y seguridad (Mapa del Delito en CABA, SNIC
+        // por partido en provincia),
         // con la fuente y el nivel geografico de cada dato. 404 si la zona no tiene datos cargados.
         [HttpGet("{slug}/indicadores")]
         [ResponseCache(Duration = 3600)]

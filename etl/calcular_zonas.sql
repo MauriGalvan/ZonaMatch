@@ -2,6 +2,8 @@
 -- Lo corre DATOS-ZONAS-DOCKER.bat despues de copiar los CSV (etl/crear_tablas.sql).
 --
 -- Las zonas son los limites administrativos de OpenStreetMap (schema osm), igual que en GET /Zonas/{slug}.
+-- Seguridad: en CABA, los hechos georreferenciados del Mapa del Delito; en provincia, los delitos del SNIC por
+-- partido repartidos entre sus localidades segun su poblacion (solo hay dato por partido).
 -- Cada radio censal y cada delito se asigna por ubicacion a todas las zonas que lo contienen: un barrio o
 -- una localidad suma los suyos, y una comuna o un partido suma los de toda su superficie, que son los de
 -- los barrios o localidades que lo componen.
@@ -159,14 +161,22 @@ CREATE TABLE geo.zona_indicadores (
     hogares_nbi                  integer NOT NULL,
     hogares_hacinamiento         integer NOT NULL,
     hogares_alquilan             integer NOT NULL,
-    -- Seguridad: solo hay delitos con ubicacion en CABA (null en el resto)
+    -- Seguridad del anio delitos_periodo. CABA: Mapa del Delito (delitos_fuente 'mapa-delito'); provincia:
+    -- SNIC del partido repartido por poblacion ('snic'), con los partidos de origen en delitos_ambito
     delitos_anio                 integer,
     delitos_robos                integer,
     delitos_hurtos               integer,
     delitos_lesiones             integer,
     delitos_homicidios           integer,
     delitos_amenazas             integer,
-    siniestros_viales            integer
+    siniestros_viales            integer,
+    delitos_fuente               text,
+    delitos_periodo              integer,
+    delitos_ambito               text,
+    -- Delitos en la escala del SNIC, comparables entre CABA y provincia: los usa el puntaje. En CABA son los
+    -- del Mapa del Delito por el cociente SNIC / Mapa del Delito de toda la ciudad, asi se conserva la
+    -- diferencia entre barrios
+    delitos_comparables          integer
 );
 
 WITH asignacion AS (
@@ -209,7 +219,7 @@ zonas_caba AS (
     FROM geo.zonas z
     JOIN geo.zonas caba ON caba.nivel = 4 AND ST_Contains(caba.geom, ST_PointOnSurface(z.geom))
 ),
-delitos AS (
+delitos_mapa AS (
     SELECT z.osm_id,
            coalesce(sum(d.cantidad) FILTER (WHERE d.tipo <> 'Vialidad'), 0)::int AS total,
            coalesce(sum(d.cantidad) FILTER (WHERE d.tipo = 'Robo'), 0)::int AS robos,
@@ -221,6 +231,63 @@ delitos AS (
     FROM zonas_caba z
     LEFT JOIN geo.delitos_caba d ON ST_Contains(z.geom, d.geom)
     GROUP BY z.osm_id
+),
+-- SNIC por radio: la tasa de su partido (o comuna) por su poblacion. Los codigos de departamento del censo y del
+-- SNIC coinciden en provincia; en CABA el censo numera las comunas de a 7 (007 es la Comuna 1, 014 la 2...)
+snic_radio AS (
+    SELECT r.cod, r.poblacion, s.department_name, s.year, s.crime_group,
+           r.poblacion * s.rate_per_100k / 100000.0 AS hechos
+    FROM geo.censo_radios r
+    JOIN geo.carga_snic s ON s.department_id = r.prov || CASE WHEN r.prov = '02'
+                                                             THEN lpad((r.depto::int / 7)::text, 3, '0')
+                                                             ELSE r.depto END
+),
+delitos_snic AS (
+    SELECT a.osm_id,
+           max(s.year) AS periodo,
+           round(sum(s.hechos) FILTER (WHERE s.crime_group <> 'road'))::int AS total,
+           round(sum(s.hechos) FILTER (WHERE s.crime_group = 'robberies'))::int AS robos,
+           round(sum(s.hechos) FILTER (WHERE s.crime_group = 'thefts'))::int AS hurtos,
+           round(sum(s.hechos) FILTER (WHERE s.crime_group = 'injuries'))::int AS lesiones,
+           round(sum(s.hechos) FILTER (WHERE s.crime_group = 'homicides'))::int AS homicidios,
+           round(sum(s.hechos) FILTER (WHERE s.crime_group = 'threats'))::int AS amenazas,
+           round(sum(s.hechos) FILTER (WHERE s.crime_group = 'road'))::int AS viales
+    FROM asignacion a
+    JOIN snic_radio s USING (cod)
+    GROUP BY a.osm_id
+),
+-- Partidos de cada zona, del que mas poblacion le aporta al que menos (casi siempre uno solo)
+ambitos AS (
+    SELECT osm_id, string_agg(department_name, ', ' ORDER BY poblacion DESC) AS ambito
+    FROM (
+        SELECT a.osm_id, s.department_name, sum(a.poblacion) AS poblacion
+        FROM asignacion a
+        JOIN (SELECT DISTINCT cod, department_name FROM snic_radio) s USING (cod)
+        GROUP BY a.osm_id, s.department_name
+    ) p
+    GROUP BY osm_id
+),
+-- Cociente para llevar el Mapa del Delito de CABA a la escala del SNIC
+escala_caba AS (
+    SELECT s.total::numeric / nullif(m.total, 0) AS factor
+    FROM geo.zonas caba
+    JOIN delitos_mapa m ON m.osm_id = caba.osm_id
+    JOIN delitos_snic s ON s.osm_id = caba.osm_id
+    WHERE caba.nivel = 4
+    ORDER BY caba.superficie_km2 DESC
+    LIMIT 1
+),
+delitos AS (
+    SELECT m.osm_id, m.total, m.robos, m.hurtos, m.lesiones, m.homicidios, m.amenazas, m.viales,
+           'mapa-delito' AS fuente, (SELECT max(anio) FROM geo.carga_delitos) AS periodo, NULL::text AS ambito,
+           round(m.total * (SELECT factor FROM escala_caba))::int AS comparables
+    FROM delitos_mapa m
+    UNION ALL
+    SELECT s.osm_id, s.total, s.robos, s.hurtos, s.lesiones, s.homicidios, s.amenazas, s.viales,
+           'snic', s.periodo, b.ambito, s.total
+    FROM delitos_snic s
+    LEFT JOIN ambitos b USING (osm_id)
+    WHERE s.osm_id NOT IN (SELECT osm_id FROM delitos_mapa)
 )
 INSERT INTO geo.zona_indicadores
 SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
@@ -230,16 +297,18 @@ SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
        coalesce(c.hogares, 0), coalesce(c.h_internet, 0), coalesce(c.h_celular, 0),
        coalesce(c.h_computadora, 0), coalesce(c.h_nbi, 0), coalesce(c.h_hacinamiento, 0),
        coalesce(c.h_alquilan, 0),
-       -- Dentro de CABA una zona sin delitos registrados tiene 0; fuera de CABA queda null (sin datos)
-       d.total, d.robos, d.hurtos, d.lesiones, d.homicidios, d.amenazas, d.viales
+       -- Dentro de CABA una zona sin delitos registrados tiene 0; sin dato del SNIC queda null
+       d.total, d.robos, d.hurtos, d.lesiones, d.homicidios, d.amenazas, d.viales,
+       d.fuente, d.periodo, d.ambito, d.comparables
 FROM totales t
 JOIN censo c USING (osm_id)
 LEFT JOIN delitos d USING (osm_id);
 
-DROP TABLE geo.carga_censo_radios, geo.carga_censo_indicadores, geo.carga_delitos;
+DROP TABLE geo.carga_censo_radios, geo.carga_censo_indicadores, geo.carga_delitos, geo.carga_snic;
 
 COMMIT;
 
-SELECT nivel, count(*) AS zonas, count(i.osm_id) AS con_indicadores, count(i.delitos_anio) AS con_delitos
+SELECT nivel, count(*) AS zonas, count(i.osm_id) AS con_indicadores, count(i.delitos_anio) AS con_delitos,
+       count(i.delitos_anio) FILTER (WHERE i.delitos_fuente = 'snic') AS con_delitos_snic
 FROM geo.zonas z LEFT JOIN geo.zona_indicadores i USING (osm_id)
 GROUP BY nivel ORDER BY nivel;

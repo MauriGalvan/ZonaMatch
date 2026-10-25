@@ -44,6 +44,18 @@ CREATE TABLE geo.carga_delitos (
     cantidad   integer
 );
 
+DROP TABLE IF EXISTS geo.carga_snic;
+
+-- Delitos por partido y comuna del SNIC (etl/download_snic.py): ultimo anio, por grupo de delito
+CREATE TABLE geo.carga_snic (
+    year            integer,
+    department_id   text,
+    department_name text,
+    crime_group     text,
+    events          integer,
+    rate_per_100k   double precision
+);
+
 DROP TABLE IF EXISTS geo.carga_transporte_salidas;
 
 -- Resumen de los GTFS (etl/procesar_gtfs.py): salidas por parada, linea y franja de un dia habil

@@ -13,7 +13,8 @@ namespace ZonaMatch.Domain.Puntaje
         public double SuperficieKm2 { get; init; }
         public int Poblacion { get; init; }
 
-        // Delitos de un anio: solo hay datos de CABA
+        // Crimes of a year on the SNIC scale (geo.zona_indicadores.delitos_comparables), comparable between CABA
+        // and the province
         public int? Delitos { get; init; }
 
         // Lineas de transporte publico y salidas de la franja de la manana (hora pico) en la zona

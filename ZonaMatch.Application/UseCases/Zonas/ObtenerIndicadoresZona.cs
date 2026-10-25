@@ -10,7 +10,6 @@ namespace ZonaMatch.Application.UseCases.Zonas
     {
         // Year of the data loaded by etl/descargar_datos.py.
         public const int AnioCenso = 2022;
-        public const int AnioDelitos = 2024;
 
         private const string Caba = "CABA";
 
@@ -26,8 +25,8 @@ namespace ZonaMatch.Application.UseCases.Zonas
             var zona = await _indicadores.ObtenerPorSlugAsync(slug, cancellationToken)
                 ?? throw new NotFoundException("Todavia no hay datos de censo ni de seguridad para esta zona.");
 
-            // Crime data is available for CABA, so compare against the whole city.
-            var caba = zona.TieneDelitos ? await _indicadores.ObtenerCabaAsync(cancellationToken) : null;
+            // Zones with geolocated crimes are in CABA, so they are compared against the whole city.
+            var caba = zona.DelitosGeorreferenciados ? await _indicadores.ObtenerCabaAsync(cancellationToken) : null;
 
             return new IndicadoresZonaDto(
                 zona.Slug,
@@ -58,11 +57,13 @@ namespace ZonaMatch.Application.UseCases.Zonas
 
         private static SeguridadZonaDto? Seguridad(IndicadoresZona zona, IndicadoresZona? caba)
         {
-            if (zona.Delitos is not { } delitos)
+            if (zona.Delitos is not { } delitos || zona.DelitosPeriodo is not { } anio)
                 return null;
 
             return new SeguridadZonaDto(
-                AnioDelitos,
+                anio,
+                zona.DelitosFuente ?? IndicadoresZona.FuenteMapaDelito,
+                zona.DelitosAmbito,
                 delitos,
                 zona.DelitosCada1000Habitantes,
                 zona.Robos ?? 0,
@@ -81,8 +82,10 @@ namespace ZonaMatch.Application.UseCases.Zonas
                 new("Poblacion, hogares y conectividad", "Censo 2022 (INDEC)", "Radio censal", AnioCenso),
             };
 
-            if (zona.TieneDelitos)
-                fuentes.Add(new("Seguridad", "Mapa del Delito (Buenos Aires Data)", "Hecho georreferenciado", AnioDelitos));
+            if (zona.TieneDelitos && zona.DelitosPeriodo is { } anio)
+                fuentes.Add(zona.DelitosGeorreferenciados
+                    ? new("Seguridad", "Mapa del Delito (Buenos Aires Data)", "Hecho georreferenciado", anio)
+                    : new("Seguridad", "SNIC (Ministerio de Seguridad de la Nación)", "Partido", anio));
 
             return fuentes;
         }
