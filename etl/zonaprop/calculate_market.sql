@@ -56,14 +56,15 @@ SET near = ST_DWithin(z.geom::geography, s.point::geography, 2000),
 FROM geo.zonas z
 WHERE z.slug = s.zone_slug AND z.elegida AND s.point IS NOT NULL;
 
--- A zone whose geolocated listings are mostly elsewhere matched another place with the same name: discard it
+-- A zone with almost no geolocated listings near it matched another place with the same name: discard it. A partido
+-- answer (Pilar, Tigre) has a good part of its listings near the localidad and is scaled down instead (near_share)
 DROP TABLE IF EXISTS pg_temp.rejected;
 CREATE TEMP TABLE rejected AS
 SELECT zone_slug
 FROM sample
 WHERE near IS NOT NULL
 GROUP BY zone_slug
-HAVING count(*) >= 10 AND avg(near::int) < 0.5;
+HAVING count(*) >= 10 AND avg(near::int) < 0.2;
 
 -- Zonaprop sometimes answers with the whole partido (Berazategui, Morón...): its total is scaled down by the share
 -- of the sample inside the zone (per combination when it has 10 geolocated listings, otherwise for the zone).
@@ -77,6 +78,7 @@ SELECT t.zone_slug,
            AS property_type,
        CASE WHEN count(*) OVER (PARTITION BY t.zonaprop_slug, t.operation, t.property_type) = 1 THEN t.listings END
            AS listings,
+       t.listings AS zonaprop_listings,
        t.scraped_at
 FROM geo.load_zonaprop_totals t
 WHERE t.zone_slug NOT IN (SELECT zone_slug FROM rejected);
@@ -147,17 +149,22 @@ FROM near_share n
 JOIN geo.zonas z ON z.slug = n.zone_slug AND z.elegida
 LEFT JOIN stats s USING (zone_slug, operation, property_type);
 
--- "all": every type together, each type's value weighted by its number of listings
+-- "all": every type together, each type's value weighted by its number of listings (for zones sharing a Zonaprop
+-- location, by the listings of that location, which they do not count as their own)
+WITH weighted AS (
+    SELECT m.*, coalesce(m.listings, round(n.zonaprop_listings * n.share)) AS w
+    FROM market m
+    JOIN near_share n USING (zone_slug, operation, property_type)
+)
 INSERT INTO market
 SELECT zone_slug, osm_id, operation, 'all', sum(listings), sum(sample_size),
-       sum(average_price * listings) / nullif(sum(listings) FILTER (WHERE average_price IS NOT NULL), 0),
-       sum(median_price * listings) / nullif(sum(listings) FILTER (WHERE median_price IS NOT NULL), 0),
-       sum(average_price_m2 * listings) / nullif(sum(listings) FILTER (WHERE average_price_m2 IS NOT NULL), 0),
-       sum(median_price_m2 * listings) / nullif(sum(listings) FILTER (WHERE median_price_m2 IS NOT NULL), 0),
-       sum(average_expenses_ars * listings)
-           / nullif(sum(listings) FILTER (WHERE average_expenses_ars IS NOT NULL), 0),
+       sum(average_price * w) / nullif(sum(w) FILTER (WHERE average_price IS NOT NULL), 0),
+       sum(median_price * w) / nullif(sum(w) FILTER (WHERE median_price IS NOT NULL), 0),
+       sum(average_price_m2 * w) / nullif(sum(w) FILTER (WHERE average_price_m2 IS NOT NULL), 0),
+       sum(median_price_m2 * w) / nullif(sum(w) FILTER (WHERE median_price_m2 IS NOT NULL), 0),
+       sum(average_expenses_ars * w) / nullif(sum(w) FILTER (WHERE average_expenses_ars IS NOT NULL), 0),
        'zonaprop', NULL, min(updated_at)
-FROM market
+FROM weighted
 GROUP BY zone_slug, osm_id, operation;
 
 -- 3. Zones without a Zonaprop location of their own take the averages of the smallest measured zone around them
