@@ -8,11 +8,13 @@ For every zone in datos/zonaprop/zones.csv (exported by target_zones.sql) and ev
 
 Zonaprop resolves its location URLs by slug, which usually matches ours ("villa-crespo", "adrogue"). An unknown
 slug falls back to a wider search and an ambiguous one may land in another province, so every response is
-checked against the expected location (name and partido, or CABA) before it is used. Zones that do not match
-are logged in datos/zonaprop/unmatched.csv; slug_overrides.csv maps them by hand.
+checked against the expected location (its name, in CABA or in an AMBA partido) before it is used. Names repeated
+elsewhere in the country are tried again with the partido ("castelar-moron"). Zones that still do not match are
+logged in datos/zonaprop/unmatched.csv; slug_overrides.csv maps them by hand (a Zonaprop slug, or the partido of
+zones that geo.zonas does not place in one).
 
 Outputs (in datos/zonaprop/):
-  totals.csv    zone_slug, operation, property_type, listings, zonaprop_location, url, scraped_at
+  totals.csv    zone_slug, operation, property_type, listings, zonaprop_location, zonaprop_slug, url, scraped_at
   listings.csv  one row per sampled listing
 Statistics per zone are computed in SQL (etl/zonaprop/calculate_market.sql), which also drops listings whose
 coordinates fall far from the zone.
@@ -72,12 +74,18 @@ AMBA_PARENTS = {
     "general san martin", "san martin", "hurlingham", "ituzaingo", "jose c paz", "la matanza", "la plata", "lanus",
     "lomas de zamora", "lujan", "malvinas argentinas", "marcos paz", "merlo", "moreno", "moron", "pilar",
     "presidente peron", "quilmes", "san fernando", "san isidro", "san miguel", "san vicente", "tigre",
-    "tres de febrero", "vicente lopez", "gba norte", "gba sur", "gba oeste",
+    "tres de febrero", "vicente lopez", "general las heras", "gba norte", "gba sur", "gba oeste",
 }
+# Zonaprop also nests some barrios in a localidad ("Villa La Florida, Bernal Oeste"): read_zones adds our zone names
+KNOWN_PARENTS = set(AMBA_PARENTS)
 
 
 class Blocked(Exception):
     """Zonaprop answered with a challenge or an error page instead of the listing."""
+
+
+class NotFound(Exception):
+    """Zonaprop has no listing page for that slug (HTTP 404 or 410)."""
 
 
 def normalize(text):
@@ -107,6 +115,8 @@ def fetch(path, delay):
             html = body.decode("utf-8", errors="replace")
             final_url = response.geturl()
     except urllib.error.HTTPError as error:
+        if error.code in (404, 410):
+            raise NotFound() from error
         raise Blocked(f"HTTP {error.code}") from error
     except (urllib.error.URLError, TimeoutError) as error:
         raise Blocked(str(error)) from error
@@ -167,22 +177,27 @@ def parse_posting(posting):
 
 
 def location_matches(title, zone):
-    """True when the page title names the zone (and its partido, or CABA) we asked for."""
+    """True when the page title names the zone we asked for, in CABA or in an AMBA partido.
+
+    The partido is not compared with ours: Zonaprop places some localidades in the neighboring partido (Loma
+    Hermosa, Villa Adelina) and answers with the whole partido for the cabeceras ("Morón, GBA Oeste").
+    calculate_market.sql checks the coordinates of the listings, which catches a same-named place elsewhere in the
+    AMBA (Villanueva in Tigre instead of Moreno) and scales a partido total down to the zone.
+    """
     match = LOCATION_PATTERN.search(title)
     if not match:
         return False, ""
     location = match.group(1)
     name, _, parent = location.partition(", ")
-    if normalize(name) != normalize(zone["name"]) and not zone.get("override"):
+    parent = normalize(parent)
+    if zone["manual_slug"]:
+        # Mapped by hand (slug_overrides.csv): the name may differ ("Villa Ballester" for Villa Ballester Noreste)
+        return parent in KNOWN_PARENTS or parent in ("caba", "capital federal"), location
+    if normalize(name) != normalize(zone["name"]):
         return False, location
-    if zone.get("override"):
-        return True, location
     if zone["in_caba"]:
-        return normalize(parent) == "caba", location
-    if not zone["parent_name"]:
-        # Partido not loaded in geo.zonas: accept any AMBA partido; calculate_market.sql checks the coordinates
-        return normalize(parent) in AMBA_PARENTS, location
-    return normalize(parent) == normalize(zone["parent_name"]), location
+        return parent == "caba", location
+    return parent in KNOWN_PARENTS, location
 
 
 def listing_path(property_type, operation, slug, page):
@@ -212,6 +227,13 @@ class Scraper:
             try:
                 final_url, html = fetch(path, self.delay)
                 break
+            except NotFound:
+                # Cached too, so a slug Zonaprop does not know is asked only once
+                self.requests += 1
+                page = {"title": "", "total": 0, "total_pages": 0, "postings": [], "final_url": None,
+                        "scraped_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+                file.write_text(json.dumps(page), encoding="utf-8")
+                return page
             except Blocked as error:
                 if attempt == len(waits):
                     raise
@@ -224,12 +246,29 @@ class Scraper:
         file.write_text(json.dumps(page, ensure_ascii=False), encoding="utf-8")
         return page
 
+    def cached(self, path):
+        """Returns the cached page, or None, without downloading anything."""
+        file = self.cache_file(path)
+        return json.loads(file.read_text(encoding="utf-8")) if file.exists() else None
+
+    def resolve(self, zone, download=True):
+        """Finds the Zonaprop slug of a zone, trying each candidate. Returns (slug, location) or (None, answer)."""
+        answer = ""
+        for slug in zone["candidates"]:
+            path = listing_path("departamentos", "venta", slug, 1)
+            page = self.get(path) if download else self.cached(path)
+            if page is None:
+                continue
+            matches, location = location_matches(page["title"], zone)
+            if matches:
+                return slug, location
+            answer = answer or location or page["title"]
+        return None, answer
+
     def scrape_zone(self, zone, pages):
-        """Scrapes every combination for a zone. Returns False when Zonaprop does not know the location."""
-        slug = zone["zonaprop_slug"]
-        first = self.get(listing_path("departamentos", "venta", slug, 1))
-        matches, location = location_matches(first["title"], zone)
-        if not matches:
+        """Scrapes every combination for a zone. Returns (False, answer) when Zonaprop does not know it."""
+        slug, location = self.resolve(zone)
+        if not slug:
             return False, location
         for operation in OPERATIONS:
             for property_type in PROPERTY_TYPES:
@@ -239,24 +278,40 @@ class Scraper:
         return True, location
 
 
+def slugify(text):
+    """'Partido de Morón' -> 'moron', the way Zonaprop builds its location slugs."""
+    return normalize(text).replace(" ", "-")
+
+
 def read_zones(only):
     file = DATA_DIR / "zones.csv"
     if not file.exists():
         sys.exit(f"Falta {file}: exportarlo con etl/zonaprop/target_zones.sql (ver MERCADO-ZONAS-DOCKER.bat).")
+    # zonaprop_slug: the slug to use; partido: for zones without a partido in geo.zonas, to build the fallback
     overrides = {}
     if OVERRIDES_FILE.exists():
         with OVERRIDES_FILE.open(encoding="utf-8") as handle:
-            overrides = {row["zone_slug"]: row["zonaprop_slug"] for row in csv.DictReader(handle)}
+            overrides = {row["zone_slug"]: row for row in csv.DictReader(handle)}
     zones = []
     with file.open(encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
+            if row["in_caba"] != "t":
+                KNOWN_PARENTS.add(normalize(row["name"]))
             if only and row["slug"] not in only:
                 continue
+            override = overrides.get(row["slug"], {})
             row["in_caba"] = row["in_caba"] == "t"
-            row["override"] = row["slug"] in overrides
-            row["zonaprop_slug"] = overrides.get(row["slug"], row["slug"])
-            if row["zonaprop_slug"] == "-":  # explicitly excluded
+            row["parent_name"] = row["parent_name"] or override.get("partido") or ""
+            row["manual_slug"] = override.get("zonaprop_slug") or ""
+            if row["manual_slug"] == "-":  # explicitly excluded
                 continue
+            if row["manual_slug"]:
+                row["candidates"] = [row["manual_slug"]]
+            else:
+                # Names repeated elsewhere in the country carry the partido in Zonaprop ("castelar-moron")
+                row["candidates"] = [row["slug"]]
+                if row["parent_name"] and not row["in_caba"]:
+                    row["candidates"].append(f"{row['slug']}-{slugify(row['parent_name'])}")
             zones.append(row)
     return zones
 
@@ -276,16 +331,12 @@ def usd_rate(override):
 def export(zones, pages, usd_ars):
     """Writes totals.csv and listings.csv from the cached pages of the matched zones."""
     totals_rows, listing_rows, unmatched_rows = [], [], []
+    scraper = Scraper(0, 36500)
     for zone in zones:
-        slug = zone["zonaprop_slug"]
-        scraper = Scraper(0, 36500)
-        first_file = scraper.cache_file(listing_path("departamentos", "venta", slug, 1))
-        if not first_file.exists():
-            continue
-        first = json.loads(first_file.read_text(encoding="utf-8"))
-        matches, location = location_matches(first["title"], zone)
-        if not matches:
-            unmatched_rows.append([zone["slug"], zone["name"], zone["parent_name"], location or first["title"]])
+        slug, location = scraper.resolve(zone, download=False)
+        if not slug:
+            if location:
+                unmatched_rows.append([zone["slug"], zone["name"], zone["parent_name"], location])
             continue
         for operation in OPERATIONS:
             for property_type, type_name in PROPERTY_TYPES.items():
@@ -293,7 +344,7 @@ def export(zones, pages, usd_ars):
                 if not page_file.exists():
                     continue
                 page = json.loads(page_file.read_text(encoding="utf-8"))
-                totals_rows.append([zone["slug"], operation, property_type, page["total"], location,
+                totals_rows.append([zone["slug"], operation, property_type, page["total"], location, slug,
                                     BASE_URL + listing_path(property_type, operation, slug, 1), page["scraped_at"]])
                 seen = set()
                 for number_ in range(1, pages + 1):
@@ -311,7 +362,8 @@ def export(zones, pages, usd_ars):
                             posting["lat"], posting["lng"], posting["modified"], BASE_URL + (posting["url"] or ""),
                             usd_ars,
                         ])
-    write_csv("totals.csv", ["zone_slug", "operation", "property_type", "listings", "zonaprop_location", "url",
+    write_csv("totals.csv", ["zone_slug", "operation", "property_type", "listings", "zonaprop_location",
+                             "zonaprop_slug", "url",
                              "scraped_at"], totals_rows)
     write_csv("listings.csv", ["zone_slug", "operation", "property_type", "posting_id", "currency", "price",
                                "expenses_ars", "total_m2", "covered_m2", "rooms", "lat", "lng", "modified", "url",

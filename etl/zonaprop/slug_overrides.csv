@@ -1,2 +1,23 @@
-zone_slug,zonaprop_slug
-buenos-aires,capital-federal
+zone_slug,zonaprop_slug,partido
+buenos-aires,capital-federal,
+nueva-pompeya,pompeya,
+villa-ballester-noreste,villa-ballester,
+villa-ballester-noroeste,villa-ballester,
+bosques,,Florencio Varela
+estanislao-severo-zeballos,,Florencio Varela
+san-juan-bautista,,Florencio Varela
+villa-santa-rosa,,Florencio Varela
+hudson,,Berazategui
+ranelagh,,Berazategui
+el-talar,,Tigre
+victoria,,San Fernando
+villa-elisa,,La Plata
+joaquin-gorina,,La Plata
+la-union,,Ezeiza
+champagnat,,Pilar
+lagomarsino,,Pilar
+pilar-sur,,Pilar
+presidente-derqui,,Pilar
+general-las-heras,,General Las Heras
+general-hornos,,General Las Heras
+villars,,General Las Heras

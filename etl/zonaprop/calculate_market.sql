@@ -47,10 +47,12 @@ WHERE price IS NULL
    OR (operation = 'rent' AND price NOT BETWEEN 50000 AND 30000000)
    OR (operation = 'sale' AND price NOT BETWEEN 5000 AND 20000000);
 
--- Listings placed more than 2 km away from the zone belong to another one (or the location is wrong)
-ALTER TABLE sample ADD COLUMN near boolean;
+-- Listings placed more than 2 km away from the zone belong to another one (or the location is wrong). Listings
+-- inside it (300 m of tolerance for approximate addresses) measure how much of a partido total is the zone's.
+ALTER TABLE sample ADD COLUMN near boolean, ADD COLUMN inside boolean;
 UPDATE sample s
-SET near = ST_DWithin(z.geom::geography, s.point::geography, 2000)
+SET near = ST_DWithin(z.geom::geography, s.point::geography, 2000),
+    inside = ST_DWithin(z.geom::geography, s.point::geography, 300)
 FROM geo.zonas z
 WHERE z.slug = s.zone_slug AND z.elegida AND s.point IS NOT NULL;
 
@@ -63,15 +65,18 @@ WHERE near IS NOT NULL
 GROUP BY zone_slug
 HAVING count(*) >= 10 AND avg(near::int) < 0.5;
 
--- Zonaprop sometimes only knows the whole partido (Berazategui, Pilar...): its total is scaled down by the share of
--- the sample that falls in the zone (per combination when it has 10 geolocated listings, otherwise for the zone)
+-- Zonaprop sometimes answers with the whole partido (Berazategui, Morón...): its total is scaled down by the share
+-- of the sample inside the zone (per combination when it has 10 geolocated listings, otherwise for the zone).
+-- A Zonaprop location shared by several zones (Villa Ballester for its Noreste and Noroeste) gives them its prices
+-- but no listings of their own, so partidos do not count it twice.
 DROP TABLE IF EXISTS pg_temp.near_share;
 CREATE TEMP TABLE near_share AS
 SELECT t.zone_slug,
        CASE t.operation WHEN 'venta' THEN 'sale' ELSE 'rent' END AS operation,
        CASE t.property_type WHEN 'departamentos' THEN 'apartment' WHEN 'casas' THEN 'house' ELSE 'ph' END
            AS property_type,
-       t.listings,
+       CASE WHEN count(*) OVER (PARTITION BY t.zonaprop_slug, t.operation, t.property_type) = 1 THEN t.listings END
+           AS listings,
        t.scraped_at
 FROM geo.load_zonaprop_totals t
 WHERE t.zone_slug NOT IN (SELECT zone_slug FROM rejected);
@@ -79,12 +84,12 @@ WHERE t.zone_slug NOT IN (SELECT zone_slug FROM rejected);
 ALTER TABLE near_share ADD COLUMN share numeric;
 UPDATE near_share n
 SET share = coalesce(
-    (SELECT avg(near::int) FROM sample s
+    (SELECT avg(inside::int) FROM sample s
      WHERE s.zone_slug = n.zone_slug AND s.operation = n.operation AND s.property_type = n.property_type
-       AND s.near IS NOT NULL
+       AND s.inside IS NOT NULL
      HAVING count(*) >= 10),
-    (SELECT avg(near::int) FROM sample s
-     WHERE s.zone_slug = n.zone_slug AND s.near IS NOT NULL
+    (SELECT avg(inside::int) FROM sample s
+     WHERE s.zone_slug = n.zone_slug AND s.inside IS NOT NULL
      HAVING count(*) >= 10),
     1);
 
@@ -206,6 +211,23 @@ SELECT b.parent_slug, b.parent_id, m.operation, m.property_type, sum(m.listings)
 FROM members b
 JOIN market m ON m.osm_id = b.osm_id
 GROUP BY b.parent_id, b.parent_slug, m.operation, m.property_type;
+
+-- 4b. Zones still without data (not in Zonaprop and not inside a measured zone) take the averages of their partido
+-- or comuna
+INSERT INTO market
+SELECT c.slug, c.osm_id, m.operation, m.property_type, NULL, m.sample_size, m.average_price, m.median_price,
+       m.average_price_m2, m.median_price_m2, m.average_expenses_ars, 'zonaprop-inherited', p.slug, m.updated_at
+FROM geo.zonas c
+JOIN LATERAL (
+    SELECT z.osm_id, z.slug
+    FROM geo.zonas z
+    WHERE z.elegida AND z.nivel = 5 AND ST_Contains(z.geom, ST_PointOnSurface(c.geom))
+      AND EXISTS (SELECT 1 FROM market m WHERE m.osm_id = z.osm_id)
+    LIMIT 1
+) p ON true
+JOIN market m ON m.osm_id = p.osm_id
+WHERE c.elegida AND c.nivel > 5
+  AND NOT EXISTS (SELECT 1 FROM market x WHERE x.osm_id = c.osm_id);
 
 -- 5. Replace the previous Zonaprop rows; real data wins over estimated rents
 DELETE FROM app.zone_market WHERE source LIKE 'zonaprop%';

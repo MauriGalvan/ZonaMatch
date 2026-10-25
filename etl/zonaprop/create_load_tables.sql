@@ -7,6 +7,7 @@ CREATE TABLE geo.load_zonaprop_totals (
     property_type     text NOT NULL,
     listings          integer NOT NULL,
     zonaprop_location text,
+    zonaprop_slug     text NOT NULL,
     url               text,
     scraped_at        timestamptz NOT NULL
 );
