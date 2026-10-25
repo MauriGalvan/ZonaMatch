@@ -173,9 +173,9 @@ CREATE TABLE geo.zona_indicadores (
     delitos_fuente               text,
     delitos_periodo              integer,
     delitos_ambito               text,
-    -- Delitos en la escala del SNIC, comparables entre CABA y provincia: los usa el puntaje. En CABA son los
-    -- del Mapa del Delito por el cociente SNIC / Mapa del Delito de toda la ciudad, asi se conserva la
-    -- diferencia entre barrios
+    -- Delitos en la escala del SNIC de CABA, comparables entre CABA y provincia: los usa el puntaje. En CABA son
+    -- los del Mapa del Delito por el cociente SNIC / Mapa del Delito de toda la ciudad (asi se conserva la
+    -- diferencia entre barrios); en provincia, los del SNIC corregidos con la encuesta de victimizacion
     delitos_comparables          integer
 );
 
@@ -235,16 +235,41 @@ delitos_mapa AS (
 -- SNIC por radio: la tasa de su partido (o comuna) por su poblacion. Los codigos de departamento del censo y del
 -- SNIC coinciden en provincia; en CABA el censo numera las comunas de a 7 (007 es la Comuna 1, 014 la 2...)
 snic_radio AS (
-    SELECT r.cod, r.poblacion, s.department_name, s.year, s.crime_group,
+    SELECT r.cod, r.poblacion, r.prov = '02' AS en_caba, s.department_name, s.year, s.crime_group,
            r.poblacion * s.rate_per_100k / 100000.0 AS hechos
     FROM geo.censo_radios r
     JOIN geo.carga_snic s ON s.department_id = r.prov || CASE WHEN r.prov = '02'
                                                              THEN lpad((r.depto::int / 7)::text, 3, '0')
                                                              ELSE r.depto END
 ),
+-- Los delitos registrados no se comparan bien entre CABA y provincia: en provincia se denuncia menos y en CABA
+-- los delitos que sufren quienes entran a trabajar se dividen solo por los residentes. Con los registros, CABA
+-- tiene 2,7 veces mas robos por habitante; segun la Encuesta Nacional de Victimizacion, que mide los delitos
+-- sufridos se hayan denunciado o no, la provincia tiene un 32 % mas. Cada grupo de provincia se multiplica por el
+-- factor que lleva la relacion provincia / CABA de los registros a la de la encuesta.
+-- Fuente: INDEC, Encuesta Nacional de Victimizacion 2017, Cuadro 1 (prevalencia en personas de 18 anios y mas,
+-- anio 2016; "Buenos Aires" es toda la provincia). Las lesiones no tienen prevalencia propia: usan la del robo con
+-- violencia. Los homicidios se registran casi siempre y no se corrigen.
+encuesta (crime_group, caba, provincia) AS (
+    VALUES ('thefts', 11.9, 7.4), ('robberies', 5.9, 7.8), ('injuries', 5.9, 7.8), ('threats', 3.6, 4.6)
+),
+registrados AS (
+    SELECT crime_group,
+           sum(hechos) FILTER (WHERE en_caba) / nullif(sum(poblacion) FILTER (WHERE en_caba), 0) AS caba,
+           sum(hechos) FILTER (WHERE NOT en_caba) / nullif(sum(poblacion) FILTER (WHERE NOT en_caba), 0) AS provincia
+    FROM snic_radio
+    GROUP BY crime_group
+),
+calibracion AS (
+    SELECT r.crime_group, (e.provincia / e.caba) / nullif(r.provincia / nullif(r.caba, 0), 0) AS factor
+    FROM registrados r
+    JOIN encuesta e USING (crime_group)
+),
 delitos_snic AS (
     SELECT a.osm_id,
            max(s.year) AS periodo,
+           round(sum(s.hechos * CASE WHEN s.en_caba THEN 1 ELSE coalesce(c.factor, 1) END)
+                 FILTER (WHERE s.crime_group <> 'road'))::int AS comparables,
            round(sum(s.hechos) FILTER (WHERE s.crime_group <> 'road'))::int AS total,
            round(sum(s.hechos) FILTER (WHERE s.crime_group = 'robberies'))::int AS robos,
            round(sum(s.hechos) FILTER (WHERE s.crime_group = 'thefts'))::int AS hurtos,
@@ -254,6 +279,7 @@ delitos_snic AS (
            round(sum(s.hechos) FILTER (WHERE s.crime_group = 'road'))::int AS viales
     FROM asignacion a
     JOIN snic_radio s USING (cod)
+    LEFT JOIN calibracion c USING (crime_group)
     GROUP BY a.osm_id
 ),
 -- Partidos de cada zona, del que mas poblacion le aporta al que menos (casi siempre uno solo)
@@ -284,7 +310,7 @@ delitos AS (
     FROM delitos_mapa m
     UNION ALL
     SELECT s.osm_id, s.total, s.robos, s.hurtos, s.lesiones, s.homicidios, s.amenazas, s.viales,
-           'snic', s.periodo, b.ambito, s.total
+           'snic', s.periodo, b.ambito, s.comparables
     FROM delitos_snic s
     LEFT JOIN ambitos b USING (osm_id)
     WHERE s.osm_id NOT IN (SELECT osm_id FROM delitos_mapa)
