@@ -135,8 +135,44 @@ FROM (
 ) e
 WHERE z.osm_id = e.osm_id;
 
+-- Distintos lugares con el mismo nombre (Villa Sarmiento de Moron y la de Lanus) darian el mismo slug y solo uno
+-- quedaria visible. Los demas reciben el slug con su partido o comuna (villa-sarmiento-moron), como arma Zonaprop
+-- los suyos; la zona elegida conserva el suyo, asi no cambian los enlaces ni los analisis guardados. Si es la misma
+-- zona en dos niveles (una contiene a la otra), sigue oculta.
+WITH repetidas AS (
+    SELECT n.osm_id, n.slug, n.geom
+    FROM geo.zonas n
+    JOIN geo.zonas e ON e.slug = n.slug AND e.elegida
+    WHERE NOT n.elegida AND n.nivel BETWEEN 5 AND 10
+      AND NOT ST_Contains(e.geom, ST_PointOnSurface(n.geom))
+      AND NOT ST_Contains(n.geom, ST_PointOnSurface(e.geom))
+),
+renombradas AS (
+    SELECT r.osm_id,
+           r.slug || '-' || coalesce(
+               (SELECT regexp_replace(p.slug, '^partido-de-', '') FROM geo.zonas p
+                WHERE p.nivel = 5 AND ST_Contains(p.geom, ST_PointOnSurface(r.geom))
+                ORDER BY p.superficie_km2 LIMIT 1),
+               (SELECT l.slug FROM geo.zonas l
+                WHERE l.nivel = 8 AND l.osm_id <> r.osm_id AND ST_Contains(l.geom, ST_PointOnSurface(r.geom))
+                ORDER BY l.superficie_km2 LIMIT 1),
+               abs(r.osm_id)::text) AS slug
+    FROM repetidas r
+),
+unicas AS (
+    -- Por si dos quedan iguales (mismo nombre y partido) o chocan con otra zona: se agrega el id de OSM
+    SELECT n.osm_id,
+           CASE WHEN count(*) OVER (PARTITION BY n.slug) > 1
+                     OR EXISTS (SELECT 1 FROM geo.zonas o WHERE o.slug = n.slug)
+                THEN n.slug || '-' || abs(n.osm_id) ELSE n.slug END AS slug
+    FROM renombradas n
+)
+UPDATE geo.zonas z SET slug = u.slug, elegida = true
+FROM unicas u
+WHERE z.osm_id = u.osm_id;
+
 CREATE INDEX ON geo.zonas USING gist (geom);
-CREATE INDEX ON geo.zonas (slug) WHERE elegida;
+CREATE UNIQUE INDEX ON geo.zonas (slug) WHERE elegida;
 
 -- ---------------------------------------------------------------------------------------------------
 -- Indicadores por zona: conteos crudos. Los porcentajes y las tasas se calculan en la aplicacion
