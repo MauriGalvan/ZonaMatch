@@ -26,6 +26,16 @@ namespace ZonaMatch.Domain.Puntaje
             return ModoViaje.APie;
         }
 
+        // Ten blocks of 100 m or less are walked, whatever the household's mobility: nobody takes a bus or the car
+        // for that. Straight-line distance, as in Estimar.
+        public const double DistanciaACaminarKm = 1.0;
+
+        public static ModoViaje ParaDistancia(
+            ModoViaje modo, double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino) =>
+            DistanciaKm(latitudOrigen, longitudOrigen, latitudDestino, longitudDestino) <= DistanciaACaminarKm
+                ? ModoViaje.APie
+                : modo;
+
         // Inverse of Codigo; no code means public transport, as in DesdeMovilidad. Null for an unknown code.
         public static ModoViaje? DesdeCodigo(string? codigo) => codigo?.Trim().ToLowerInvariant() switch
         {

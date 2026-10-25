@@ -137,8 +137,10 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 await limite.WaitAsync(cancellationToken);
                 try
                 {
-                    return await _ruteo.CalcularAsync(zona.Latitud, zona.Longitud, lugar.Latitud!.Value, lugar.Longitud!.Value, modo, cancellationToken)
-                           ?? ModosViaje.Estimar(modo, zona.Latitud, zona.Longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
+                    // Ten blocks or less are walked (ModosViaje.DistanciaACaminarKm)
+                    var modoDelViaje = ModosViaje.ParaDistancia(modo, zona.Latitud, zona.Longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
+                    return await _ruteo.CalcularAsync(zona.Latitud, zona.Longitud, lugar.Latitud!.Value, lugar.Longitud!.Value, modoDelViaje, cancellationToken)
+                           ?? ModosViaje.Estimar(modoDelViaje, zona.Latitud, zona.Longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
                 }
                 finally
                 {
