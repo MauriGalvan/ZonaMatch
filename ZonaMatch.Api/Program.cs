@@ -52,6 +52,9 @@ builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
 builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
 builder.Services.AddScoped<IIndicadoresZonaRepository, IndicadoresZonaRepository>();
+// Real estate market per zone (app.zone_market, MERCADO-ZONAS-DOCKER.bat)
+builder.Services.AddScoped<IZoneMarketRepository, ZoneMarketRepository>();
+builder.Services.AddScoped<GetZoneMarket>();
 builder.Services.AddScoped<ITransporteZonaRepository, TransporteZonaRepository>();
 
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();

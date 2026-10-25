@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Infrastructure.Data;
@@ -23,8 +24,17 @@ namespace ZonaMatch.Infrastructure.Repositories
         {
             var punto = GeoFactory.CrearPunto(latitud, longitud);
 
-            return await _dbContext.Set<T>()
-                .FirstOrDefaultAsync(e => e.Geometria.Contains(punto));
+            try
+            {
+                return await _dbContext.Set<T>()
+                    .FirstOrDefaultAsync(e => e.Geometria.Contains(punto));
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                // Sin el dump de geo (zonamatch.sql) no estan partidos ni comunas: el dato queda vacio en lugar de
+                // romper la consulta que lo usa (por ejemplo, la direccion de un punto del mapa)
+                return null;
+            }
         }
 
         public async Task<IReadOnlyList<T>> GetCercanosAsync(double latitud, double longitud, double radioMetros)

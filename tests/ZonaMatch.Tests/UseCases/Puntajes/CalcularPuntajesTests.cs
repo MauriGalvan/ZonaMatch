@@ -87,6 +87,7 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
             Assert.True(lugar.Estimado);
             Assert.Equal(30, lugar.MaximoMinutos);
             Assert.NotNull(lugar.Minutos);
+            Assert.Null(lugar.DistanciaKm);
         }
 
         [Fact]
@@ -158,6 +159,39 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
             public Task<IReadOnlyList<ZonaResumenDto>> BuscarAsync(string fragmento, int limite, CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZonaResumenDto>>([]);
         }
+      
+        [Theory]
+        [InlineData("vehiculo", ModoViaje.Auto)]
+        [InlineData("bici", ModoViaje.Bici)]
+        [InlineData("a-pie", ModoViaje.APie)]
+        [InlineData("transporte-publico", ModoViaje.TransportePublico)]
+        public async Task Devuelve_la_distancia_del_recorrido_segun_la_movilidad(string movilidad, ModoViaje modo)
+        {
+            Zona("recoleta", 30);
+            var pedido = Pedido();
+            pedido.Movilidad = [movilidad];
+            pedido.Lugares = [new LugarPuntajeRequest { Nombre = "Trabajo", Latitude = -34.6, Longitude = -58.4 }];
+
+            var resultado = await _casoDeUso.EjecutarAsync(pedido);
+            var lugar = Assert.Single(Assert.Single(resultado.Zonas).Lugares);
+
+            Assert.Equal(25, lugar.Minutos);
+            Assert.Equal(8.75, lugar.DistanciaKm!.Value, 3);
+            Assert.Equal([modo], _ruteo.Modos.Distinct());
+        }
+
+        [Fact]
+        public async Task Lugar_sin_coordenadas_no_inventa_un_recorrido()
+        {
+            Zona("recoleta", 30);
+            var pedido = Pedido();
+            pedido.Lugares = [new LugarPuntajeRequest { Nombre = "Trabajo" }];
+
+            var resultado = await _casoDeUso.EjecutarAsync(pedido);
+
+            Assert.Empty(Assert.Single(resultado.Zonas).Lugares);
+            Assert.Empty(_ruteo.Modos);
+        }
 
         private sealed class FakePerfilesZonaRepository : IPerfilesZonaRepository
         {
@@ -188,7 +222,7 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
                     Origenes.Add((latitudOrigen, longitudOrigen));
                 }
 
-                return Task.FromResult(Disponible ? new TiempoViaje(25, false) : null);
+                return Task.FromResult<TiempoViaje?>(Disponible ? new TiempoViaje(25, false, 8.75) : null);
             }
         }
     }

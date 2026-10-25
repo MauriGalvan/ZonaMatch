@@ -11,11 +11,10 @@ namespace ZonaMatch.Infrastructure.Repositories
     public class ZonaRepository : IZonaRepository
     {
         private const string Schema = ZonaMatchDbOptions.OsmSchema;
+        private const string Geo = ZonaMatchDbOptions.GeoSchema;
 
         // ~1 m precision, keeps the payload small
         private const int Decimales = 5;
-
-        private const string Slug = ZonaSql.Slug;
 
         private static string Nivel(string alias) => ZonaSql.Nivel(alias);
 
@@ -63,24 +62,19 @@ namespace ZonaMatch.Infrastructure.Repositories
             FROM zona z, centro c
             """;
 
-        // Same zone choice per slug as SqlPorSlug, so every result opens the zone it shows.
-        // Jurisdicciones follow the same rules too; they come as two parallel arrays (names and levels).
+        // The zones of geo.zonas, like SqlPorSlug, so every result opens the zone it shows: places that share a name
+        // come once each, with their own slug ("villa-sarmiento" and "villa-sarmiento-moron") and jurisdicciones.
+        // Jurisdicciones come as two parallel arrays (names and levels).
         private static readonly string SqlBuscar = $"""
-            WITH partes AS (
-                SELECT t.osm_id, t.name, {Nivel("t")} AS nivel, t.way, t.way_area, {Slug} AS slug
-                FROM {Schema}.planet_osm_polygon t
-                WHERE t.boundary = 'administrative' AND t.name IS NOT NULL
-                  AND {Nivel("t")} BETWEEN 5 AND 10
-                  AND {Slug} LIKE '%' || @fragmento || '%'
-            ),
-            zonas AS (
-                SELECT DISTINCT ON (slug) slug, name, nivel,
-                       sum(way_area) AS way_area,
-                       sum(ST_Area(ST_Transform(way, 4326)::geography)) AS metros2,
-                       ST_PointOnSurface((array_agg(way ORDER BY way_area DESC))[1]) AS punto
-                FROM partes
-                GROUP BY slug, osm_id, name, nivel
-                ORDER BY slug, nivel DESC, sum(way_area) DESC
+            WITH zonas AS (
+                SELECT g.slug, g.nombre AS name, g.nivel,
+                       sum(t.way_area) AS way_area,
+                       sum(ST_Area(ST_Transform(t.way, 4326)::geography)) AS metros2,
+                       ST_PointOnSurface((array_agg(t.way ORDER BY t.way_area DESC))[1]) AS punto
+                FROM {Geo}.zonas g
+                JOIN {Schema}.planet_osm_polygon t ON t.osm_id = g.osm_id AND t.boundary = 'administrative'
+                WHERE g.elegida AND g.slug LIKE '%' || @fragmento || '%'
+                GROUP BY g.slug, g.nombre, g.nivel
             ),
             elegidas AS (
                 SELECT *, slug LIKE @fragmento || '%' AS empieza

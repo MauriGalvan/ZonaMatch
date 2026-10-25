@@ -83,7 +83,13 @@ namespace ZonaMatch.Application.DTOs
     // Cumple null si no hay datos para saberlo
     public record LimitePuntajeDto(string Tipo, bool? Cumple, string Detalle);
 
-    public record TiempoLugarDto(string Nombre, int? Minutos, int MaximoMinutos, bool Estimado);
+    // Distancia del recorrido, no la separacion en linea recta. Null si no se conoce el recorrido completo.
+    public record TiempoLugarDto(
+        string Nombre,
+        int? Minutos,
+        int MaximoMinutos,
+        bool Estimado,
+        double? DistanciaKm = null);
 
     public record AlquilerZonaDto(decimal Promedio, int PropiedadesDisponibles);
 }

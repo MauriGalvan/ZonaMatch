@@ -255,7 +255,8 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     .Select(limit => new LimitePuntajeDto(limit.Tipo, limit.Cumple, limit.Detalle))
                     .ToArray(),
                 result.Lugares
-                    .Select(place => new TiempoLugarDto(place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado))
+                    .Select(place => new TiempoLugarDto(
+                        place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm))
                     .ToArray(),
                 result.Zona.AlquilerPromedio is { } average
                     ? new AlquilerZonaDto(average, result.Zona.PropiedadesDisponibles ?? 0)

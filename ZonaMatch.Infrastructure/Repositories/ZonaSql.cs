@@ -10,27 +10,21 @@ namespace ZonaMatch.Infrastructure.Repositories
     internal static class ZonaSql
     {
         private const string Schema = ZonaMatchDbOptions.OsmSchema;
-
-        // Same rule as SlugZona.Generar: lowercase, no accents, non-alphanumeric runs -> "-"
-        public const string Slug = """
-            trim(both '-' from regexp_replace(
-                translate(lower(t.name), 'áàäâãéèëêíìïîóòöôõúùüûñç', 'aaaaaeeeeiiiiooooouuuunc'),
-                '[^a-z0-9]+', '-', 'g'))
-            """;
+        private const string Geo = ZonaMatchDbOptions.GeoSchema;
 
         // admin_level is free text in OSM; the CASE keeps a bad value from breaking the cast
         public static string Nivel(string alias) => $"CASE WHEN {alias}.admin_level ~ '^[0-9]+$' THEN {alias}.admin_level::int END";
 
         // CTEs "partes" and "zona" (osm_id, name, nivel, way in 3857, geom in 4326, way_area) for the @slug parameter.
-        // osm2pgsql stores each part of a multipolygon as its own row with the same osm_id: parts are joined back.
-        // With repeated names (e.g. a barrio and a localidad), the most specific level wins, then the largest one.
+        // The slug is looked up in geo.zonas (etl/calcular_zonas.sql), where each zone has a unique one: places that
+        // share a name get their partido added ("villa-sarmiento-moron"). osm2pgsql stores each part of a
+        // multipolygon as its own row with the same osm_id: parts are joined back.
         public static readonly string ZonaPorSlug = $"""
             partes AS (
                 SELECT t.osm_id, t.name, {Nivel("t")} AS nivel, t.way, t.way_area
                 FROM {Schema}.planet_osm_polygon t
-                WHERE t.boundary = 'administrative' AND t.name IS NOT NULL
-                  AND {Nivel("t")} BETWEEN 5 AND 10
-                  AND {Slug} = @slug
+                JOIN {Geo}.zonas g ON g.osm_id = t.osm_id AND g.elegida AND g.slug = @slug
+                WHERE t.boundary = 'administrative'
             ),
             zona AS (
                 SELECT osm_id, name, nivel, ST_Union(way) AS way, ST_Transform(ST_Union(way), 4326) AS geom,
