@@ -60,8 +60,9 @@ DROP TABLE IF EXISTS geo.carga_delitos_fracciones;
 
 -- Factor de cada fraccion censal para repartir los delitos de un partido (etl/crime/fit_crime_model.py)
 CREATE TABLE geo.carga_delitos_fracciones (
-    fraction_id text,
-    factor      double precision
+    fraction_id     text,
+    factor          double precision,
+    homicide_factor double precision
 );
 
 DROP TABLE IF EXISTS geo.carga_transporte_salidas;

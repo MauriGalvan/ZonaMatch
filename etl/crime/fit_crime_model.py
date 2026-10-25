@@ -10,8 +10,15 @@ Validation (leave one comuna out, spreading each comuna's real total over its fr
 other 14): the absolute error of the spread falls from 33 % (same rate everywhere, the previous method) to 23 %,
 and the rank correlation of the fractions' rates rises from about 0 to 0.66. Run with --validate to repeat it.
 
+Reported crimes follow activity: they are filed where people circulate and where the police is, and less in poor
+areas, the same reporting bias corrected between partidos with homicides. So homicides, which are almost always
+recorded, get their own factor: across the comunas and partidos of the AMBA, the five-year homicide rate grows
+about 17 % per point of households with unmet basic needs (R2 0.45). Each fraction takes that relation with its NBI,
+clipped to the range seen between partidos, so the violence of a partido falls where its poorest households live.
+
 Usage (from backend/ZonaMatch, see DATOS-ZONAS-DOCKER.bat):
-  python etl/crime/fit_crime_model.py datos/delitos_fracciones_entrada.csv datos/delitos_fracciones.csv
+  python etl/crime/fit_crime_model.py datos/delitos_fracciones_entrada.csv datos/snic_departamentos.csv
+      datos/delitos_fracciones.csv
 Requires numpy (pip install numpy).
 """
 
@@ -95,10 +102,43 @@ def validate(raw, y, population, comuna):
         print(f"  {label:9} error absoluto {np.abs(guess - y).sum() / y.sum():.1%}")
 
 
+def department(row):
+    """SNIC department of a fraction: the partido, or the comuna in CABA (the census numbers comunas by 7)."""
+    fid = row["fid"]
+    if fid.startswith("02"):
+        return "02" + str(int(fid[2:5]) // 7).zfill(3)
+    return fid[:5]
+
+
+def homicide_model(rows, snic_file):
+    """Log of the five-year homicide rate against NBI %, across departments weighted by population."""
+    with open(snic_file, encoding="utf-8") as handle:
+        rates = {r["department_id"]: float(r["rate_per_100k"]) for r in csv.DictReader(handle)
+                 if r["crime_group"] == "homicides_5y" and float(r["rate_per_100k"]) > 0}
+    totals = {}
+    for row in rows:
+        dep = department(row)
+        households, nbi, pob = totals.get(dep, (0.0, 0.0, 0.0))
+        totals[dep] = (households + value(row, "hogares"), nbi + value(row, "nbi"), pob + value(row, "pob"))
+    # Only departments fully inside the AMBA extract of the census (the 34 comunas and partidos of the zones)
+    deps = [d for d in totals if d in rates and totals[d][0] > 0 and totals[d][2] > 50000]
+    nbi = np.array([totals[d][1] / totals[d][0] * 100 for d in deps])
+    weight = np.array([totals[d][2] for d in deps])
+    X = np.column_stack([np.ones(len(deps)), nbi])
+    y = np.log([rates[d] for d in deps])
+    beta = np.linalg.solve((X.T * weight) @ X, (X.T * weight) @ y)
+    fitted = X @ beta
+    mean = np.average(y, weights=weight)
+    r2 = 1 - np.sum(weight * (y - fitted) ** 2) / np.sum(weight * (y - mean) ** 2)
+    print(f"Homicidios segun NBI ({len(deps)} comunas y partidos): x{np.exp(beta[1]):.3f} por punto de NBI, R2 {r2:.2f}")
+    return beta[1], nbi.min(), nbi.max()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Modelo para repartir los delitos de cada partido")
     parser.add_argument("entrada", help="CSV de etl/crime/fraction_features.sql")
-    parser.add_argument("salida", help="CSV con el factor relativo de cada fraccion")
+    parser.add_argument("snic", help="datos/snic_departamentos.csv (etl/download_snic.py)")
+    parser.add_argument("salida", help="CSV con los factores relativos de cada fraccion")
     parser.add_argument("--validate", action="store_true", help="repetir la validacion por comuna")
     args = parser.parse_args()
 
@@ -121,11 +161,16 @@ def main():
 
     # Relative rate of every fraction (CABA mean = 1); only the ratios within each partido matter
     factor = np.exp(standardize(raw, raw[caba]) @ beta - beta[0])
+
+    slope, low, high = homicide_model(rows, args.snic)
+    nbi = np.clip(raw[:, FEATURES.index("nbi")], low, high)
+    homicide_factor = np.exp(slope * (nbi - nbi.mean()))
+
     with open(args.salida, "w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["fraction_id", "factor"])
-        for row, f in zip(rows, factor):
-            writer.writerow([row["fid"], round(float(f), 4)])
+        writer.writerow(["fraction_id", "factor", "homicide_factor"])
+        for row, f, h in zip(rows, factor, homicide_factor):
+            writer.writerow([row["fid"], round(float(f), 4), round(float(h), 4)])
     print(f"  {len(rows)} fracciones en {args.salida}")
     return 0
 

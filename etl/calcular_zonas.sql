@@ -180,7 +180,9 @@ CREATE TABLE geo.zona_indicadores (
     delitos_comparables          integer,
     -- Provincia: factor con el que etl/crime/spread_crimes.sql repartio los delitos del partido entre sus
     -- localidades (1 = la tasa del partido); null en CABA y hasta que corre ese paso
-    delitos_reparto              double precision
+    delitos_reparto              double precision,
+    -- Factor con el que ese paso repartio los homicidios del partido o la comuna segun el NBI de la zona
+    delitos_reparto_homicidios   double precision
 );
 
 WITH asignacion AS (
@@ -354,7 +356,7 @@ SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
        d.total, d.robos, d.hurtos, d.lesiones, d.homicidios, d.amenazas, d.viales,
        -- Con muy pocos habitantes (clubes, countries chicos) una tasa por habitante no dice nada: el puntaje la
        -- toma como dato faltante
-       d.fuente, d.periodo, d.ambito, CASE WHEN t.poblacion >= 500 THEN d.comparables END, NULL
+       d.fuente, d.periodo, d.ambito, CASE WHEN t.poblacion >= 500 THEN d.comparables END, NULL, NULL
 FROM totales t
 JOIN censo c USING (osm_id)
 LEFT JOIN delitos d USING (osm_id);

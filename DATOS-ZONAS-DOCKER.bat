@@ -95,7 +95,7 @@ if errorlevel 1 (
 )
 %PSQL% --csv < etl\crime\fraction_features.sql > datos\delitos_fracciones_entrada.csv
 if errorlevel 1 goto :err_calc
-python etl\crime\fit_crime_model.py datos\delitos_fracciones_entrada.csv datos\delitos_fracciones.csv
+python etl\crime\fit_crime_model.py datos\delitos_fracciones_entrada.csv datos\snic_departamentos.csv datos\delitos_fracciones.csv
 if errorlevel 1 goto :err_calc
 %PSQL% -c "\copy geo.carga_delitos_fracciones FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\delitos_fracciones.csv
 if errorlevel 1 goto :err_load
