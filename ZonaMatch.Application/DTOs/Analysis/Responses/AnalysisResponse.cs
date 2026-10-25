@@ -14,4 +14,7 @@ public sealed record AnalysisResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     GroupRankingResponse? GroupScores,
-    IReadOnlyList<AnalysisResponse> Versions);
+    IReadOnlyList<AnalysisResponse> Versions,
+    // Result saved with a personal analysis and when it was calculated; null when it is scored live
+    PuntajesDto? Result = null,
+    DateTimeOffset? CalculatedAt = null);

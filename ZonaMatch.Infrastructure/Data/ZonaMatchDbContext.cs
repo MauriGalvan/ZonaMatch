@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 
@@ -25,6 +25,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Respuesta> Respuestas => Set<Respuesta>();
         public DbSet<Aporte> Aportes => Set<Aporte>();
         public DbSet<AporteValidacion> AportesValidaciones => Set<AporteValidacion>();
+        public DbSet<CommunityPoi> CommunityPois => Set<CommunityPoi>();
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
         public DbSet<Contexto> Contextos => Set<Contexto>();
@@ -34,7 +35,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<PuntoDeInteres> PuntosInteres => Set<PuntoDeInteres>();
         public DbSet<ContextoCriterio> ContextoCriterios => Set<ContextoCriterio>();
         public DbSet<Criterio> Criterios => Set<Criterio>();
-        public DbSet<AlquilerZona> AlquileresZona => Set<AlquilerZona>();
+        public DbSet<ZoneMarket> ZoneMarkets => Set<ZoneMarket>();
         public DbSet<SavedZone> SavedZones => Set<SavedZone>();
         public DbSet<UserNotification> Notifications => Set<UserNotification>();
 
@@ -142,6 +143,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
                 e.Property(x => x.PuntajesEnGrupoJson).HasColumnType("jsonb");
+                e.Property(x => x.ResultadoJson).HasColumnType("jsonb");
+                e.Property(x => x.FechaResultado).HasColumnType("timestamptz");
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
                 e.HasIndex(x => x.UsuarioId);
@@ -266,19 +269,31 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasIndex(x => x.Orden);
             });
 
-            // Temporal: alquiler promedio por zona base hasta que lo llene el scraping de Argenprop
-            modelBuilder.Entity<AlquilerZona>(e =>
+            // Real estate market per zone, operation and property type, loaded by the ETL (etl/zonaprop/)
+            modelBuilder.Entity<ZoneMarket>(e =>
             {
-                e.ToTable("alquileres_zona", t =>
+                e.ToTable("zone_market", t =>
                 {
-                    t.HasCheckConstraint("ck_alquileres_zona_promedio", "alquiler_promedio >= 0");
-                    t.HasCheckConstraint("ck_alquileres_zona_propiedades", "propiedades_disponibles >= 0");
+                    t.HasCheckConstraint("ck_zone_market_operation", "operation IN ('sale', 'rent')");
+                    t.HasCheckConstraint("ck_zone_market_property_type",
+                        "property_type IN ('apartment', 'house', 'ph', 'all')");
+                    t.HasCheckConstraint("ck_zone_market_currency", "currency IN ('ARS', 'USD')");
+                    t.HasCheckConstraint("ck_zone_market_counts", "listings >= 0 AND sample_size >= 0");
+                    t.HasCheckConstraint("ck_zone_market_prices", "average_price >= 0 AND median_price >= 0");
                 });
-                e.HasKey(x => x.ZonaSlug);
-                e.Property(x => x.ZonaSlug).HasMaxLength(100);
-                e.Property(x => x.AlquilerPromedio).HasColumnType("numeric(12,0)");
-                e.Property(x => x.Fuente).HasMaxLength(30).IsRequired();
-                e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
+                e.HasKey(x => new { x.ZoneSlug, x.Operation, x.PropertyType });
+                e.Property(x => x.ZoneSlug).HasMaxLength(100);
+                e.Property(x => x.Operation).HasMaxLength(10);
+                e.Property(x => x.PropertyType).HasMaxLength(20);
+                e.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+                e.Property(x => x.AveragePrice).HasColumnType("numeric(14,0)");
+                e.Property(x => x.MedianPrice).HasColumnType("numeric(14,0)");
+                e.Property(x => x.AveragePriceM2).HasColumnType("numeric(12,0)");
+                e.Property(x => x.MedianPriceM2).HasColumnType("numeric(12,0)");
+                e.Property(x => x.AverageExpensesArs).HasColumnType("numeric(12,0)");
+                e.Property(x => x.Source).HasMaxLength(30).IsRequired();
+                e.Property(x => x.InheritedFrom).HasMaxLength(100);
+                e.Property(x => x.UpdatedAt).HasColumnType("timestamptz");
             });
 
             // Comunidad de una zona (resenas, preguntas y aportes). Las zonas no son una tabla: se referencian
@@ -354,6 +369,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaResolucion).HasColumnType("timestamptz");
                 e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.ResueltoPorId).OnDelete(DeleteBehavior.SetNull);
                 e.HasMany(x => x.Validaciones).WithOne().HasForeignKey(x => x.AporteId).OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -363,6 +379,21 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasKey(x => new { x.AporteId, x.UsuarioId });
                 e.Property(x => x.Fecha).HasColumnType("timestamptz");
                 e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Approved contributions persisted as points of interest, read by the map queries over OSM
+            modelBuilder.Entity<CommunityPoi>(e =>
+            {
+                e.ToTable("community_pois");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Id).HasMaxLength(40);
+                e.Property(x => x.ZoneSlug).HasMaxLength(200);
+                e.Property(x => x.Name).HasMaxLength(Longitudes.NombreLugar);
+                e.Property(x => x.Category).HasMaxLength(40);
+                e.Property(x => x.Location).HasColumnType("geometry(Point,4326)");
+                e.Property(x => x.UpdatedAt).HasColumnType("timestamptz");
+                e.HasIndex(x => x.Location).HasMethod("gist");
+                e.HasOne<Aporte>().WithMany().HasForeignKey(x => x.LastContributionId).OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<GroupInvitation>()

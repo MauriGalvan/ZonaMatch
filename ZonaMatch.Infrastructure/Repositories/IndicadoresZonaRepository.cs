@@ -7,7 +7,8 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    // Lee geo.zonas y geo.zona_indicadores, que arma etl/calcular_zonas.sql a partir del censo, los delitos y
+    // Lee geo.zonas y geo.zona_indicadores, que arma etl/calcular_zonas.sql a partir del censo, los delitos (Mapa
+    // del Delito y SNIC) y
     // los limites de OSM. Solo lectura: los conteos se convierten en indicadores en IndicadoresZona.
     public class IndicadoresZonaRepository : IIndicadoresZonaRepository
     {
@@ -28,7 +29,9 @@ namespace ZonaMatch.Infrastructure.Repositories
                    i.hogares_hacinamiento AS "HogaresHacinamiento", i.hogares_alquilan AS "HogaresAlquilan",
                    i.delitos_anio AS "Delitos", i.delitos_robos AS "Robos", i.delitos_hurtos AS "Hurtos",
                    i.delitos_lesiones AS "Lesiones", i.delitos_homicidios AS "Homicidios",
-                   i.delitos_amenazas AS "Amenazas", i.siniestros_viales AS "SiniestrosViales"
+                   i.delitos_amenazas AS "Amenazas", i.siniestros_viales AS "SiniestrosViales",
+                   i.delitos_fuente AS "DelitosFuente", i.delitos_periodo AS "DelitosPeriodo",
+                   i.delitos_ambito AS "DelitosAmbito"
             FROM {Schema}.zonas z
             JOIN {Schema}.zona_indicadores i USING (osm_id)
             """;

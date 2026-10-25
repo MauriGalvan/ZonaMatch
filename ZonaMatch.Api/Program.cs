@@ -28,6 +28,8 @@ using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Application.UseCases.Resenas;
+using ZonaMatch.Application.UseCases.Zonas;
+using ZonaMatch.Application.UseCases.Routes;
 using ZonaMatch.Application.UseCases.SavedZones;
 using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Infrastructure.Data;
@@ -71,6 +73,9 @@ builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
 builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
 builder.Services.AddScoped<IIndicadoresZonaRepository, IndicadoresZonaRepository>();
+// Real estate market per zone (app.zone_market, MERCADO-ZONAS-DOCKER.bat)
+builder.Services.AddScoped<IZoneMarketRepository, ZoneMarketRepository>();
+builder.Services.AddScoped<GetZoneMarket>();
 builder.Services.AddScoped<ITransporteZonaRepository, TransporteZonaRepository>();
 
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
@@ -153,6 +158,9 @@ builder.Services.AddScoped<ListarAportesPendientes>();
 builder.Services.AddScoped<CrearPuntoNuevo>();
 builder.Services.AddScoped<CrearCorreccion>();
 builder.Services.AddScoped<ValidarAporte>();
+builder.Services.AddScoped<ICommunityPoiRepository, CommunityPoiRepository>();
+builder.Services.AddScoped<CommunityPoiUpdater>();
+builder.Services.AddScoped<ResolveContribution>();
 
 // Criteria catalog for the wizard (GET /Criterios).
 builder.Services.AddScoped<ListarCriterios>();
@@ -166,6 +174,8 @@ builder.Services.AddScoped<ObtenerAnalisis>();
 builder.Services.AddScoped<CompararAnalisis>();
 builder.Services.AddScoped<CrearAnalisis>();
 builder.Services.AddScoped<CrearVersionAnalisis>();
+builder.Services.AddScoped<IAnalysisResultCalculator, AnalysisResultCalculator>();
+builder.Services.AddScoped<RecalculateAnalysis>();
 builder.Services.AddScoped<RenombrarAnalisis>();
 builder.Services.AddScoped<EliminarAnalisis>();
 builder.Services.AddScoped<ListSavedZones>();
@@ -182,6 +192,14 @@ builder.Services.AddHttpClient<IRuteoClient, MotisRuteoClient>(client =>
     client.Timeout = TimeSpan.FromSeconds(8);
 });
 builder.Services.AddScoped<CalcularPuntajes>();
+
+// Trips from a zone to the user's places, leg by leg, to draw them on the analysis map (MOTIS).
+builder.Services.AddHttpClient<IRoutePlanner, MotisRoutePlanner>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Motis:Url"] ?? "http://localhost:18080/");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddScoped<GetRoute>();
 builder.Services.AddHostedService<PrecalcularPerfilesZona>();
 
 // Open data for each zone (census and safety), loaded by DATOS-ZONAS-DOCKER.bat.

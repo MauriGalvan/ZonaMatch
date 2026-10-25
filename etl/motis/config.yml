@@ -12,7 +12,9 @@ timetable:
   num_days: 8
   tb: false
   railviz: false
-  with_shapes: false
+  # Recorrido de cada linea (shapes.txt de los GTFS de colectivos y trenes): sin esto, un tramo en transporte
+  # publico se dibuja como rectas entre paradas
+  with_shapes: true
   adjust_footpaths: true
   merge_dupes_intra_src: false
   merge_dupes_inter_src: false

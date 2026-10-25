@@ -62,6 +62,9 @@ namespace ZonaMatch.Domain.Entities
         public DateTimeOffset FechaCreacion { get; set; }
         public DateTimeOffset? FechaResolucion { get; set; }
 
+        // Site administrator who resolved it directly; null when the community votes resolved it
+        public Guid? ResueltoPorId { get; set; }
+
         public List<AporteValidacion> Validaciones { get; set; } = [];
 
         public int Confirmaciones => Validaciones.Count(v => v.Confirma);
@@ -86,6 +89,15 @@ namespace ZonaMatch.Domain.Entities
                 Estado = diferencia > 0 ? EstadoAporte.Aprobado : EstadoAporte.Rechazado;
                 FechaResolucion = ahora;
             }
+        }
+
+        // A site administrator approves or rejects it without waiting for the votes.
+        // The caller checks that the contribution is pending.
+        public void Resolve(Guid administratorId, bool approve, DateTimeOffset now)
+        {
+            Estado = approve ? EstadoAporte.Aprobado : EstadoAporte.Rechazado;
+            FechaResolucion = now;
+            ResueltoPorId = administratorId;
         }
     }
 

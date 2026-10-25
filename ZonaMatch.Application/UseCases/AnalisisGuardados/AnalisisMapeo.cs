@@ -22,7 +22,9 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 analisis.AnalisisOrigenId,
                 analisis.Zonas
                     .OrderBy(z => z.Orden)
-                    .Select(z => new AnalysisZoneResponse(z.ZonaSlug, z.Nombre, z.EsInicial, z.EsAgregada))
+                    .Select(z => new AnalysisZoneResponse(
+                        z.ZonaSlug, z.Nombre, z.EsInicial, z.EsAgregada,
+                        z.TieneOrigen ? new AnalysisZoneOriginResponse(z.OrigenLatitud!.Value, z.OrigenLongitud!.Value) : null))
                     .ToList(),
                 CriterioUsuario.ContextoADto(analisis.Contexto),
                 CriterioUsuario.CriteriosADto(analisis.Contexto),
@@ -35,7 +37,9 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 (versions ?? [])
                     .OrderBy(v => v.FechaCreacion)
                     .Select(v => ToResponse(v))
-                    .ToList());
+                    .ToList(),
+                AnalysisResultCalculator.Deserialize(analisis.ResultadoJson),
+                analisis.FechaResultado);
 
         // Request zones must exist, be unique, and include at most one initial zone.
         public static async Task<List<AnalisisZona>> ArmarZonasAsync(
@@ -50,8 +54,14 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             if (zones.Count(zone => zone.IsInitial) > 1)
                 throw new BadRequestException("Solo puede haber una zona inicial.");
 
+            // A starting point replaces the center of the zone, so it has to be inside it
             foreach (var zone in zones)
-                await repository.ValidarExisteAsync(zone.Slug, cancellationToken);
+            {
+                if (zone.Origin is { } origin)
+                    await repository.ValidarContienePuntoAsync(zone.Slug, origin.Latitude, origin.Longitude, cancellationToken);
+                else
+                    await repository.ValidarExisteAsync(zone.Slug, cancellationToken);
+            }
 
             return zones
                 .Select((zone, index) => new AnalisisZona
@@ -61,6 +71,8 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     Nombre = zone.Name.Trim(),
                     EsInicial = zone.IsInitial,
                     EsAgregada = zone.IsAdded,
+                    OrigenLatitud = zone.Origin?.Latitude,
+                    OrigenLongitud = zone.Origin?.Longitude,
                 })
                 .ToList();
         }

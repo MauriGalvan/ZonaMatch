@@ -98,6 +98,25 @@ namespace ZonaMatch.Api.Controllers
             return CreatedAtAction(nameof(Obtener), new { id = version.Id }, version);
         }
 
+        // POST /api/v1/analyses/{id}/recalculations
+        // Recalculates the analysis with today's data as a new version (same criteria and zones, the profile
+        // untouched); the earlier result is kept, so both can be compared.
+        [HttpPost("~/api/v1/analyses/{id:guid}/recalculations")]
+        [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Recalculate(
+            [FromRoute] Guid id,
+            [FromServices] RecalculateAnalysis useCase,
+            CancellationToken cancellationToken)
+        {
+            if (User.GetAuthenticatedUserId() is not { } userId)
+                return Unauthorized();
+
+            var version = await useCase.ExecuteAsync(id, userId, cancellationToken);
+            return CreatedAtAction(nameof(Obtener), new { id = version.Id }, version);
+        }
+
         // PUT /Analisis/{id} — Body: { "nombre": "..." }
         [HttpPut("{id:guid}")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status200OK)]

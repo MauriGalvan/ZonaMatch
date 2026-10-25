@@ -11,7 +11,8 @@ using ZonaMatch.Domain.Puntaje;
 namespace ZonaMatch.Application.UseCases.AnalisisGuardados
 {
     /// <summary>
-    /// Recalculates each analysis's selected zones using the criteria snapshot saved with it.
+    /// Compares the results saved with each analysis (personal or group), so an analysis and its recalculation show
+    /// what changed. Analyses saved before results were kept are recalculated with the criteria saved with them.
     /// </summary>
     public sealed class CompararAnalisis
     {
@@ -60,7 +61,8 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 throw new BadRequestException("Cada análisis puede incluir hasta diez zonas en la comparación.");
 
             var personalAnalyses = selectedAnalyses
-                .Where(analysis => analysis.PuntajesEnGrupoJson is null)
+                .Where(analysis => analysis.PuntajesEnGrupoJson is null
+                                   && AnalysisResultCalculator.Deserialize(analysis.ResultadoJson) is null)
                 .ToArray();
             var selectedPersonalZones = personalAnalyses
                 .SelectMany(analysis => analysis.Zonas)
@@ -90,6 +92,9 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             {
                 if (analysis.PuntajesEnGrupoJson is { } groupRankingJson)
                     return FromGroupSnapshot(analysis, groupRankingJson);
+
+                if (AnalysisResultCalculator.Deserialize(analysis.ResultadoJson) is { } saved)
+                    return new AnalisisComparadoDto(analysis.Id, analysis.Nombre, saved.ModoViaje, saved.Zonas, null);
 
                 var context = analysis.Contexto;
                 var request = BuildRequest(context);
@@ -250,7 +255,8 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     .Select(limit => new LimitePuntajeDto(limit.Tipo, limit.Cumple, limit.Detalle))
                     .ToArray(),
                 result.Lugares
-                    .Select(place => new TiempoLugarDto(place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado))
+                    .Select(place => new TiempoLugarDto(
+                        place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm))
                     .ToArray(),
                 result.Zona.AlquilerPromedio is { } average
                     ? new AlquilerZonaDto(average, result.Zona.PropiedadesDisponibles ?? 0)

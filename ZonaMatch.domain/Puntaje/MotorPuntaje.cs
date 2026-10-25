@@ -15,15 +15,23 @@ namespace ZonaMatch.Domain.Puntaje
     }
 
     // Duracion de un viaje; Minutos null si no se llega (o no hay recorrido). Estimado si no lo calculo el ruteo.
-    public sealed record TiempoViaje(int? Minutos, bool Estimado);
+    public sealed record TiempoViaje(
+        int? Minutos,
+        bool Estimado,
+        double? DistanciaKm = null);
+
+    // Distancia del itinerario en km; null si solo se pudieron estimar los minutos.
+    public sealed record ResultadoLugar(
+        string Nombre,
+        string? Prioridad,
+        int? Minutos,
+        int MaximoMinutos,
+        bool Estimado,
+        int? Puntaje,
+        double? DistanciaKm = null);
 
     public sealed record ComponentePuntaje(string Criterio, string Prioridad, int? Puntaje, string Detalle);
-
     public sealed record ResultadoLimite(string Tipo, bool? Cumple, string Detalle);
-
-    // Puntaje null si no se pudo calcular el viaje: no suma ni resta
-    public sealed record ResultadoLugar(string Nombre, string? Prioridad, int? Minutos, int MaximoMinutos, bool Estimado, int? Puntaje);
-
     public sealed record ResultadoZona(
         PerfilZona Zona,
         int? Puntaje,
@@ -34,7 +42,8 @@ namespace ZonaMatch.Domain.Puntaje
     // Calcula el puntaje (0 a 100) de una zona para un pedido. No guarda estado entre calculos: se puede compartir.
     // Cada criterio vale el percentil de la zona entre las de su tipo (barrios y localidades por un lado, comunas y
     // partidos por el otro): 80 quiere decir que la zona esta mejor que el 80 % de las demas en ese criterio.
-    // El puntaje es el promedio de los criterios ponderado por la prioridad del usuario (baja 1, media 2, alta 3);
+    // El puntaje es el promedio de los criterios ponderado por la prioridad del usuario (baja 1, media 3, alta 9: cada
+    // nivel pesa el triple que el anterior, asi un criterio en baja casi no mueve el puntaje y uno en alta lo define);
     // los criterios sin dato (por ejemplo, seguridad fuera de CABA) no cuentan: ni suman ni restan. Los lugares del
     // usuario suman un criterio propio, con prioridad alta, segun cuanto se tarda en llegar.
     // Limites (tope de alquiler y tiempo maximo a cada lugar): pasarse un poco (hasta ExcesoLeve) descuenta un punto
@@ -63,8 +72,8 @@ namespace ZonaMatch.Domain.Puntaje
         private static readonly IReadOnlyDictionary<string, int> PesoPrioridad = new Dictionary<string, int>
         {
             ["baja"] = 1,
-            ["media"] = 2,
-            ["alta"] = 3,
+            ["media"] = 3,
+            ["alta"] = 9,
         };
 
         private static readonly IReadOnlyDictionary<string, int> PesoLugar = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
@@ -186,8 +195,8 @@ namespace ZonaMatch.Domain.Puntaje
         private static string Detalle(PerfilZona zona, string criterio) => criterio switch
         {
             Seguridad => zona.DelitosCadaMilHabitantes is { } delitos
-                ? $"{delitos.ToString("N1", Es)} delitos cada 1.000 hab. en un año"
-                : "Sin datos de delitos (por ahora solo hay datos de CABA)",
+                ? $"{delitos.ToString("N1", Es)} delitos estimados cada 1.000 hab. en un año, incluidos los no denunciados"
+                : "Sin datos de delitos",
             Movilidad => $"{zona.LineasTransporte} líneas · {(zona.SalidasHoraPico / HorasHoraPico).ToString("N0", Es)} salidas por hora en hora pico",
             EspaciosVerdes => zona.VerdePorHabitanteM2 is { } verde
                 ? $"{verde.ToString("N1", Es)} m² de plazas y parques por habitante"
@@ -208,8 +217,13 @@ namespace ZonaMatch.Domain.Puntaje
 
                 var lugar = lugares[i];
                 resultados.Add(new ResultadoLugar(
-                    lugar.Nombre, lugar.Prioridad, tiempo.Minutos, lugar.TiempoMaximoMinutos, tiempo.Estimado,
-                    PuntajeViaje(tiempo.Minutos, lugar.TiempoMaximoMinutos)));
+                    lugar.Nombre,
+                    lugar.Prioridad,
+                    tiempo.Minutos,
+                    lugar.TiempoMaximoMinutos,
+                    tiempo.Estimado,
+                    PuntajeViaje(tiempo.Minutos, lugar.TiempoMaximoMinutos),
+                    tiempo.DistanciaKm));
             }
 
             return resultados;

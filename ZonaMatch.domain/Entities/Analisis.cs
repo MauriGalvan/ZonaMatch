@@ -21,6 +21,13 @@ namespace ZonaMatch.Domain.Entities
         // Snapshot del resultado ponderado cuando el análisis se generó desde un grupo.
         public string? PuntajesEnGrupoJson { get; set; }
 
+        // Result of a personal analysis when it was saved or recalculated (zones, scores, limits, trips and
+        // recommendations): opening it shows the same, and versions can be compared. Null for analyses saved before
+        // it existed or whose zones had no data: they are scored live.
+        public string? ResultadoJson { get; set; }
+
+        public DateTimeOffset? FechaResultado { get; set; }
+
         // null en los originales; en una version, el analisis del que deriva (siempre un original)
         public Guid? AnalisisOrigenId { get; set; }
 

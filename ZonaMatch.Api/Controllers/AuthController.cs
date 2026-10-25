@@ -66,7 +66,7 @@ namespace ZonaMatch.Api.Controllers
             if (!Guid.TryParse(userIdClaim, out var userId) || email is null)
                 return Unauthorized();
 
-            return Ok(new CurrentSessionResponse(userId, email));
+            return Ok(new CurrentSessionResponse(userId, email, User.IsInRole(AppRoles.Admin)));
         }
 
         [HttpPost("logout")]

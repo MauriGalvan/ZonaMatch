@@ -27,14 +27,18 @@ namespace ZonaMatch.Api.Authentication
             var issuedAt = _timeProvider.GetUtcNow();
             var expiresAt = issuedAt.AddMinutes(_options.ExpirationMinutes);
 
+            var claims = new List<Claim>
+            {
+                new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new(JwtRegisteredClaimNames.Email, user.Email),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+            if (user.EsAdministrador)
+                claims.Add(new Claim(AppRoles.ClaimType, AppRoles.Admin));
+
             var descriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new Claim[]
-                {
-                    new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                    new(JwtRegisteredClaimNames.Email, user.Email),
-                    new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-                }),
+                Subject = new ClaimsIdentity(claims),
                 Issuer = _options.Issuer,
                 Audience = _options.Audience,
                 IssuedAt = issuedAt.UtcDateTime,

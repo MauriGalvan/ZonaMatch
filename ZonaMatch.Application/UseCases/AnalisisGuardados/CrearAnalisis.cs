@@ -15,13 +15,17 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
         private readonly IPerfilRepository _perfiles;
         private readonly IZonaRepository _zonas;
         private readonly TimeProvider _reloj;
+        private readonly IAnalysisResultCalculator _resultado;
 
-        public CrearAnalisis(IAnalisisRepository analisis, IPerfilRepository perfiles, IZonaRepository zonas, TimeProvider reloj)
+        public CrearAnalisis(
+            IAnalisisRepository analisis, IPerfilRepository perfiles, IZonaRepository zonas, TimeProvider reloj,
+            IAnalysisResultCalculator resultado)
         {
             _analisis = analisis;
             _perfiles = perfiles;
             _zonas = zonas;
             _reloj = reloj;
+            _resultado = resultado;
         }
 
         public async Task<AnalysisResponse> EjecutarAsync(
@@ -42,6 +46,13 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 FechaActualizacion = ahora,
                 Zonas = zonas,
             };
+
+            // The result shown when it is opened again, until the user recalculates it
+            if (await _resultado.CalculateAsync(analisis, cancellationToken) is { } resultado)
+            {
+                analisis.ResultadoJson = AnalysisResultCalculator.Serialize(resultado);
+                analisis.FechaResultado = ahora;
+            }
 
             _analisis.Agregar(analisis);
             await _analisis.GuardarCambiosAsync(cancellationToken);

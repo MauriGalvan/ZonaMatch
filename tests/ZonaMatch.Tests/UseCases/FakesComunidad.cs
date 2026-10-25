@@ -56,6 +56,16 @@ namespace ZonaMatch.Tests.UseCases
         }
     }
 
+    internal sealed class FakeCommunityPoiRepository : ICommunityPoiRepository
+    {
+        public List<CommunityPoi> Pois { get; } = [];
+
+        public Task<CommunityPoi?> GetAsync(string id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Pois.FirstOrDefault(p => p.Id == id));
+
+        public void Add(CommunityPoi poi) => Pois.Add(poi);
+    }
+
     internal sealed class FakeResenaRepository : IResenaRepository
     {
         public List<Resena> Resenas { get; } = [];
