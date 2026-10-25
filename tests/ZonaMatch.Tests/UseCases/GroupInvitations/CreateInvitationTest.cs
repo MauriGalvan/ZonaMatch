@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using ZonaMatch.Application.DTOs.GroupInvitation;
 using ZonaMatch.Application.Interfaces;
@@ -36,7 +37,8 @@ public class CreateInvitationTests
             _userRepositoryMock.Object,
             _notificationRepositoryMock.Object,
             _emailServiceMock.Object,
-            TimeProvider.System);
+            TimeProvider.System,
+            NullLogger<CreateInvitation>.Instance);
     }
 
     [Fact]

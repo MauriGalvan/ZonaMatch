@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using ZonaMatch.Application.DTOs.GroupLink;
+using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.GroupLinks;
@@ -22,7 +23,7 @@ public class GetGroupByLink
 
         if (group == null)
         {
-            throw new Exception("El enlace de invitación no es válido o ha sido revocado.");
+            throw new NotFoundException("El enlace de invitación no es válido o ha sido revocado.");
         }
 
         return new GroupLinkDetailsResponse

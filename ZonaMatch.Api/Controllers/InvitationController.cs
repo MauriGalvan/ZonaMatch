@@ -26,8 +26,10 @@ public class InvitationsController : ControllerBase
     [Authorize]
     [HttpPost("Email")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CreateEmailInvitation(
         [FromBody] CreateInvitationRequest request,
         [FromServices] CreateInvitation createInvitation,
@@ -47,63 +49,40 @@ public class InvitationsController : ControllerBase
         if (string.IsNullOrWhiteSpace(frontendBaseUrl) && environment.IsDevelopment())
             frontendBaseUrl = "http://localhost:5173";
 
+        // Deployment mistake, not a client error: the global exception handler logs it and answers 500
         if (string.IsNullOrWhiteSpace(frontendBaseUrl))
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                Error = "Configura Frontend:BaseUrl para generar el enlace de invitación."
-            });
-        }
+            throw new InvalidOperationException("Frontend:BaseUrl is not configured; cannot build the invitation link.");
 
-        try
-        {
-            await createInvitation.ExecuteAsync(request, GetCurrentUserId(), cancellationToken, frontendBaseUrl);
-            return Ok(new { Message = "Invitación enviada por correo exitosamente." });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
+        await createInvitation.ExecuteAsync(request, GetCurrentUserId(), cancellationToken, frontendBaseUrl);
+        return Ok(new { Message = "Invitación enviada por correo exitosamente." });
     }
 
     [HttpGet("Email/{token:guid}")]
     [ProducesResponseType(typeof(InvitationDetailsResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetEmailInvitationDetails(
         [FromRoute] Guid token,
         [FromServices] GetInvitationByToken getInvitation,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var response = await getInvitation.ExecuteAsync(token, cancellationToken);
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return NotFound(new { Error = ex.Message });
-        }
+        var response = await getInvitation.ExecuteAsync(token, cancellationToken);
+        return Ok(response);
     }
 
     [Authorize]
     [HttpPost("Email/{token:guid}/Accept")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AcceptEmailInvitation(
         [FromRoute] Guid token,
         [FromServices] AcceptInvitation acceptInvitation,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            await acceptInvitation.ExecuteAsync(token, GetCurrentUserId(), cancellationToken);
-            return Ok(new { Message = "¡Te has unido al grupo exitosamente!" });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
+        await acceptInvitation.ExecuteAsync(token, GetCurrentUserId(), cancellationToken);
+        return Ok(new { Message = "¡Te has unido al grupo exitosamente!" });
     }
 
     // ==========================================
@@ -127,62 +106,43 @@ public class InvitationsController : ControllerBase
 
     [HttpGet("Link/{token:guid}")]
     [ProducesResponseType(typeof(GroupLinkDetailsResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetLinkInvitationDetails(
         [FromRoute] Guid token,
         [FromServices] GetGroupByLink getGroupByLink,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var response = await getGroupByLink.ExecuteAsync(token, cancellationToken);
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return NotFound(new { Error = ex.Message });
-        }
+        var response = await getGroupByLink.ExecuteAsync(token, cancellationToken);
+        return Ok(response);
     }
 
     [Authorize]
     [HttpPost("Link/{token:guid}/Accept")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> JoinByLink(
         [FromRoute] Guid token,
         [FromServices] JoinGroupByLink joinGroupByLink,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            await joinGroupByLink.ExecuteAsync(token, GetCurrentUserId(), cancellationToken);
-            return Ok(new { Message = "¡Te has unido al grupo exitosamente!" });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
+        await joinGroupByLink.ExecuteAsync(token, GetCurrentUserId(), cancellationToken);
+        return Ok(new { Message = "¡Te has unido al grupo exitosamente!" });
     }
 
     [Authorize]
     [HttpPut("Link/Group/{groupId:guid}/Revoke")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RevokeLink(
         [FromRoute] Guid groupId,
         [FromServices] RevokeInviteLink revokeInviteLink,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var newToken = await revokeInviteLink.ExecuteAsync(groupId, GetCurrentUserId(), cancellationToken);
-            return Ok(new { InviteToken = newToken, Message = "Enlace revocado exitosamente." });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
+        var newToken = await revokeInviteLink.ExecuteAsync(groupId, GetCurrentUserId(), cancellationToken);
+        return Ok(new { InviteToken = newToken, Message = "Enlace revocado exitosamente." });
     }
 }

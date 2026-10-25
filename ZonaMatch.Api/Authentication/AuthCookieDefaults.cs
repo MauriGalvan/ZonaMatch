@@ -8,7 +8,7 @@ internal static class AuthCookieDefaults
     {
         HttpOnly = true,
         Secure = true,
-        SameSite = SameSiteMode.Lax,
+        SameSite = SameSiteMode.None,
         Path = "/",
         Expires = expires,
     };

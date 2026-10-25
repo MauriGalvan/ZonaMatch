@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.UseCases.Puntajes;
@@ -10,11 +11,16 @@ namespace ZonaMatch.Api.Controllers
     [Route("[controller]")]
     public class PuntajesController : ControllerBase
     {
-        private readonly CalcularPuntajes _calcularPuntajes;
+        // Above this the request is logged as a warning so slow scoring (usually MOTIS) is easy to spot
+        private const long SlowScoringMilliseconds = 5_000;
 
-        public PuntajesController(CalcularPuntajes calcularPuntajes)
+        private readonly CalcularPuntajes _calcularPuntajes;
+        private readonly ILogger<PuntajesController> _logger;
+
+        public PuntajesController(CalcularPuntajes calcularPuntajes, ILogger<PuntajesController> logger)
         {
             _calcularPuntajes = calcularPuntajes;
+            _logger = logger;
         }
 
         // POST /Puntajes
@@ -25,7 +31,17 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<PuntajesDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Calcular(CalcularPuntajesRequest solicitud, CancellationToken cancellationToken) =>
-            Ok(await _calcularPuntajes.EjecutarAsync(solicitud, cancellationToken));
+        public async Task<IActionResult> Calcular(CalcularPuntajesRequest solicitud, CancellationToken cancellationToken)
+        {
+            var reloj = Stopwatch.StartNew();
+            var resultado = await _calcularPuntajes.EjecutarAsync(solicitud, cancellationToken);
+            reloj.Stop();
+
+            _logger.Log(
+                reloj.ElapsedMilliseconds > SlowScoringMilliseconds ? LogLevel.Warning : LogLevel.Information,
+                "Scores calculated in {ElapsedMs} ms", reloj.ElapsedMilliseconds);
+
+            return Ok(resultado);
+        }
     }
 }

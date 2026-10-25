@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Logging.Abstractions;
 using ZonaMatch.Application.DTOs.Auth.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -18,8 +19,8 @@ public sealed class AuthUseCasesTests
     public AuthUseCasesTests()
     {
         var passwordHasher = new FakePasswordHasher();
-        _registerUser = new RegisterUser(_users, passwordHasher, new FixedTimeProvider(CurrentTime));
-        _loginUser = new LoginUser(_users, passwordHasher, new FakeTokenService());
+        _registerUser = new RegisterUser(_users, passwordHasher, new FixedTimeProvider(CurrentTime), NullLogger<RegisterUser>.Instance);
+        _loginUser = new LoginUser(_users, passwordHasher, new FakeTokenService(), NullLogger<LoginUser>.Instance);
     }
 
     private static RegisterRequest CreateRegisterRequest(

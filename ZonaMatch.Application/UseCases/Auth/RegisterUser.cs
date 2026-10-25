@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using ZonaMatch.Application.DTOs.Auth.Requests;
 using ZonaMatch.Application.DTOs.Auth.Responses;
 using ZonaMatch.Application.Exceptions;
@@ -9,7 +10,8 @@ namespace ZonaMatch.Application.UseCases.Auth;
 public sealed class RegisterUser(
     IUserRepository users,
     IPasswordHasher passwordHasher,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<RegisterUser> logger)
 {
     public async Task<UserResponse> ExecuteAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
@@ -31,6 +33,8 @@ public sealed class RegisterUser(
         };
 
         await users.AddAsync(user, cancellationToken);
+
+        logger.LogInformation("User {UserId} registered", user.Id);
 
         return new UserResponse(user.Id, user.Email, user.FechaNacimiento);
     }

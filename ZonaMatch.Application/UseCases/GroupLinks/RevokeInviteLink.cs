@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Enums;
 
@@ -18,13 +19,13 @@ public class RevokeInviteLink
     public async Task<Guid> ExecuteAsync(Guid groupId, Guid currentUserId, CancellationToken cancellationToken)
     {
         var group = await _groupRepository.GetByIdAsync(groupId, cancellationToken);
-        if (group == null) throw new Exception("El grupo no existe.");
+        if (group == null) throw new NotFoundException("El grupo no existe.");
 
         // Validar que el que revoca es el Propietario
         bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && p.Role == GroupRole.Owner);
         if (!isOwner)
         {
-            throw new Exception("Solo el propietario puede revocar el enlace de invitación.");
+            throw new ForbiddenException("Solo el propietario puede revocar el enlace de invitación.");
         }
 
         // La magia está acá: simplemente generamos un nuevo Guid. 
