@@ -147,6 +147,8 @@ builder.Services.AddScoped<ObtenerAnalisis>();
 builder.Services.AddScoped<CompararAnalisis>();
 builder.Services.AddScoped<CrearAnalisis>();
 builder.Services.AddScoped<CrearVersionAnalisis>();
+builder.Services.AddScoped<IAnalysisResultCalculator, AnalysisResultCalculator>();
+builder.Services.AddScoped<RecalculateAnalysis>();
 builder.Services.AddScoped<RenombrarAnalisis>();
 builder.Services.AddScoped<EliminarAnalisis>();
 builder.Services.AddScoped<ListSavedZones>();
