@@ -100,7 +100,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 ) agregado ON true
             )
             SELECT z.slug AS "Slug", z.nombre AS "Nombre", z.nivel AS "Nivel", z.superficie_km2 AS "SuperficieKm2",
-                   COALESCE(i.poblacion, 0) AS "Poblacion", i.delitos_anio AS "Delitos",
+                   COALESCE(i.poblacion, 0) AS "Poblacion", i.delitos_comparables AS "Delitos",
                    COALESCE(l.lineas, 0) AS "LineasTransporte", COALESCE(p.salidas, 0) AS "SalidasHoraPico",
                    e.escuelas AS "Escuelas", e.salud AS "CentrosSalud", e.verdes AS "EspaciosVerdes",
                    v.m2 AS "SuperficieVerdeM2",

@@ -15,7 +15,8 @@ namespace ZonaMatch.Tests.UseCases.Zonas
             _casoDeUso = new ObtenerIndicadoresZona(_indicadores);
         }
 
-        private static IndicadoresZona Zona(string slug, int nivel, int? delitos) => new()
+        private static IndicadoresZona Zona(string slug, int nivel, int? delitos,
+            string fuente = IndicadoresZona.FuenteMapaDelito, string? ambito = null) => new()
         {
             Slug = slug,
             Nombre = slug,
@@ -26,6 +27,9 @@ namespace ZonaMatch.Tests.UseCases.Zonas
             HogaresInternet = 3600,
             Delitos = delitos,
             Robos = delitos is null ? null : 100,
+            DelitosFuente = delitos is null ? null : fuente,
+            DelitosPeriodo = delitos is null ? null : fuente == IndicadoresZona.FuenteSnic ? 2025 : 2024,
+            DelitosAmbito = ambito,
         };
 
         [Fact]
@@ -47,7 +51,26 @@ namespace ZonaMatch.Tests.UseCases.Zonas
         }
 
         [Fact]
-        public async Task Fuera_de_caba_no_hay_seguridad_ni_referencia()
+        public async Task Execute_WhenZoneIsInProvince_ReturnsPartidoCrimesWithoutCabaReference()
+        {
+            _indicadores.Zonas.Add(Zona("castelar", 8, delitos: 241, fuente: IndicadoresZona.FuenteSnic, ambito: "Morón"));
+            _indicadores.Caba = Zona("caba", 4, delitos: 469);
+
+            var resultado = await _casoDeUso.EjecutarAsync("castelar");
+
+            var seguridad = Assert.IsType<ZonaMatch.Application.DTOs.SeguridadZonaDto>(resultado.Seguridad);
+            Assert.Equal("snic", seguridad.Fuente);
+            Assert.Equal("Morón", seguridad.Ambito);
+            Assert.Equal(2025, seguridad.Anio);
+            Assert.Equal(24.1, seguridad.DelitosCada1000Habitantes);
+            Assert.Null(seguridad.Referencia);
+            Assert.Null(resultado.Conectividad.Referencia);
+            Assert.Contains(resultado.Fuentes, f => f.Nivel == "Partido" && f.Anio == 2025);
+            Assert.False(_indicadores.PidioCaba);
+        }
+
+        [Fact]
+        public async Task Zona_sin_delitos_no_trae_seguridad_ni_referencia()
         {
             _indicadores.Zonas.Add(Zona("villa-luzuriaga", 8, delitos: null));
             _indicadores.Caba = Zona("caba", 4, delitos: 469);

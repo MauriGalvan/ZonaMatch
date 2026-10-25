@@ -1,7 +1,8 @@
 namespace ZonaMatch.Domain.Entities
 {
     // Datos abiertos de una zona (tabla geo.zona_indicadores, la calcula etl/calcular_zonas.sql): conteos del
-    // Censo 2022 de los radios que caen en la zona y delitos del Mapa del Delito de CABA. Aca viven las reglas
+    // Censo 2022 de los radios que caen en la zona y delitos (Mapa del Delito en CABA, SNIC por partido en
+    // provincia). Aca viven las reglas
     // que convierten esos conteos en indicadores (porcentajes, densidad, tasa de delitos).
     public class IndicadoresZona
     {
@@ -29,7 +30,8 @@ namespace ZonaMatch.Domain.Entities
         public int HogaresHacinamiento { get; set; }
         public int HogaresAlquilan { get; set; }
 
-        // Mapa del Delito: solo CABA tiene delitos con ubicacion. Null fuera de CABA (sin datos).
+        // Crimes of the year DelitosPeriodo. CABA: geolocated events of the Mapa del Delito. Province: the SNIC
+        // crimes of the partido, spread over its localidades by population. Null without data.
         public int? Delitos { get; set; }
         public int? Robos { get; set; }
         public int? Hurtos { get; set; }
@@ -37,6 +39,19 @@ namespace ZonaMatch.Domain.Entities
         public int? Homicidios { get; set; }
         public int? Amenazas { get; set; }
         public int? SiniestrosViales { get; set; }
+
+        // FuenteMapaDelito or FuenteSnic
+        public string? DelitosFuente { get; set; }
+        public int? DelitosPeriodo { get; set; }
+
+        // SNIC: partidos the zone takes its crimes from, the one with most population first ("Morón")
+        public string? DelitosAmbito { get; set; }
+
+        public const string FuenteMapaDelito = "mapa-delito";
+        public const string FuenteSnic = "snic";
+
+        // Geolocated crimes (CABA): the zone can be compared with the whole city
+        public bool DelitosGeorreferenciados => DelitosFuente == FuenteMapaDelito;
 
         public bool TieneDelitos => Delitos is not null;
 
