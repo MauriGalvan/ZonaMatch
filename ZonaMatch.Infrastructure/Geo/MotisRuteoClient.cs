@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -9,7 +10,7 @@ using ZonaMatch.Domain.Puntaje;
 
 namespace ZonaMatch.Infrastructure.Geo
 {
-    // Duracion de viajes con MOTIS (contenedor "motis" de docker-compose, GET /api/v1/plan).
+    // Duracion y distancia del mismo itinerario con MOTIS (GET /api/v1/plan).
     // Los horarios cargados son una semana de referencia (etl/motis/config.yml): se consulta siempre un dia habil
     // de esa semana a las 8 de la mañana. Cada viaje se guarda en memoria un dia.
     // Si MOTIS no responde, se deja de consultar un minuto para no demorar cada pedido con el timeout.
@@ -58,21 +59,35 @@ namespace ZonaMatch.Infrastructure.Geo
             try
             {
                 var url = string.Create(CultureInfo.InvariantCulture,
-                    $"api/v1/plan?fromPlace={latitudOrigen},{longitudOrigen}&toPlace={latitudDestino},{longitudDestino}&time={_fechaReferencia}&{Modos(modo)}");
+                    $"api/v1/plan?fromPlace={latitudOrigen},{longitudOrigen}&toPlace={latitudDestino},{longitudDestino}&time={_fechaReferencia}&{Modos(modo)}&detailedLegs=true&detailedTransfers=true&useRoutedTransfers=true");
 
                 var plan = await _http.GetFromJsonAsync<Plan>(url, cancellationToken);
 
-                if (plan is null || plan.Error is not null)
+                if (plan is null || plan.Error is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) })
                 {
                     _logger.LogWarning("MOTIS no pudo calcular el viaje: {Error}", plan?.Error);
                     return null;
                 }
 
-                var segundos = (plan.Itinerarios ?? []).Concat(plan.Directos ?? []).Select(i => i.Duracion).DefaultIfEmpty().Min();
-                var tiempo = new TiempoViaje(segundos > 0 ? (int)Math.Round(segundos / 60.0) : null, Estimado: false);
+                // Seleccionar primero el itinerario evita mezclar los minutos de uno con la distancia de otro.
+                var itinerario = (plan.Itinerarios ?? [])
+                    .Concat(plan.Directos ?? [])
+                    .Where(i => i.Duracion is >= 0)
+                    .MinBy(i => i.Duracion!.Value);
+                var tiempo = itinerario is null
+                    ? new TiempoViaje(null, Estimado: false)
+                    : new TiempoViaje(
+                        (int)Math.Round(itinerario.Duracion!.Value / 60.0),
+                        Estimado: false,
+                        DistanciaKm: CalcularDistanciaKm(itinerario));
 
                 _cache.Set(clave, tiempo, VigenciaViaje);
                 return tiempo;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "MOTIS devolvio una respuesta invalida; no se conoce la distancia del recorrido.");
+                return null;
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
             {
@@ -80,6 +95,28 @@ namespace ZonaMatch.Infrastructure.Geo
                 _logger.LogWarning("MOTIS no responde ({Mensaje}): los viajes se estiman por distancia por un minuto.", ex.Message);
                 return null;
             }
+        }
+
+        private static double? CalcularDistanciaKm(Itinerario itinerario)
+        {
+            if (itinerario.Tramos is not { Count: > 0 } tramos)
+                return null;
+
+            var totalMetros = 0.0;
+            foreach (var tramo in tramos)
+            {
+                // En transporte publico, MOTIS puede entregar la geometria sin el campo distance.
+                var distancia = tramo.DistanciaMetros ?? RutaPolyline.LongitudMetros(
+                    tramo.Geometria?.Puntos, tramo.Geometria?.Precision);
+
+                // No presentar solo las caminatas como si fueran la distancia total del viaje.
+                if (distancia is not { } metros || !double.IsFinite(metros) || metros < 0)
+                    return null;
+
+                totalMetros += metros;
+            }
+
+            return double.IsFinite(totalMetros) ? totalMetros / 1000.0 : null;
         }
 
         // Transporte publico con caminatas; los demas modos, solo el viaje directo
@@ -100,14 +137,35 @@ namespace ZonaMatch.Infrastructure.Geo
             public List<Itinerario>? Directos { get; set; }
 
             [JsonPropertyName("error")]
-            public string? Error { get; set; }
+            public JsonElement? Error { get; set; }
         }
 
         private sealed class Itinerario
         {
             // Segundos
             [JsonPropertyName("duration")]
-            public int Duracion { get; set; }
+            public int? Duracion { get; set; }
+
+            [JsonPropertyName("legs")]
+            public List<Tramo>? Tramos { get; set; }
+        }
+
+        private sealed class Tramo
+        {
+            [JsonPropertyName("distance")]
+            public double? DistanciaMetros { get; set; }
+
+            [JsonPropertyName("legGeometry")]
+            public GeometriaTramo? Geometria { get; set; }
+        }
+
+        private sealed class GeometriaTramo
+        {
+            [JsonPropertyName("points")]
+            public string? Puntos { get; set; }
+
+            [JsonPropertyName("precision")]
+            public int? Precision { get; set; }
         }
     }
 }

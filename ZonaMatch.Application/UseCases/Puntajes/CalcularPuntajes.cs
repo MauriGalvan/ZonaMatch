@@ -191,7 +191,8 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 resultado.Puntaje,
                 resultado.Componentes.Select(c => new ComponentePuntajeDto(c.Criterio, c.Prioridad, c.Puntaje, c.Detalle)).ToList(),
                 resultado.Limites.Select(l => new LimitePuntajeDto(l.Tipo, l.Cumple, l.Detalle)).ToList(),
-                resultado.Lugares.Select(l => new TiempoLugarDto(l.Nombre, l.Minutos, l.MaximoMinutos, l.Estimado)).ToList(),
+                resultado.Lugares.Select(l => new TiempoLugarDto(
+                    l.Nombre, l.Minutos, l.MaximoMinutos, l.Estimado, l.DistanciaKm)).ToList(),
                 resultado.Zona.AlquilerPromedio is { } promedio
                     ? new AlquilerZonaDto(promedio, resultado.Zona.PropiedadesDisponibles ?? 0)
                     : null);

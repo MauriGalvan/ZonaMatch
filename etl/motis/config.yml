@@ -12,7 +12,7 @@ timetable:
   num_days: 8
   tb: false
   railviz: false
-  with_shapes: false
+  with_shapes: true
   adjust_footpaths: true
   merge_dupes_intra_src: false
   merge_dupes_inter_src: false

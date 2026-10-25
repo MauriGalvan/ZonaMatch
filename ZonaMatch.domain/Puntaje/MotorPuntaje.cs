@@ -15,15 +15,23 @@ namespace ZonaMatch.Domain.Puntaje
     }
 
     // Duracion de un viaje; Minutos null si no se llega (o no hay recorrido). Estimado si no lo calculo el ruteo.
-    public sealed record TiempoViaje(int? Minutos, bool Estimado);
+    public sealed record TiempoViaje(
+        int? Minutos,
+        bool Estimado,
+        double? DistanciaKm = null);
+
+    // Distancia del itinerario en km; null si solo se pudieron estimar los minutos.
+    public sealed record ResultadoLugar(
+        string Nombre,
+        string? Prioridad,
+        int? Minutos,
+        int MaximoMinutos,
+        bool Estimado,
+        int? Puntaje,
+        double? DistanciaKm = null);
 
     public sealed record ComponentePuntaje(string Criterio, string Prioridad, int? Puntaje, string Detalle);
-
     public sealed record ResultadoLimite(string Tipo, bool? Cumple, string Detalle);
-
-    // Puntaje null si no se pudo calcular el viaje: no suma ni resta
-    public sealed record ResultadoLugar(string Nombre, string? Prioridad, int? Minutos, int MaximoMinutos, bool Estimado, int? Puntaje);
-
     public sealed record ResultadoZona(
         PerfilZona Zona,
         int? Puntaje,
@@ -208,8 +216,13 @@ namespace ZonaMatch.Domain.Puntaje
 
                 var lugar = lugares[i];
                 resultados.Add(new ResultadoLugar(
-                    lugar.Nombre, lugar.Prioridad, tiempo.Minutos, lugar.TiempoMaximoMinutos, tiempo.Estimado,
-                    PuntajeViaje(tiempo.Minutos, lugar.TiempoMaximoMinutos)));
+                    lugar.Nombre,
+                    lugar.Prioridad,
+                    tiempo.Minutos,
+                    lugar.TiempoMaximoMinutos,
+                    tiempo.Estimado,
+                    PuntajeViaje(tiempo.Minutos, lugar.TiempoMaximoMinutos),
+                    tiempo.DistanciaKm));
             }
 
             return resultados;
