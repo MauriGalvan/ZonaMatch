@@ -25,6 +25,16 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             {
                 ZonaInicial = zones.FirstOrDefault(zone => zone.EsInicial)?.ZonaSlug,
                 ZonasAgregadas = zones.Where(zone => !zone.EsInicial).Select(zone => zone.ZonaSlug).ToList(),
+                // Trips from the starting points the user marked, as when the analysis was shown
+                OrigenesZona = zones
+                    .Where(zone => zone.TieneOrigen)
+                    .Select(zone => new OrigenZonaRequest
+                    {
+                        Slug = zone.ZonaSlug,
+                        Latitude = zone.OrigenLatitud!.Value,
+                        Longitude = zone.OrigenLongitud!.Value,
+                    })
+                    .ToList(),
                 Criterios = context.Criterios.ToDictionary(c => c.CriterioId, c => (string?)c.Prioridad),
                 Lugares = context.Puntos
                     .OrderBy(point => point.Orden)

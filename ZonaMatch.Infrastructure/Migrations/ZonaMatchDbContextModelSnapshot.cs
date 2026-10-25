@@ -144,6 +144,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("nombre");
 
+                    b.Property<double?>("OrigenLatitud")
+                        .HasColumnType("double precision")
+                        .HasColumnName("origen_latitud");
+
+                    b.Property<double?>("OrigenLongitud")
+                        .HasColumnType("double precision")
+                        .HasColumnName("origen_longitud");
+
                     b.Property<string>("ZonaSlug")
                         .IsRequired()
                         .HasMaxLength(100)

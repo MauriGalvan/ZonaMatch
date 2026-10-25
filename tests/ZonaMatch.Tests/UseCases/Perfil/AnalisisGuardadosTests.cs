@@ -1,5 +1,6 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Analysis.Requests;
+using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.AnalisisGuardados;
@@ -67,15 +68,60 @@ namespace ZonaMatch.Tests.UseCases.Perfil
             await Assert.ThrowsAsync<NotFoundException>(() => Recalcular.ExecuteAsync(Guid.NewGuid(), Usuario));
         }
 
+        private static AnalysisZoneRequest ZonaConOrigen(double latitude) =>
+            new()
+            {
+                Slug = FakeZonaRepository.Zona, Name = "Villa Luro, CABA", IsInitial = true,
+                Origin = new AnalysisZoneOriginRequest { Latitude = latitude, Longitude = -58.5 }
+            };
+
+        [Fact]
+        public async Task Create_WithAStartingPoint_SavesItAndCalculatesFromIt()
+        {
+            await ConPerfil();
+
+            var dto = await Crear.EjecutarAsync(Usuario, Pedido("Con punto", ZonaConOrigen(-34.63)));
+
+            Assert.Equal(new AnalysisZoneOriginResponse(-34.63, -58.5), Assert.Single(dto.Zones).Origin);
+            var calculated = Assert.Single(Assert.Single(_resultados.Calculados).Zonas);
+            Assert.Equal((-34.63, -58.5), (calculated.OrigenLatitud, calculated.OrigenLongitud));
+        }
+
+        [Fact]
+        public async Task Create_WithAStartingPointOutsideTheZone_ThrowsBadRequestException()
+        {
+            await ConPerfil();
+
+            await Assert.ThrowsAsync<BadRequestException>(() => Crear.EjecutarAsync(Usuario, Pedido("Afuera", ZonaConOrigen(10))));
+            Assert.Empty(_analisis.Analisis);
+        }
+
+        [Fact]
+        public async Task Recalculate_KeepsTheStartingPointsOfTheZones()
+        {
+            await ConPerfil();
+            var original = await Crear.EjecutarAsync(Usuario, Pedido("Con punto", ZonaConOrigen(-34.63)));
+
+            var recalculated = await Recalcular.ExecuteAsync(original.Id, Usuario);
+
+            Assert.Equal(new AnalysisZoneOriginResponse(-34.63, -58.5), Assert.Single(recalculated.Zones).Origin);
+        }
+
         private sealed class FakeResultCalculator : IAnalysisResultCalculator
         {
             public int? Puntaje { get; set; } = 50;
 
-            public Task<PuntajesDto?> CalculateAsync(Analisis analysis, CancellationToken cancellationToken = default) =>
-                Task.FromResult<PuntajesDto?>(new PuntajesDto(
+            // Analyses received, to check what the calculation used
+            public List<Analisis> Calculados { get; } = [];
+
+            public Task<PuntajesDto?> CalculateAsync(Analisis analysis, CancellationToken cancellationToken = default)
+            {
+                Calculados.Add(analysis);
+                return Task.FromResult<PuntajesDto?>(new PuntajesDto(
                     "transporte-publico",
                     analysis.Zonas.Select(zone => new PuntajeZonaDto(zone.ZonaSlug, zone.Nombre, Puntaje, [], [], [], null)).ToList(),
                     []));
+            }
         }
 
         [Fact]

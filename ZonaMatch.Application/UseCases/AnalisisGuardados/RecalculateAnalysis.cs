@@ -39,14 +39,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 FechaActualizacion = now,
                 Zonas = source.Zonas
                     .OrderBy(zone => zone.Orden)
-                    .Select(zone => new AnalisisZona
-                    {
-                        Orden = zone.Orden,
-                        ZonaSlug = zone.ZonaSlug,
-                        Nombre = zone.Nombre,
-                        EsInicial = zone.EsInicial,
-                        EsAgregada = zone.EsAgregada,
-                    })
+                    .Select(zone => zone.Copiar())
                     .ToList(),
             };
 
