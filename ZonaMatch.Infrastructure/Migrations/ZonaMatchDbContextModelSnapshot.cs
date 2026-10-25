@@ -49,6 +49,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_creacion");
 
+                    b.Property<DateTimeOffset?>("FechaResultado")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_resultado");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -58,6 +62,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Property<string>("PuntajesEnGrupoJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("puntajes_en_grupo_json");
+
+                    b.Property<string>("ResultadoJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("resultado_json");
 
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid")
@@ -100,6 +108,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)")
                         .HasColumnName("nombre");
+
+                    b.Property<double?>("OrigenLatitud")
+                        .HasColumnType("double precision")
+                        .HasColumnName("origen_latitud");
+
+                    b.Property<double?>("OrigenLongitud")
+                        .HasColumnType("double precision")
+                        .HasColumnName("origen_longitud");
 
                     b.Property<string>("ZonaSlug")
                         .IsRequired()

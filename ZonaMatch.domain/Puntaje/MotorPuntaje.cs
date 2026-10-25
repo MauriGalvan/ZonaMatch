@@ -42,7 +42,8 @@ namespace ZonaMatch.Domain.Puntaje
     // Calcula el puntaje (0 a 100) de una zona para un pedido. No guarda estado entre calculos: se puede compartir.
     // Cada criterio vale el percentil de la zona entre las de su tipo (barrios y localidades por un lado, comunas y
     // partidos por el otro): 80 quiere decir que la zona esta mejor que el 80 % de las demas en ese criterio.
-    // El puntaje es el promedio de los criterios ponderado por la prioridad del usuario (baja 1, media 2, alta 3);
+    // El puntaje es el promedio de los criterios ponderado por la prioridad del usuario (baja 1, media 3, alta 9: cada
+    // nivel pesa el triple que el anterior, asi un criterio en baja casi no mueve el puntaje y uno en alta lo define);
     // los criterios sin dato (por ejemplo, seguridad fuera de CABA) no cuentan: ni suman ni restan. Los lugares del
     // usuario suman un criterio propio, con prioridad alta, segun cuanto se tarda en llegar.
     // Limites (tope de alquiler y tiempo maximo a cada lugar): pasarse un poco (hasta ExcesoLeve) descuenta un punto
@@ -71,8 +72,8 @@ namespace ZonaMatch.Domain.Puntaje
         private static readonly IReadOnlyDictionary<string, int> PesoPrioridad = new Dictionary<string, int>
         {
             ["baja"] = 1,
-            ["media"] = 2,
-            ["alta"] = 3,
+            ["media"] = 3,
+            ["alta"] = 9,
         };
 
         private static readonly IReadOnlyDictionary<string, int> PesoLugar = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)

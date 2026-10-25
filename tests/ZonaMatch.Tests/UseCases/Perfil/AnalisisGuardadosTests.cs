@@ -1,6 +1,8 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Analysis.Requests;
+using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.AnalisisGuardados;
 using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Domain.Entities;
@@ -17,9 +19,11 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         private readonly FakeCriterioRepository _criterios = new();
         private readonly FakeZonaRepository _zonas = new();
         private readonly FixedTimeProvider _reloj = new(Ahora);
+        private readonly FakeResultCalculator _resultados = new();
 
-        private CrearAnalisis Crear => new(_analisis, _perfiles, _zonas, _reloj);
-        private CrearVersionAnalisis Versionar => new(_analisis, _criterios, _zonas, _reloj);
+        private CrearAnalisis Crear => new(_analisis, _perfiles, _zonas, _reloj, _resultados);
+        private CrearVersionAnalisis Versionar => new(_analisis, _criterios, _zonas, _reloj, _resultados);
+        private RecalculateAnalysis Recalcular => new(_analisis, _resultados, _reloj);
 
         private async Task ConPerfil(string criterio = "seguridad", string prioridad = "alta") =>
             await new GuardarMiPerfil(_perfiles, _criterios, _reloj)
@@ -27,6 +31,98 @@ namespace ZonaMatch.Tests.UseCases.Perfil
 
         private static CreateAnalysisRequest Pedido(string name = "Cerca del trabajo", params AnalysisZoneRequest[] zones) =>
             new() { Name = name, Zones = zones.Length > 0 ? [.. zones] : [Pedidos.Zona(inicial: true)] };
+
+        [Fact]
+        public async Task Create_WhenSaved_KeepsTheResultAndWhenItWasCalculated()
+        {
+            await ConPerfil();
+            _resultados.Puntaje = 81;
+
+            var dto = await Crear.EjecutarAsync(Usuario, Pedido());
+
+            Assert.Equal(81, Assert.Single(dto.Result!.Zonas).Puntaje);
+            Assert.Equal(Ahora, dto.CalculatedAt);
+        }
+
+        [Fact]
+        public async Task Recalculate_WhenAnalysisIsSaved_CreatesAVersionWithTodaysResultAndKeepsTheOriginal()
+        {
+            await ConPerfil();
+            _resultados.Puntaje = 81;
+            var original = await Crear.EjecutarAsync(Usuario, Pedido());
+            _resultados.Puntaje = 74;
+
+            var recalculated = await Recalcular.ExecuteAsync(original.Id, Usuario);
+
+            Assert.Equal(original.Id, recalculated.OriginAnalysisId);
+            Assert.Equal("Cerca del trabajo · datos al 14/10", recalculated.Name);
+            Assert.Equal(74, Assert.Single(recalculated.Result!.Zonas).Puntaje);
+            Assert.Equal(original.Criteria, recalculated.Criteria);
+            var saved = _analisis.Analisis.Single(a => a.Id == original.Id);
+            Assert.Equal(81, AnalysisResultCalculator.Deserialize(saved.ResultadoJson)!.Zonas.Single().Puntaje);
+        }
+
+        [Fact]
+        public async Task Recalculate_WhenAnalysisDoesNotExist_ThrowsNotFoundException()
+        {
+            await Assert.ThrowsAsync<NotFoundException>(() => Recalcular.ExecuteAsync(Guid.NewGuid(), Usuario));
+        }
+
+        private static AnalysisZoneRequest ZonaConOrigen(double latitude) =>
+            new()
+            {
+                Slug = FakeZonaRepository.Zona, Name = "Villa Luro, CABA", IsInitial = true,
+                Origin = new AnalysisZoneOriginRequest { Latitude = latitude, Longitude = -58.5 }
+            };
+
+        [Fact]
+        public async Task Create_WithAStartingPoint_SavesItAndCalculatesFromIt()
+        {
+            await ConPerfil();
+
+            var dto = await Crear.EjecutarAsync(Usuario, Pedido("Con punto", ZonaConOrigen(-34.63)));
+
+            Assert.Equal(new AnalysisZoneOriginResponse(-34.63, -58.5), Assert.Single(dto.Zones).Origin);
+            var calculated = Assert.Single(Assert.Single(_resultados.Calculados).Zonas);
+            Assert.Equal((-34.63, -58.5), (calculated.OrigenLatitud, calculated.OrigenLongitud));
+        }
+
+        [Fact]
+        public async Task Create_WithAStartingPointOutsideTheZone_ThrowsBadRequestException()
+        {
+            await ConPerfil();
+
+            await Assert.ThrowsAsync<BadRequestException>(() => Crear.EjecutarAsync(Usuario, Pedido("Afuera", ZonaConOrigen(10))));
+            Assert.Empty(_analisis.Analisis);
+        }
+
+        [Fact]
+        public async Task Recalculate_KeepsTheStartingPointsOfTheZones()
+        {
+            await ConPerfil();
+            var original = await Crear.EjecutarAsync(Usuario, Pedido("Con punto", ZonaConOrigen(-34.63)));
+
+            var recalculated = await Recalcular.ExecuteAsync(original.Id, Usuario);
+
+            Assert.Equal(new AnalysisZoneOriginResponse(-34.63, -58.5), Assert.Single(recalculated.Zones).Origin);
+        }
+
+        private sealed class FakeResultCalculator : IAnalysisResultCalculator
+        {
+            public int? Puntaje { get; set; } = 50;
+
+            // Analyses received, to check what the calculation used
+            public List<Analisis> Calculados { get; } = [];
+
+            public Task<PuntajesDto?> CalculateAsync(Analisis analysis, CancellationToken cancellationToken = default)
+            {
+                Calculados.Add(analysis);
+                return Task.FromResult<PuntajesDto?>(new PuntajesDto(
+                    "transporte-publico",
+                    analysis.Zonas.Select(zone => new PuntajeZonaDto(zone.ZonaSlug, zone.Nombre, Puntaje, [], [], [], null)).ToList(),
+                    []));
+            }
+        }
 
         [Fact]
         public async Task Crear_SinPerfil_LanzaPerfilNoEncontrado()

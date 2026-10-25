@@ -21,11 +21,13 @@ namespace ZonaMatch.Application.UseCases.Puntajes
 
         private readonly IPerfilesZonaRepository _perfiles;
         private readonly IRuteoClient _ruteo;
+        private readonly IZonaRepository _zonas;
 
-        public CalcularPuntajes(IPerfilesZonaRepository perfiles, IRuteoClient ruteo)
+        public CalcularPuntajes(IPerfilesZonaRepository perfiles, IRuteoClient ruteo, IZonaRepository zonas)
         {
             _perfiles = perfiles;
             _ruteo = ruteo;
+            _zonas = zonas;
         }
 
         public async Task<PuntajesDto> EjecutarAsync(CalcularPuntajesRequest solicitud, CancellationToken cancellationToken = default)
@@ -66,7 +68,8 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 .DistinctBy(zona => zona.Slug, StringComparer.Ordinal)
                 .ToArray();
 
-            var tiempos = await MedirViajesAsync(candidatas, pedido.Lugares, modo, cancellationToken);
+            var origenes = await ResolverOrigenesAsync(solicitud.OrigenesZona, porSlug, cancellationToken);
+            var tiempos = await MedirViajesAsync(candidatas, pedido.Lugares, modo, origenes, cancellationToken);
             var ranking = candidatas
                 .Select(zona => motor.Calcular(zona, pedido, tiempos[zona.Slug]))
                 .OrderByDescending(resultado => resultado.Puntaje.HasValue)
@@ -122,9 +125,34 @@ namespace ZonaMatch.Application.UseCases.Puntajes
             return slugs.Select(slug => porSlug[slug]).ToArray();
         }
 
-        // One trip per zone and located place, starting at the zone center. Estimate the time if routing is unavailable.
+        // Starting points chosen by the user, by zone slug. Each one must fall inside its zone.
+        private async Task<Dictionary<string, (double Latitud, double Longitud)>> ResolverOrigenesAsync(
+            IReadOnlyCollection<OrigenZonaRequest>? origenes, IReadOnlyDictionary<string, PerfilZona> porSlug,
+            CancellationToken cancellationToken)
+        {
+            var resultado = new Dictionary<string, (double Latitud, double Longitud)>(StringComparer.Ordinal);
+            foreach (var origen in origenes ?? [])
+            {
+                var slug = origen.Slug.Trim();
+                // A starting point for a zone that does not exist cannot be measured
+                if (!porSlug.ContainsKey(slug))
+                    throw new NotFoundException("No se encontró la zona del punto de partida indicado.");
+
+                // The point replaces the center of the zone, so it has to be inside it
+                if (!await _zonas.ContienePuntoAsync(slug, origen.Latitude, origen.Longitude, cancellationToken))
+                    throw new BadRequestException("El punto de partida tiene que estar dentro de su zona.");
+
+                resultado[slug] = (origen.Latitude, origen.Longitude);
+            }
+
+            return resultado;
+        }
+
+        // One trip per zone and located place, starting at the zone center or at the point the user chose in it.
+        // Estimate the time if routing is unavailable.
         private async Task<Dictionary<string, IReadOnlyList<TiempoViaje?>>> MedirViajesAsync(
             IReadOnlyList<PerfilZona> zonas, IReadOnlyList<LugarDelUsuario> lugares, ModoViaje modo,
+            IReadOnlyDictionary<string, (double Latitud, double Longitud)> origenes,
             CancellationToken cancellationToken)
         {
             using var limite = new SemaphoreSlim(ViajesEnParalelo);
@@ -134,11 +162,15 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 if (!lugar.TieneUbicacion)
                     return null;
 
+                var (latitud, longitud) = origenes.TryGetValue(zona.Slug, out var origen) ? origen : (zona.Latitud, zona.Longitud);
+
                 await limite.WaitAsync(cancellationToken);
                 try
                 {
-                    return await _ruteo.CalcularAsync(zona.Latitud, zona.Longitud, lugar.Latitud!.Value, lugar.Longitud!.Value, modo, cancellationToken)
-                           ?? ModosViaje.Estimar(modo, zona.Latitud, zona.Longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
+                    // Ten blocks or less are walked (ModosViaje.DistanciaACaminarKm)
+                    var modoDelViaje = ModosViaje.ParaDistancia(modo, latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
+                    return await _ruteo.CalcularAsync(latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value, modoDelViaje, cancellationToken)
+                           ?? ModosViaje.Estimar(modoDelViaje, latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
                 }
                 finally
                 {

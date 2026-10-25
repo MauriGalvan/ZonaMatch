@@ -19,5 +19,25 @@ namespace ZonaMatch.Domain.Entities
 
         // Zona añadida manualmente al ranking automático.
         public bool EsAgregada { get; set; }
+
+        // Starting point the user marked inside the zone; null = the center of the zone.
+        // Trips to the places are measured from here, so it changes the score.
+        public double? OrigenLatitud { get; set; }
+        public double? OrigenLongitud { get; set; }
+
+        public bool TieneOrigen => OrigenLatitud.HasValue && OrigenLongitud.HasValue;
+
+        // Same zone for another analysis (a version or a recalculation)
+        public AnalisisZona Copiar() =>
+            new()
+            {
+                Orden = Orden,
+                ZonaSlug = ZonaSlug,
+                Nombre = Nombre,
+                EsInicial = EsInicial,
+                EsAgregada = EsAgregada,
+                OrigenLatitud = OrigenLatitud,
+                OrigenLongitud = OrigenLongitud,
+            };
     }
 }
