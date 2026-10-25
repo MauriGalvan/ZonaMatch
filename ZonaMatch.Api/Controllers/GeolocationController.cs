@@ -13,10 +13,12 @@ namespace ZonaMatch.Api.Controllers
     public class GeolocationController : ControllerBase
     {
         private readonly IGeolocationService _geolocationService;
+        private readonly ILogger<GeolocationController> _logger;
 
-        public GeolocationController(IGeolocationService geolocationService)
+        public GeolocationController(IGeolocationService geolocationService, ILogger<GeolocationController> logger)
         {
             _geolocationService = geolocationService;
+            _logger = logger;
         }
 
         [HttpGet("~/v1/geolocation/places")]
@@ -144,8 +146,10 @@ namespace ZonaMatch.Api.Controllers
                 var direccion = await _geolocationService.GetDireccionPorUbicacionAsync(latitud, longitud, cancellationToken);
                 return direccion is null ? NotFound("No se encontro una direccion para esa ubicacion.") : Ok(direccion);
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException ex)
             {
+                // Coordinates are not logged: they are the user's location
+                _logger.LogWarning(ex, "Reverse geocoding service is unavailable");
                 return StatusCode(StatusCodes.Status502BadGateway, "El servicio de geocodificacion no esta disponible.");
             }
         }

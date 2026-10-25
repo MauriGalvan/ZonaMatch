@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
@@ -26,13 +27,13 @@ public class AcceptInvitation
         var invitation = await _invitationRepository.GetByTokenAsync(token, cancellationToken);
         if (invitation == null)
         {
-            throw new Exception("Invitación no encontrada.");
+            throw new NotFoundException("Invitación no encontrada.");
         }
 
         // 2. Validar que siga pendiente
         if (invitation.Status != InvitationStatus.Pending)
         {
-            throw new Exception($"La invitación ya no es válida (Estado: {invitation.Status}).");
+            throw new BadRequestException($"La invitación ya no es válida (Estado: {invitation.Status}).");
         }
 
         // 3. Validar que no haya expirado
@@ -41,17 +42,17 @@ public class AcceptInvitation
             // Si expiró, le actualizamos el estado en la BD para que quede el registro
             invitation.Status = InvitationStatus.Expired;
             await _invitationRepository.UpdateAsync(invitation, cancellationToken);
-            throw new Exception("La invitación ha expirado.");
+            throw new BadRequestException("La invitación ha expirado.");
         }
 
         // 4. Buscar el grupo y validar que el usuario no esté ya adentro
         var group = await _groupRepository.GetByIdAsync(invitation.GroupId, cancellationToken);
-        if (group == null) throw new Exception("El grupo ya no existe.");
+        if (group == null) throw new NotFoundException("El grupo ya no existe.");
 
         bool alreadyMember = group.Participants.Any(p => p.UserId == currentUserId);
         if (alreadyMember)
         {
-            throw new Exception("Ya eres miembro de este grupo.");
+            throw new ConflictException("Ya eres miembro de este grupo.");
         }
 
         // 5. Agregar al usuario como participante (Ajusta el "Role" según cómo lo manejes en tu app)

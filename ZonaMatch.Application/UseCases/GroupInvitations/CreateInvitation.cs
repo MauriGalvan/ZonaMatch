@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using ZonaMatch.Application.DTOs.GroupInvitation;
+using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
@@ -16,6 +18,7 @@ public class CreateInvitation
     private readonly INotificationRepository _notifications;
     private readonly IEmailService _emailService;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger<CreateInvitation> _logger;
 
     public CreateInvitation(
         IGroupRepository groupRepository,
@@ -23,7 +26,8 @@ public class CreateInvitation
         IUserRepository userRepository,
         INotificationRepository notifications,
         IEmailService emailService,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        ILogger<CreateInvitation> logger)
     {
         _groupRepository = groupRepository;
         _invitationRepository = invitationRepository;
@@ -31,6 +35,7 @@ public class CreateInvitation
         _notifications = notifications;
         _emailService = emailService;
         _timeProvider = timeProvider;
+        _logger = logger;
     }
 
     // Le pasamos el currentUserId que sacaremos del JWT en el Controlador
@@ -44,7 +49,7 @@ public class CreateInvitation
         var group = await _groupRepository.GetByIdAsync(request.GroupId, cancellationToken);
         if (group == null)
         {
-            throw new Exception("El grupo no existe."); // O tu excepción personalizada (NotFoundException)
+            throw new NotFoundException("El grupo no existe.");
         }
 
         // 2. Validar que el usuario que intenta invitar sea el Propietario (Owner)
@@ -52,7 +57,7 @@ public class CreateInvitation
         bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && GroupRole.Owner == p.Role);
         if (!isOwner)
         {
-            throw new Exception("Solo el propietario del grupo puede enviar invitaciones."); // (ForbiddenException)
+            throw new ForbiddenException("Solo el propietario del grupo puede enviar invitaciones.");
         }
 
         // 3. Crear la entidad de invitación con el Token aleatorio
@@ -103,6 +108,9 @@ public class CreateInvitation
             ";
 
         await _emailService.SendEmailAsync(request.Email, subject, body, cancellationToken);
+
+        // The recipient address is not logged on purpose
+        _logger.LogInformation("User {UserId} sent an email invitation to group {GroupId}", currentUserId, group.Id);
     }
 
 }

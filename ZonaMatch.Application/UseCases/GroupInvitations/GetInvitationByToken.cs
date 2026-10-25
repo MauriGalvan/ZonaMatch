@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using ZonaMatch.Application.DTOs.GroupInvitation;
+using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 namespace ZonaMatch.Application.UseCases.GroupInvitations;
 
@@ -20,7 +21,7 @@ public class GetInvitationByToken
 
         if (invitation == null)
         {
-            throw new Exception("La invitación no existe."); // O tu NotFoundException
+            throw new NotFoundException("La invitación no existe.");
         }
 
         return new InvitationDetailsResponse

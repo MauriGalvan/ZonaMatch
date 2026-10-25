@@ -1,7 +1,9 @@
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Instrumentation.AspNetCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -13,22 +15,23 @@ using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.AnalisisGuardados;
-using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.Auth;
+using ZonaMatch.Application.UseCases.Contacto;
+using ZonaMatch.Application.UseCases.Criterios;
+using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
-using ZonaMatch.Application.UseCases.Notifications;
-using ZonaMatch.Application.UseCases.Contacto;
 using ZonaMatch.Application.UseCases.Groups;
-using ZonaMatch.Application.UseCases.Geolocation;
+using ZonaMatch.Application.UseCases.Notifications;
 using ZonaMatch.Application.UseCases.Perfil;
-using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Application.UseCases.Routes;
 using ZonaMatch.Application.UseCases.SavedZones;
+using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
@@ -37,9 +40,27 @@ using ZonaMatch.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Telemetry to Azure Monitor (Application Insights): logs, requests, dependencies and exceptions.
+// Only enabled when the connection string is configured (APPLICATIONINSIGHTS_CONNECTION_STRING app setting in Azure),
+// so local runs and CI keep working without it.
+if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+{
+    builder.Services.AddOpenTelemetry().UseAzureMonitor(options =>
+    {
+        // Rate-limited trace sampling keeps the ingested volume (and the Azure bill) bounded
+        options.TracesPerSecond = 2;
+    });
+
+    builder.Services.Configure<AspNetCoreTraceInstrumentationOptions>(options =>
+        options.Filter = context => !context.Request.Path.StartsWithSegments("/health"));
+}
+
 // Configure PostgreSQL and PostGIS.
 builder.Services.AddDbContext<ZonaMatchDbContext>(options =>
     options.UseZonaMatchNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// GET /health: used by the App Service "Health check" feature and by availability alerts. Verifies the database connection.
+builder.Services.AddHealthChecks().AddDbContextCheck<ZonaMatchDbContext>("postgres");
 
 // Generic repository.
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -203,6 +224,16 @@ builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    // Rejections would otherwise be silent: repeated hits on /Auth/login are the signal of a brute-force attempt
+    options.OnRejected = (context, _) =>
+    {
+        var http = context.HttpContext;
+        http.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("ZonaMatch.RateLimiting")
+            .LogWarning("Rate limit exceeded on {Method} {Path} from {RemoteIp}",
+                http.Request.Method, http.Request.Path, http.Connection.RemoteIpAddress);
+        return ValueTask.CompletedTask;
+    };
     options.AddPolicy("login", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
@@ -262,5 +293,6 @@ app.UseMiddleware<OriginValidationMiddleware>(new object[] { allowedOrigins });
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHealthChecks("/health");
 app.MapControllers();
 app.Run();

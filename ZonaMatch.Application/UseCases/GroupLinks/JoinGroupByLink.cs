@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
@@ -23,14 +24,14 @@ public class JoinGroupByLink
 
         if (group == null)
         {
-            throw new Exception("El enlace de invitación no es válido o ha sido revocado.");
+            throw new NotFoundException("El enlace de invitación no es válido o ha sido revocado.");
         }
 
         // Validar si ya está adentro
         bool alreadyMember = group.Participants.Any(p => p.UserId == currentUserId);
         if (alreadyMember)
         {
-            throw new Exception("Ya eres miembro de este grupo.");
+            throw new ConflictException("Ya eres miembro de este grupo.");
         }
 
         // Crear el objeto participante
