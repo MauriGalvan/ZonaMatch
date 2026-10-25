@@ -349,7 +349,9 @@ SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
        coalesce(c.h_alquilan, 0),
        -- Dentro de CABA una zona sin delitos registrados tiene 0; sin dato del SNIC queda null
        d.total, d.robos, d.hurtos, d.lesiones, d.homicidios, d.amenazas, d.viales,
-       d.fuente, d.periodo, d.ambito, d.comparables
+       -- Con muy pocos habitantes (clubes, countries chicos) una tasa por habitante no dice nada: el puntaje la
+       -- toma como dato faltante
+       d.fuente, d.periodo, d.ambito, CASE WHEN t.poblacion >= 500 THEN d.comparables END
 FROM totales t
 JOIN censo c USING (osm_id)
 LEFT JOIN delitos d USING (osm_id);
