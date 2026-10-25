@@ -46,7 +46,7 @@ DROP TABLE geo.carga_delitos_fracciones;
 
 COMMIT;
 
-SELECT count(*) AS zonas_repartidas, round(min(delitos_reparto), 2) AS factor_minimo,
-       round(max(delitos_reparto), 2) AS factor_maximo
+SELECT count(*) AS zonas_repartidas, round(min(delitos_reparto)::numeric, 2) AS factor_minimo,
+       round(max(delitos_reparto)::numeric, 2) AS factor_maximo
 FROM geo.zona_indicadores
 WHERE delitos_reparto IS NOT NULL;
