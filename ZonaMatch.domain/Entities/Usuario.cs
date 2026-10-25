@@ -15,5 +15,8 @@ namespace ZonaMatch.Domain.Entities
         public DateOnly FechaNacimiento { get; set; }
 
         public DateTimeOffset FechaCreacion { get; set; }
+
+        // Site administrator: can approve or reject community contributions directly
+        public bool EsAdministrador { get; set; }
     }
 }

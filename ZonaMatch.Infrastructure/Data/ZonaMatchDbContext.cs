@@ -25,6 +25,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Respuesta> Respuestas => Set<Respuesta>();
         public DbSet<Aporte> Aportes => Set<Aporte>();
         public DbSet<AporteValidacion> AportesValidaciones => Set<AporteValidacion>();
+        public DbSet<CommunityPoi> CommunityPois => Set<CommunityPoi>();
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
         public DbSet<Contexto> Contextos => Set<Contexto>();
@@ -354,6 +355,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaResolucion).HasColumnType("timestamptz");
                 e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.ResueltoPorId).OnDelete(DeleteBehavior.SetNull);
                 e.HasMany(x => x.Validaciones).WithOne().HasForeignKey(x => x.AporteId).OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -363,6 +365,21 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasKey(x => new { x.AporteId, x.UsuarioId });
                 e.Property(x => x.Fecha).HasColumnType("timestamptz");
                 e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Approved contributions persisted as points of interest, read by the map queries over OSM
+            modelBuilder.Entity<CommunityPoi>(e =>
+            {
+                e.ToTable("community_pois");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Id).HasMaxLength(40);
+                e.Property(x => x.ZoneSlug).HasMaxLength(200);
+                e.Property(x => x.Name).HasMaxLength(Longitudes.NombreLugar);
+                e.Property(x => x.Category).HasMaxLength(40);
+                e.Property(x => x.Location).HasColumnType("geometry(Point,4326)");
+                e.Property(x => x.UpdatedAt).HasColumnType("timestamptz");
+                e.HasIndex(x => x.Location).HasMethod("gist");
+                e.HasOne<Aporte>().WithMany().HasForeignKey(x => x.LastContributionId).OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<GroupInvitation>()
