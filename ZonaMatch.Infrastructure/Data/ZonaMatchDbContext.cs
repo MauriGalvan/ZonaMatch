@@ -38,6 +38,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<ZoneMarket> ZoneMarkets => Set<ZoneMarket>();
         public DbSet<SavedZone> SavedZones => Set<SavedZone>();
         public DbSet<UserNotification> Notifications => Set<UserNotification>();
+        public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -187,6 +188,19 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Name).HasMaxLength(150).IsRequired();
                 e.Property(x => x.Subtitle).HasMaxLength(300).IsRequired();
                 e.Property(x => x.SavedAt).HasColumnType("timestamptz");
+                e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PasswordResetToken>(e =>
+            {
+                e.ToTable("password_reset_tokens");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+                e.Property(x => x.CreatedAt).HasColumnType("timestamptz");
+                e.Property(x => x.ExpiresAt).HasColumnType("timestamptz");
+                e.Property(x => x.UsedAt).HasColumnType("timestamptz");
+                e.HasIndex(x => x.TokenHash).IsUnique();
+                e.HasIndex(x => new { x.UserId, x.CreatedAt });
                 e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 

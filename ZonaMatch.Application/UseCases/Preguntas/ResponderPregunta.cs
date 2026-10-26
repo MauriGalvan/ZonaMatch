@@ -16,19 +16,22 @@ namespace ZonaMatch.Application.UseCases.Preguntas
         private readonly IEmailService _emailService;
         private readonly ILogger<ResponderPregunta> _logger;
         private readonly TimeProvider _reloj;
+        private readonly FrontendLinks _links;
 
         public ResponderPregunta(
             IPreguntaRepository preguntas,
             INotificationRepository notifications,
             IEmailService emailService,
             ILogger<ResponderPregunta> logger,
-            TimeProvider reloj)
+            TimeProvider reloj,
+            FrontendLinks links)
         {
             _preguntas = preguntas;
             _notifications = notifications;
             _emailService = emailService;
             _logger = logger;
             _reloj = reloj;
+            _links = links;
         }
 
         public async Task<RespuestaDto> EjecutarAsync(
@@ -78,8 +81,9 @@ namespace ZonaMatch.Application.UseCases.Preguntas
                             Paragraphs:
                             [
                                 $"Alguien respondió una pregunta que publicaste en la zona <strong>{BrandEmail.Encode(zonaSlug)}</strong>.",
-                                "Iniciá sesión en ZonaMatch y entrá a Comunidad, en esa zona, para leer la respuesta.",
+                                "Entrá a Comunidad, en esa zona, para leer la respuesta y seguir la conversación.",
                             ],
+                            Button: new BrandEmailButton("Ver la respuesta", _links.To($"/zonas/{Uri.EscapeDataString(zonaSlug)}?tab=comunidad")),
                             Footnote: "Te avisamos porque sos quien hizo la pregunta.")),
                         cancellationToken);
                 }
