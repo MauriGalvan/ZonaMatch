@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
@@ -71,7 +72,15 @@ namespace ZonaMatch.Application.UseCases.Preguntas
                     await _emailService.SendEmailAsync(
                         pregunta.Usuario.Email,
                         "Nueva respuesta a tu pregunta en ZonaMatch",
-                        $"<p>Alguien respondió una pregunta que publicaste en la zona {System.Net.WebUtility.HtmlEncode(zonaSlug)}.</p><p>Iniciá sesión en ZonaMatch para leer la respuesta en Comunidad.</p>",
+                        BrandEmail.Render(new BrandEmailContent(
+                            Preheader: "Alguien respondió una pregunta que publicaste.",
+                            Title: "Respondieron tu pregunta",
+                            Paragraphs:
+                            [
+                                $"Alguien respondió una pregunta que publicaste en la zona <strong>{BrandEmail.Encode(zonaSlug)}</strong>.",
+                                "Iniciá sesión en ZonaMatch y entrá a Comunidad, en esa zona, para leer la respuesta.",
+                            ],
+                            Footnote: "Te avisamos porque sos quien hizo la pregunta.")),
                         cancellationToken);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

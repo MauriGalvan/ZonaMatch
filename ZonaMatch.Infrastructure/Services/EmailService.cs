@@ -5,12 +5,24 @@ using MailKit.Net.Smtp;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Infrastructure.Services;
 
 public class EmailService : IEmailService
 {
+    private static readonly Lazy<byte[]?> LogoBytes = new(() =>
+    {
+        using var stream = typeof(EmailService).Assembly.GetManifestResourceStream("ZonaMatch.EmailLogo.png");
+        if (stream is null)
+            return null;
+
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return copy.ToArray();
+    });
+
     private readonly IConfiguration _config;
 
     public EmailService(IConfiguration config)
@@ -30,6 +42,13 @@ public class EmailService : IEmailService
 
         // Usamos formato Html para poder mandar links bonitos al frontend
         var builder = new BodyBuilder { HtmlBody = body };
+
+        // Brand layout: the logo travels inside the email (most clients block SVG and remote images)
+        if (body.Contains($"cid:{BrandEmail.LogoContentId}", StringComparison.Ordinal) && LogoBytes.Value is { } logo)
+        {
+            var image = builder.LinkedResources.Add("zonamatch.png", logo, new ContentType("image", "png"));
+            image.ContentId = BrandEmail.LogoContentId;
+        }
         foreach (var attachment in attachments)
             builder.Attachments.Add(attachment.FileName, attachment.Content, ContentType.Parse(attachment.ContentType));
 

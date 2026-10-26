@@ -1,5 +1,5 @@
-using System.Net;
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 
@@ -35,13 +35,17 @@ namespace ZonaMatch.Application.UseCases.Contacto
 
             var asunto = $"Formulario de contacto: {nombre ?? email}";
             // Lo que escribio la persona se codifica para que no pueda meter HTML en el mail
-            var cuerpo = $"""
-                <h3>Nuevo mensaje del formulario de contacto</h3>
-                <p><strong>Email:</strong> {WebUtility.HtmlEncode(email)}</p>
-                <p><strong>Nombre:</strong> {WebUtility.HtmlEncode(nombre ?? "No lo indico")}</p>
-                <p><strong>Donde busca:</strong> {WebUtility.HtmlEncode(zona ?? "No lo indico")}</p>
-                <p><strong>Fecha:</strong> {fecha:dd/MM/yyyy HH:mm} (hora de Argentina)</p>
-                """;
+            var cuerpo = BrandEmail.Render(new BrandEmailContent(
+                Preheader: $"Nuevo mensaje de {nombre ?? email}",
+                Title: "Nuevo mensaje del formulario de contacto",
+                Paragraphs:
+                [
+                    $"<strong>Email:</strong> {BrandEmail.Encode(email)}",
+                    $"<strong>Nombre:</strong> {BrandEmail.Encode(nombre ?? "No lo indico")}",
+                    $"<strong>Dónde busca:</strong> {BrandEmail.Encode(zona ?? "No lo indico")}",
+                    $"<strong>Fecha:</strong> {fecha:dd/MM/yyyy HH:mm} (hora de Argentina)",
+                ],
+                Button: new BrandEmailButton("Responder", $"mailto:{email}")));
 
             try
             {

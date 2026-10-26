@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ZonaMatch.Application.DTOs.GroupInvitation;
+using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
@@ -95,17 +96,19 @@ public class CreateInvitation
             ? "http://localhost:5173"
             : frontendBaseUrl.TrimEnd('/');
         string inviteLink = $"{frontendUrl}/invitations/email/{invitation.Token}";
-        string subject = $"¡Te han invitado al grupo {group.Name} en ZonaMatch!";
-
-        // Armamos un mini HTML para que el correo se vea más presentable
-        string body = $@"
-                <h3>¡Hola!</h3>
-                <p>Te han invitado a unirte al grupo <strong>{group.Name}</strong>.</p>
-                <p>Haz clic en el siguiente enlace para aceptar la invitación:</p>
-                <a href='{inviteLink}'>Unirme al Grupo</a>
-                <br/><br/>
-                <p>Este enlace expirará en {invitation.ExpiresAt.Subtract(DateTime.UtcNow).Days} días.</p>
-            ";
+        string subject = $"Te invitaron al grupo {group.Name} en ZonaMatch";
+        var days = Math.Max(1, (int)Math.Ceiling((invitation.ExpiresAt - DateTime.UtcNow).TotalDays));
+        // The group name is typed by a user: it is encoded so it cannot inject HTML
+        string body = BrandEmail.Render(new BrandEmailContent(
+            Preheader: $"Sumate al grupo {group.Name} para buscar zona juntos.",
+            Title: "¡Te invitaron a buscar zona en grupo!",
+            Paragraphs:
+            [
+                $"Te invitaron a sumarte al grupo <strong>{BrandEmail.Encode(group.Name)}</strong> en ZonaMatch.",
+                "Cada integrante carga lo que le importa y ZonaMatch arma un ranking de zonas que tiene en cuenta a todos.",
+            ],
+            Button: new BrandEmailButton("Unirme al grupo", inviteLink),
+            Footnote: $"La invitación vence en {days} {(days == 1 ? "día" : "días")}. Si no esperabas este mail, podés ignorarlo."));
 
         await _emailService.SendEmailAsync(request.Email, subject, body, cancellationToken);
 

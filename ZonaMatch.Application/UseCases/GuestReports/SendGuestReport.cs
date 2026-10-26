@@ -1,6 +1,6 @@
-using System.Net;
 using System.Text;
 using ZonaMatch.Application.DTOs.GuestReports.Requests;
+using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 
@@ -45,21 +45,14 @@ public sealed class SendGuestReport(IEmailService email, GuestReportQuota quota)
         quota.Register(recipient);
     }
 
-    private static string Body(string frontendBaseUrl)
-    {
-        var registerUrl = WebUtility.HtmlEncode($"{frontendBaseUrl}/register");
-
-        return $"""
-            <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937;line-height:1.5">
-              <h2 style="color:#0b3d91">¡Gracias por probar ZonaMatch!</h2>
-              <p>Te mandamos adjunto el informe de tu análisis, con las zonas que mejor se ajustan a lo que te importa.</p>
-              <p>Si te creás una cuenta podés guardar tus análisis, ajustarlos cuando cambien tus planes, compararlos y buscar zona en grupo con quienes vas a vivir.</p>
-              <p style="margin:24px 0">
-                <a href="{registerUrl}" style="background:#0b3d91;color:#ffffff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Crear mi cuenta gratis</a>
-              </p>
-              <p>¡Suerte con la búsqueda!<br>El equipo de ZonaMatch</p>
-              <p style="font-size:12px;color:#6b7280">Recibiste este mail porque lo pediste desde ZonaMatch. No guardamos tu dirección ni te vamos a escribir de nuevo.</p>
-            </div>
-            """;
-    }
+    private static string Body(string frontendBaseUrl) => BrandEmail.Render(new BrandEmailContent(
+        Preheader: "Te mandamos el informe de tu análisis de zonas.",
+        Title: "¡Gracias por probar ZonaMatch!",
+        Paragraphs:
+        [
+            "Te mandamos adjunto el informe de tu análisis, con las zonas que mejor encajan con lo que te importa.",
+            "Con una cuenta podés guardar tus análisis, ajustarlos cuando cambien tus planes, compararlos y buscar zona en grupo con quienes vas a vivir.",
+        ],
+        Button: new BrandEmailButton("Crear mi cuenta gratis", $"{frontendBaseUrl}/register"),
+        Footnote: "Recibiste este mail porque lo pediste desde ZonaMatch. No guardamos tu dirección ni te vamos a volver a escribir."));
 }
