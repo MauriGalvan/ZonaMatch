@@ -40,7 +40,7 @@ namespace ZonaMatch.Tests.UseCases.Contacto
             var mail = Assert.Single(_email.Enviados);
             Assert.Equal("Formulario de contacto: ana@example.com", mail.Asunto);
             Assert.Contains("<strong>Nombre:</strong> No lo indico", mail.Cuerpo);
-            Assert.Contains("<strong>Donde busca:</strong> No lo indico", mail.Cuerpo);
+            Assert.Contains("<strong>Dónde busca:</strong> No lo indico", mail.Cuerpo);
         }
 
         [Fact]

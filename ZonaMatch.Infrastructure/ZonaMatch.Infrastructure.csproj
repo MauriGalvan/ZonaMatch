@@ -24,4 +24,9 @@
     <ProjectReference Include="..\ZonaMatch.domain\ZonaMatch.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Logo that every outgoing email shows (cid:zonamatch-logo) -->
+    <EmbeddedResource Include="Services/Assets/email-logo.png" LogicalName="ZonaMatch.EmailLogo.png" />
+  </ItemGroup>
+
 </Project>
