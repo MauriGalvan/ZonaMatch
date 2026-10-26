@@ -953,8 +953,8 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnName("prioridad");
 
                     b.Property<string>("QuienVa")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("quien_va");
 
                     b.Property<string>("TiempoMax")

@@ -9,10 +9,10 @@ namespace ZonaMatch.Domain.Entities
 
         public Contexto? Contexto { get; set; }
 
-        // Posicion en la lista del wizard ("Persona 1", "Persona 2", ...)
+        // Position in the profile wizard's household list.
         public int Orden { get; set; }
 
-        // Nombre libre; el wizard actual no lo pide, queda null
+        // Display name entered in the profile wizard.
         public string? Nombre { get; set; }
 
         // Rango etario elegido en el wizard, verbatim (ej: "26–35 años"); null si no eligió
