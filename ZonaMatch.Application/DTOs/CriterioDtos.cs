@@ -14,6 +14,7 @@ namespace ZonaMatch.Application.DTOs
 
     public record ContextoDto(
         int Personas,
+        IReadOnlyList<string> PersonNames,
         IReadOnlyList<string?> Edades,
         IReadOnlyList<string> Movilidad,
         IReadOnlyList<string> Mascotas);

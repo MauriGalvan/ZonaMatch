@@ -226,7 +226,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Nombre).HasMaxLength(100).IsRequired();
                 e.Property(x => x.Direccion).HasMaxLength(200);
                 e.Property(x => x.Tipo).HasMaxLength(30);
-                e.Property(x => x.QuienVa).HasMaxLength(20);
+                e.Property(x => x.QuienVa).HasMaxLength(50);
                 e.Property(x => x.Frecuencia).HasMaxLength(20);
                 e.Property(x => x.Prioridad).HasMaxLength(20);
                 e.Property(x => x.TiempoMax).HasMaxLength(10);

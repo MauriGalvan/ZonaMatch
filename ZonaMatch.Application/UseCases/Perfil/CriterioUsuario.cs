@@ -47,6 +47,21 @@ namespace ZonaMatch.Application.UseCases.Perfil
             if (solicitud.Edades.Count > solicitud.Personas)
                 throw new BadRequestException("Hay más edades que personas en el contexto.");
 
+            if (solicitud.PersonNames is null)
+                throw new BadRequestException("Los nombres de las personas deben ser una lista.");
+
+            if (solicitud.PersonNames.Count > solicitud.Personas)
+                throw new BadRequestException("Hay más nombres que personas en el contexto.");
+
+            if (solicitud.PersonNames.Count > 0 && solicitud.PersonNames.Count != solicitud.Personas)
+                throw new BadRequestException("Debe indicarse un nombre para cada persona del contexto.");
+
+            if (solicitud.PersonNames.Any(name => string.IsNullOrWhiteSpace(name)))
+                throw new BadRequestException("El nombre de cada persona es obligatorio.");
+
+            if (solicitud.PersonNames.Any(name => name!.Trim().Length > 50))
+                throw new BadRequestException("El nombre de una persona no puede superar 50 caracteres.");
+
             if (solicitud.Edades.Any(e => e is { Length: > 40 }))
                 throw new BadRequestException("Un rango etario no puede superar 40 caracteres.");
 
@@ -54,6 +69,9 @@ namespace ZonaMatch.Application.UseCases.Perfil
                 .Select(orden => new Persona
                 {
                     Orden = orden,
+                    Nombre = solicitud.PersonNames.Count == 0
+                        ? $"Persona {orden}"
+                        : solicitud.PersonNames[orden - 1]!.Trim(),
                     Edad = orden <= solicitud.Edades.Count ? solicitud.Edades[orden - 1] : null,
                 })
                 .ToList();
@@ -131,6 +149,10 @@ namespace ZonaMatch.Application.UseCases.Perfil
         public static ContextoDto ContextoADto(Contexto contexto) =>
             new(
                 contexto.Personas,
+                contexto.Integrantes
+                    .OrderBy(person => person.Orden)
+                    .Select(person => string.IsNullOrWhiteSpace(person.Nombre) ? $"Persona {person.Orden}" : person.Nombre.Trim())
+                    .ToList(),
                 contexto.Integrantes.OrderBy(p => p.Orden).Select(p => p.Edad).ToList(),
                 contexto.Movilidad?.ToList() ?? [],
                 contexto.Mascotas?.ToList() ?? []);

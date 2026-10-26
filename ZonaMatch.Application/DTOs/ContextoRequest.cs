@@ -1,15 +1,17 @@
 namespace ZonaMatch.Application.DTOs
 {
-    // Bloque "contexto" del wizard: { personas, edades[], movilidad[], mascotas[] }.
-    // Se valida en el servicio: personas 1..8; movilidad y mascotas se guardan verbatim.
+    // Context block from the profile wizard: people, names, ages, mobility, and pets.
     public class ContextoRequest
     {
         public int Personas { get; set; } = 1;
 
-        // Rango etario por integrante, en orden; puede venir menos edades que personas
+        // Names are optional for older clients; missing names receive stable defaults.
+        public List<string?> PersonNames { get; set; } = [];
+
+        // Age range for each person, in order; fewer values than people are allowed.
         public List<string?> Edades { get; set; } = [];
 
-        // a-pie, transporte-publico, vehiculo, bici — igual que mascotas: verbatim
+        // Mobility options are stored as provided.
         public List<string> Movilidad { get; set; } = [];
 
         public List<string> Mascotas { get; set; } = [];
