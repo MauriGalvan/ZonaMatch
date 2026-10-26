@@ -79,20 +79,23 @@ namespace ZonaMatch.Infrastructure.Repositories
             -- Rent of every property type together (app.zone_market). Partidos and comunas without a row of their
             -- own add up the zones they contain (average weighted by listings).
             alquileres AS (
-                SELECT zone_slug, average_price, listings
+                SELECT zone_slug, average_price, average_expenses_ars, listings
                 FROM {App}.zone_market
                 WHERE operation = 'rent' AND property_type = 'all' AND average_price IS NOT NULL
             ),
             alquiler AS (
                 SELECT z.osm_id,
                        COALESCE(a.average_price, agregado.promedio) AS promedio,
-                       COALESCE(a.listings, agregado.propiedades) AS propiedades
+                       COALESCE(a.listings, agregado.propiedades) AS propiedades,
+                       CASE WHEN a.zone_slug IS NULL THEN agregado.expensas ELSE a.average_expenses_ars END AS expensas
                 FROM zonas z
                 LEFT JOIN alquileres a ON a.zone_slug = z.slug
                 LEFT JOIN LATERAL (
                     SELECT round(sum(b.average_price * greatest(b.listings, 1))
                                  / sum(greatest(b.listings, 1))) AS promedio,
-                           sum(b.listings)::int AS propiedades
+                           sum(b.listings)::int AS propiedades,
+                           round(sum(b.average_expenses_ars * greatest(b.listings, 1))
+                                 / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_expenses_ars IS NOT NULL), 0)) AS expensas
                     FROM zonas h
                     JOIN alquileres b ON b.zone_slug = h.slug
                     WHERE a.zone_slug IS NULL AND z.nivel <= 5 AND h.nivel > 5
@@ -105,7 +108,8 @@ namespace ZonaMatch.Infrastructure.Repositories
                    e.escuelas AS "Escuelas", e.salud AS "CentrosSalud", e.verdes AS "EspaciosVerdes",
                    v.m2 AS "SuperficieVerdeM2",
                    ST_Y({ZonaSql.Centro("z.geom")}) AS "Latitud", ST_X({ZonaSql.Centro("z.geom")}) AS "Longitud",
-                   a.promedio AS "AlquilerPromedio", a.propiedades AS "PropiedadesDisponibles"
+                   a.promedio AS "AlquilerPromedio", a.propiedades AS "PropiedadesDisponibles",
+                   a.expensas AS "ExpensasPromedio"
             FROM zonas z
             LEFT JOIN {Geo}.zona_indicadores i USING (osm_id)
             LEFT JOIN lineas l USING (osm_id)
@@ -248,6 +252,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             public double Longitud { get; set; }
             public decimal? AlquilerPromedio { get; set; }
             public int? PropiedadesDisponibles { get; set; }
+            public decimal? ExpensasPromedio { get; set; }
 
             public PerfilZona APerfil() => new()
             {
@@ -267,6 +272,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 Longitud = Longitud,
                 AlquilerPromedio = AlquilerPromedio,
                 PropiedadesDisponibles = PropiedadesDisponibles,
+                ExpensasPromedio = ExpensasPromedio,
             };
         }
     }

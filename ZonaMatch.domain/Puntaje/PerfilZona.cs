@@ -35,6 +35,12 @@ namespace ZonaMatch.Domain.Puntaje
         public decimal? AlquilerPromedio { get; init; }
         public int? PropiedadesDisponibles { get; init; }
 
+        // Expensas mensuales promedio en pesos; null si no hay dato
+        public decimal? ExpensasPromedio { get; init; }
+
+        // Lo que se paga por mes para vivir en la zona: alquiler mas expensas (sin dato de expensas, solo alquiler)
+        public decimal? CostoMensual => AlquilerPromedio is { } alquiler ? alquiler + (ExpensasPromedio ?? 0) : null;
+
         // Comunas y partidos se comparan entre si, y barrios y localidades entre si
         public bool EsZonaGrande => Nivel <= 5;
 

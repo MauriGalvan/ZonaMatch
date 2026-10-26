@@ -226,7 +226,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 resultado.Lugares.Select(l => new TiempoLugarDto(
                     l.Nombre, l.Minutos, l.MaximoMinutos, l.Estimado, l.DistanciaKm)).ToList(),
                 resultado.Zona.AlquilerPromedio is { } promedio
-                    ? new AlquilerZonaDto(promedio, resultado.Zona.PropiedadesDisponibles ?? 0)
+                    ? new AlquilerZonaDto(promedio, resultado.Zona.PropiedadesDisponibles ?? 0, resultado.Zona.ExpensasPromedio, resultado.Zona.CostoMensual)
                     : null);
     }
 }
