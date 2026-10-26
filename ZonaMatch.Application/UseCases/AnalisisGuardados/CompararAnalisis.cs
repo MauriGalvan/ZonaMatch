@@ -259,7 +259,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                         place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm))
                     .ToArray(),
                 result.Zona.AlquilerPromedio is { } average
-                    ? new AlquilerZonaDto(average, result.Zona.PropiedadesDisponibles ?? 0)
+                    ? new AlquilerZonaDto(average, result.Zona.PropiedadesDisponibles ?? 0, result.Zona.ExpensasPromedio, result.Zona.CostoMensual)
                     : null);
 
         private static PuntajeZonaDto ToDto(RankedZoneResponse result) =>

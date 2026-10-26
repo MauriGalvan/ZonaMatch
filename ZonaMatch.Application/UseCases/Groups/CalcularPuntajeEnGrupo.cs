@@ -379,7 +379,7 @@ public sealed partial class CalcularPuntajeEnGrupo
             .SelectMany(member => member.Zones[zone.Slug].Places)
             .ToArray();
         var rent = zone.AlquilerPromedio is { } average
-            ? new ZoneRentResponse(average, zone.PropiedadesDisponibles ?? 0)
+            ? new ZoneRentResponse(average, zone.PropiedadesDisponibles ?? 0, zone.ExpensasPromedio, zone.CostoMensual)
             : null;
 
         return new RankedZoneResponse(zone.Slug, zone.Nombre, groupScore, breakdown, componentGroups, limits, places, rent);

@@ -4,7 +4,7 @@ namespace ZonaMatch.Tests.Domain
 {
     public class MotorPuntajeTests
     {
-        private static PerfilZona Zona(string slug, int delitos = 30, int escuelas = 10, int nivel = 9, decimal? alquiler = null) => new()
+        private static PerfilZona Zona(string slug, int delitos = 30, int escuelas = 10, int nivel = 9, decimal? alquiler = null, decimal? expensas = null) => new()
         {
             Slug = slug,
             Nombre = slug,
@@ -15,6 +15,7 @@ namespace ZonaMatch.Tests.Domain
             Escuelas = escuelas,
             AlquilerPromedio = alquiler,
             PropiedadesDisponibles = alquiler is null ? null : 10,
+            ExpensasPromedio = expensas,
         };
 
         private static PedidoPuntaje Pedido(Dictionary<string, string> criterios, decimal? alquilerMaximo = null, List<LugarDelUsuario>? lugares = null) =>
@@ -117,6 +118,23 @@ namespace ZonaMatch.Tests.Domain
             Assert.Equal(50, ConTope(barata));
             Assert.True(motor.Calcular(barata, Pedido(criterios, 1_000_000)).Limites.Single().Cumple);
             Assert.Contains("en un 50 %", motor.Calcular(mucho, Pedido(criterios, 1_000_000)).Limites.Single().Detalle);
+        }
+
+        [Fact]
+        public void Las_expensas_cuentan_para_el_tope_mensual()
+        {
+            // 900.000 de alquiler queda dentro de 1.000.000, pero con 200.000 de expensas lo supera en un 10 %
+            var conExpensas = Zona("con-expensas", alquiler: 900_000, expensas: 200_000);
+            var sinExpensas = Zona("sin-expensas", alquiler: 900_000);
+            var motor = new MotorPuntaje([conExpensas, sinExpensas]);
+            var criterios = new Dictionary<string, string> { [MotorPuntaje.Educacion] = "media" };
+
+            var limite = motor.Calcular(conExpensas, Pedido(criterios, 1_000_000)).Limites.Single();
+
+            Assert.False(limite.Cumple);
+            Assert.Contains("= $ 1.100.000 por mes", limite.Detalle);
+            Assert.Equal(40, motor.Calcular(conExpensas, Pedido(criterios, 1_000_000)).Puntaje);
+            Assert.True(motor.Calcular(sinExpensas, Pedido(criterios, 1_000_000)).Limites.Single().Cumple);
         }
 
         [Fact]

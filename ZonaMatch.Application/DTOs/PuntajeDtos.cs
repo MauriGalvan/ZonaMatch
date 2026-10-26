@@ -91,5 +91,6 @@ namespace ZonaMatch.Application.DTOs
         bool Estimado,
         double? DistanciaKm = null);
 
-    public record AlquilerZonaDto(decimal Promedio, int PropiedadesDisponibles);
+    // Expensas: promedio mensual en pesos (null sin dato). CostoMensual: alquiler mas expensas.
+    public record AlquilerZonaDto(decimal Promedio, int PropiedadesDisponibles, decimal? Expensas = null, decimal? CostoMensual = null);
 }

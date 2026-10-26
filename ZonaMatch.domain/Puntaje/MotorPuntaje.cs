@@ -247,18 +247,21 @@ namespace ZonaMatch.Domain.Puntaje
         private static int PesoDeLugar(string? prioridad) =>
             prioridad is not null && PesoLugar.TryGetValue(prioridad, out var peso) ? peso : PesoLugar["Media"];
 
-        // El limite y cuanto se pasa del tope (0,1 = 10 %); sin dato de alquiler, ni suma ni resta
+        // El limite y cuanto se pasa del tope (0,1 = 10 %); sin dato de alquiler, ni suma ni resta.
+        // El tope es mensual, asi que se compara con alquiler mas expensas.
         private static (ResultadoLimite Limite, double Exceso) LimiteDeAlquiler(PerfilZona zona, decimal maximo)
         {
-            if (zona.AlquilerPromedio is not { } promedio)
+            if (zona.CostoMensual is not { } costo)
                 return (new ResultadoLimite(LimiteAlquiler, null, "Sin datos de alquiler para esta zona"), 0);
 
-            var detallePromedio = $"Alquiler promedio {Pesos(promedio)}";
+            var detallePromedio = zona.ExpensasPromedio is { } expensas
+                ? $"Alquiler {Pesos(zona.AlquilerPromedio!.Value)} + expensas {Pesos(expensas)} = {Pesos(costo)} por mes"
+                : $"Alquiler promedio {Pesos(costo)} (sin dato de expensas)";
 
-            if (promedio <= maximo)
+            if (costo <= maximo)
                 return (new ResultadoLimite(LimiteAlquiler, true, $"{detallePromedio}: dentro de tu tope de {Pesos(maximo)}"), 0);
 
-            var exceso = (double)(promedio / maximo - 1);
+            var exceso = (double)(costo / maximo - 1);
             var porcentaje = (int)Math.Ceiling(exceso * 100);
 
             return (new ResultadoLimite(LimiteAlquiler, false, $"{detallePromedio}: supera tu tope de {Pesos(maximo)} en un {porcentaje} %"), exceso);
