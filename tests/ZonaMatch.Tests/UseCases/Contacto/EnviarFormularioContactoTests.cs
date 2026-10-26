@@ -85,6 +85,9 @@ namespace ZonaMatch.Tests.UseCases.Contacto
                 Enviados.Add((to, subject, body));
                 return Task.CompletedTask;
             }
+
+            public Task SendEmailAsync(string to, string subject, string body, IReadOnlyList<EmailAttachment> attachments, CancellationToken cancellationToken = default) =>
+                SendEmailAsync(to, subject, body, cancellationToken);
         }
     }
 }
