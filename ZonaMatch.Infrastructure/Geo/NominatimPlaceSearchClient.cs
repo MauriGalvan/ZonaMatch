@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using ZonaMatch.Application.DTOs.Geolocation;
+using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Infrastructure.Geo
@@ -17,8 +18,19 @@ namespace ZonaMatch.Infrastructure.Geo
             var url = $"search?format=jsonv2&addressdetails=1&namedetails=1&accept-language=es" +
                       $"&countrycodes=ar&viewbox={Viewbox}&bounded=1&limit={nominatimLimit}&q={Uri.EscapeDataString(search)}";
 
-            using var response = await httpClient.GetAsync(url, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            HttpResponseMessage response;
+            try
+            {
+                response = await httpClient.GetAsync(url, cancellationToken);
+                response.EnsureSuccessStatusCode();
+            }
+            catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+            {
+                // Nominatim is down or not started: a typed 503 instead of a generic 500
+                throw new ServiceUnavailableException("The place search service is not available.", ex);
+            }
+
+            using var _ = response;
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
