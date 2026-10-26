@@ -12,7 +12,7 @@ namespace ZonaMatch.Infrastructure.Geo
     // Trip plans from MOTIS (the "motis" container of docker-compose, GET /api/v1/plan), with every leg and its
     // geometry. Like MotisRuteoClient, it asks for a weekday of the loaded reference week at 8 in the morning and
     // keeps each plan in memory for a day. Of the itineraries MOTIS offers, the best one is kept: the fastest, with
-    // every transfer counted as TransferPenaltySeconds more and every public transport leg shorter than ten blocks as
+    // every transfer counted as TransferPenaltySeconds more and every public transport leg shorter than five blocks as
     // ShortRidePenaltySeconds more, so a bus for three blocks or an unnecessary transfer does not win by a minute.
     public class MotisRoutePlanner(HttpClient http, IMemoryCache cache, IConfiguration configuration) : IRoutePlanner
     {
@@ -23,7 +23,7 @@ namespace ZonaMatch.Infrastructure.Geo
 
         private const int TransferPenaltySeconds = 300;
 
-        // A ride of ten blocks or less (ModosViaje.DistanciaACaminarKm) is better walked
+        // A ride of five blocks or less (ModosViaje.DistanciaACaminarKm) is better walked
         private const int ShortRidePenaltySeconds = 600;
 
         // Longest direct walk or bike ride searched (seconds)
@@ -95,7 +95,7 @@ namespace ZonaMatch.Infrastructure.Geo
 
         private static readonly HashSet<string> WalkingModes = ["walk", "bike", "car"];
 
-        // A public transport leg shorter than ten blocks along its path
+        // A public transport leg shorter than five blocks along its path
         private static bool IsShortRide(RouteLeg leg) =>
             !WalkingModes.Contains(leg.Mode) && leg.Path.Count > 1 && PathKm(leg.Path) <= ModosViaje.DistanciaACaminarKm;
 

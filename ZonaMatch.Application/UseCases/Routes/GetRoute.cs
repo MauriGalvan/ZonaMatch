@@ -19,7 +19,7 @@ namespace ZonaMatch.Application.UseCases.Routes
             var requestedMode = ModosViaje.DesdeCodigo(request.Mode)
                 ?? throw new BadRequestException("Unknown travel mode: use transporte-publico, auto, bici or a-pie.");
 
-            // Ten blocks or less are walked, as in the scoring: the response says which mode was used
+            // Five blocks or less are walked, as in the scoring: the response says which mode was used
             var mode = ModosViaje.ParaDistancia(
                 requestedMode, request.FromLatitude, request.FromLongitude, request.ToLatitude, request.ToLongitude);
 

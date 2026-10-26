@@ -42,17 +42,17 @@ if not exist "%DUMP_FILE%" (
     goto :ef
 )
 
-set GEO_TABLES=
-for /f "usebackq" %%i in (`%PSQL% -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='geo'"`) do set GEO_TABLES=%%i
-if "%GEO_TABLES%"=="" goto :err_geocheck
-if not "%GEO_TABLES%"=="0" (
-    echo El schema geo ya tiene %GEO_TABLES% tablas. Se omite el restore.
+rem Se mira una tabla del dump (geo.escuelas) y no si geo tiene tablas: DATOS-ZONAS-DOCKER.bat tambien crea tablas en geo
+rem y, si corria antes, el dump no se cargaba nunca.
+set HAS_DUMP=
+for /f "usebackq" %%i in (`%PSQL% -tAc "SELECT to_regclass('geo.escuelas') IS NOT NULL"`) do set HAS_DUMP=%%i
+if "%HAS_DUMP%"=="" goto :err_geocheck
+if "%HAS_DUMP%"=="t" (
+    echo Las tablas de %DUMP_FILE% ya estan en el schema geo. Se omite el restore.
     goto :ef
 )
 
 echo Restaurando %DUMP_FILE% (puede tardar unos minutos)...
-rem El dump crea sus tablas en el schema zm: se descarta el geo vacio y se renombra zm a geo.
-%PSQL% -c "DROP SCHEMA IF EXISTS geo;" >nul
 %PSQL% < "%DUMP_FILE%" > "%RESTORE_LOG%" 2>&1
 
 set HAS_ZM=
@@ -60,15 +60,14 @@ for /f "usebackq" %%i in (`%PSQL% -tAc "SELECT count(*) FROM information_schema.
 if "%HAS_ZM%"=="1" goto :rename_zm
 
 rem No hay schema zm: puede que el dump ya cree las tablas en geo directamente.
-%PSQL% -c "CREATE SCHEMA IF NOT EXISTS geo;" >nul
-set GEO_TABLES=
-for /f "usebackq" %%i in (`%PSQL% -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='geo'"`) do set GEO_TABLES=%%i
-if "%GEO_TABLES%"=="" goto :err_restore
-if "%GEO_TABLES%"=="0" goto :err_restore
+set HAS_DUMP=
+for /f "usebackq" %%i in (`%PSQL% -tAc "SELECT to_regclass('geo.escuelas') IS NOT NULL"`) do set HAS_DUMP=%%i
+if not "%HAS_DUMP%"=="t" goto :err_restore
 goto :restore_done
 
 :rename_zm
-%PSQL% -v ON_ERROR_STOP=1 -c "ALTER SCHEMA zm RENAME TO geo;"
+rem El dump crea sus tablas en el schema zm: se pasan una por una a geo (que puede tener otras tablas) y se borra zm.
+%PSQL% -v ON_ERROR_STOP=1 -c "DO $DECLARE t text; BEGIN CREATE SCHEMA IF NOT EXISTS geo; FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'zm' LOOP EXECUTE format('ALTER TABLE zm.%%I SET SCHEMA geo', t); END LOOP; DROP SCHEMA zm; END$;"
 if errorlevel 1 goto :err_rename
 
 :restore_done
@@ -137,7 +136,7 @@ goto :fail
 echo ERROR: el restore no creo tablas ni en el schema zm ni en geo. Revisa %RESTORE_LOG%.
 goto :fail
 :err_rename
-echo ERROR: no se pudo renombrar zm a geo. Revisa %RESTORE_LOG%.
+echo ERROR: no se pudieron pasar las tablas de zm a geo. Revisa %RESTORE_LOG%.
 goto :fail
 :err_ef
 echo ERROR: fallo dotnet ef (Update-Database). Revisa el mensaje de arriba.

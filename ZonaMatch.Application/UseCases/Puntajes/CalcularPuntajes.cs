@@ -167,7 +167,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 await limite.WaitAsync(cancellationToken);
                 try
                 {
-                    // Ten blocks or less are walked (ModosViaje.DistanciaACaminarKm)
+                    // Five blocks or less are walked (ModosViaje.DistanciaACaminarKm)
                     var modoDelViaje = ModosViaje.ParaDistancia(modo, latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
                     return await _ruteo.CalcularAsync(latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value, modoDelViaje, cancellationToken)
                            ?? ModosViaje.Estimar(modoDelViaje, latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);

@@ -23,7 +23,7 @@ Copiá el archivo zonamatch.sql (se comparte aparte, no está en el repositorio)
 
 - levanta la base con docker compose y espera a que esté lista,
 - crea los schemas app, geo y osm si no existen,
-- restaura zonamatch.sql y renombra el schema zm a geo (si geo ya tiene tablas, omite este paso; si no encuentra zonamatch.sql, avisa y sigue),
+- restaura zonamatch.sql y pasa sus tablas del schema zm a geo (si geo.escuelas ya existe, omite este paso; si no encuentra zonamatch.sql, avisa y sigue),
 - aplica las migraciones de EF (dotnet ef database update; instala dotnet-ef si falta y omite el paso si no hay carpeta Migrations),
 - descarga el mapa de Argentina (~400MB), recorta el AMBA y lo importa al schema osm.
 
