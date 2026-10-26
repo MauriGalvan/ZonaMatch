@@ -18,6 +18,7 @@ using ZonaMatch.Application.UseCases.AnalisisGuardados;
 using ZonaMatch.Application.UseCases.Aportes;
 using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.UseCases.Contacto;
+using ZonaMatch.Application.UseCases.GuestReports;
 using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Application.UseCases.GroupInvitations;
@@ -209,6 +210,8 @@ builder.Services.AddScoped<ObtenerTransporteZona>();
 // Landing page contact form; each submission sends an email to the team.
 builder.Services.AddSingleton(new ContactoOpciones(builder.Configuration["Contacto:Destinatario"] ?? "zonamatchtpi@gmail.com"));
 builder.Services.AddScoped<EnviarFormularioContacto>();
+builder.Services.AddSingleton<GuestReportQuota>();
+builder.Services.AddScoped<SendGuestReport>();
 
 // JWT. The settings are validated at startup: without Jwt:SigningKey the app refuses to start.
 builder.Services.AddOptions<JwtOptions>()
@@ -241,6 +244,10 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("contacto", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10) }));
+    // A visitor gets their PDF report by email: 3 requests per hour per IP (each one sends an email with an attachment).
+    options.AddPolicy("guest-report", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1) }));
 });
 
 // GeoJSON compresses very well; "application/geo+json" is not in the default MIME list

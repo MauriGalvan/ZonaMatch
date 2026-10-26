@@ -18,7 +18,10 @@ public class EmailService : IEmailService
         _config = config;
     }
 
-    public async Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
+    public Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default) =>
+        SendEmailAsync(to, subject, body, [], cancellationToken);
+
+    public async Task SendEmailAsync(string to, string subject, string body, IReadOnlyList<EmailAttachment> attachments, CancellationToken cancellationToken = default)
     {
         var email = new MimeMessage();
         email.From.Add(MailboxAddress.Parse(_config["EmailSettings:From"]));
@@ -26,7 +29,11 @@ public class EmailService : IEmailService
         email.Subject = subject;
 
         // Usamos formato Html para poder mandar links bonitos al frontend
-        email.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = body };
+        var builder = new BodyBuilder { HtmlBody = body };
+        foreach (var attachment in attachments)
+            builder.Attachments.Add(attachment.FileName, attachment.Content, ContentType.Parse(attachment.ContentType));
+
+        email.Body = builder.ToMessageBody();
 
         using var smtp = new SmtpClient();
 
