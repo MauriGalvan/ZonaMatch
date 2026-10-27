@@ -4,6 +4,7 @@ using ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Puntaje;
 
@@ -47,6 +48,8 @@ public sealed partial class CalcularPuntajeEnGrupo
         if (!group.Participants.Any(participant => participant.UserId == currentUserId))
             throw new ForbiddenException("No pertenecés a este grupo.");
 
+        var (operation, maximumPurchase, propertyType) = Vivienda.Validar(
+            request.Operation, request.MaximumPurchaseUsd, request.PropertyType);
         var participantIds = group.Participants.Select(participant => participant.Id).ToHashSet();
         var weights = ValidateWeights(request.ParticipantWeights, participantIds);
         var slugs = (request.AddedZones ?? [])
@@ -75,7 +78,12 @@ public sealed partial class CalcularPuntajeEnGrupo
                 var profile = profilesByUserId[participant.UserId];
                 return new MemberInput(
                     participant,
-                    BuildRequest(profile, request.MaximumRent),
+                    BuildRequest(profile, request.MaximumRent) with
+                    {
+                        Operacion = operation,
+                        CompraMaximaUsd = maximumPurchase,
+                        TipoVivienda = propertyType,
+                    },
                     ModosViaje.DesdeMovilidad(profile.Movilidad ?? []),
                     profile.Puntos.OrderBy(point => point.Orden).ToArray());
             })
@@ -126,7 +134,7 @@ public sealed partial class CalcularPuntajeEnGrupo
             throw new BadRequestException("Ningún participante con peso positivo tiene datos suficientes para puntuar las zonas disponibles.");
 
         var rankedCandidates = zonesToCalculate
-            .Select(zone => BuildZoneResult(zone, group.Participants, weights, memberScores))
+            .Select(zone => BuildZoneResult(zone, group.Participants, weights, memberScores, propertyType))
             .OrderByDescending(zone => zone.Score.HasValue)
             .ThenByDescending(zone => zone.Score)
             .ThenBy(zone => zone.Name, StringComparer.CurrentCulture)
@@ -170,7 +178,8 @@ public sealed partial class CalcularPuntajeEnGrupo
                     point.TiempoMax)))
             .ToArray();
 
-        return new GroupRankingResponse(rankedZones, excluded, groupPoints, request.MaximumRent, nearby);
+        return new GroupRankingResponse(
+            rankedZones, excluded, groupPoints, request.MaximumRent, nearby, operation, maximumPurchase, propertyType);
     }
 
     private static IReadOnlyDictionary<Guid, decimal> ValidateWeights(
@@ -287,7 +296,8 @@ public sealed partial class CalcularPuntajeEnGrupo
         PerfilZona zone,
         IEnumerable<Participant> participants,
         IReadOnlyDictionary<Guid, decimal> weights,
-        IReadOnlyList<MemberCalculation> memberScores)
+        IReadOnlyList<MemberCalculation> memberScores,
+        string? propertyType)
     {
         var scoresByParticipant = memberScores.ToDictionary(member => member.Participant.Id);
         var available = participants
@@ -368,21 +378,25 @@ public sealed partial class CalcularPuntajeEnGrupo
                     limit.Cumple,
                     limit.Detalle)))
             .ToArray();
+        // The budget is the group's: its limits are the same for everyone, so they are shown once
         var limits = participantLimits
-            .Where(limit => limit.Type == MotorPuntaje.LimiteAlquiler)
-            .Take(1)
+            .Where(limit => MotorPuntaje.EsLimiteDePresupuesto(limit.Type))
+            .DistinctBy(limit => limit.Type)
             .Select(limit => limit with { ParticipantId = Guid.Empty, ParticipantName = "Grupo", NormalizedWeight = 100 })
-            .Concat(participantLimits.Where(limit => limit.Type != MotorPuntaje.LimiteAlquiler))
+            .Concat(participantLimits.Where(limit => !MotorPuntaje.EsLimiteDePresupuesto(limit.Type)))
             .ToArray();
         var places = memberScores
             .Where(member => member.Zones.ContainsKey(zone.Slug))
             .SelectMany(member => member.Zones[zone.Slug].Places)
             .ToArray();
-        var rent = zone.AlquilerPromedio is { } average
-            ? new ZoneRentResponse(average, zone.PropiedadesDisponibles ?? 0, zone.ExpensasPromedio, zone.CostoMensual)
+        var rent = Vivienda.Alquiler(zone, propertyType) is { } zoneRent
+            ? new ZoneRentResponse(zoneRent.Promedio, zoneRent.PropiedadesDisponibles, zoneRent.Expensas, zoneRent.CostoMensual)
+            : null;
+        var sale = Vivienda.Compra(zone, propertyType) is { } zoneSale
+            ? new ZoneSaleResponse(zoneSale.PromedioUsd, zoneSale.PropiedadesDisponibles, zoneSale.Expensas)
             : null;
 
-        return new RankedZoneResponse(zone.Slug, zone.Nombre, groupScore, breakdown, componentGroups, limits, places, rent);
+        return new RankedZoneResponse(zone.Slug, zone.Nombre, groupScore, breakdown, componentGroups, limits, places, rent, sale);
     }
 
     private static ExcludedParticipantResponse? Exclusion(

@@ -358,6 +358,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("alquiler_maximo");
 
+                    b.Property<decimal?>("CompraMaximaUsd")
+                        .HasColumnType("numeric(12,0)")
+                        .HasColumnName("compra_maxima_usd");
+
                     b.Property<DateTimeOffset>("FechaActualizacion")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_actualizacion");
@@ -374,6 +378,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text[]")
                         .HasColumnName("movilidad");
 
+                    b.Property<string>("Operacion")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("alquiler")
+                        .HasColumnName("operacion");
+
                     b.Property<int>("Personas")
                         .HasColumnType("integer")
                         .HasColumnName("personas");
@@ -383,6 +395,11 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)")
                         .HasColumnName("tipo");
+
+                    b.Property<string>("TipoVivienda")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo_vivienda");
 
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid")
@@ -397,7 +414,11 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.ToTable("contextos", "app", t =>
                         {
+                            t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
+
                             t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
+
+                            t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
                         });
                 });
 

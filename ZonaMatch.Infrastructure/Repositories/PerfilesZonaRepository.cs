@@ -75,48 +75,62 @@ namespace ZonaMatch.Infrastructure.Repositories
             pico AS (
                 SELECT osm_id, sum(salidas)::int AS salidas FROM {Geo}.zona_transporte_lineas
                 WHERE franja = 'manana' GROUP BY osm_id
-            ),
-            -- Rent of every property type together (app.zone_market). Partidos and comunas without a row of their
-            -- own add up the zones they contain (average weighted by listings).
-            alquileres AS (
-                SELECT zone_slug, average_price, average_expenses_ars, listings
-                FROM {App}.zone_market
-                WHERE operation = 'rent' AND property_type = 'all' AND average_price IS NOT NULL
-            ),
-            alquiler AS (
-                SELECT z.osm_id,
-                       COALESCE(a.average_price, agregado.promedio) AS promedio,
-                       COALESCE(a.listings, agregado.propiedades) AS propiedades,
-                       CASE WHEN a.zone_slug IS NULL THEN agregado.expensas ELSE a.average_expenses_ars END AS expensas
-                FROM zonas z
-                LEFT JOIN alquileres a ON a.zone_slug = z.slug
-                LEFT JOIN LATERAL (
-                    SELECT round(sum(b.average_price * greatest(b.listings, 1))
-                                 / sum(greatest(b.listings, 1))) AS promedio,
-                           sum(b.listings)::int AS propiedades,
-                           round(sum(b.average_expenses_ars * greatest(b.listings, 1))
-                                 / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_expenses_ars IS NOT NULL), 0)) AS expensas
-                    FROM zonas h
-                    JOIN alquileres b ON b.zone_slug = h.slug
-                    WHERE a.zone_slug IS NULL AND z.nivel <= 5 AND h.nivel > 5
-                      AND ST_Contains(z.geom, ST_PointOnSurface(h.geom))
-                ) agregado ON true
             )
             SELECT z.slug AS "Slug", z.nombre AS "Nombre", z.nivel AS "Nivel", z.superficie_km2 AS "SuperficieKm2",
                    COALESCE(i.poblacion, 0) AS "Poblacion", i.delitos_comparables AS "Delitos",
                    COALESCE(l.lineas, 0) AS "LineasTransporte", COALESCE(p.salidas, 0) AS "SalidasHoraPico",
                    e.escuelas AS "Escuelas", e.salud AS "CentrosSalud", e.verdes AS "EspaciosVerdes",
                    v.m2 AS "SuperficieVerdeM2",
-                   ST_Y({ZonaSql.Centro("z.geom")}) AS "Latitud", ST_X({ZonaSql.Centro("z.geom")}) AS "Longitud",
-                   a.promedio AS "AlquilerPromedio", a.propiedades AS "PropiedadesDisponibles",
-                   a.expensas AS "ExpensasPromedio"
+                   ST_Y({ZonaSql.Centro("z.geom")}) AS "Latitud", ST_X({ZonaSql.Centro("z.geom")}) AS "Longitud"
             FROM zonas z
             LEFT JOIN {Geo}.zona_indicadores i USING (osm_id)
             LEFT JOIN lineas l USING (osm_id)
             LEFT JOIN pico p USING (osm_id)
             JOIN equipamiento e USING (osm_id)
             JOIN verde v USING (osm_id)
-            JOIN alquiler a USING (osm_id)
+            """;
+
+        // Alquiler y venta de cada zona (app.zone_market), por operacion y tipo de vivienda ("all" son todos juntos):
+        // alquiler y expensas en pesos, venta en dolares. Los partidos y comunas sin fila propia para una combinacion
+        // suman las zonas que contienen (promedio ponderado por propiedades publicadas).
+        private static readonly string SqlMercado = $"""
+            WITH zonas AS (
+                SELECT DISTINCT ON (z.slug) z.slug, z.nivel, z.geom
+                FROM {Geo}.zonas z
+                WHERE z.elegida AND z.slug <> 'buenos-aires'
+                ORDER BY z.slug, z.nivel DESC
+            ),
+            filas AS (
+                SELECT zone_slug, operation, property_type, average_price, average_expenses_ars, listings
+                FROM {App}.zone_market
+                WHERE average_price IS NOT NULL
+            ),
+            propias AS (
+                SELECT z.slug, f.operation, f.property_type, f.average_price AS promedio, f.listings AS propiedades,
+                       f.average_expenses_ars AS expensas
+                FROM zonas z
+                JOIN filas f ON f.zone_slug = z.slug
+            ),
+            sumadas AS (
+                SELECT z.slug, b.operation, b.property_type,
+                       round(sum(b.average_price * greatest(b.listings, 1)) / sum(greatest(b.listings, 1))) AS promedio,
+                       sum(b.listings)::int AS propiedades,
+                       round(sum(b.average_expenses_ars * greatest(b.listings, 1))
+                             / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_expenses_ars IS NOT NULL), 0)) AS expensas
+                FROM zonas z
+                JOIN zonas h ON h.nivel > 5 AND ST_Contains(z.geom, ST_PointOnSurface(h.geom))
+                JOIN filas b ON b.zone_slug = h.slug
+                WHERE z.nivel <= 5
+                  AND NOT EXISTS (SELECT 1 FROM propias p
+                                  WHERE p.slug = z.slug AND p.operation = b.operation AND p.property_type = b.property_type)
+                GROUP BY z.slug, b.operation, b.property_type
+            )
+            SELECT slug AS "Slug", operation AS "Operacion", property_type AS "Tipo", promedio AS "Promedio",
+                   propiedades AS "Propiedades", expensas AS "Expensas"
+            FROM propias
+            UNION ALL
+            SELECT slug, operation, property_type, promedio, propiedades, expensas
+            FROM sumadas
             """;
 
         private static readonly string SqlZonasDelEntorno = $"""
@@ -223,8 +237,12 @@ namespace ZonaMatch.Infrastructure.Repositories
                 var filas = await _dbContext.Database
                     .SqlQueryRaw<PerfilFila>(SqlPerfiles)
                     .ToListAsync(cancellationToken);
+                var mercado = (await _dbContext.Database
+                        .SqlQueryRaw<MercadoFila>(SqlMercado)
+                        .ToListAsync(cancellationToken))
+                    .ToLookup(f => f.Slug, StringComparer.Ordinal);
 
-                return filas.Select(f => f.APerfil()).ToList();
+                return filas.Select(f => f.APerfil(mercado[f.Slug])).ToList();
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
@@ -250,12 +268,22 @@ namespace ZonaMatch.Infrastructure.Repositories
             public double SuperficieVerdeM2 { get; set; }
             public double Latitud { get; set; }
             public double Longitud { get; set; }
-            public decimal? AlquilerPromedio { get; set; }
-            public int? PropiedadesDisponibles { get; set; }
-            public decimal? ExpensasPromedio { get; set; }
 
-            public PerfilZona APerfil() => new()
+            public PerfilZona APerfil(IEnumerable<MercadoFila> mercado)
             {
+                var porClave = mercado.ToDictionary(f => (f.Operacion, f.Tipo));
+
+                MercadoVivienda Vivienda(string tipo)
+                {
+                    var alquiler = porClave.GetValueOrDefault(("rent", tipo));
+                    var venta = porClave.GetValueOrDefault(("sale", tipo));
+                    return new MercadoVivienda(alquiler?.Promedio, alquiler?.Propiedades, alquiler?.Expensas, venta?.Promedio, venta?.Propiedades);
+                }
+
+                var todos = Vivienda(TiposVivienda.Todos);
+
+                return new PerfilZona
+                {
                 Slug = Slug,
                 Nombre = Nombre,
                 Nivel = Nivel,
@@ -270,10 +298,26 @@ namespace ZonaMatch.Infrastructure.Repositories
                 SuperficieVerdeM2 = SuperficieVerdeM2,
                 Latitud = Latitud,
                 Longitud = Longitud,
-                AlquilerPromedio = AlquilerPromedio,
-                PropiedadesDisponibles = PropiedadesDisponibles,
-                ExpensasPromedio = ExpensasPromedio,
-            };
+                AlquilerPromedio = todos.AlquilerPromedio,
+                PropiedadesDisponibles = todos.PropiedadesEnAlquiler,
+                ExpensasPromedio = todos.ExpensasPromedio,
+                VentaPromedioUsd = todos.VentaPromedioUsd,
+                PropiedadesEnVenta = todos.PropiedadesEnVenta,
+                MercadoPorTipo = new[] { TiposVivienda.Departamento, TiposVivienda.Casa, TiposVivienda.Ph }
+                    .ToDictionary(tipo => tipo, Vivienda),
+                };
+            }
+        }
+
+        // Resultado sin clave de SqlMercado: operacion rent|sale y tipo de vivienda de app.zone_market
+        private sealed class MercadoFila
+        {
+            public string Slug { get; set; } = string.Empty;
+            public string Operacion { get; set; } = string.Empty;
+            public string Tipo { get; set; } = string.Empty;
+            public decimal? Promedio { get; set; }
+            public int? Propiedades { get; set; }
+            public decimal? Expensas { get; set; }
         }
     }
 }
