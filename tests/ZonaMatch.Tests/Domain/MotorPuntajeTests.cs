@@ -138,6 +138,57 @@ namespace ZonaMatch.Tests.Domain
         }
 
         [Fact]
+        public void Quien_compra_compara_el_precio_en_dolares_y_las_expensas_con_su_gasto_mensual()
+        {
+            var zona = new PerfilZona
+            {
+                Slug = "zona", Nombre = "zona", Nivel = 9, SuperficieKm2 = 2, Poblacion = 1000, Escuelas = 10,
+                AlquilerPromedio = 900_000, ExpensasPromedio = 200_000, VentaPromedioUsd = 120_000,
+            };
+            var motor = new MotorPuntaje([zona]);
+            var criterios = new Dictionary<string, string> { [MotorPuntaje.Educacion] = "media" };
+
+            var dentro = motor.Calcular(zona, new PedidoPuntaje(criterios, [], 250_000, Operaciones.Compra, 150_000));
+            var fuera = motor.Calcular(zona, new PedidoPuntaje(criterios, [], 250_000, Operaciones.Compra, 100_000));
+
+            // El alquiler no cuenta: el gasto mensual de quien compra son las expensas
+            Assert.Equal([MotorPuntaje.LimiteCompra, MotorPuntaje.LimiteExpensas], dentro.Limites.Select(l => l.Tipo));
+            Assert.All(dentro.Limites, l => Assert.True(l.Cumple));
+            Assert.Equal(50, dentro.Puntaje);
+            Assert.False(fuera.Limites[0].Cumple);
+            Assert.Contains("Precio promedio US$ 120.000: supera tu tope de compra de US$ 100.000 en un 20 %", fuera.Limites[0].Detalle);
+            Assert.Equal(30, fuera.Puntaje);
+        }
+
+        [Fact]
+        public void El_tipo_de_vivienda_usa_su_propio_mercado()
+        {
+            var zona = new PerfilZona
+            {
+                Slug = "zona", Nombre = "zona", Nivel = 9, SuperficieKm2 = 2, Poblacion = 1000, Escuelas = 10,
+                AlquilerPromedio = 1_500_000, ExpensasPromedio = 100_000, VentaPromedioUsd = 200_000,
+                MercadoPorTipo = new Dictionary<string, MercadoVivienda>
+                {
+                    [TiposVivienda.Departamento] = new(700_000, 5, null, 90_000, 8),
+                },
+            };
+            var motor = new MotorPuntaje([zona]);
+            var criterios = new Dictionary<string, string> { [MotorPuntaje.Educacion] = "media" };
+
+            var compra = motor.Calcular(zona, new PedidoPuntaje(criterios, [], null, Operaciones.Compra, 95_000, TiposVivienda.Departamento));
+            var alquiler = motor.Calcular(zona, new PedidoPuntaje(criterios, [], 750_000, TipoVivienda: TiposVivienda.Departamento));
+            var casas = motor.Calcular(zona, new PedidoPuntaje(criterios, [], null, Operaciones.Compra, 95_000, TiposVivienda.Casa));
+
+            Assert.True(compra.Limites.Single().Cumple);
+            Assert.Contains("Precio promedio de departamentos US$ 90.000", compra.Limites.Single().Detalle);
+            // Sin expensas propias de departamentos, usa las de la zona: 700.000 + 100.000 supera 750.000
+            Assert.False(alquiler.Limites.Single().Cumple);
+            Assert.Contains("Alquiler de departamentos $ 700.000 + expensas $ 100.000", alquiler.Limites.Single().Detalle);
+            Assert.Null(casas.Limites.Single().Cumple);
+            Assert.Equal("Sin datos de venta de casas para esta zona", casas.Limites.Single().Detalle);
+        }
+
+        [Fact]
         public void Sin_dato_de_alquiler_el_limite_no_suma_ni_resta()
         {
             var zona = Zona("zona");

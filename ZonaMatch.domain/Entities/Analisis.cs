@@ -28,6 +28,9 @@ namespace ZonaMatch.Domain.Entities
 
         public DateTimeOffset? FechaResultado { get; set; }
 
+        // Marcado con la estrella en "Mis analisis": aparece primero, en Favoritos
+        public bool EsFavorito { get; set; }
+
         // null en los originales; en una version, el analisis del que deriva (siempre un original)
         public Guid? AnalisisOrigenId { get; set; }
 

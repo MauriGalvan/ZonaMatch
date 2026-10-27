@@ -5,12 +5,24 @@ using MailKit.Net.Smtp;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Infrastructure.Services;
 
 public class EmailService : IEmailService
 {
+    private static readonly Lazy<byte[]?> LogoBytes = new(() =>
+    {
+        using var stream = typeof(EmailService).Assembly.GetManifestResourceStream("ZonaMatch.EmailLogo.png");
+        if (stream is null)
+            return null;
+
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return copy.ToArray();
+    });
+
     private readonly IConfiguration _config;
 
     public EmailService(IConfiguration config)
@@ -18,7 +30,10 @@ public class EmailService : IEmailService
         _config = config;
     }
 
-    public async Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
+    public Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default) =>
+        SendEmailAsync(to, subject, body, [], cancellationToken);
+
+    public async Task SendEmailAsync(string to, string subject, string body, IReadOnlyList<EmailAttachment> attachments, CancellationToken cancellationToken = default)
     {
         var email = new MimeMessage();
         email.From.Add(MailboxAddress.Parse(_config["EmailSettings:From"]));
@@ -26,7 +41,18 @@ public class EmailService : IEmailService
         email.Subject = subject;
 
         // Usamos formato Html para poder mandar links bonitos al frontend
-        email.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = body };
+        var builder = new BodyBuilder { HtmlBody = body };
+
+        // Brand layout: the logo travels inside the email (most clients block SVG and remote images)
+        if (body.Contains($"cid:{BrandEmail.LogoContentId}", StringComparison.Ordinal) && LogoBytes.Value is { } logo)
+        {
+            var image = builder.LinkedResources.Add("zonamatch.png", logo, new ContentType("image", "png"));
+            image.ContentId = BrandEmail.LogoContentId;
+        }
+        foreach (var attachment in attachments)
+            builder.Attachments.Add(attachment.FileName, attachment.Content, ContentType.Parse(attachment.ContentType));
+
+        email.Body = builder.ToMessageBody();
 
         using var smtp = new SmtpClient();
 

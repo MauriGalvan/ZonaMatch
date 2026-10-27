@@ -19,9 +19,13 @@ namespace ZonaMatch.Application.DTOs
         IReadOnlyList<string> Movilidad,
         IReadOnlyList<string> Mascotas);
 
+    // AlquilerMaximo es el tope de gasto mensual (alquiler mas expensas, o solo expensas si compra)
     public record PuntosDto(
         string? AlquilerMaximo,
-        IReadOnlyList<LugarDto> Lugares);
+        IReadOnlyList<LugarDto> Lugares,
+        string Operacion = "alquiler",
+        decimal? CompraMaximaUsd = null,
+        string? TipoVivienda = null);
 
     public record LugarDto(
         Guid Id,

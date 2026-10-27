@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Puntajes;
 
 namespace ZonaMatch.Api.Controllers
@@ -33,6 +35,10 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Calcular(CalcularPuntajesRequest solicitud, CancellationToken cancellationToken)
         {
+            // The visitor tries it with a few places; with an account, up to 15 (checked by the request)
+            if (User.GetAuthenticatedUserId() is null && solicitud.Lugares.Count > LimitesLugares.Visitante)
+                throw new BadRequestException(LimitesLugares.MensajeVisitante);
+
             var reloj = Stopwatch.StartNew();
             var resultado = await _calcularPuntajes.EjecutarAsync(solicitud, cancellationToken);
             reloj.Stop();

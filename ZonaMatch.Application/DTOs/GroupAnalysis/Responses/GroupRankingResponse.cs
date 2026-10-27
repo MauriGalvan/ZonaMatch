@@ -5,4 +5,7 @@ public sealed record GroupRankingResponse(
     IReadOnlyList<ExcludedParticipantResponse> ExcludedParticipants,
     IReadOnlyList<GroupPointOfInterestResponse> ParticipantPoints,
     decimal? MaximumRent = null,
-    IReadOnlyList<RankedZoneResponse>? NearbyZones = null);
+    IReadOnlyList<RankedZoneResponse>? NearbyZones = null,
+    string Operation = "alquiler",
+    decimal? MaximumPurchaseUsd = null,
+    string? PropertyType = null);

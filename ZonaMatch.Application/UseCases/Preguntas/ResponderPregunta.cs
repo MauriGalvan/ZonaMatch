@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
@@ -15,19 +16,22 @@ namespace ZonaMatch.Application.UseCases.Preguntas
         private readonly IEmailService _emailService;
         private readonly ILogger<ResponderPregunta> _logger;
         private readonly TimeProvider _reloj;
+        private readonly FrontendLinks _links;
 
         public ResponderPregunta(
             IPreguntaRepository preguntas,
             INotificationRepository notifications,
             IEmailService emailService,
             ILogger<ResponderPregunta> logger,
-            TimeProvider reloj)
+            TimeProvider reloj,
+            FrontendLinks links)
         {
             _preguntas = preguntas;
             _notifications = notifications;
             _emailService = emailService;
             _logger = logger;
             _reloj = reloj;
+            _links = links;
         }
 
         public async Task<RespuestaDto> EjecutarAsync(
@@ -71,7 +75,16 @@ namespace ZonaMatch.Application.UseCases.Preguntas
                     await _emailService.SendEmailAsync(
                         pregunta.Usuario.Email,
                         "Nueva respuesta a tu pregunta en ZonaMatch",
-                        $"<p>Alguien respondió una pregunta que publicaste en la zona {System.Net.WebUtility.HtmlEncode(zonaSlug)}.</p><p>Iniciá sesión en ZonaMatch para leer la respuesta en Comunidad.</p>",
+                        BrandEmail.Render(new BrandEmailContent(
+                            Preheader: "Alguien respondió una pregunta que publicaste.",
+                            Title: "Respondieron tu pregunta",
+                            Paragraphs:
+                            [
+                                $"Alguien respondió una pregunta que publicaste en la zona <strong>{BrandEmail.Encode(zonaSlug)}</strong>.",
+                                "Entrá a Comunidad, en esa zona, para leer la respuesta y seguir la conversación.",
+                            ],
+                            Button: new BrandEmailButton("Ver la respuesta", _links.To($"/zonas/{Uri.EscapeDataString(zonaSlug)}?tab=comunidad")),
+                            Footnote: "Te avisamos porque sos quien hizo la pregunta.")),
                         cancellationToken);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

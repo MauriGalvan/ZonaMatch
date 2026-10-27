@@ -8,4 +8,5 @@ public sealed record RankedZoneResponse(
     IReadOnlyList<GroupScoreComponentResponse>? Components = null,
     IReadOnlyList<ScoreLimitResponse>? Limits = null,
     IReadOnlyList<ParticipantTripResponse>? Places = null,
-    ZoneRentResponse? Rent = null);
+    ZoneRentResponse? Rent = null,
+    ZoneSaleResponse? Sale = null);

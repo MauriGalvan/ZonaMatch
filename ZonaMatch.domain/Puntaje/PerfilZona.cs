@@ -1,6 +1,6 @@
 namespace ZonaMatch.Domain.Puntaje
 {
-    // Lo que el motor de puntaje sabe de una zona: censo, delitos, transporte, equipamiento y alquiler.
+    // Lo que el motor de puntaje sabe de una zona: censo, delitos, transporte, equipamiento, alquiler y venta.
     // Lo arma PerfilesZonaRepository para todas las zonas, porque cada criterio compara una zona con las demas.
     public sealed class PerfilZona
     {
@@ -40,6 +40,24 @@ namespace ZonaMatch.Domain.Puntaje
 
         // Lo que se paga por mes para vivir en la zona: alquiler mas expensas (sin dato de expensas, solo alquiler)
         public decimal? CostoMensual => AlquilerPromedio is { } alquiler ? alquiler + (ExpensasPromedio ?? 0) : null;
+
+        // Precio de venta promedio en dolares y propiedades en venta; null si no hay dato
+        public decimal? VentaPromedioUsd { get; init; }
+        public int? PropiedadesEnVenta { get; init; }
+
+        // Mercado de departamentos, casas y PH por separado (clave: TiposVivienda); los datos de arriba son de todos juntos
+        public IReadOnlyDictionary<string, MercadoVivienda> MercadoPorTipo { get; init; } = new Dictionary<string, MercadoVivienda>();
+
+        // Mercado del tipo pedido; sin tipo, el de todos juntos. Un tipo sin expensas propias usa las de la zona:
+        // las expensas dependen del edificio mas que del tipo.
+        public MercadoVivienda Mercado(string? tipo)
+        {
+            if (!TiposVivienda.EsValido(tipo))
+                return new MercadoVivienda(AlquilerPromedio, PropiedadesDisponibles, ExpensasPromedio, VentaPromedioUsd, PropiedadesEnVenta);
+
+            var mercado = MercadoPorTipo.TryGetValue(tipo!, out var propio) ? propio : MercadoVivienda.SinDatos;
+            return mercado with { ExpensasPromedio = mercado.ExpensasPromedio ?? ExpensasPromedio };
+        }
 
         // Comunas y partidos se comparan entre si, y barrios y localidades entre si
         public bool EsZonaGrande => Nivel <= 5;

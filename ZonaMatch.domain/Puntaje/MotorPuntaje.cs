@@ -2,11 +2,19 @@ using System.Globalization;
 
 namespace ZonaMatch.Domain.Puntaje
 {
-    // Lo que pidio el usuario: criterios con su prioridad, sus lugares y su tope de alquiler
+    // Lo que pidio el usuario: criterios con su prioridad, sus lugares y sus topes.
+    // GastoMensualMaximo es en pesos: alquiler mas expensas si alquila, solo expensas si compra.
+    // CompraMaximaUsd es el precio maximo de compra en dolares (solo si compra). Sin TipoVivienda, todos los tipos.
     public sealed record PedidoPuntaje(
         IReadOnlyDictionary<string, string> Criterios,
         IReadOnlyList<LugarDelUsuario> Lugares,
-        decimal? AlquilerMaximo);
+        decimal? GastoMensualMaximo,
+        string Operacion = Operaciones.Alquiler,
+        decimal? CompraMaximaUsd = null,
+        string? TipoVivienda = null)
+    {
+        public bool EsCompra => Operacion == Operaciones.Compra;
+    }
 
     // Un lugar al que el usuario va seguido. Sin coordenadas no se puede medir el viaje.
     public sealed record LugarDelUsuario(string Nombre, double? Latitud, double? Longitud, string? Prioridad, int TiempoMaximoMinutos)
@@ -46,7 +54,7 @@ namespace ZonaMatch.Domain.Puntaje
     // nivel pesa el triple que el anterior, asi un criterio en baja casi no mueve el puntaje y uno en alta lo define);
     // los criterios sin dato (por ejemplo, seguridad fuera de CABA) no cuentan: ni suman ni restan. Los lugares del
     // usuario suman un criterio propio, con prioridad alta, segun cuanto se tarda en llegar.
-    // Limites (tope de alquiler y tiempo maximo a cada lugar): pasarse un poco (hasta ExcesoLeve) descuenta un punto
+    // Limites (topes de plata y tiempo maximo a cada lugar): pasarse un poco (hasta ExcesoLeve) descuenta un punto
     // por cada 1 %; pasarse mucho hace caer exponencialmente lo que queda. Un limite sin dato no suma ni resta.
     public sealed class MotorPuntaje
     {
@@ -58,7 +66,12 @@ namespace ZonaMatch.Domain.Puntaje
         public const string Lugares = "lugares";
 
         public const string LimiteAlquiler = "alquiler";
+        public const string LimiteExpensas = "expensas";
+        public const string LimiteCompra = "compra";
         public const string LimiteTiempo = "tiempo";
+
+        // Limites de plata: en un grupo los pone el grupo, no cada participante
+        public static bool EsLimiteDePresupuesto(string tipo) => tipo is LimiteAlquiler or LimiteExpensas or LimiteCompra;
 
         // Hasta cuanto exceso (20 %) el descuento es lineal; despues, cada EscalaExceso mas divide lo que queda por e
         public const double ExcesoLeve = 0.20;
@@ -127,19 +140,29 @@ namespace ZonaMatch.Domain.Puntaje
                 componentes.Add(ComponenteLugares(lugares));
 
             var limites = new List<ResultadoLimite>();
-            var excesoAlquiler = 0.0;
+            var excesoPresupuesto = 0.0;
+            var mercado = zona.Mercado(pedido.TipoVivienda);
 
-            if (pedido.AlquilerMaximo is { } maximo && maximo > 0)
+            if (pedido.EsCompra && pedido.CompraMaximaUsd is { } compraMaxima && compraMaxima > 0)
             {
-                var (limite, exceso) = LimiteDeAlquiler(zona, maximo);
+                var (limite, exceso) = LimiteDeCompra(mercado, compraMaxima, pedido.TipoVivienda);
                 limites.Add(limite);
-                excesoAlquiler = exceso;
+                excesoPresupuesto = Math.Max(excesoPresupuesto, exceso);
+            }
+
+            if (pedido.GastoMensualMaximo is { } maximo && maximo > 0)
+            {
+                var (limite, exceso) = pedido.EsCompra
+                    ? LimiteDeExpensas(mercado, maximo)
+                    : LimiteDeAlquiler(mercado, maximo, pedido.TipoVivienda);
+                limites.Add(limite);
+                excesoPresupuesto = Math.Max(excesoPresupuesto, exceso);
             }
 
             if (lugares.Count > 0)
                 limites.AddRange(LimitesDeTiempo(lugares));
 
-            return new ResultadoZona(zona, PuntajeTotal(componentes, excesoAlquiler), componentes, limites, lugares);
+            return new ResultadoZona(zona, PuntajeTotal(componentes, excesoPresupuesto), componentes, limites, lugares);
         }
 
         // Percentil del valor entre los de la distribucion (los empates cuentan la mitad), de 0 a 100
@@ -247,24 +270,48 @@ namespace ZonaMatch.Domain.Puntaje
         private static int PesoDeLugar(string? prioridad) =>
             prioridad is not null && PesoLugar.TryGetValue(prioridad, out var peso) ? peso : PesoLugar["Media"];
 
-        // El limite y cuanto se pasa del tope (0,1 = 10 %); sin dato de alquiler, ni suma ni resta.
+        // El limite y cuanto se pasa del tope (0,1 = 10 %); sin dato, ni suma ni resta.
         // El tope es mensual, asi que se compara con alquiler mas expensas.
-        private static (ResultadoLimite Limite, double Exceso) LimiteDeAlquiler(PerfilZona zona, decimal maximo)
+        private static (ResultadoLimite Limite, double Exceso) LimiteDeAlquiler(MercadoVivienda mercado, decimal maximo, string? tipo)
         {
-            if (zona.CostoMensual is not { } costo)
-                return (new ResultadoLimite(LimiteAlquiler, null, "Sin datos de alquiler para esta zona"), 0);
+            var vivienda = TiposVivienda.Sufijo(tipo);
+            if (mercado.CostoMensualAlquiler is not { } costo)
+                return (new ResultadoLimite(LimiteAlquiler, null, $"Sin datos de alquiler{vivienda} para esta zona"), 0);
 
-            var detallePromedio = zona.ExpensasPromedio is { } expensas
-                ? $"Alquiler {Pesos(zona.AlquilerPromedio!.Value)} + expensas {Pesos(expensas)} = {Pesos(costo)} por mes"
-                : $"Alquiler promedio {Pesos(costo)} (sin dato de expensas)";
+            var detallePromedio = mercado.ExpensasPromedio is { } expensas
+                ? $"Alquiler{vivienda} {Pesos(mercado.AlquilerPromedio!.Value)} + expensas {Pesos(expensas)} = {Pesos(costo)} por mes"
+                : $"Alquiler promedio{vivienda} {Pesos(costo)} (sin dato de expensas)";
 
-            if (costo <= maximo)
-                return (new ResultadoLimite(LimiteAlquiler, true, $"{detallePromedio}: dentro de tu tope de {Pesos(maximo)}"), 0);
+            return Comparar(LimiteAlquiler, costo, maximo, detallePromedio, $"tu tope de {Pesos(maximo)}");
+        }
 
-            var exceso = (double)(costo / maximo - 1);
+        // Quien compra no paga alquiler: su gasto mensual son las expensas
+        private static (ResultadoLimite Limite, double Exceso) LimiteDeExpensas(MercadoVivienda mercado, decimal maximo)
+        {
+            if (mercado.ExpensasPromedio is not { } expensas)
+                return (new ResultadoLimite(LimiteExpensas, null, "Sin datos de expensas para esta zona"), 0);
+
+            return Comparar(LimiteExpensas, expensas, maximo, $"Expensas promedio {Pesos(expensas)} por mes", $"tu tope mensual de {Pesos(maximo)}");
+        }
+
+        private static (ResultadoLimite Limite, double Exceso) LimiteDeCompra(MercadoVivienda mercado, decimal maximo, string? tipo)
+        {
+            var vivienda = TiposVivienda.Sufijo(tipo);
+            if (mercado.VentaPromedioUsd is not { } precio)
+                return (new ResultadoLimite(LimiteCompra, null, $"Sin datos de venta{vivienda} para esta zona"), 0);
+
+            return Comparar(LimiteCompra, precio, maximo, $"Precio promedio{vivienda} {Dolares(precio)}", $"tu tope de compra de {Dolares(maximo)}");
+        }
+
+        private static (ResultadoLimite Limite, double Exceso) Comparar(string tipo, decimal valor, decimal maximo, string detalle, string tope)
+        {
+            if (valor <= maximo)
+                return (new ResultadoLimite(tipo, true, $"{detalle}: dentro de {tope}"), 0);
+
+            var exceso = (double)(valor / maximo - 1);
             var porcentaje = (int)Math.Ceiling(exceso * 100);
 
-            return (new ResultadoLimite(LimiteAlquiler, false, $"{detallePromedio}: supera tu tope de {Pesos(maximo)} en un {porcentaje} %"), exceso);
+            return (new ResultadoLimite(tipo, false, $"{detalle}: supera {tope} en un {porcentaje} %"), exceso);
         }
 
         private static IEnumerable<ResultadoLimite> LimitesDeTiempo(IReadOnlyList<ResultadoLugar> lugares)
@@ -299,5 +346,7 @@ namespace ZonaMatch.Domain.Puntaje
         private static double Redondear(double valor) => Math.Round(valor, MidpointRounding.AwayFromZero);
 
         private static string Pesos(decimal monto) => $"$ {monto.ToString("N0", Es)}";
+
+        private static string Dolares(decimal monto) => $"US$ {monto.ToString("N0", Es)}";
     }
 }

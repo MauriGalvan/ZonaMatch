@@ -40,7 +40,7 @@ namespace ZonaMatch.Tests.UseCases.Contacto
             var mail = Assert.Single(_email.Enviados);
             Assert.Equal("Formulario de contacto: ana@example.com", mail.Asunto);
             Assert.Contains("<strong>Nombre:</strong> No lo indico", mail.Cuerpo);
-            Assert.Contains("<strong>Donde busca:</strong> No lo indico", mail.Cuerpo);
+            Assert.Contains("<strong>Dónde busca:</strong> No lo indico", mail.Cuerpo);
         }
 
         [Fact]
@@ -85,6 +85,9 @@ namespace ZonaMatch.Tests.UseCases.Contacto
                 Enviados.Add((to, subject, body));
                 return Task.CompletedTask;
             }
+
+            public Task SendEmailAsync(string to, string subject, string body, IReadOnlyList<EmailAttachment> attachments, CancellationToken cancellationToken = default) =>
+                SendEmailAsync(to, subject, body, cancellationToken);
         }
     }
 }

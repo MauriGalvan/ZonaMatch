@@ -1,4 +1,5 @@
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Preguntas;
@@ -24,7 +25,8 @@ namespace ZonaMatch.Tests.UseCases.Preguntas
                 new FakeNotificationRepository(),
                 new FakeEmailService(),
                 NullLogger<ResponderPregunta>.Instance,
-                new FixedTimeProvider(Ahora));
+                new FixedTimeProvider(Ahora),
+                new FrontendLinks("http://localhost:5173/"));
             _preguntas.Agregar(_pregunta);
         }
 

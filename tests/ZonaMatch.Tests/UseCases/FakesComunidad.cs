@@ -159,5 +159,8 @@ namespace ZonaMatch.Tests.UseCases
     {
         public Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+
+        public Task SendEmailAsync(string to, string subject, string body, IReadOnlyList<EmailAttachment> attachments, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

@@ -38,6 +38,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<ZoneMarket> ZoneMarkets => Set<ZoneMarket>();
         public DbSet<SavedZone> SavedZones => Set<SavedZone>();
         public DbSet<UserNotification> Notifications => Set<UserNotification>();
+        public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -104,13 +105,20 @@ namespace ZonaMatch.Infrastructure.Data
             modelBuilder.Entity<Contexto>(e =>
             {
                 e.ToTable("contextos", t =>
-                    t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')"));
+                {
+                    t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
+                    t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
+                    t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
+                });
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Tipo).HasMaxLength(10).IsRequired();
                 e.Property(x => x.Personas).IsRequired();
                 e.Property(x => x.Mascotas).HasColumnType("text[]");
                 e.Property(x => x.Movilidad).HasColumnType("text[]");
                 e.Property(x => x.AlquilerMaximo).HasMaxLength(30);
+                e.Property(x => x.Operacion).HasMaxLength(10).IsRequired().HasDefaultValue("alquiler");
+                e.Property(x => x.CompraMaximaUsd).HasColumnType("numeric(12,0)");
+                e.Property(x => x.TipoVivienda).HasMaxLength(20);
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
                 // Un solo perfil por usuario; copias de analisis puede tener todas las que quiera
@@ -145,6 +153,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.PuntajesEnGrupoJson).HasColumnType("jsonb");
                 e.Property(x => x.ResultadoJson).HasColumnType("jsonb");
                 e.Property(x => x.FechaResultado).HasColumnType("timestamptz");
+                e.Property(x => x.EsFavorito).HasDefaultValue(false);
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
                 e.HasIndex(x => x.UsuarioId);
@@ -187,6 +196,19 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Name).HasMaxLength(150).IsRequired();
                 e.Property(x => x.Subtitle).HasMaxLength(300).IsRequired();
                 e.Property(x => x.SavedAt).HasColumnType("timestamptz");
+                e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PasswordResetToken>(e =>
+            {
+                e.ToTable("password_reset_tokens");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+                e.Property(x => x.CreatedAt).HasColumnType("timestamptz");
+                e.Property(x => x.ExpiresAt).HasColumnType("timestamptz");
+                e.Property(x => x.UsedAt).HasColumnType("timestamptz");
+                e.HasIndex(x => x.TokenHash).IsUnique();
+                e.HasIndex(x => new { x.UserId, x.CreatedAt });
                 e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 

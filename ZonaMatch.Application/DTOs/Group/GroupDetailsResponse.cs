@@ -36,7 +36,12 @@ public sealed record GroupParticipantStatsResponse(
 
 public sealed record GroupCriterionResponse(string Key, string Label);
 
+// SuggestedMaxRent is the monthly budget: rent plus expenses, or only expenses when the suggested operation is
+// buying. The suggestion follows the members' profiles (see GroupHousingSuggestion).
 public sealed record GroupRestrictionsResponse(
     decimal SuggestedMaxRent,
     string TravelTimesText,
-    string PoiText);
+    string PoiText,
+    string SuggestedOperation = "alquiler",
+    decimal? SuggestedMaxPurchaseUsd = null,
+    string? SuggestedPropertyType = null);

@@ -81,6 +81,18 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         }
 
         [Fact]
+        public async Task MasDeQuinceLugares_LanzaError()
+        {
+            var lugares = Enumerable.Range(1, 16).Select(i => new LugarRequest { Nombre = $"Lugar {i}" }).ToList();
+
+            var error = await Assert.ThrowsAsync<BadRequestException>(
+                () => _sut.EjecutarAsync(Usuario, Pedidos.Criterio(lugares: lugares)));
+
+            Assert.Equal("Se pueden medir hasta 15 lugares.", error.Message);
+            Assert.Empty(_perfiles.Perfiles);
+        }
+
+        [Fact]
         public async Task LugarSinNombre_LanzaErrorYNoTocaElPerfilExistente()
         {
             await _sut.EjecutarAsync(Usuario, Pedidos.Criterio(new() { ["seguridad"] = "alta" }));
