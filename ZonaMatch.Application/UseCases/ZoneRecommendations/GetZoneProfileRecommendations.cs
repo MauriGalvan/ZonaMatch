@@ -22,6 +22,7 @@ public sealed class GetZoneProfileRecommendations(IPuntoInteresRepository pointO
             slug,
             categories,
             MaximumPlacesPerCategory,
+            request.Latitude is { } latitude && request.Longitude is { } longitude ? (latitude, longitude) : null,
             cancellationToken);
 
         return new ZoneProfileRecommendationsResponse(
