@@ -18,6 +18,7 @@ public sealed partial class CalcularPuntajeEnGrupo
     private const int ViajesEnParalelo = 6;
     private const int RecomendadasDevueltas = 4;
     private const int ZonasTopAutomatico = 5;
+    private static readonly string[] RecommendationAgeRangeOrder = ["0-2", "3-5", "6-11", "12-17"];
 
     private readonly IGroupRepository _groups;
     private readonly IPerfilRepository _profiles;
@@ -179,8 +180,59 @@ public sealed partial class CalcularPuntajeEnGrupo
             .ToArray();
 
         return new GroupRankingResponse(
-            rankedZones, excluded, groupPoints, request.MaximumRent, nearby, operation, maximumPurchase, propertyType);
+            rankedZones,
+            excluded,
+            groupPoints,
+            request.MaximumRent,
+            nearby,
+            operation,
+            maximumPurchase,
+            propertyType,
+            BuildProfileRecommendations(profiles));
     }
+
+    private static GroupProfileRecommendationsResponse BuildProfileRecommendations(IReadOnlyList<Contexto> profiles)
+    {
+        var ageRanges = profiles
+            .SelectMany(profile => profile.Integrantes)
+            .Select(person => NormalizeRecommendationAgeRange(person.Edad))
+            .Where(ageRange => ageRange is not null)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var hasPets = profiles.Any(profile => profile.Mascotas?.Any(pet =>
+            !string.IsNullOrWhiteSpace(pet) && !string.Equals(pet.Trim(), "ninguna", StringComparison.OrdinalIgnoreCase)) == true);
+        var hasVehicle = profiles.Any(profile => HasMobility(profile, "vehiculo") || HasMobility(profile, "auto"));
+        var hasBicycle = profiles.Any(profile => HasMobility(profile, "bici"));
+
+        return new GroupProfileRecommendationsResponse(
+            RecommendationAgeRangeOrder.Where(ageRanges.Contains).ToArray(),
+            hasPets,
+            hasVehicle,
+            hasBicycle);
+    }
+
+    private static string? NormalizeRecommendationAgeRange(string? value)
+    {
+        var normalized = value?
+            .Trim()
+            .ToLowerInvariant()
+            .Replace("años", string.Empty, StringComparison.Ordinal)
+            .Replace('–', '-')
+            .Replace('—', '-')
+            .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        return normalized switch
+        {
+            "0-2" or "0-1" => "0-2",
+            "3-5" or "2-5" => "3-5",
+            "6-11" => "6-11",
+            "12-17" => "12-17",
+            _ => null,
+        };
+    }
+
+    private static bool HasMobility(Contexto profile, string mobility) =>
+        profile.Movilidad?.Any(value => string.Equals(value.Trim(), mobility, StringComparison.OrdinalIgnoreCase)) == true;
 
     private static IReadOnlyDictionary<Guid, decimal> ValidateWeights(
         IReadOnlyList<ParticipantWeightRequest> requestedWeights,

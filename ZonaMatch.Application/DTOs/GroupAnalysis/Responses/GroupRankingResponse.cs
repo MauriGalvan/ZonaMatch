@@ -8,4 +8,5 @@ public sealed record GroupRankingResponse(
     IReadOnlyList<RankedZoneResponse>? NearbyZones = null,
     string Operation = "alquiler",
     decimal? MaximumPurchaseUsd = null,
-    string? PropertyType = null);
+    string? PropertyType = null,
+    GroupProfileRecommendationsResponse? ProfileRecommendations = null);
