@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Text;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
-using ZonaMatch.Domain.Enums;
 using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories;
@@ -25,14 +24,12 @@ public class GroupRepository : IGroupRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IEnumerable<Group>> GetByUserCreatorIdAsync(Guid userCreatorId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Group>> GetByParticipantUserIdAsync(Guid participantUserId, CancellationToken cancellationToken)
     {
-        // Vamos a la tabla Groups
         return await _context.Groups
-            // Filtramos: "Traeme los grupos donde exista AL MENOS UN participante..."
-            .Where(g => g.Participants.Any(p =>
-                p.UserId == userCreatorId &&
-                GroupRole.Owner == p.Role)) // <-- Opcional: si solo quieres los que él creó
+            .AsNoTracking()
+            .Where(group => group.Participants.Any(participant => participant.UserId == participantUserId))
+            .Include(group => group.Participants)
             .ToListAsync(cancellationToken);
     }
 

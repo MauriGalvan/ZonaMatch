@@ -34,6 +34,11 @@ public class JoinGroupByLink
             throw new ConflictException("Ya eres miembro de este grupo.");
         }
 
+        if (group.Participants.Count >= Group.MaximumParticipants)
+        {
+            throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
+        }
+
         // Crear el objeto participante
         var newParticipant = new Participant
         {
