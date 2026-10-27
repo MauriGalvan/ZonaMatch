@@ -1,7 +1,7 @@
 namespace ZonaMatch.Domain.Entities
 {
     // Criterio de busqueda de un usuario (tabla app.contextos): su hogar, la prioridad de cada
-    // criterio, sus lugares y el tope de alquiler. Hay dos tipos (ver TipoContexto):
+    // criterio, sus lugares y sus topes (alquilar o comprar). Hay dos tipos (ver TipoContexto):
     // - perfil: el criterio base del usuario, uno por usuario, que usan todos sus analisis
     // - analisis: la copia con la que se calculo un analisis guardado (no cambia si despues se edita el perfil)
     // El detalle vive normalizado en personas, puntos_interes y contexto_criterios.
@@ -25,8 +25,18 @@ namespace ZonaMatch.Domain.Entities
         // Igual que mascotas: una lista simple de lo que el usuario eligio, sin catalogo.
         public string[]? Movilidad { get; set; }
 
-        // Tope de alquiler tipeado por el usuario, verbatim (ej: "800000"); null si no cargo
+        // Tope de gasto mensual tipeado por el usuario, verbatim (ej: "800000"); null si no cargo.
+        // Si alquila es alquiler mas expensas; si compra, solo expensas.
         public string? AlquilerMaximo { get; set; }
+
+        // alquiler | compra (Puntaje.Operaciones)
+        public string Operacion { get; set; } = "alquiler";
+
+        // Precio maximo de compra en dolares; solo si compra
+        public decimal? CompraMaximaUsd { get; set; }
+
+        // apartment | house | ph (Puntaje.TiposVivienda); null si le sirve cualquiera
+        public string? TipoVivienda { get; set; }
 
         public DateTimeOffset FechaCreacion { get; set; }
 
@@ -50,6 +60,9 @@ namespace ZonaMatch.Domain.Entities
             Mascotas = Mascotas?.ToArray(),
             Movilidad = Movilidad?.ToArray(),
             AlquilerMaximo = AlquilerMaximo,
+            Operacion = Operacion,
+            CompraMaximaUsd = CompraMaximaUsd,
+            TipoVivienda = TipoVivienda,
             FechaCreacion = ahora,
             FechaActualizacion = ahora,
             Integrantes = Integrantes

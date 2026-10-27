@@ -52,6 +52,9 @@ public sealed class GuardarAnalisisEnGrupo
                 AddedZones = request.AddedZones ?? [],
                 ParticipantWeights = request.ParticipantWeights,
                 MaximumRent = request.MaximumRent,
+                Operation = request.Operation,
+                MaximumPurchaseUsd = request.MaximumPurchaseUsd,
+                PropertyType = request.PropertyType,
             },
             cancellationToken);
 

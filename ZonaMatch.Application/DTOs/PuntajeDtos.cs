@@ -18,9 +18,22 @@ namespace ZonaMatch.Application.DTOs
         [MaxLength(10, ErrorMessage = "Se pueden medir hasta 10 lugares.")]
         public List<LugarPuntajeRequest> Lugares { get; set; } = [];
 
-        // Tope de alquiler mensual en pesos, como lo tipeo el usuario (ej: "800000")
+        // Tope de gasto mensual en pesos, como lo tipeo el usuario (ej: "800000"): alquiler mas expensas, o solo
+        // expensas si compra
         [StringLength(30)]
         public string? AlquilerMaximo { get; set; }
+
+        // alquiler | compra; sin dato, alquiler
+        [StringLength(10)]
+        public string? Operacion { get; set; }
+
+        // Precio maximo de compra en dolares (solo si compra)
+        [Range(typeof(decimal), "0", "100000000")]
+        public decimal? CompraMaximaUsd { get; set; }
+
+        // apartment | house | ph; sin dato, todos los tipos
+        [StringLength(20)]
+        public string? TipoVivienda { get; set; }
 
         // Mobility options (walking, public transit, car, cycling) determine how trips are measured.
         public List<string> Movilidad { get; set; } = [];
@@ -76,7 +89,8 @@ namespace ZonaMatch.Application.DTOs
         IReadOnlyList<ComponentePuntajeDto> Componentes,
         IReadOnlyList<LimitePuntajeDto> Limites,
         IReadOnlyList<TiempoLugarDto> Lugares,
-        AlquilerZonaDto? Alquiler);
+        AlquilerZonaDto? Alquiler,
+        CompraZonaDto? Compra = null);
 
     public record ComponentePuntajeDto(string Criterio, string Prioridad, int? Puntaje, string Detalle);
 
@@ -93,4 +107,7 @@ namespace ZonaMatch.Application.DTOs
 
     // Expensas: promedio mensual en pesos (null sin dato). CostoMensual: alquiler mas expensas.
     public record AlquilerZonaDto(decimal Promedio, int PropiedadesDisponibles, decimal? Expensas = null, decimal? CostoMensual = null);
+
+    // PromedioUsd: precio de venta promedio en dolares. Expensas: promedio mensual en pesos (null sin dato).
+    public record CompraZonaDto(decimal PromedioUsd, int PropiedadesDisponibles, decimal? Expensas = null);
 }

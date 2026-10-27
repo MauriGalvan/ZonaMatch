@@ -105,13 +105,20 @@ namespace ZonaMatch.Infrastructure.Data
             modelBuilder.Entity<Contexto>(e =>
             {
                 e.ToTable("contextos", t =>
-                    t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')"));
+                {
+                    t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
+                    t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
+                    t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
+                });
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Tipo).HasMaxLength(10).IsRequired();
                 e.Property(x => x.Personas).IsRequired();
                 e.Property(x => x.Mascotas).HasColumnType("text[]");
                 e.Property(x => x.Movilidad).HasColumnType("text[]");
                 e.Property(x => x.AlquilerMaximo).HasMaxLength(30);
+                e.Property(x => x.Operacion).HasMaxLength(10).IsRequired().HasDefaultValue("alquiler");
+                e.Property(x => x.CompraMaximaUsd).HasColumnType("numeric(12,0)");
+                e.Property(x => x.TipoVivienda).HasMaxLength(20);
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
                 // Un solo perfil por usuario; copias de analisis puede tener todas las que quiera

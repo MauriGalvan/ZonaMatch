@@ -1,5 +1,6 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Perfil
@@ -24,11 +25,16 @@ namespace ZonaMatch.Application.UseCases.Perfil
             var integrantes = ArmarIntegrantes(solicitud.Contexto);
             var criterios = ArmarCriterios(solicitud.Criterios, catalogo);
             var lugares = ArmarLugares(solicitud.Puntos);
+            var (operacion, compraMaxima, tipoVivienda) = Vivienda.Validar(
+                solicitud.Puntos.Operacion, solicitud.Puntos.CompraMaximaUsd, solicitud.Puntos.TipoVivienda);
 
             contexto.Personas = solicitud.Contexto.Personas;
             contexto.Mascotas = solicitud.Contexto.Mascotas.Distinct(StringComparer.Ordinal).ToArray();
             contexto.Movilidad = solicitud.Contexto.Movilidad.Distinct(StringComparer.Ordinal).ToArray();
             contexto.AlquilerMaximo = solicitud.Puntos.AlquilerMaximo;
+            contexto.Operacion = operacion;
+            contexto.CompraMaximaUsd = compraMaxima;
+            contexto.TipoVivienda = tipoVivienda;
 
             Reemplazar(contexto.Integrantes, integrantes);
             Reemplazar(contexto.Criterios, criterios);
@@ -168,6 +174,9 @@ namespace ZonaMatch.Application.UseCases.Perfil
                     .Select(p => new LugarDto(
                         p.Id, p.Nombre, p.Direccion, p.Latitude, p.Longitude,
                         p.Tipo, p.QuienVa, p.Frecuencia, p.Prioridad, p.TiempoMax, p.Orden))
-                    .ToList());
+                    .ToList(),
+                contexto.Operacion,
+                contexto.CompraMaximaUsd,
+                contexto.TipoVivienda);
     }
 }
