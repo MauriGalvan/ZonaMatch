@@ -92,10 +92,22 @@ public sealed class GetGroupDetails
             group.CreatedAt,
             participants,
             criteria,
-            new GroupRestrictionsResponse(
-                GetSuggestedMaxRent(profiles),
-                GetTravelTimesText(profiles),
-                GetPoiText(participants, profilesByUserId)));
+            BuildRestrictions(profiles, participants, profilesByUserId));
+    }
+
+    private static GroupRestrictionsResponse BuildRestrictions(
+        IReadOnlyList<Contexto> profiles,
+        IReadOnlyList<GroupParticipantResponse> participants,
+        IReadOnlyDictionary<Guid, Contexto> profilesByUserId)
+    {
+        var housing = GroupHousingSuggestion.From(profiles);
+        return new GroupRestrictionsResponse(
+            housing.MonthlyBudget,
+            GetTravelTimesText(profiles),
+            GetPoiText(participants, profilesByUserId),
+            housing.Operation,
+            housing.MaxPurchaseUsd,
+            housing.PropertyType);
     }
 
     private static int CountRestrictions(Contexto? profile)
@@ -104,34 +116,11 @@ public sealed class GetGroupDetails
             return 0;
 
         var rentLimit = string.IsNullOrWhiteSpace(profile.AlquilerMaximo) ? 0 : 1;
+        var purchaseLimit = profile.CompraMaximaUsd is > 0 ? 1 : 0;
         var mobility = profile.Movilidad is { Length: > 0 } ? 1 : 0;
         var pets = profile.Mascotas is { Length: > 0 } ? 1 : 0;
         var travelTimeLimits = profile.Puntos.Count(point => !string.IsNullOrWhiteSpace(point.TiempoMax));
-        return rentLimit + mobility + pets + travelTimeLimits;
-    }
-
-    private static decimal GetSuggestedMaxRent(IReadOnlyList<Contexto> profiles)
-    {
-        var limits = profiles
-            .Select(profile => TryParseRent(profile.AlquilerMaximo))
-            .Where(limit => limit.HasValue)
-            .Select(limit => limit!.Value)
-            .ToArray();
-
-        return limits.Sum();
-    }
-
-    private static decimal? TryParseRent(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
-
-        if (decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var invariantValue))
-            return invariantValue;
-
-        return decimal.TryParse(value, NumberStyles.Number, CultureInfo.GetCultureInfo("es-AR"), out var localValue)
-            ? localValue
-            : null;
+        return rentLimit + purchaseLimit + mobility + pets + travelTimeLimits;
     }
 
     private static string GetTravelTimesText(IReadOnlyList<Contexto> profiles)
