@@ -31,7 +31,7 @@ using ZonaMatch.Application.UseCases.Resenas;
 using ZonaMatch.Application.UseCases.Zonas;
 using ZonaMatch.Application.UseCases.Routes;
 using ZonaMatch.Application.UseCases.SavedZones;
-using ZonaMatch.Application.UseCases.Zonas;
+using ZonaMatch.Application.UseCases.ZoneRecommendations;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
@@ -71,6 +71,7 @@ builder.Services.AddScoped<IPartidoRepository, PartidoRepository>();
 builder.Services.AddScoped<IComunaRepository, ComunaRepository>();
 builder.Services.AddScoped<IMapaRepository, MapaRepository>();
 builder.Services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
+builder.Services.AddScoped<GetZoneProfileRecommendations>();
 builder.Services.AddScoped<IZonaRepository, ZonaRepository>();
 builder.Services.AddScoped<IIndicadoresZonaRepository, IndicadoresZonaRepository>();
 // Real estate market per zone (app.zone_market, MERCADO-ZONAS-DOCKER.bat)
