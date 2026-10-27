@@ -55,6 +55,11 @@ public class AcceptInvitation
             throw new ConflictException("Ya eres miembro de este grupo.");
         }
 
+        if (group.Participants.Count >= Group.MaximumParticipants)
+        {
+            throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
+        }
+
         // 5. Agregar al usuario como participante (Ajusta el "Role" según cómo lo manejes en tu app)
         var newParticipant = new Participant
         {

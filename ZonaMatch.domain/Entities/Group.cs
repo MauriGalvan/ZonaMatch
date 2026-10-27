@@ -6,6 +6,8 @@ namespace ZonaMatch.Domain.Entities;
 
 public class Group
 {
+    public const int MaximumParticipants = 5;
+
     public Guid Id { get; set; } = Guid.CreateVersion7();
     public string Name { get; set; }
     public DateTime CreatedAt { get; set; }

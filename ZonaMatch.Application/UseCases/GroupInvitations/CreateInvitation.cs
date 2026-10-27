@@ -61,6 +61,11 @@ public class CreateInvitation
             throw new ForbiddenException("Solo el propietario del grupo puede enviar invitaciones.");
         }
 
+        if (group.Participants.Count >= Group.MaximumParticipants)
+        {
+            throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
+        }
+
         // 3. Crear la entidad de invitación con el Token aleatorio
         var invitation = new GroupInvitation
         {

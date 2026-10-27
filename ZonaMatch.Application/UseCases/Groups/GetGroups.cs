@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using ZonaMatch.Application.DTOs.Group;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Enums;
 
 namespace ZonaMatch.Application.UseCases.Groups;
 
@@ -15,11 +15,17 @@ public class GetGroups
     }
     public async Task<GroupListResponse> ExecuteAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var groups = await _groupRepository.GetByUserCreatorIdAsync(userId, cancellationToken);
-        // Mapear a DTOs
+        var groups = await _groupRepository.GetByParticipantUserIdAsync(userId, cancellationToken);
+        // Map groups to the response contract.
         var response = new GroupListResponse
         {
-            Groups = groups.Select(g => new GroupResponse{Id = g.Id, Name = g.Name}).ToList()
+            Groups = groups.Select(group => new GroupResponse
+            {
+                Id = group.Id,
+                Name = group.Name,
+                IsOwner = group.Participants.Any(participant =>
+                    participant.UserId == userId && participant.Role == GroupRole.Owner)
+            }).ToList()
         };
 
         return response;
