@@ -396,6 +396,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("personas");
 
+                    b.Property<int?>("SuperficieM2")
+                        .HasColumnType("integer")
+                        .HasColumnName("superficie_m2");
+
                     b.Property<string>("Tipo")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -421,6 +425,8 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("contextos", "app", t =>
                         {
                             t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
+
+                            t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
 
                             t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
 

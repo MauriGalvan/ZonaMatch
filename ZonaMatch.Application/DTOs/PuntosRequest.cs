@@ -23,5 +23,9 @@ namespace ZonaMatch.Application.DTOs
         // apartment | house | ph; sin dato, todos los tipos
         [StringLength(20)]
         public string? TipoVivienda { get; set; }
+
+        // Superficie que busca en m2 (opcional): los precios se estiman por m2
+        [Range(0, 2000, ErrorMessage = "La superficie debe estar entre 10 y 2.000 m².")]
+        public int? SuperficieM2 { get; set; }
     }
 }

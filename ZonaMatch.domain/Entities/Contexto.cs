@@ -38,6 +38,9 @@ namespace ZonaMatch.Domain.Entities
         // apartment | house | ph (Puntaje.TiposVivienda); null si le sirve cualquiera
         public string? TipoVivienda { get; set; }
 
+        // Superficie que busca en m2: los precios se estiman por m2; null usa los promedios de cada zona
+        public int? SuperficieM2 { get; set; }
+
         public DateTimeOffset FechaCreacion { get; set; }
 
         public DateTimeOffset FechaActualizacion { get; set; }
@@ -63,6 +66,7 @@ namespace ZonaMatch.Domain.Entities
             Operacion = Operacion,
             CompraMaximaUsd = CompraMaximaUsd,
             TipoVivienda = TipoVivienda,
+            SuperficieM2 = SuperficieM2,
             FechaCreacion = ahora,
             FechaActualizacion = ahora,
             Integrantes = Integrantes

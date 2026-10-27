@@ -25,7 +25,8 @@ namespace ZonaMatch.Application.DTOs
         IReadOnlyList<LugarDto> Lugares,
         string Operacion = "alquiler",
         decimal? CompraMaximaUsd = null,
-        string? TipoVivienda = null);
+        string? TipoVivienda = null,
+        int? SuperficieM2 = null);
 
     public record LugarDto(
         Guid Id,

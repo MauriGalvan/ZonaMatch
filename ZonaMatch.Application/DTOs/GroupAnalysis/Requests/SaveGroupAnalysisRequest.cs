@@ -37,4 +37,8 @@ public sealed class SaveGroupAnalysisRequest
     // apartment | house | ph; without it, every type
     [StringLength(20)]
     public string? PropertyType { get; set; }
+
+    // Surface the user looks for (m2): prices are estimated as price per m2 times this surface
+    [Range(10, 2000, ErrorMessage = "La superficie debe estar entre 10 y 2.000 m².")]
+    public int? SurfaceM2 { get; set; }
 }

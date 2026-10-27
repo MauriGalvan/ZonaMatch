@@ -189,6 +189,54 @@ namespace ZonaMatch.Tests.Domain
         }
 
         [Fact]
+        public void Con_superficie_los_precios_se_estiman_por_m2()
+        {
+            // Como Ramos Mejia: el promedio de departamentos (US$ 95.354) es de unos 66 m2; 34 m2 salen bastante menos
+            var zona = new PerfilZona
+            {
+                Slug = "zona", Nombre = "zona", Nivel = 9, SuperficieKm2 = 2, Poblacion = 1000, Escuelas = 10,
+                ExpensasPromedio = 100_000,
+                MercadoPorTipo = new Dictionary<string, MercadoVivienda>
+                {
+                    [TiposVivienda.Departamento] = new(624_000, 58, null, 95_354, 59, AlquilerM2: 13_855, VentaM2Usd: 1_714),
+                },
+            };
+            var motor = new MotorPuntaje([zona]);
+            var criterios = new Dictionary<string, string> { [MotorPuntaje.Educacion] = "media" };
+
+            var compra = motor.Calcular(zona, new PedidoPuntaje(
+                criterios, [], null, Operaciones.Compra, 60_000, TiposVivienda.Departamento, SuperficieM2: 34)).Limites.Single();
+            var alquiler = motor.Calcular(zona, new PedidoPuntaje(
+                criterios, [], 600_000, TipoVivienda: TiposVivienda.Departamento, SuperficieM2: 34)).Limites.Single();
+            var sinSuperficie = motor.Calcular(zona, new PedidoPuntaje(
+                criterios, [], null, Operaciones.Compra, 60_000, TiposVivienda.Departamento)).Limites.Single();
+
+            Assert.True(compra.Cumple);
+            Assert.Equal("Precio estimado de departamentos para 34 m² US$ 58.276 (US$ 1.714/m²): dentro de tu tope de compra de US$ 60.000", compra.Detalle);
+            // 13.855 x 34 = 471.070 de alquiler + 100.000 de expensas
+            Assert.True(alquiler.Cumple);
+            Assert.Contains("Alquiler estimado de departamentos para 34 m² $ 471.070 + expensas $ 100.000 = $ 571.070 por mes", alquiler.Detalle);
+            Assert.False(sinSuperficie.Cumple);
+        }
+
+        [Fact]
+        public void Sin_precio_por_m2_la_superficie_usa_el_promedio()
+        {
+            var zona = new PerfilZona
+            {
+                Slug = "zona", Nombre = "zona", Nivel = 9, SuperficieKm2 = 2, Poblacion = 1000, Escuelas = 10,
+                VentaPromedioUsd = 90_000,
+            };
+            var motor = new MotorPuntaje([zona]);
+
+            var limite = motor.Calcular(zona, new PedidoPuntaje(
+                new Dictionary<string, string> { [MotorPuntaje.Educacion] = "media" }, [], null, Operaciones.Compra, 100_000, SuperficieM2: 34))
+                .Limites.Single();
+
+            Assert.Equal("Precio promedio US$ 90.000: dentro de tu tope de compra de US$ 100.000", limite.Detalle);
+        }
+
+        [Fact]
         public void Sin_dato_de_alquiler_el_limite_no_suma_ni_resta()
         {
             var zona = Zona("zona");

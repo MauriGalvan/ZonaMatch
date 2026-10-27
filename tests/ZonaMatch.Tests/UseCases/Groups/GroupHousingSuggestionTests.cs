@@ -6,8 +6,20 @@ namespace ZonaMatch.Tests.UseCases.Groups;
 
 public class GroupHousingSuggestionTests
 {
-    private static Contexto Profile(string operation, string? monthly, decimal? purchase = null, string? type = null) =>
-        new() { Operacion = operation, AlquilerMaximo = monthly, CompraMaximaUsd = purchase, TipoVivienda = type };
+    private static Contexto Profile(string operation, string? monthly, decimal? purchase = null, string? type = null, int? surface = null) =>
+        new() { Operacion = operation, AlquilerMaximo = monthly, CompraMaximaUsd = purchase, TipoVivienda = type, SuperficieM2 = surface };
+
+    [Fact]
+    public void The_group_looks_for_the_largest_surface()
+    {
+        var suggestion = GroupHousingSuggestion.From([
+            Profile(Operaciones.Alquiler, "500000", surface: 34),
+            Profile(Operaciones.Alquiler, "400000", surface: 50),
+            Profile(Operaciones.Alquiler, "300000"),
+        ]);
+
+        Assert.Equal(50, suggestion.SurfaceM2);
+    }
 
     [Fact]
     public void When_everyone_buys_the_group_buys_and_adds_up_the_caps()

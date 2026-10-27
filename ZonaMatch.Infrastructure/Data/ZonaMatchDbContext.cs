@@ -109,6 +109,7 @@ namespace ZonaMatch.Infrastructure.Data
                     t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
                     t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
                     t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
+                    t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
                 });
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Tipo).HasMaxLength(10).IsRequired();

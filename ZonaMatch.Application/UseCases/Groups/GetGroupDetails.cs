@@ -107,7 +107,8 @@ public sealed class GetGroupDetails
             GetPoiText(participants, profilesByUserId),
             housing.Operation,
             housing.MaxPurchaseUsd,
-            housing.PropertyType);
+            housing.PropertyType,
+            housing.SurfaceM2);
     }
 
     private static int CountRestrictions(Contexto? profile)

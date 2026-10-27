@@ -5,13 +5,15 @@ namespace ZonaMatch.Domain.Puntaje
     // Lo que pidio el usuario: criterios con su prioridad, sus lugares y sus topes.
     // GastoMensualMaximo es en pesos: alquiler mas expensas si alquila, solo expensas si compra.
     // CompraMaximaUsd es el precio maximo de compra en dolares (solo si compra). Sin TipoVivienda, todos los tipos.
+    // Con SuperficieM2, los precios de cada zona se estiman por m2 para esa superficie.
     public sealed record PedidoPuntaje(
         IReadOnlyDictionary<string, string> Criterios,
         IReadOnlyList<LugarDelUsuario> Lugares,
         decimal? GastoMensualMaximo,
         string Operacion = Operaciones.Alquiler,
         decimal? CompraMaximaUsd = null,
-        string? TipoVivienda = null)
+        string? TipoVivienda = null,
+        int? SuperficieM2 = null)
     {
         public bool EsCompra => Operacion == Operaciones.Compra;
     }
@@ -145,7 +147,7 @@ namespace ZonaMatch.Domain.Puntaje
 
             if (pedido.EsCompra && pedido.CompraMaximaUsd is { } compraMaxima && compraMaxima > 0)
             {
-                var (limite, exceso) = LimiteDeCompra(mercado, compraMaxima, pedido.TipoVivienda);
+                var (limite, exceso) = LimiteDeCompra(mercado, compraMaxima, pedido.TipoVivienda, pedido.SuperficieM2);
                 limites.Add(limite);
                 excesoPresupuesto = Math.Max(excesoPresupuesto, exceso);
             }
@@ -154,7 +156,7 @@ namespace ZonaMatch.Domain.Puntaje
             {
                 var (limite, exceso) = pedido.EsCompra
                     ? LimiteDeExpensas(mercado, maximo)
-                    : LimiteDeAlquiler(mercado, maximo, pedido.TipoVivienda);
+                    : LimiteDeAlquiler(mercado, maximo, pedido.TipoVivienda, pedido.SuperficieM2);
                 limites.Add(limite);
                 excesoPresupuesto = Math.Max(excesoPresupuesto, exceso);
             }
@@ -272,15 +274,23 @@ namespace ZonaMatch.Domain.Puntaje
 
         // El limite y cuanto se pasa del tope (0,1 = 10 %); sin dato, ni suma ni resta.
         // El tope es mensual, asi que se compara con alquiler mas expensas.
-        private static (ResultadoLimite Limite, double Exceso) LimiteDeAlquiler(MercadoVivienda mercado, decimal maximo, string? tipo)
+        private static (ResultadoLimite Limite, double Exceso) LimiteDeAlquiler(
+            MercadoVivienda mercado, decimal maximo, string? tipo, int? superficieM2)
         {
             var vivienda = TiposVivienda.Sufijo(tipo);
-            if (mercado.CostoMensualAlquiler is not { } costo)
+            if (mercado.CostoMensualAlquilerPara(superficieM2) is not { } costo)
                 return (new ResultadoLimite(LimiteAlquiler, null, $"Sin datos de alquiler{vivienda} para esta zona"), 0);
 
+            var alquiler = mercado.AlquilerPara(superficieM2)!.Value;
+            var estimado = mercado.EstimaAlquiler(superficieM2);
+            var etiqueta = estimado
+                ? $"Alquiler estimado{vivienda} para {superficieM2} m² {Pesos(alquiler)}"
+                : $"Alquiler{vivienda} {Pesos(alquiler)}";
             var detallePromedio = mercado.ExpensasPromedio is { } expensas
-                ? $"Alquiler{vivienda} {Pesos(mercado.AlquilerPromedio!.Value)} + expensas {Pesos(expensas)} = {Pesos(costo)} por mes"
-                : $"Alquiler promedio{vivienda} {Pesos(costo)} (sin dato de expensas)";
+                ? $"{etiqueta} + expensas {Pesos(expensas)} = {Pesos(costo)} por mes"
+                : estimado
+                    ? $"{etiqueta} por mes (sin dato de expensas)"
+                    : $"Alquiler promedio{vivienda} {Pesos(costo)} (sin dato de expensas)";
 
             return Comparar(LimiteAlquiler, costo, maximo, detallePromedio, $"tu tope de {Pesos(maximo)}");
         }
@@ -294,13 +304,18 @@ namespace ZonaMatch.Domain.Puntaje
             return Comparar(LimiteExpensas, expensas, maximo, $"Expensas promedio {Pesos(expensas)} por mes", $"tu tope mensual de {Pesos(maximo)}");
         }
 
-        private static (ResultadoLimite Limite, double Exceso) LimiteDeCompra(MercadoVivienda mercado, decimal maximo, string? tipo)
+        private static (ResultadoLimite Limite, double Exceso) LimiteDeCompra(
+            MercadoVivienda mercado, decimal maximo, string? tipo, int? superficieM2)
         {
             var vivienda = TiposVivienda.Sufijo(tipo);
-            if (mercado.VentaPromedioUsd is not { } precio)
+            if (mercado.VentaParaUsd(superficieM2) is not { } precio)
                 return (new ResultadoLimite(LimiteCompra, null, $"Sin datos de venta{vivienda} para esta zona"), 0);
 
-            return Comparar(LimiteCompra, precio, maximo, $"Precio promedio{vivienda} {Dolares(precio)}", $"tu tope de compra de {Dolares(maximo)}");
+            var detalle = mercado.EstimaVenta(superficieM2)
+                ? $"Precio estimado{vivienda} para {superficieM2} m² {Dolares(precio)} ({Dolares(mercado.VentaM2Usd!.Value)}/m²)"
+                : $"Precio promedio{vivienda} {Dolares(precio)}";
+
+            return Comparar(LimiteCompra, precio, maximo, detalle, $"tu tope de compra de {Dolares(maximo)}");
         }
 
         private static (ResultadoLimite Limite, double Exceso) Comparar(string tipo, decimal valor, decimal maximo, string detalle, string tope)

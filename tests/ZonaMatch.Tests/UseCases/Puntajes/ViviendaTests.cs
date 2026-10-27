@@ -27,6 +27,23 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
         }
 
         [Theory]
+        [InlineData(null, null)]
+        [InlineData(0, null)]
+        [InlineData(34, 34)]
+        public void La_superficie_es_opcional(int? pedida, int? esperada)
+        {
+            Assert.Equal(esperada, Vivienda.ValidarSuperficie(pedida));
+        }
+
+        [Theory]
+        [InlineData(5)]
+        [InlineData(2001)]
+        public void Rechaza_superficies_fuera_de_rango(int superficie)
+        {
+            Assert.Throws<BadRequestException>(() => Vivienda.ValidarSuperficie(superficie));
+        }
+
+        [Theory]
         [InlineData("permuta", null, null)]
         [InlineData("compra", -1, null)]
         [InlineData("compra", 100, "loft")]
