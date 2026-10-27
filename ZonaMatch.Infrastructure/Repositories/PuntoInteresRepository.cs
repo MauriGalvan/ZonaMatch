@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using NpgsqlTypes;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.ZoneRecommendations;
 using ZonaMatch.Application.Interfaces;
@@ -159,7 +160,8 @@ namespace ZonaMatch.Infrastructure.Repositories
             WITH {ZonaSql.ZonaPorSlug},
             zone_area AS (
                 SELECT z.way AS geometry_3857, z.geom AS geometry_4326,
-                       ({ZonaSql.Centro("z.geom")})::geography AS center
+                       -- Distances from the point chosen on the map, or from the zone center without one
+                       COALESCE(ST_SetSRID(ST_MakePoint(@longitude, @latitude), 4326), {ZonaSql.Centro("z.geom")})::geography AS center
                 FROM zona z
             ),
             raw_candidates AS (
@@ -283,6 +285,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             string slug,
             IReadOnlyCollection<string> categories,
             int limitPerCategory,
+            (double Latitude, double Longitude)? origin = null,
             CancellationToken cancellationToken = default)
         {
             return await _dbContext.Database
@@ -290,7 +293,9 @@ namespace ZonaMatch.Infrastructure.Repositories
                     SqlProfileRecommendations,
                     new NpgsqlParameter("slug", slug),
                     new NpgsqlParameter("categories", categories.ToArray()),
-                    new NpgsqlParameter("limit", limitPerCategory))
+                    new NpgsqlParameter("limit", limitPerCategory),
+                    new NpgsqlParameter("latitude", NpgsqlDbType.Double) { Value = (object?)origin?.Latitude ?? DBNull.Value },
+                    new NpgsqlParameter("longitude", NpgsqlDbType.Double) { Value = (object?)origin?.Longitude ?? DBNull.Value })
                 .ToListAsync(cancellationToken);
         }
 

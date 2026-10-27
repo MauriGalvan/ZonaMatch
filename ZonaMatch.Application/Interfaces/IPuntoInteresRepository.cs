@@ -26,6 +26,7 @@ namespace ZonaMatch.Application.Interfaces
             string slug,
             IReadOnlyCollection<string> categories,
             int limitPerCategory,
+            (double Latitude, double Longitude)? origin = null,
             CancellationToken cancellationToken = default);
     }
 }
