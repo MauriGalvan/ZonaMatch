@@ -55,6 +55,7 @@ public sealed class GuardarAnalisisEnGrupo
                 Operation = request.Operation,
                 MaximumPurchaseUsd = request.MaximumPurchaseUsd,
                 PropertyType = request.PropertyType,
+                SurfaceM2 = request.SurfaceM2,
             },
             cancellationToken);
 

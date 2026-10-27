@@ -105,7 +105,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     .ToArray();
                 var travelTimes = await MeasureTripsAsync(analysisZones, request.Lugares, mode, routeLimit, cancellationToken);
                 var rankedZones = analysisZones
-                    .Select(zone => ToDto(motor!.Calcular(zone, request, travelTimes[zone.Slug]), request.TipoVivienda))
+                    .Select(zone => ToDto(motor!.Calcular(zone, request, travelTimes[zone.Slug]), request))
                     .OrderByDescending(zone => zone.Puntaje.HasValue)
                     .ThenByDescending(zone => zone.Puntaje)
                     .ThenBy(zone => zone.Nombre, StringComparer.CurrentCulture)
@@ -226,7 +226,8 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 .ToArray();
 
             return new PedidoPuntaje(
-                criteria, places, ParseRent(context.AlquilerMaximo), context.Operacion, context.CompraMaximaUsd, context.TipoVivienda);
+                criteria, places, ParseRent(context.AlquilerMaximo), context.Operacion, context.CompraMaximaUsd, context.TipoVivienda,
+                context.SuperficieM2);
         }
 
         private static int ParseMinutes(string? value)
@@ -243,7 +244,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             return decimal.TryParse(digits, out var amount) && amount > 0 ? amount : null;
         }
 
-        private static PuntajeZonaDto ToDto(ResultadoZona result, string? propertyType) =>
+        private static PuntajeZonaDto ToDto(ResultadoZona result, PedidoPuntaje request) =>
             new(
                 result.Zona.Slug,
                 result.Zona.Nombre,
@@ -259,8 +260,8 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     .Select(place => new TiempoLugarDto(
                         place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm))
                     .ToArray(),
-                Vivienda.Alquiler(result.Zona, propertyType),
-                Vivienda.Compra(result.Zona, propertyType));
+                Vivienda.Alquiler(result.Zona, request.TipoVivienda, request.SuperficieM2),
+                Vivienda.Compra(result.Zona, request.TipoVivienda, request.SuperficieM2));
 
         private static PuntajeZonaDto ToDto(RankedZoneResponse result) =>
             new(
@@ -282,10 +283,12 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     place.MaximumMinutes,
                     place.IsEstimated)).ToArray() ?? [],
                 result.Rent is { } rent
-                    ? new AlquilerZonaDto(rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost)
+                    ? new AlquilerZonaDto(
+                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated)
                     : null,
                 result.Sale is { } sale
-                    ? new CompraZonaDto(sale.AverageUsd, sale.AvailableProperties, sale.Expenses)
+                    ? new CompraZonaDto(
+                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd)
                     : null);
     }
 }

@@ -105,8 +105,8 @@ namespace ZonaMatch.Application.UseCases.Puntajes
 
             return new PuntajesDto(
                 ModosViaje.Codigo(modo),
-                incluidas.Select(resultado => ADto(resultado, pedido.TipoVivienda)).ToArray(),
-                recomendadas.Select(resultado => ADto(resultado, pedido.TipoVivienda)).ToArray());
+                incluidas.Select(resultado => ADto(resultado, pedido)).ToArray(),
+                recomendadas.Select(resultado => ADto(resultado, pedido)).ToArray());
         }
 
         private static PerfilZona[] ResolverZonasAgregadas(
@@ -200,7 +200,9 @@ namespace ZonaMatch.Application.UseCases.Puntajes
             var (operacion, compraMaxima, tipoVivienda) = Vivienda.Validar(
                 solicitud.Operacion, solicitud.CompraMaximaUsd, solicitud.TipoVivienda);
 
-            return new PedidoPuntaje(criterios, lugares, Pesos(solicitud.AlquilerMaximo), operacion, compraMaxima, tipoVivienda);
+            return new PedidoPuntaje(
+                criterios, lugares, Pesos(solicitud.AlquilerMaximo), operacion, compraMaxima, tipoVivienda,
+                Vivienda.ValidarSuperficie(solicitud.SuperficieM2));
         }
 
         // "45 min" -> 45.
@@ -219,7 +221,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
         [GeneratedRegex(@"\d+")]
         private static partial Regex Numero();
 
-        private static PuntajeZonaDto ADto(ResultadoZona resultado, string? tipoVivienda) =>
+        private static PuntajeZonaDto ADto(ResultadoZona resultado, PedidoPuntaje pedido) =>
             new(
                 resultado.Zona.Slug,
                 resultado.Zona.Nombre,
@@ -228,7 +230,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 resultado.Limites.Select(l => new LimitePuntajeDto(l.Tipo, l.Cumple, l.Detalle)).ToList(),
                 resultado.Lugares.Select(l => new TiempoLugarDto(
                     l.Nombre, l.Minutos, l.MaximoMinutos, l.Estimado, l.DistanciaKm)).ToList(),
-                Vivienda.Alquiler(resultado.Zona, tipoVivienda),
-                Vivienda.Compra(resultado.Zona, tipoVivienda));
+                Vivienda.Alquiler(resultado.Zona, pedido.TipoVivienda, pedido.SuperficieM2),
+                Vivienda.Compra(resultado.Zona, pedido.TipoVivienda, pedido.SuperficieM2));
     }
 }

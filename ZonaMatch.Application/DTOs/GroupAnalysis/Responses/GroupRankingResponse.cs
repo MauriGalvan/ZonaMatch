@@ -9,4 +9,5 @@ public sealed record GroupRankingResponse(
     string Operation = "alquiler",
     decimal? MaximumPurchaseUsd = null,
     string? PropertyType = null,
-    GroupProfileRecommendationsResponse? ProfileRecommendations = null);
+    GroupProfileRecommendationsResponse? ProfileRecommendations = null,
+    int? SurfaceM2 = null);

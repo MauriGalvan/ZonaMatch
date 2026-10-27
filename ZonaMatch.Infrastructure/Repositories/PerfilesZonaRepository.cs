@@ -101,13 +101,13 @@ namespace ZonaMatch.Infrastructure.Repositories
                 ORDER BY z.slug, z.nivel DESC
             ),
             filas AS (
-                SELECT zone_slug, operation, property_type, average_price, average_expenses_ars, listings
+                SELECT zone_slug, operation, property_type, average_price, average_expenses_ars, average_price_m2, listings
                 FROM {App}.zone_market
                 WHERE average_price IS NOT NULL
             ),
             propias AS (
                 SELECT z.slug, f.operation, f.property_type, f.average_price AS promedio, f.listings AS propiedades,
-                       f.average_expenses_ars AS expensas
+                       f.average_expenses_ars AS expensas, f.average_price_m2 AS precio_m2
                 FROM zonas z
                 JOIN filas f ON f.zone_slug = z.slug
             ),
@@ -116,7 +116,9 @@ namespace ZonaMatch.Infrastructure.Repositories
                        round(sum(b.average_price * greatest(b.listings, 1)) / sum(greatest(b.listings, 1))) AS promedio,
                        sum(b.listings)::int AS propiedades,
                        round(sum(b.average_expenses_ars * greatest(b.listings, 1))
-                             / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_expenses_ars IS NOT NULL), 0)) AS expensas
+                             / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_expenses_ars IS NOT NULL), 0)) AS expensas,
+                       round(sum(b.average_price_m2 * greatest(b.listings, 1))
+                             / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_price_m2 IS NOT NULL), 0)) AS precio_m2
                 FROM zonas z
                 JOIN zonas h ON h.nivel > 5 AND ST_Contains(z.geom, ST_PointOnSurface(h.geom))
                 JOIN filas b ON b.zone_slug = h.slug
@@ -126,10 +128,10 @@ namespace ZonaMatch.Infrastructure.Repositories
                 GROUP BY z.slug, b.operation, b.property_type
             )
             SELECT slug AS "Slug", operation AS "Operacion", property_type AS "Tipo", promedio AS "Promedio",
-                   propiedades AS "Propiedades", expensas AS "Expensas"
+                   propiedades AS "Propiedades", expensas AS "Expensas", precio_m2 AS "PrecioM2"
             FROM propias
             UNION ALL
-            SELECT slug, operation, property_type, promedio, propiedades, expensas
+            SELECT slug, operation, property_type, promedio, propiedades, expensas, precio_m2
             FROM sumadas
             """;
 
@@ -277,7 +279,9 @@ namespace ZonaMatch.Infrastructure.Repositories
                 {
                     var alquiler = porClave.GetValueOrDefault(("rent", tipo));
                     var venta = porClave.GetValueOrDefault(("sale", tipo));
-                    return new MercadoVivienda(alquiler?.Promedio, alquiler?.Propiedades, alquiler?.Expensas, venta?.Promedio, venta?.Propiedades);
+                    return new MercadoVivienda(
+                        alquiler?.Promedio, alquiler?.Propiedades, alquiler?.Expensas, venta?.Promedio, venta?.Propiedades,
+                        alquiler?.PrecioM2, venta?.PrecioM2);
                 }
 
                 var todos = Vivienda(TiposVivienda.Todos);
@@ -303,6 +307,8 @@ namespace ZonaMatch.Infrastructure.Repositories
                 ExpensasPromedio = todos.ExpensasPromedio,
                 VentaPromedioUsd = todos.VentaPromedioUsd,
                 PropiedadesEnVenta = todos.PropiedadesEnVenta,
+                AlquilerM2 = todos.AlquilerM2,
+                VentaM2Usd = todos.VentaM2Usd,
                 MercadoPorTipo = new[] { TiposVivienda.Departamento, TiposVivienda.Casa, TiposVivienda.Ph }
                     .ToDictionary(tipo => tipo, Vivienda),
                 };
@@ -318,6 +324,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             public decimal? Promedio { get; set; }
             public int? Propiedades { get; set; }
             public decimal? Expensas { get; set; }
+            public decimal? PrecioM2 { get; set; }
         }
     }
 }

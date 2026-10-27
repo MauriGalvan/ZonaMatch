@@ -45,6 +45,10 @@ namespace ZonaMatch.Domain.Puntaje
         public decimal? VentaPromedioUsd { get; init; }
         public int? PropiedadesEnVenta { get; init; }
 
+        // Alquiler en pesos y venta en dolares por m2 (todos los tipos); null si no hay dato
+        public decimal? AlquilerM2 { get; init; }
+        public decimal? VentaM2Usd { get; init; }
+
         // Mercado de departamentos, casas y PH por separado (clave: TiposVivienda); los datos de arriba son de todos juntos
         public IReadOnlyDictionary<string, MercadoVivienda> MercadoPorTipo { get; init; } = new Dictionary<string, MercadoVivienda>();
 
@@ -53,7 +57,8 @@ namespace ZonaMatch.Domain.Puntaje
         public MercadoVivienda Mercado(string? tipo)
         {
             if (!TiposVivienda.EsValido(tipo))
-                return new MercadoVivienda(AlquilerPromedio, PropiedadesDisponibles, ExpensasPromedio, VentaPromedioUsd, PropiedadesEnVenta);
+                return new MercadoVivienda(
+                    AlquilerPromedio, PropiedadesDisponibles, ExpensasPromedio, VentaPromedioUsd, PropiedadesEnVenta, AlquilerM2, VentaM2Usd);
 
             var mercado = MercadoPorTipo.TryGetValue(tipo!, out var propio) ? propio : MercadoVivienda.SinDatos;
             return mercado with { ExpensasPromedio = mercado.ExpensasPromedio ?? ExpensasPromedio };
