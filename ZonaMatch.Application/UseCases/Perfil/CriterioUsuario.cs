@@ -115,6 +115,9 @@ namespace ZonaMatch.Application.UseCases.Perfil
             if (solicitud is null)
                 throw new BadRequestException("Los puntos son obligatorios.");
 
+            if (solicitud.Lugares.Count > LimitesLugares.ConCuenta)
+                throw new BadRequestException(LimitesLugares.MensajeConCuenta);
+
             if (solicitud.AlquilerMaximo?.Length > 30)
                 throw new BadRequestException("El alquiler máximo no puede superar 30 caracteres.");
 
