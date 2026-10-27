@@ -15,7 +15,8 @@ namespace ZonaMatch.Application.DTOs
         // Clave: id del criterio (seguridad, movilidad, espacios-verdes, educacion, salud); valor: baja|media|alta
         public Dictionary<string, string?> Criterios { get; set; } = [];
 
-        [MaxLength(10, ErrorMessage = "Se pueden medir hasta 10 lugares.")]
+        // Visitors: up to 3 (PuntajesController); signed-in users: up to 15
+        [MaxLength(15, ErrorMessage = "Se pueden medir hasta 15 lugares.")]
         public List<LugarPuntajeRequest> Lugares { get; set; } = [];
 
         // Tope de gasto mensual en pesos, como lo tipeo el usuario (ej: "800000"): alquiler mas expensas, o solo
