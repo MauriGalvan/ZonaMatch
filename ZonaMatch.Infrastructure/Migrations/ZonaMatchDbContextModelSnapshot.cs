@@ -41,6 +41,12 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("contexto_id");
 
+                    b.Property<bool>("EsFavorito")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("es_favorito");
+
                     b.Property<DateTimeOffset>("FechaActualizacion")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_actualizacion");

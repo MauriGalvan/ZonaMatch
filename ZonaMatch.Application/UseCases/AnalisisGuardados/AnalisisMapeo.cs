@@ -39,7 +39,8 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     .Select(v => ToResponse(v))
                     .ToList(),
                 AnalysisResultCalculator.Deserialize(analisis.ResultadoJson),
-                analisis.FechaResultado);
+                analisis.FechaResultado,
+                analisis.EsFavorito);
 
         // Request zones must exist, be unique, and include at most one initial zone.
         public static async Task<List<AnalisisZona>> ArmarZonasAsync(
