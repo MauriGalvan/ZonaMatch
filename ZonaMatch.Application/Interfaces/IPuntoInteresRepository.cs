@@ -1,4 +1,5 @@
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.ZoneRecommendations;
 
 namespace ZonaMatch.Application.Interfaces
 {
@@ -19,5 +20,12 @@ namespace ZonaMatch.Application.Interfaces
             string slug, IReadOnlyCollection<string> categorias, int limite, CancellationToken cancellationToken = default);
 
         Task<IReadOnlyList<CantidadPorTipo>> ContarPorTipoEnZonaAsync(string slug, CancellationToken cancellationToken = default);
+
+        // Profile-specific OSM places inside a zone, limited per recommendation category.
+        Task<IReadOnlyList<ProfileRecommendationCandidate>> GetProfileRecommendationsInZoneAsync(
+            string slug,
+            IReadOnlyCollection<string> categories,
+            int limitPerCategory,
+            CancellationToken cancellationToken = default);
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.ZoneRecommendations;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Infrastructure.Data;
@@ -154,6 +155,95 @@ namespace ZonaMatch.Infrastructure.Repositories
         private static readonly string SqlEnZona = Cercanos(PuntosEnZona);
         private static readonly string SqlResumenZona = Resumen(PuntosEnZona);
 
+        private static readonly string SqlProfileRecommendations = $"""
+            WITH {ZonaSql.ZonaPorSlug},
+            zone_area AS (
+                SELECT z.way AS geometry_3857, z.geom AS geometry_4326,
+                       ({ZonaSql.Centro("z.geom")})::geography AS center
+                FROM zona z
+            ),
+            raw_candidates AS (
+                SELECT 'n' || t.osm_id AS id, t.name, t.amenity, t.shop, t.way AS location_3857
+                FROM {Schema}.planet_osm_point t
+                CROSS JOIN zone_area z
+                WHERE t.name IS NOT NULL AND ST_Intersects(t.way, z.geometry_3857)
+                UNION ALL
+                SELECT CASE WHEN t.osm_id < 0 THEN 'r' || -t.osm_id ELSE 'w' || t.osm_id END,
+                       t.name, t.amenity, t.shop, ST_PointOnSurface(t.way)
+                FROM {Schema}.planet_osm_polygon t
+                CROSS JOIN zone_area z
+                WHERE t.name IS NOT NULL AND ST_Intersects(t.way, z.geometry_3857)
+            ),
+            deduplicated AS (
+                SELECT DISTINCT ON (c.id) c.id, c.name, c.amenity, c.shop,
+                       ST_Transform(c.location_3857, 4326) AS location_4326,
+                       ST_Distance(ST_Transform(c.location_3857, 4326)::geography, z.center) AS distance_meters
+                FROM raw_candidates c
+                CROSS JOIN zone_area z
+                WHERE ST_Intersects(ST_Transform(c.location_3857, 4326), z.geometry_4326)
+                ORDER BY c.id, ST_Distance(ST_Transform(c.location_3857, 4326)::geography, z.center)
+            ),
+            matches AS (
+                SELECT c.id, c.name, requested.category,
+                       ST_Y(c.location_4326) AS latitude,
+                       ST_X(c.location_4326) AS longitude,
+                       c.distance_meters
+                FROM deduplicated c
+                CROSS JOIN unnest(@categories::text[]) AS requested(category)
+                WHERE
+                    (requested.category = '{ProfileRecommendationCategories.MaternalSchool}'
+                     AND c.amenity IN ('childcare', 'kindergarten', 'school', 'college', 'university')
+                     AND (
+                         c.name ILIKE '%maternal%'
+                         OR c.name ILIKE '%materno infantil%'
+                         OR c.name ILIKE '%materno-infantil%'
+                         OR c.name ILIKE '%centro de primera infancia%'
+                         OR c.name ILIKE '%centro primera infancia%'
+                         OR c.name ILIKE '%espacio de primera infancia%'
+                         OR c.name ILIKE '%espacio primera infancia%'
+                         OR c.name ILIKE '%primera infancia%'
+                         OR c.name ILIKE '%primera-infancia%'
+                         OR c.name ILIKE '%guarderia%'
+                         OR c.name ILIKE '%guardería%'
+                         OR c.name ILIKE '%sala cuna%'
+                         OR c.name ILIKE '%sala-cuna%'
+                         OR c.name ~* '(^|[^[:alnum:]])CPI([^[:alnum:]]|$)'
+                     ))
+                    OR (requested.category = '{ProfileRecommendationCategories.Kindergarten}'
+                     AND c.amenity IN ('childcare', 'kindergarten', 'school', 'college', 'university')
+                     AND (c.name ILIKE '%jardin%' OR c.name ILIKE '%jardín%'))
+                    OR (requested.category = '{ProfileRecommendationCategories.PrimarySchool}'
+                     AND c.amenity IN ('childcare', 'kindergarten', 'school', 'college', 'university')
+                     AND c.name ILIKE '%primari%')
+                    OR (requested.category = '{ProfileRecommendationCategories.SecondarySchool}'
+                     AND c.amenity IN ('childcare', 'kindergarten', 'school', 'college', 'university')
+                     AND c.name ILIKE '%secundari%')
+                    OR (requested.category = '{ProfileRecommendationCategories.Veterinary}'
+                     AND (c.amenity = 'veterinary' OR c.name ILIKE '%veterinar%'))
+                    OR (requested.category = '{ProfileRecommendationCategories.CarRepair}'
+                     AND (c.shop IN ('car_repair', 'vehicle') OR c.amenity = 'car_repair'
+                          OR c.name ILIKE '%mecanic%' OR c.name ILIKE '%mecánic%'))
+                    OR (requested.category = '{ProfileRecommendationCategories.BicycleShop}'
+                     AND (c.shop = 'bicycle' OR c.name ILIKE '%biciclet%'))
+            ),
+            ranked AS (
+                SELECT *,
+                       row_number() OVER (PARTITION BY category ORDER BY distance_meters, name, id) AS position,
+                       count(*) OVER (PARTITION BY category) AS total
+                FROM matches
+            )
+            SELECT id AS "Id",
+                   name AS "Name",
+                   category AS "Category",
+                   latitude AS "Latitude",
+                   longitude AS "Longitude",
+                   distance_meters AS "DistanceMeters",
+                   (total > @limit) AS "IsTruncated"
+            FROM ranked
+            WHERE position <= @limit
+            ORDER BY category, distance_meters, name, id
+            """;
+
         private readonly ZonaMatchDbContext _dbContext;
 
         public PuntoInteresRepository(ZonaMatchDbContext dbContext)
@@ -188,6 +278,21 @@ namespace ZonaMatch.Infrastructure.Repositories
         public Task<IReadOnlyList<CantidadPorTipo>> ContarPorTipoEnZonaAsync(
             string slug, CancellationToken cancellationToken = default) =>
             ContarAsync(SqlResumenZona, cancellationToken, new NpgsqlParameter("slug", slug));
+
+        public async Task<IReadOnlyList<ProfileRecommendationCandidate>> GetProfileRecommendationsInZoneAsync(
+            string slug,
+            IReadOnlyCollection<string> categories,
+            int limitPerCategory,
+            CancellationToken cancellationToken = default)
+        {
+            return await _dbContext.Database
+                .SqlQueryRaw<ProfileRecommendationCandidate>(
+                    SqlProfileRecommendations,
+                    new NpgsqlParameter("slug", slug),
+                    new NpgsqlParameter("categories", categories.ToArray()),
+                    new NpgsqlParameter("limit", limitPerCategory))
+                .ToListAsync(cancellationToken);
+        }
 
         private async Task<IReadOnlyList<PuntoInteresDto>> ListarAsync(
             string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
