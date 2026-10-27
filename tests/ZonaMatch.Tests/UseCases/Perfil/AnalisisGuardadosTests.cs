@@ -258,6 +258,21 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         }
 
         [Fact]
+        public async Task Favorito_SeGuardaSinTocarLaFechaDeActualizacion()
+        {
+            await ConPerfil();
+            var original = await Crear.EjecutarAsync(Usuario, Pedido("Favorito"));
+            var useCase = new SetAnalysisFavorite(_analisis);
+
+            await useCase.ExecuteAsync(original.Id, Usuario, true);
+            var marcado = _analisis.Analisis.Single(a => a.Id == original.Id);
+
+            Assert.True(marcado.EsFavorito);
+            Assert.Equal(original.UpdatedAt, marcado.FechaActualizacion);
+            await Assert.ThrowsAsync<NotFoundException>(() => useCase.ExecuteAsync(original.Id, Guid.NewGuid(), true));
+        }
+
+        [Fact]
         public void NombreDeVersion_RecortaParaNoPasarElMaximo()
         {
             var nombre = CrearVersionAnalisis.NombreDeVersion(new string('a', 50), 12);

@@ -17,4 +17,6 @@ public sealed record AnalysisResponse(
     IReadOnlyList<AnalysisResponse> Versions,
     // Result saved with a personal analysis and when it was calculated; null when it is scored live
     PuntajesDto? Result = null,
-    DateTimeOffset? CalculatedAt = null);
+    DateTimeOffset? CalculatedAt = null,
+    // Starred in "Mis análisis"
+    bool IsFavorite = false);

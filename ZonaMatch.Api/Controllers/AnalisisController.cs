@@ -117,6 +117,25 @@ namespace ZonaMatch.Api.Controllers
             return CreatedAtAction(nameof(Obtener), new { id = version.Id }, version);
         }
 
+        // PUT /api/v1/analyses/{id}/favorite    Body: { "isFavorite": true }
+        // Stars or unstars an analysis or a version in "Mis análisis".
+        [HttpPut("~/api/v1/analyses/{id:guid}/favorite")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> SetFavorite(
+            [FromRoute] Guid id,
+            [FromBody] SetAnalysisFavoriteRequest request,
+            [FromServices] SetAnalysisFavorite useCase,
+            CancellationToken cancellationToken)
+        {
+            if (User.GetAuthenticatedUserId() is not { } userId)
+                return Unauthorized();
+
+            await useCase.ExecuteAsync(id, userId, request.IsFavorite!.Value, cancellationToken);
+            return NoContent();
+        }
+
         // PUT /Analisis/{id} — Body: { "nombre": "..." }
         [HttpPut("{id:guid}")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status200OK)]
