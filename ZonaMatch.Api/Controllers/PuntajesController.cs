@@ -39,6 +39,10 @@ namespace ZonaMatch.Api.Controllers
             if (User.GetAuthenticatedUserId() is null && solicitud.Lugares.Count > LimitesLugares.Visitante)
                 throw new BadRequestException(LimitesLugares.MensajeVisitante);
 
+            // Saved analyses go straight to the use case, so older ones without limits still recalculate
+            LimitesObligatorios.Validar(
+                solicitud.AlquilerMaximo, solicitud.Operacion, solicitud.CompraMaximaUsd, solicitud.Lugares.Select(lugar => lugar.TiempoMax));
+
             var reloj = Stopwatch.StartNew();
             var resultado = await _calcularPuntajes.EjecutarAsync(solicitud, cancellationToken);
             reloj.Stop();

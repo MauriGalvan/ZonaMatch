@@ -123,6 +123,9 @@ namespace ZonaMatch.Application.UseCases.Perfil
             if (solicitud.AlquilerMaximo?.Length > 30)
                 throw new BadRequestException("El alquiler máximo no puede superar 30 caracteres.");
 
+            LimitesObligatorios.Validar(
+                solicitud.AlquilerMaximo, solicitud.Operacion, solicitud.CompraMaximaUsd, solicitud.Lugares.Select(lugar => lugar.TiempoMax));
+
             var lugares = new List<PuntoDeInteres>(solicitud.Lugares.Count);
 
             for (var i = 0; i < solicitud.Lugares.Count; i++)

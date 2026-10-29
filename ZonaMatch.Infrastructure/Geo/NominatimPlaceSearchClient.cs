@@ -11,6 +11,12 @@ namespace ZonaMatch.Infrastructure.Geo
     {
         private const string Viewbox = "-58.99,-34.33,-58.01,-34.93";
 
+        // A whole neighbourhood or town, not a place: the front warns that zones are found by the analysis
+        private static readonly HashSet<string> AreaTypes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "suburb", "neighbourhood", "quarter", "city", "town", "village", "municipality", "county", "state_district", "city_district",
+        };
+
         public async Task<IReadOnlyList<PlaceSearchResult>> SearchAsync(
             string search, int limit, CancellationToken cancellationToken = default)
         {
@@ -82,7 +88,8 @@ namespace ZonaMatch.Infrastructure.Geo
             var addressType = ReadText(result, "addresstype");
             var kind = houseNumber is not null
                 ? "Dirección"
-                : string.Equals(addressType, "road", StringComparison.OrdinalIgnoreCase) ? "Calle" : "Lugar";
+                : string.Equals(addressType, "road", StringComparison.OrdinalIgnoreCase) ? "Calle"
+                : addressType is not null && AreaTypes.Contains(addressType) ? "Zona" : "Lugar";
 
             return new PlaceSearchResult
             {

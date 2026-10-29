@@ -77,7 +77,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
             int personas = 1,
             List<string?>? edades = null,
             List<LugarRequest>? lugares = null,
-            string? alquiler = null) => new()
+            string? alquiler = "500000") => new()
         {
             Contexto = new ContextoRequest
             {

@@ -1,3 +1,4 @@
+using ZonaMatch.Application.DTOs.Geolocation;
 using ZonaMatch.Application.DTOs.Geolocation.Responses;
 using ZonaMatch.Application.Interfaces;
 
@@ -10,7 +11,17 @@ namespace ZonaMatch.Application.UseCases.Geolocation
         public async Task<IReadOnlyList<PlaceSearchResultResponse>> ExecuteAsync(
             string search, CancellationToken cancellationToken)
         {
-            var results = await placeSearchClient.SearchAsync(search.Trim(), ResultLimit, cancellationToken);
+            IReadOnlyList<PlaceSearchResult> results = [];
+            var isApproximate = false;
+
+            // The first variant that finds something wins: as typed, normalized, then without the number
+            foreach (var (query, approximate) in PlaceQueryVariants.Build(search))
+            {
+                results = await placeSearchClient.SearchAsync(query, ResultLimit, cancellationToken);
+                isApproximate = approximate;
+                if (results.Count > 0)
+                    break;
+            }
 
             return results
                 .Select(result => new PlaceSearchResultResponse(
@@ -20,7 +31,7 @@ namespace ZonaMatch.Application.UseCases.Geolocation
                     result.Locality,
                     result.Latitude,
                     result.Longitude,
-                    result.IsApproximate))
+                    result.IsApproximate || isApproximate))
                 .ToList();
         }
     }
