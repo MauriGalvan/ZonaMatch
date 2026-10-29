@@ -25,7 +25,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
                 new() { ["seguridad"] = "alta", ["salud"] = "baja" },
                 personas: 2,
                 edades: ["26–35 años"],
-                lugares: [new LugarRequest { Nombre = " Facultad ", Latitude = -34.6, Longitude = -58.4, Tipo = "Estudio" }],
+                lugares: [new LugarRequest { Nombre = " Facultad ", Latitude = -34.6, Longitude = -58.4, Tipo = "Estudio", TiempoMax = "45 min" }],
                 alquiler: "800000"));
 
             var perfil = Assert.Single(_perfiles.Perfiles);
