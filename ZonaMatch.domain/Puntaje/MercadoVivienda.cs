@@ -51,6 +51,9 @@ namespace ZonaMatch.Domain.Puntaje
 
         public static bool EsValido(string? tipo) => tipo is Departamento or Casa or Ph;
 
+        // Solo los departamentos pagan expensas; casas y PH se toman sin ellas
+        public static bool PagaExpensas(string? tipo) => tipo is Departamento;
+
         // Para los textos: " de departamentos"; vacio sin tipo
         public static string Sufijo(string? tipo) => tipo switch
         {

@@ -52,8 +52,8 @@ namespace ZonaMatch.Domain.Puntaje
         // Mercado de departamentos, casas y PH por separado (clave: TiposVivienda); los datos de arriba son de todos juntos
         public IReadOnlyDictionary<string, MercadoVivienda> MercadoPorTipo { get; init; } = new Dictionary<string, MercadoVivienda>();
 
-        // Mercado del tipo pedido; sin tipo, el de todos juntos. Un tipo sin expensas propias usa las de la zona:
-        // las expensas dependen del edificio mas que del tipo.
+        // Mercado del tipo pedido; sin tipo, el de todos juntos. Casas y PH van sin expensas: la mayoria no paga y
+        // las que pagan son de barrios cerrados. Un departamento sin expensas propias usa las de la zona.
         public MercadoVivienda Mercado(string? tipo)
         {
             if (!TiposVivienda.EsValido(tipo))
@@ -61,7 +61,7 @@ namespace ZonaMatch.Domain.Puntaje
                     AlquilerPromedio, PropiedadesDisponibles, ExpensasPromedio, VentaPromedioUsd, PropiedadesEnVenta, AlquilerM2, VentaM2Usd);
 
             var mercado = MercadoPorTipo.TryGetValue(tipo!, out var propio) ? propio : MercadoVivienda.SinDatos;
-            return mercado with { ExpensasPromedio = mercado.ExpensasPromedio ?? ExpensasPromedio };
+            return mercado with { ExpensasPromedio = TiposVivienda.PagaExpensas(tipo) ? mercado.ExpensasPromedio ?? ExpensasPromedio : 0 };
         }
 
         // Comunas y partidos se comparan entre si, y barrios y localidades entre si
