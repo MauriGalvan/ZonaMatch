@@ -22,6 +22,14 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
             Assert.Contains("gasto", error.Message);
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("0")]
+        public void Validar_WhenBuying_ExpensasCapIsOptional(string? expensas)
+        {
+            LimitesObligatorios.Validar(expensas, "compra", 120_000, ["45 min"]);
+        }
+
         [Fact]
         public void Validar_WhenBuyingWithoutPurchasePrice_ThrowsBadRequest()
         {

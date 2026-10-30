@@ -9,11 +9,14 @@ namespace ZonaMatch.Application.UseCases.Puntajes
     {
         public static void Validar(string? gastoMensual, string? operacion, decimal? compraMaximaUsd, IEnumerable<string?> tiemposMaximos)
         {
-            if (!TieneNumeroPositivo(gastoMensual))
+            // Buying, the monthly cap is only the building fee (expensas): optional, and 0 means no cap
+            if (operacion?.Trim() == Operaciones.Compra)
+            {
+                if (compraMaximaUsd is not > 0)
+                    throw new BadRequestException("El precio máximo de compra es obligatorio.");
+            }
+            else if (!TieneNumeroPositivo(gastoMensual))
                 throw new BadRequestException("El gasto máximo por mes es obligatorio.");
-
-            if (operacion?.Trim() == Operaciones.Compra && compraMaximaUsd is not > 0)
-                throw new BadRequestException("El precio máximo de compra es obligatorio.");
 
             if (tiemposMaximos.Any(tiempo => !TieneNumeroPositivo(tiempo)))
                 throw new BadRequestException("El tiempo máximo de traslado es obligatorio en cada lugar.");
