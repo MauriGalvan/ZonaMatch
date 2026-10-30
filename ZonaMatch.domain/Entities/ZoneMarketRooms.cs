@@ -40,7 +40,7 @@ namespace ZonaMatch.Domain.Entities
 
         public decimal? MedianPriceM2 { get; set; }
 
-        // Monthly expenses of rentals, in pesos
+        // Monthly expenses in pesos, of rentals and sales together
         public decimal? AverageExpensesArs { get; set; }
 
         // Typical surface (median), covered and total, in m2

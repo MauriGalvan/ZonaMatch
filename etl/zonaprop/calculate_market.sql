@@ -12,7 +12,8 @@
 --   median_price         at the usd_ars rate of the scrape)
 --   average_price_m2     the same per covered m2 (total m2 when the covered one is missing)
 --   median_price_m2
---   average_expenses_ars monthly expenses of rentals
+--   average_expenses_ars monthly expenses in pesos of the listings of that type and size, for rent and for sale
+--                        together (the same value on both rows); listings without expenses (0) are left out
 --   median_covered_m2    typical surface of the listings
 --   median_total_m2
 -- Only in app.zone_market, on the "all" row of each operation (Zonaprop counts them for every type together):
@@ -49,7 +50,7 @@ SELECT l.zone_slug,
             THEN CASE l.currency WHEN '$' THEN l.price WHEN 'USD' THEN l.price * l.usd_ars END
             ELSE CASE l.currency WHEN 'USD' THEN l.price WHEN '$' THEN l.price / l.usd_ars END
        END AS price,
-       CASE WHEN l.operation = 'alquiler' AND l.expenses > 0 AND coalesce(l.expenses_currency, '$') = '$'
+       CASE WHEN l.expenses > 0 AND coalesce(l.expenses_currency, '$') = '$'
             THEN l.expenses END AS expenses_ars,
        CASE WHEN l.covered_m2 BETWEEN 15 AND 3000 THEN l.covered_m2 END AS covered_m2,
        CASE WHEN l.total_m2 BETWEEN 15 AND 20000 THEN l.total_m2 END AS total_m2,
@@ -145,13 +146,19 @@ CROSS JOIN LATERAL (VALUES ('price', e.price), ('price_m2', e.price / e.m2), ('e
                            ('covered_m2', e.covered_m2), ('total_m2', e.total_m2)) m(metric, value)
 WHERE m.value IS NOT NULL;
 
+-- Expenses depend on the building, not on the operation: rentals and sales of the same type and size count for both
+INSERT INTO vals
+SELECT zone_slug, CASE operation WHEN 'rent' THEN 'sale' ELSE 'rent' END, property_type, rooms, metric, value, w
+FROM vals
+WHERE metric = 'expenses';
+
 -- Trimmed mean and median of each metric, both weighted. mid: weighted position of the value (0 to 1)
 DROP TABLE IF EXISTS pg_temp.stats;
 CREATE TEMP TABLE stats AS
 WITH ranked AS (
     SELECT v.*,
            sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric
-                        ORDER BY value ROWS UNBOUNDED PRECEDING) AS cumulative,
+                        ORDER BY value, w ROWS UNBOUNDED PRECEDING) AS cumulative,
            sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric) AS total_w,
            count(*) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric) AS n
     FROM vals v
