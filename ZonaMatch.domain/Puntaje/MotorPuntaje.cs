@@ -287,9 +287,7 @@ namespace ZonaMatch.Domain.Puntaje
                 ? $"Alquiler estimado{vivienda} para {superficieM2} m² {Pesos(alquiler)}"
                 : $"Alquiler{vivienda} {Pesos(alquiler)}";
             var detallePromedio = mercado.ExpensasPromedio is { } expensas
-                ? expensas == 0
-                    ? $"{etiqueta} por mes (sin expensas)"
-                    : $"{etiqueta} + expensas {Pesos(expensas)} = {Pesos(costo)} por mes"
+                ? $"{etiqueta} + expensas {Pesos(expensas)} = {Pesos(costo)} por mes"
                 : estimado
                     ? $"{etiqueta} por mes (sin dato de expensas)"
                     : $"Alquiler promedio{vivienda} {Pesos(costo)} (sin dato de expensas)";
@@ -302,9 +300,6 @@ namespace ZonaMatch.Domain.Puntaje
         {
             if (mercado.ExpensasPromedio is not { } expensas)
                 return (new ResultadoLimite(LimiteExpensas, null, "Sin datos de expensas para esta zona"), 0);
-
-            if (expensas == 0)
-                return (new ResultadoLimite(LimiteExpensas, true, "Casas y PH se toman sin expensas: dentro de tu tope mensual"), 0);
 
             return Comparar(LimiteExpensas, expensas, maximo, $"Expensas promedio {Pesos(expensas)} por mes", $"tu tope mensual de {Pesos(maximo)}");
         }

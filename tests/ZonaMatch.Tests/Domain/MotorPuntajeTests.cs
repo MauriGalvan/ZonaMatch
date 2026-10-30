@@ -209,7 +209,7 @@ namespace ZonaMatch.Tests.Domain
             var ph = motor.Calcular(zona, new PedidoPuntaje(criterios, [], 1, Operaciones.Compra, 120_000, TiposVivienda.Ph));
 
             Assert.True(casa.Limites.Single().Cumple);
-            Assert.Contains("Alquiler de casas $ 700.000 por mes (sin expensas)", casa.Limites.Single().Detalle);
+            Assert.Contains("Alquiler de casas $ 700.000 + expensas $ 0 = $ 700.000 por mes", casa.Limites.Single().Detalle);
             var expensasPh = ph.Limites.Single(limite => limite.Tipo == MotorPuntaje.LimiteExpensas);
             Assert.True(expensasPh.Cumple);
             Assert.Equal(0, zona.Mercado(TiposVivienda.Ph).ExpensasPromedio);
