@@ -189,6 +189,33 @@ namespace ZonaMatch.Tests.Domain
         }
 
         [Fact]
+        public void Casas_y_PH_van_sin_expensas()
+        {
+            var zona = new PerfilZona
+            {
+                Slug = "zona", Nombre = "zona", Nivel = 9, SuperficieKm2 = 2, Poblacion = 1000, Escuelas = 10,
+                ExpensasPromedio = 100_000,
+                MercadoPorTipo = new Dictionary<string, MercadoVivienda>
+                {
+                    // La casa trae expensas de barrios cerrados: no se usan
+                    [TiposVivienda.Casa] = new(700_000, 5, 570_000, 150_000, 8),
+                    [TiposVivienda.Ph] = new(600_000, 5, null, 110_000, 8),
+                },
+            };
+            var motor = new MotorPuntaje([zona]);
+            var criterios = new Dictionary<string, string> { [MotorPuntaje.Educacion] = "media" };
+
+            var casa = motor.Calcular(zona, new PedidoPuntaje(criterios, [], 750_000, TipoVivienda: TiposVivienda.Casa));
+            var ph = motor.Calcular(zona, new PedidoPuntaje(criterios, [], 1, Operaciones.Compra, 120_000, TiposVivienda.Ph));
+
+            Assert.True(casa.Limites.Single().Cumple);
+            Assert.Contains("Alquiler de casas $ 700.000 por mes (sin expensas)", casa.Limites.Single().Detalle);
+            var expensasPh = ph.Limites.Single(limite => limite.Tipo == MotorPuntaje.LimiteExpensas);
+            Assert.True(expensasPh.Cumple);
+            Assert.Equal(0, zona.Mercado(TiposVivienda.Ph).ExpensasPromedio);
+        }
+
+        [Fact]
         public void Con_superficie_los_precios_se_estiman_por_m2()
         {
             // Como Ramos Mejia: el promedio de departamentos (US$ 95.354) es de unos 66 m2; 34 m2 salen bastante menos
