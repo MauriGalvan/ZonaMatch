@@ -227,7 +227,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
 
             return new PedidoPuntaje(
                 criteria, places, ParseRent(context.AlquilerMaximo), context.Operacion, context.CompraMaximaUsd, context.TipoVivienda,
-                context.SuperficieM2);
+                context.SuperficieM2, context.Ambientes);
         }
 
         private static int ParseMinutes(string? value)
@@ -260,8 +260,8 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     .Select(place => new TiempoLugarDto(
                         place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm))
                     .ToArray(),
-                Vivienda.Alquiler(result.Zona, request.TipoVivienda, request.SuperficieM2),
-                Vivienda.Compra(result.Zona, request.TipoVivienda, request.SuperficieM2));
+                Vivienda.Alquiler(result.Zona, request.TipoVivienda, request.SuperficieM2, request.Ambientes),
+                Vivienda.Compra(result.Zona, request.TipoVivienda, request.SuperficieM2, request.Ambientes));
 
         private static PuntajeZonaDto ToDto(RankedZoneResponse result) =>
             new(
@@ -284,11 +284,11 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     place.IsEstimated)).ToArray() ?? [],
                 result.Rent is { } rent
                     ? new AlquilerZonaDto(
-                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated)
+                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated, rent.Rooms)
                     : null,
                 result.Sale is { } sale
                     ? new CompraZonaDto(
-                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd)
+                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd, sale.Rooms)
                     : null);
     }
 }

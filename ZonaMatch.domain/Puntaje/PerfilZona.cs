@@ -52,6 +52,10 @@ namespace ZonaMatch.Domain.Puntaje
         // Mercado de departamentos, casas y PH por separado (clave: TiposVivienda); los datos de arriba son de todos juntos
         public IReadOnlyDictionary<string, MercadoVivienda> MercadoPorTipo { get; init; } = new Dictionary<string, MercadoVivienda>();
 
+        // Mercado por cantidad de ambientes (clave: tipo de TiposVivienda, o Todos, y ambientes de 1 a 5)
+        public IReadOnlyDictionary<(string Tipo, int Ambientes), MercadoVivienda> MercadoPorAmbientes { get; init; } =
+            new Dictionary<(string Tipo, int Ambientes), MercadoVivienda>();
+
         // Mercado del tipo pedido; sin tipo, el de todos juntos. Un tipo sin expensas propias usa las de la zona:
         // las expensas dependen del edificio mas que del tipo.
         public MercadoVivienda Mercado(string? tipo)
@@ -62,6 +66,34 @@ namespace ZonaMatch.Domain.Puntaje
 
             var mercado = MercadoPorTipo.TryGetValue(tipo!, out var propio) ? propio : MercadoVivienda.SinDatos;
             return mercado with { ExpensasPromedio = mercado.ExpensasPromedio ?? ExpensasPromedio };
+        }
+
+        // Con ambientes, los precios de ese tamano para el tipo pedido, cada operacion por separado; donde no hay dato
+        // de ese tamano, los de todos los tamanos (AmbientesAlquiler o AmbientesVenta quedan en null).
+        public MercadoVivienda Mercado(string? tipo, int? ambientes)
+        {
+            var general = Mercado(tipo);
+            if (ambientes is not { } pedidos || pedidos < Ambientes.Minimo)
+                return general;
+
+            var clave = (TiposVivienda.EsValido(tipo) ? tipo! : TiposVivienda.Todos, Math.Min(pedidos, Ambientes.Maximo));
+            if (!MercadoPorAmbientes.TryGetValue(clave, out var tamano))
+                return general;
+
+            var alquiler = tamano.AlquilerPromedio is not null;
+            var venta = tamano.VentaPromedioUsd is not null;
+            return general with
+            {
+                AlquilerPromedio = alquiler ? tamano.AlquilerPromedio : general.AlquilerPromedio,
+                PropiedadesEnAlquiler = alquiler ? tamano.PropiedadesEnAlquiler : general.PropiedadesEnAlquiler,
+                AlquilerM2 = alquiler ? tamano.AlquilerM2 : general.AlquilerM2,
+                ExpensasPromedio = (alquiler ? tamano.ExpensasPromedio : null) ?? general.ExpensasPromedio,
+                VentaPromedioUsd = venta ? tamano.VentaPromedioUsd : general.VentaPromedioUsd,
+                PropiedadesEnVenta = venta ? tamano.PropiedadesEnVenta : general.PropiedadesEnVenta,
+                VentaM2Usd = venta ? tamano.VentaM2Usd : general.VentaM2Usd,
+                AmbientesAlquiler = alquiler ? clave.Item2 : null,
+                AmbientesVenta = venta ? clave.Item2 : null,
+            };
         }
 
         // Comunas y partidos se comparan entre si, y barrios y localidades entre si

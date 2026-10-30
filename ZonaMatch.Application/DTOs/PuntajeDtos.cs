@@ -40,6 +40,10 @@ namespace ZonaMatch.Application.DTOs
         [Range(0, 2000, ErrorMessage = "La superficie debe estar entre 10 y 2.000 m².")]
         public int? SuperficieM2 { get; set; }
 
+        // Ambientes que busca (1 a 4, 5 = 5 o mas): los precios son los de ese tamano; sin dato, los de todos
+        [Range(0, 5, ErrorMessage = "Los ambientes deben estar entre 1 y 5 (5 o más).")]
+        public int? Ambientes { get; set; }
+
         // Mobility options (walking, public transit, car, cycling) determine how trips are measured.
         public List<string> Movilidad { get; set; } = [];
 
@@ -112,7 +116,7 @@ namespace ZonaMatch.Application.DTOs
 
     // Expensas: promedio mensual en pesos (null sin dato). CostoMensual: alquiler mas expensas.
     // PrecioM2: alquiler promedio por m2. Con superficie pedida, SuperficieM2 y Estimado (alquiler para esa superficie);
-    // CostoMensual usa ese estimado.
+    // CostoMensual usa ese estimado. Ambientes: el tamano de los precios (null: todos los tamanos).
     public record AlquilerZonaDto(
         decimal Promedio,
         int PropiedadesDisponibles,
@@ -120,15 +124,18 @@ namespace ZonaMatch.Application.DTOs
         decimal? CostoMensual = null,
         decimal? PrecioM2 = null,
         int? SuperficieM2 = null,
-        decimal? Estimado = null);
+        decimal? Estimado = null,
+        int? Ambientes = null);
 
     // PromedioUsd: precio de venta promedio en dolares. Expensas: promedio mensual en pesos (null sin dato).
     // PrecioM2Usd: venta promedio por m2. Con superficie pedida, SuperficieM2 y EstimadoUsd (precio para esa superficie).
+    // Ambientes: el tamano de los precios (null: todos los tamanos).
     public record CompraZonaDto(
         decimal PromedioUsd,
         int PropiedadesDisponibles,
         decimal? Expensas = null,
         decimal? PrecioM2Usd = null,
         int? SuperficieM2 = null,
-        decimal? EstimadoUsd = null);
+        decimal? EstimadoUsd = null,
+        int? Ambientes = null);
 }

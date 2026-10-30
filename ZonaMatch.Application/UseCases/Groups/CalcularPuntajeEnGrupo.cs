@@ -52,6 +52,7 @@ public sealed partial class CalcularPuntajeEnGrupo
         var (operation, maximumPurchase, propertyType) = Vivienda.Validar(
             request.Operation, request.MaximumPurchaseUsd, request.PropertyType);
         var surface = Vivienda.ValidarSuperficie(request.SurfaceM2);
+        var rooms = Vivienda.ValidarAmbientes(request.Rooms);
         var participantIds = group.Participants.Select(participant => participant.Id).ToHashSet();
         var weights = ValidateWeights(request.ParticipantWeights, participantIds);
         var slugs = (request.AddedZones ?? [])
@@ -86,6 +87,7 @@ public sealed partial class CalcularPuntajeEnGrupo
                         CompraMaximaUsd = maximumPurchase,
                         TipoVivienda = propertyType,
                         SuperficieM2 = surface,
+                        Ambientes = rooms,
                     },
                     ModosViaje.DesdeMovilidad(profile.Movilidad ?? []),
                     profile.Puntos.OrderBy(point => point.Orden).ToArray());
@@ -137,7 +139,7 @@ public sealed partial class CalcularPuntajeEnGrupo
             throw new BadRequestException("Ningún participante con peso positivo tiene datos suficientes para puntuar las zonas disponibles.");
 
         var rankedCandidates = zonesToCalculate
-            .Select(zone => BuildZoneResult(zone, group.Participants, weights, memberScores, propertyType, surface))
+            .Select(zone => BuildZoneResult(zone, group.Participants, weights, memberScores, propertyType, surface, rooms))
             .OrderByDescending(zone => zone.Score.HasValue)
             .ThenByDescending(zone => zone.Score)
             .ThenBy(zone => zone.Name, StringComparer.CurrentCulture)
@@ -191,7 +193,8 @@ public sealed partial class CalcularPuntajeEnGrupo
             maximumPurchase,
             propertyType,
             BuildProfileRecommendations(profiles),
-            surface);
+            surface,
+            rooms);
     }
 
     private static GroupProfileRecommendationsResponse BuildProfileRecommendations(IReadOnlyList<Contexto> profiles)
@@ -353,7 +356,8 @@ public sealed partial class CalcularPuntajeEnGrupo
         IReadOnlyDictionary<Guid, decimal> weights,
         IReadOnlyList<MemberCalculation> memberScores,
         string? propertyType,
-        int? surface)
+        int? surface,
+        int? rooms)
     {
         var scoresByParticipant = memberScores.ToDictionary(member => member.Participant.Id);
         var available = participants
@@ -445,15 +449,15 @@ public sealed partial class CalcularPuntajeEnGrupo
             .Where(member => member.Zones.ContainsKey(zone.Slug))
             .SelectMany(member => member.Zones[zone.Slug].Places)
             .ToArray();
-        var rent = Vivienda.Alquiler(zone, propertyType, surface) is { } zoneRent
+        var rent = Vivienda.Alquiler(zone, propertyType, surface, rooms) is { } zoneRent
             ? new ZoneRentResponse(
                 zoneRent.Promedio, zoneRent.PropiedadesDisponibles, zoneRent.Expensas, zoneRent.CostoMensual,
-                zoneRent.PrecioM2, zoneRent.SuperficieM2, zoneRent.Estimado)
+                zoneRent.PrecioM2, zoneRent.SuperficieM2, zoneRent.Estimado, zoneRent.Ambientes)
             : null;
-        var sale = Vivienda.Compra(zone, propertyType, surface) is { } zoneSale
+        var sale = Vivienda.Compra(zone, propertyType, surface, rooms) is { } zoneSale
             ? new ZoneSaleResponse(
                 zoneSale.PromedioUsd, zoneSale.PropiedadesDisponibles, zoneSale.Expensas,
-                zoneSale.PrecioM2Usd, zoneSale.SuperficieM2, zoneSale.EstimadoUsd)
+                zoneSale.PrecioM2Usd, zoneSale.SuperficieM2, zoneSale.EstimadoUsd, zoneSale.Ambientes)
             : null;
 
         return new RankedZoneResponse(zone.Slug, zone.Nombre, groupScore, breakdown, componentGroups, limits, places, rent, sale);

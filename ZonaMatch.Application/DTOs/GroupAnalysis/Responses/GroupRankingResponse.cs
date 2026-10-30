@@ -10,4 +10,5 @@ public sealed record GroupRankingResponse(
     decimal? MaximumPurchaseUsd = null,
     string? PropertyType = null,
     GroupProfileRecommendationsResponse? ProfileRecommendations = null,
-    int? SurfaceM2 = null);
+    int? SurfaceM2 = null,
+    int? Rooms = null);

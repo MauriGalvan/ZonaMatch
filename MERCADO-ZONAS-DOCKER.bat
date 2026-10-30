@@ -2,14 +2,19 @@
 setlocal
 
 REM Mercado inmobiliario de cada zona a partir de las publicaciones de Zonaprop: cantidad de avisos de venta y
-REM alquiler por tipo (departamentos, casas, PH), alquiler promedio en pesos y precio por m2 de venta en dolares.
-REM Requiere la base con las zonas calculadas (DATOS-ZONAS-DOCKER.bat) y Python 3 (sin paquetes extra).
+REM alquiler por tipo (departamentos, casas, PH) y por ambientes (1 a 5 o mas), alquiler en pesos, venta en dolares,
+REM precio por m2, superficie tipica, y que parte es apta credito, de duenio directo o acepta mascotas.
+REM Requiere la base con las zonas calculadas (DATOS-ZONAS-DOCKER.bat), las migraciones aplicadas
+REM (AddListingFeaturesToZoneMarket y AddZoneMarketByRooms) y Python 3 (sin paquetes extra).
 REM
-REM El scraping es lento a proposito (un pedido cada pocos segundos, unas horas para todas las zonas). Si Zonaprop
-REM bloquea, se corta solo: volver a ejecutar retoma donde quedo, porque cada pagina queda en datos\zonaprop\cache.
-REM Resultado: tabla app.zone_market (la que lee la API) y su copia en CSV, datos\zonaprop\market_by_zone.csv.
+REM El scraping es lento a proposito (un pedido cada 3 o 4 segundos, unas 6 horas para todas las zonas). Si Zonaprop
+REM bloquea, espera y reintenta; si sigue, se corta: volver a ejecutar retoma donde quedo, porque cada pagina queda
+REM en datos\zonaprop\cache\AAAA-MM-DD (fecha de la corrida).
+REM Resultado: tablas app.zone_market y app.zone_market_rooms (las que lee la API), su copia en CSV
+REM (datos\zonaprop\market_by_zone.csv) y los slugs del enlace a Zonaprop para la SPA (datos\zonaprop\zonaprop-slugs.json,
+REM que se copia a frontend\ZonaMatchSPA\src\features\zone-detail\data\).
 REM
-REM Opciones (se pasan al scraper): MERCADO-ZONAS-DOCKER.bat --pages 1      muestra de 30 avisos por combinacion
+REM Opciones (se pasan al scraper): MERCADO-ZONAS-DOCKER.bat --only palermo,adrogue   solo esas zonas
 REM                                 MERCADO-ZONAS-DOCKER.bat --export-only  recalcular sin descargar nada
 
 set DB_USER=zonamatch
@@ -61,10 +66,12 @@ rem Zonas que siguen sin datos de Zonaprop: alquiler estimado con el censo
 if errorlevel 1 goto :err_calc
 %PSQL% --csv < etl\zonaprop\export_market.sql > datos\zonaprop\market_by_zone.csv
 if errorlevel 1 goto :err_calc
+%PSQL% -At < etl\zonaprop\export_front_slugs.sql > datos\zonaprop\zonaprop-slugs.json
+if errorlevel 1 goto :err_calc
 
 echo.
 echo ==========================================
-echo Listo: datos\zonaprop\market_by_zone.csv
+echo Listo: datos\zonaprop\market_by_zone.csv y datos\zonaprop\zonaprop-slugs.json
 echo ==========================================
 goto :eof
 

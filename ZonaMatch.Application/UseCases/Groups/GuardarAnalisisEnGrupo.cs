@@ -56,6 +56,7 @@ public sealed class GuardarAnalisisEnGrupo
                 MaximumPurchaseUsd = request.MaximumPurchaseUsd,
                 PropertyType = request.PropertyType,
                 SurfaceM2 = request.SurfaceM2,
+                Rooms = request.Rooms,
             },
             cancellationToken);
 

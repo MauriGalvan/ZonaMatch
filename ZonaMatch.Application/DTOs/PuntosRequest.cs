@@ -27,5 +27,9 @@ namespace ZonaMatch.Application.DTOs
         // Superficie que busca en m2 (opcional): los precios se estiman por m2
         [Range(0, 2000, ErrorMessage = "La superficie debe estar entre 10 y 2.000 m².")]
         public int? SuperficieM2 { get; set; }
+
+        // Ambientes que busca (opcional, 1 a 4, 5 = 5 o mas): los precios son los de ese tamano
+        [Range(0, 5, ErrorMessage = "Los ambientes deben estar entre 1 y 5 (5 o más).")]
+        public int? Ambientes { get; set; }
     }
 }

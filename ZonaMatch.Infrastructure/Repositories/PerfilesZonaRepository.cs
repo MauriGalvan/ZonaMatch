@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using NpgsqlTypes;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Puntaje;
 using ZonaMatch.Infrastructure.Data;
 
@@ -135,6 +136,16 @@ namespace ZonaMatch.Infrastructure.Repositories
             FROM sumadas
             """;
 
+        // Precios por cantidad de ambientes (app.zone_market_rooms), solo los grupos con muestra suficiente. Las
+        // zonas heredadas y los partidos y comunas ya vienen calculados por el ETL.
+        private static readonly string SqlMercadoAmbientes = $"""
+            SELECT zone_slug AS "Slug", operation AS "Operacion", property_type AS "Tipo", rooms AS "Ambientes",
+                   average_price AS "Promedio", listings AS "Propiedades", average_expenses_ars AS "Expensas",
+                   average_price_m2 AS "PrecioM2"
+            FROM {App}.zone_market_rooms
+            WHERE average_price IS NOT NULL AND sample_size >= {ZoneMarketRooms.MinSampleSize}
+            """;
+
         private static readonly string SqlZonasDelEntorno = $"""
             WITH zonas_validas AS (
                 -- Buenos Aires repeats the full CABA boundary; keep other same-area neighborhoods.
@@ -243,12 +254,30 @@ namespace ZonaMatch.Infrastructure.Repositories
                         .SqlQueryRaw<MercadoFila>(SqlMercado)
                         .ToListAsync(cancellationToken))
                     .ToLookup(f => f.Slug, StringComparer.Ordinal);
+                var ambientes = (await LeerMercadoAmbientesAsync(cancellationToken))
+                    .ToLookup(f => f.Slug, StringComparer.Ordinal);
 
-                return filas.Select(f => f.APerfil(mercado[f.Slug])).ToList();
+                return filas.Select(f => f.APerfil(mercado[f.Slug], ambientes[f.Slug])).ToList();
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
                 _logger.LogWarning("Faltan tablas para el puntaje de zonas ({Mensaje}). Correr DATOS-ZONAS-DOCKER.bat.", ex.MessageText);
+                return [];
+            }
+        }
+
+        // Sin la tabla por ambientes (migracion AddZoneMarketByRooms sin aplicar) el puntaje sigue con los promedios
+        private async Task<IReadOnlyList<MercadoAmbientesFila>> LeerMercadoAmbientesAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await _dbContext.Database
+                    .SqlQueryRaw<MercadoAmbientesFila>(SqlMercadoAmbientes)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                _logger.LogWarning("Falta app.zone_market_rooms ({Mensaje}): aplicar las migraciones.", ex.MessageText);
                 return [];
             }
         }
@@ -271,9 +300,21 @@ namespace ZonaMatch.Infrastructure.Repositories
             public double Latitud { get; set; }
             public double Longitud { get; set; }
 
-            public PerfilZona APerfil(IEnumerable<MercadoFila> mercado)
+            public PerfilZona APerfil(IEnumerable<MercadoFila> mercado, IEnumerable<MercadoAmbientesFila> ambientes)
             {
                 var porClave = mercado.ToDictionary(f => (f.Operacion, f.Tipo));
+                var porAmbientes = ambientes
+                    .GroupBy(f => (f.Tipo, f.Ambientes))
+                    .ToDictionary(
+                        g => g.Key,
+                        g =>
+                        {
+                            var alquiler = g.FirstOrDefault(f => f.Operacion == "rent");
+                            var venta = g.FirstOrDefault(f => f.Operacion == "sale");
+                            return new MercadoVivienda(
+                                alquiler?.Promedio, alquiler?.Propiedades, alquiler?.Expensas, venta?.Promedio, venta?.Propiedades,
+                                alquiler?.PrecioM2, venta?.PrecioM2);
+                        });
 
                 MercadoVivienda Vivienda(string tipo)
                 {
@@ -311,6 +352,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 VentaM2Usd = todos.VentaM2Usd,
                 MercadoPorTipo = new[] { TiposVivienda.Departamento, TiposVivienda.Casa, TiposVivienda.Ph }
                     .ToDictionary(tipo => tipo, Vivienda),
+                MercadoPorAmbientes = porAmbientes,
                 };
             }
         }
@@ -321,6 +363,19 @@ namespace ZonaMatch.Infrastructure.Repositories
             public string Slug { get; set; } = string.Empty;
             public string Operacion { get; set; } = string.Empty;
             public string Tipo { get; set; } = string.Empty;
+            public decimal? Promedio { get; set; }
+            public int? Propiedades { get; set; }
+            public decimal? Expensas { get; set; }
+            public decimal? PrecioM2 { get; set; }
+        }
+
+        // Resultado sin clave de SqlMercadoAmbientes: una fila por operacion, tipo y ambientes (1 a 5)
+        private sealed class MercadoAmbientesFila
+        {
+            public string Slug { get; set; } = string.Empty;
+            public string Operacion { get; set; } = string.Empty;
+            public string Tipo { get; set; } = string.Empty;
+            public int Ambientes { get; set; }
             public decimal? Promedio { get; set; }
             public int? Propiedades { get; set; }
             public decimal? Expensas { get; set; }

@@ -52,6 +52,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 CompraMaximaUsd = context.CompraMaximaUsd,
                 TipoVivienda = context.TipoVivienda,
                 SuperficieM2 = context.SuperficieM2,
+                Ambientes = context.Ambientes,
                 Movilidad = (context.Movilidad ?? []).ToList(),
             };
 
