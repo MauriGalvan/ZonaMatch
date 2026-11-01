@@ -1,6 +1,6 @@
 namespace ZonaMatch.Application.DTOs
 {
-    // GET /Zonas/{slug}/transporte: colectivos, trenes y subte de la zona en un dia habil, por franja horaria
+    // GET /api/v1/zones/{slug}/transit: public transit in the zone on a weekday, grouped by time of day
     public record TransporteZonaDto(
         string Slug,
         IReadOnlyList<ModoTransporteDto> Modos,

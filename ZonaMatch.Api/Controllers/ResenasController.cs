@@ -8,10 +8,10 @@ namespace ZonaMatch.Api.Controllers
 {
     // Community reviews for a zone. Reading is public; writing requires an authenticated user (Bearer token).
     [ApiController]
-    [Route("Zonas/{slug:regex(" + RutasZona.Slug + ")}/resenas")]
+    [Route("api/v1/zones/{slug:regex(" + RutasZona.Slug + ")}/reviews")]
     public class ResenasController : ControllerBase
     {
-        // GET /Zonas/villa-luro/resenas
+        // GET /api/v1/zones/villa-luro/reviews
         // With a token, each review indicates whether it is yours (esMia) and whether you marked it useful.
         [HttpGet]
         [ProducesResponseType<ResenasZonaDto>(StatusCodes.Status200OK)]
@@ -21,12 +21,12 @@ namespace ZonaMatch.Api.Controllers
             CancellationToken cancellationToken) =>
             Ok(await listarResenas.EjecutarAsync(slug, User.GetAuthenticatedUserId(), cancellationToken));
 
-        // PUT /Zonas/villa-luro/resenas/mia
+        // PUT /api/v1/zones/villa-luro/reviews/mine
         // Body: { "aspectos": { "seguridad": 3, "transporte": 5, "conectividad": 4, "comercios": 4, "espaciosVerdes": 3 },
         //         "texto": "...", "aniosEnZona": 9, "temas": ["transporte"] }
         // Creates or replaces your review for the zone (one per user and zone). The overall score is the average of its aspects.
         [Authorize]
-        [HttpPut("mia")]
+        [HttpPut("mine")]
         [ProducesResponseType<ResenaDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -43,9 +43,9 @@ namespace ZonaMatch.Api.Controllers
             return Ok(await guardarMiResena.EjecutarAsync(slug, currentUser, solicitud, cancellationToken));
         }
 
-        // DELETE /Zonas/villa-luro/resenas/mia
+        // DELETE /api/v1/zones/villa-luro/reviews/mine
         [Authorize]
-        [HttpDelete("mia")]
+        [HttpDelete("mine")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -61,10 +61,10 @@ namespace ZonaMatch.Api.Controllers
             return NoContent();
         }
 
-        // PUT /Zonas/villa-luro/resenas/{id}/util marks another user's review as useful.
-        // DELETE /Zonas/villa-luro/resenas/{id}/util removes the mark; both operations are idempotent.
+        // PUT /api/v1/zones/villa-luro/reviews/{id}/helpful-votes marks another user's review as useful.
+        // DELETE /api/v1/zones/villa-luro/reviews/{id}/helpful-votes removes the mark; both operations are idempotent.
         [Authorize]
-        [HttpPut("{id:guid}/util")]
+        [HttpPut("{id:guid}/helpful-votes")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -77,7 +77,7 @@ namespace ZonaMatch.Api.Controllers
             CambiarUtilAsync(slug, id, util: true, marcarResenaUtil, cancellationToken);
 
         [Authorize]
-        [HttpDelete("{id:guid}/util")]
+        [HttpDelete("{id:guid}/helpful-votes")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

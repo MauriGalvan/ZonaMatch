@@ -8,7 +8,7 @@ using ZonaMatch.Application.UseCases.SavedZones;
 namespace ZonaMatch.Api.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/saved-zones")]
     [Authorize]
     public class SavedZonesController : ControllerBase
     {

@@ -3,7 +3,7 @@ using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // GET /Zonas/{slug}/resenas: resumen y resenas, la mas nueva primero
+    // GET /api/v1/zones/{slug}/reviews: summary and reviews, newest first
     public record ResenasZonaDto(ResumenResenasDto Resumen, IReadOnlyList<ResenaDto> Resenas);
 
     // Promedio es 0 cuando no hay resenas. Aspectos trae cada AspectoZona en orden.
@@ -35,7 +35,7 @@ namespace ZonaMatch.Application.DTOs
         [Range(1, 5, ErrorMessage = "El puntaje de comercios y servicios debe estar entre 1 y 5.")] int Comercios,
         [Range(1, 5, ErrorMessage = "El puntaje de espacios verdes debe estar entre 1 y 5.")] int EspaciosVerdes);
 
-    // PUT /Zonas/{slug}/resenas/mia: crea o reemplaza la resena del usuario actual.
+    // PUT /api/v1/zones/{slug}/reviews/mine: creates or replaces the current user's review.
     // El puntaje general no se envia: se calcula a partir de los aspectos.
     // Temas: codigos de AspectoZona (seguridad, transporte, conectividad, comercios, espacios-verdes).
     public record GuardarResenaDto(

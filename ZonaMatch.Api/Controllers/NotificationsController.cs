@@ -7,7 +7,7 @@ using ZonaMatch.Application.UseCases.Notifications;
 namespace ZonaMatch.Api.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/notifications")]
     [Authorize]
     public class NotificationsController : ControllerBase
     {

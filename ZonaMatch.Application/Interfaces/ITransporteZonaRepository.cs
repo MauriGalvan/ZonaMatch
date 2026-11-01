@@ -6,7 +6,7 @@ namespace ZonaMatch.Application.Interfaces
     // tiene paradas o todavia no se cargaron los datos (DATOS-ZONAS-DOCKER.bat).
     public interface ITransporteZonaRepository
     {
-        // La misma zona que GET /Zonas/{slug}
+        // The same zone selection as GET /api/v1/zones/{slug}.
         Task<IReadOnlyList<ParadasModoZona>> ListarParadasAsync(string slug, CancellationToken cancellationToken = default);
 
         Task<IReadOnlyList<SalidasLineaZona>> ListarSalidasAsync(string slug, CancellationToken cancellationToken = default);

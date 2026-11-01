@@ -169,7 +169,7 @@ builder.Services.AddScoped<ICommunityPoiRepository, CommunityPoiRepository>();
 builder.Services.AddScoped<CommunityPoiUpdater>();
 builder.Services.AddScoped<ResolveContribution>();
 
-// Criteria catalog for the wizard (GET /Criterios).
+// Criteria catalog for the wizard (GET /api/v1/criteria).
 builder.Services.AddScoped<ListarCriterios>();
 
 // User profile and saved analyses with their versions.
@@ -232,11 +232,11 @@ builder.Services.ConfigureOptions<ConfigureJwtBearerOptions>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddAuthorization();
 
-// Slows down password guessing on /Auth/login: 10 attempts per minute per IP
+// Slows down password guessing on /api/v1/auth/login: 10 attempts per minute per IP
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    // Rejections would otherwise be silent: repeated hits on /Auth/login are the signal of a brute-force attempt
+    // Rejections would otherwise be silent: repeated hits on /api/v1/auth/login are the signal of a brute-force attempt
     options.OnRejected = (context, _) =>
     {
         var http = context.HttpContext;

@@ -14,14 +14,14 @@ namespace ZonaMatch.Application.DTOs
 
     public record RespuestaDto(Guid Id, string Texto, string Iniciales, DateTimeOffset Fecha, bool EsMia);
 
-    // POST /Zonas/{slug}/preguntas
+    // POST /api/v1/zones/{slug}/questions
     public record CrearPreguntaDto(
         [Required(ErrorMessage = "El texto de la pregunta es obligatorio.")]
         [StringLength(Longitudes.TextoPregunta, MinimumLength = Longitudes.TextoPreguntaMinimo,
             ErrorMessage = "La pregunta debe tener entre 10 y 300 caracteres.")]
         string Texto);
 
-    // POST /Zonas/{slug}/preguntas/{id}/respuestas
+    // POST /api/v1/zones/{slug}/questions/{id}/answers
     public record CrearRespuestaDto(
         [Required(ErrorMessage = "El texto de la respuesta es obligatorio.")]
         [StringLength(Longitudes.TextoRespuesta, MinimumLength = Longitudes.TextoRespuestaMinimo,

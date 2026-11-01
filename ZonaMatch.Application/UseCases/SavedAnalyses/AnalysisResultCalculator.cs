@@ -8,7 +8,7 @@ using ZonaMatch.Domain.Entities;
 namespace ZonaMatch.Application.UseCases.SavedAnalyses
 {
     // Result of a saved analysis, computed once when it is saved or recalculated, so opening it later shows what the
-    // user saw and two versions can be compared. Uses the same scoring as the analysis screen (POST /Puntajes) with the
+    // user saw and two versions can be compared. Uses the same scoring as the analysis screen (POST /api/v1/scores) with the
     // analysis's own criteria: its saved zones are always included and the recommendations are the next in the ranking.
     public class AnalysisResultCalculator(CalcularPuntajes scoring) : IAnalysisResultCalculator
     {

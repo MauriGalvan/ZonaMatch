@@ -8,10 +8,10 @@ namespace ZonaMatch.Api.Controllers
 {
     // Questions for a zone's community and their answers. Reading is public; writing requires an authenticated user.
     [ApiController]
-    [Route("Zonas/{slug:regex(" + RutasZona.Slug + ")}/preguntas")]
+    [Route("api/v1/zones/{slug:regex(" + RutasZona.Slug + ")}/questions")]
     public class PreguntasController : ControllerBase
     {
-        // GET /Zonas/villa-luro/preguntas
+        // GET /api/v1/zones/villa-luro/questions
         // Newest question first; answers within each question are oldest first.
         [HttpGet]
         [ProducesResponseType<IReadOnlyList<PreguntaDto>>(StatusCodes.Status200OK)]
@@ -21,7 +21,7 @@ namespace ZonaMatch.Api.Controllers
             CancellationToken cancellationToken) =>
             Ok(await listarPreguntas.EjecutarAsync(slug, User.GetAuthenticatedUserId(), cancellationToken));
 
-        // POST /Zonas/villa-luro/preguntas    Body: { "texto": "..." }
+        // POST /api/v1/zones/villa-luro/questions    Body: { "texto": "..." }
         [Authorize]
         [HttpPost]
         [ProducesResponseType<PreguntaDto>(StatusCodes.Status201Created)]
@@ -41,9 +41,9 @@ namespace ZonaMatch.Api.Controllers
             return StatusCode(StatusCodes.Status201Created, pregunta);
         }
 
-        // POST /Zonas/villa-luro/preguntas/{id}/respuestas    Body: { "texto": "..." }
+        // POST /api/v1/zones/villa-luro/questions/{id}/answers    Body: { "texto": "..." }
         [Authorize]
-        [HttpPost("{id:guid}/respuestas")]
+        [HttpPost("{id:guid}/answers")]
         [ProducesResponseType<RespuestaDto>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

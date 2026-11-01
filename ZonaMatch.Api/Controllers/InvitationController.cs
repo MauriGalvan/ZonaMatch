@@ -10,7 +10,7 @@ using ZonaMatch.Application.UseCases.GroupLinks;
 namespace ZonaMatch.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/v1/group-invitations")]
 public class InvitationsController : ControllerBase
 {
     private Guid GetCurrentUserId()
@@ -24,7 +24,7 @@ public class InvitationsController : ControllerBase
     // ==========================================
 
     [Authorize]
-    [HttpPost("Email")]
+    [HttpPost("email")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -57,7 +57,7 @@ public class InvitationsController : ControllerBase
         return Ok(new { Message = "Invitación enviada por correo exitosamente." });
     }
 
-    [HttpGet("Email/{token:guid}")]
+    [HttpGet("email/{token:guid}")]
     [ProducesResponseType(typeof(InvitationDetailsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetEmailInvitationDetails(
@@ -70,7 +70,7 @@ public class InvitationsController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("Email/{token:guid}/Accept")]
+    [HttpPost("email/{token:guid}/acceptances")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -90,7 +90,7 @@ public class InvitationsController : ControllerBase
     // ==========================================
 
     [Authorize]
-    [HttpGet("Link/Group/{groupId:guid}")]
+    [HttpGet("~/api/v1/groups/{groupId:guid}/invitation-link")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -104,7 +104,7 @@ public class InvitationsController : ControllerBase
         return Ok(new { InviteToken = token });
     }
 
-    [HttpGet("Link/{token:guid}")]
+    [HttpGet("~/api/v1/group-invitation-links/{token:guid}")]
     [ProducesResponseType(typeof(GroupLinkDetailsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetLinkInvitationDetails(
@@ -117,7 +117,7 @@ public class InvitationsController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("Link/{token:guid}/Accept")]
+    [HttpPost("~/api/v1/group-invitation-links/{token:guid}/acceptances")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -132,7 +132,7 @@ public class InvitationsController : ControllerBase
     }
 
     [Authorize]
-    [HttpPut("Link/Group/{groupId:guid}/Revoke")]
+    [HttpPut("~/api/v1/groups/{groupId:guid}/invitation-link")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]

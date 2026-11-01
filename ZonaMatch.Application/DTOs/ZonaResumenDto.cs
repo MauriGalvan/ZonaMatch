@@ -1,6 +1,6 @@
 namespace ZonaMatch.Application.DTOs
 {
-    // A zone found by name: enough to list it and open GET /Zonas/{Slug}.
+    // A zone found by name: enough to list it and open GET /api/v1/zones/{slug}.
     // Jurisdicciones: the boundaries that contain it, most specific first (e.g. Comuna 10, CABA).
     public record ZonaResumenDto(
         string Slug,

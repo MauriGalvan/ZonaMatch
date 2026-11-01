@@ -9,11 +9,11 @@ namespace ZonaMatch.Api.Controllers
     // Community contributions to a zone map: new points and corrections stay pending until other users
     // validate them. Approved contributions appear in the points of interest endpoints.
     [ApiController]
-    [Route("Zonas/{slug:regex(" + RutasZona.Slug + ")}/aportes")]
+    [Route("api/v1/zones/{slug:regex(" + RutasZona.Slug + ")}/contributions")]
     public class AportesController : ControllerBase
     {
-        // GET /Zonas/villa-luro/aportes/resumen
-        [HttpGet("resumen")]
+        // GET /api/v1/zones/villa-luro/contributions/summary
+        [HttpGet("summary")]
         [ProducesResponseType<ResumenAportesDto>(StatusCodes.Status200OK)]
         public async Task<IActionResult> Resumir(
             string slug,
@@ -21,9 +21,9 @@ namespace ZonaMatch.Api.Controllers
             CancellationToken cancellationToken) =>
             Ok(await resumirAportes.EjecutarAsync(slug, cancellationToken));
 
-        // GET /Zonas/villa-luro/aportes/pendientes
+        // GET /api/v1/zones/villa-luro/contributions/pending
         // Oldest first. With a token, each item indicates whether it is yours (esMio) and your vote (miVoto).
-        [HttpGet("pendientes")]
+        [HttpGet("pending")]
         [ProducesResponseType<IReadOnlyList<AporteDto>>(StatusCodes.Status200OK)]
         public async Task<IActionResult> ListarPendientes(
             string slug,
@@ -31,11 +31,11 @@ namespace ZonaMatch.Api.Controllers
             CancellationToken cancellationToken) =>
             Ok(await listarAportesPendientes.EjecutarAsync(slug, User.GetAuthenticatedUserId(), cancellationToken));
 
-        // POST /Zonas/villa-luro/aportes/puntos
+        // POST /api/v1/zones/villa-luro/contributions/points
         // Body: { "categoria": "salud", "nombre": "", "horario": "", "direccion": "", "latitud": -34.63,
         //         "longitud": -58.50, "viveOTrabajaEnZona": true }
         [Authorize]
-        [HttpPost("puntos")]
+        [HttpPost("points")]
         [ProducesResponseType<AporteDto>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -53,11 +53,11 @@ namespace ZonaMatch.Api.Controllers
             return StatusCode(StatusCodes.Status201Created, aporte);
         }
 
-        // POST /Zonas/villa-luro/aportes/correcciones
+        // POST /api/v1/zones/villa-luro/contributions/corrections
         // Body: { "puntoInteresId": "n123", "puntoInteresNombre": "", "motivo": "cerro|nombre|ubicacion|categoria|otro",
         //         "nombrePropuesto": "", "categoriaPropuesta": "", "latitud": 0, "longitud": 0, "comentario": "" }
         [Authorize]
-        [HttpPost("correcciones")]
+        [HttpPost("corrections")]
         [ProducesResponseType<AporteDto>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -75,10 +75,10 @@ namespace ZonaMatch.Api.Controllers
             return StatusCode(StatusCodes.Status201Created, aporte);
         }
 
-        // PUT /Zonas/villa-luro/aportes/{id}/validacion    Body: { "confirma": true }
+        // PUT /api/v1/zones/villa-luro/contributions/{id}/validation    Body: { "confirma": true }
         // Cast or change your vote on another user's pending contribution.
         [Authorize]
-        [HttpPut("{id:guid}/validacion")]
+        [HttpPut("{id:guid}/validation")]
         [ProducesResponseType<AporteDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

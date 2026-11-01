@@ -9,11 +9,11 @@ namespace ZonaMatch.Api.Controllers
 {
     // User profile: the base criteria (home, priorities, places, and rent) used by all analyses.
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/profile")]
     [Authorize]
     public class PerfilController : ControllerBase
     {
-        // GET /Perfil returns 404 if the user has not created a profile yet.
+        // GET /api/v1/profile returns 404 if the user has not created a profile yet.
         [HttpGet]
         [ProducesResponseType<PerfilDto>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -32,7 +32,7 @@ namespace ZonaMatch.Api.Controllers
             return Ok(profile);
         }
 
-        // PUT /Perfil
+        // PUT /api/v1/profile
         // Body: { "contexto": {}, "criterios": {}, "puntos": {} } creates or fully replaces the profile.
         [HttpPut]
         [ProducesResponseType<PerfilDto>(StatusCodes.Status200OK)]

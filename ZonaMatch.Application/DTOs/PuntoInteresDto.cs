@@ -19,7 +19,7 @@ namespace ZonaMatch.Application.DTOs
     public record PuntosInteresCercanosDto(IReadOnlyList<PuntoInteresDto> Puntos, bool Truncado);
 
     // How many points of each category (and of each OSM type inside it) there are within a radius or a zone
-    // RadioMetros is null when the area is a zone (GET /Zonas/{slug}/puntos-interes/resumen)
+    // RadioMetros is null when the area is a zone (GET /api/v1/zones/{slug}/points-of-interest/summary)
     public record ResumenPuntosInteresDto(double? RadioMetros, IReadOnlyList<ResumenCategoriaDto> Categorias);
 
     // Tipos ordered by Cantidad, descending. Every category is listed, with Total 0 when it has no points.

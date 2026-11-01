@@ -6,7 +6,7 @@ namespace ZonaMatch.Application.Interfaces
     // cargaron los datos (DATOS-ZONAS-DOCKER.bat).
     public interface IIndicadoresZonaRepository
     {
-        // La misma zona que GET /Zonas/{slug} (ante nombres repetidos, la mas especifica)
+        // The same zone selection as GET /api/v1/zones/{slug} (the most specific match for duplicate names).
         Task<IndicadoresZona?> ObtenerPorSlugAsync(string slug, CancellationToken cancellationToken = default);
 
         // CABA entera, para comparar los barrios y las comunas

@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // POST /Contacto: formulario de contacto de la landing, para avisarle las novedades a quien deja su email
+    // POST /api/v1/contact-messages: landing page contact form; the team replies to the submitted email.
     public record FormularioContactoDto(
         [Required(ErrorMessage = "Ingresa tu email.")]
         [EmailAddress(ErrorMessage = "Ingresa un email valido.")]

@@ -10,12 +10,11 @@ namespace ZonaMatch.Api.Controllers
 {
     // Saved user analyses include compared zones, a criteria snapshot, and adjusted versions.
     [ApiController]
-    // Keep the legacy route explicit while controller and action names are migrated.
-    [Route("Analisis")]
+    [Route("api/v1/analyses")]
     [Authorize]
     public class AnalysesController : ControllerBase
     {
-        // GET /Analisis returns original analyses with their versions, newest first.
+        // GET /api/v1/analyses returns original analyses with their versions, newest first.
         [HttpGet]
         [ProducesResponseType<IReadOnlyList<AnalysisResponse>>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -30,7 +29,7 @@ namespace ZonaMatch.Api.Controllers
         }
 
         // Keep the original request and response contract available to existing clients.
-        [HttpPost("Comparar")]
+        [HttpPost("legacy-comparisons")]
         [ProducesResponseType<LegacyAnalysisComparisonResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -50,7 +49,7 @@ namespace ZonaMatch.Api.Controllers
         }
 
         // POST /api/v1/analyses/comparisons
-        [HttpPost("~/api/v1/analyses/comparisons")]
+        [HttpPost("comparisons")]
         [ProducesResponseType<AnalysisComparisonResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -65,7 +64,7 @@ namespace ZonaMatch.Api.Controllers
             return Ok(await compareAnalyses.ExecuteAsync(userId, request, cancellationToken));
         }
 
-        // GET /Analisis/{id}
+        // GET /api/v1/analyses/{id}
         [HttpGet("{id:guid}")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -80,7 +79,7 @@ namespace ZonaMatch.Api.Controllers
             return Ok(await getAnalysis.ExecuteAsync(id, userId, cancellationToken));
         }
 
-        // POST /Analisis
+        // POST /api/v1/analyses
         // Body: { "nombre": "Cerca del trabajo", "zonas": [{ "slug": "villa-luro", "nombre": "Villa Luro, CABA", "esInicial": true }] }
         // Criteria are copied from the profile (404 if the user has not created one yet).
         [HttpPost]
@@ -99,10 +98,10 @@ namespace ZonaMatch.Api.Controllers
             return CreatedAtAction(nameof(GetByIdAsync), new { id = analysis.Id }, analysis);
         }
 
-        // POST /Analisis/{id}/versiones
+        // POST /api/v1/analyses/{id}/versions
         // Body: { "nombre": null, "criterio": { "contexto": {}, "criterios": {}, "puntos": {} }, "zonas": null }
         // Saves adjusted criteria as a version of the original, even when {id} belongs to another version.
-        [HttpPost("{id:guid}/versiones")]
+        [HttpPost("{id:guid}/versions")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -122,7 +121,7 @@ namespace ZonaMatch.Api.Controllers
         // POST /api/v1/analyses/{id}/recalculations
         // Recalculates the analysis with today's data as a new version (same criteria and zones, the profile
         // untouched); the earlier result is kept, so both can be compared.
-        [HttpPost("~/api/v1/analyses/{id:guid}/recalculations")]
+        [HttpPost("{id:guid}/recalculations")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -140,7 +139,7 @@ namespace ZonaMatch.Api.Controllers
 
         // PUT /api/v1/analyses/{id}/favorite    Body: { "isFavorite": true }
         // Stars or unstars an analysis or a version in the user's saved analyses.
-        [HttpPut("~/api/v1/analyses/{id:guid}/favorite")]
+        [HttpPut("{id:guid}/favorite")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -157,7 +156,7 @@ namespace ZonaMatch.Api.Controllers
             return NoContent();
         }
 
-        // PUT /Analisis/{id} — Body: { "nombre": "..." }
+        // PUT /api/v1/analyses/{id} — Body: { "nombre": "..." }
         [HttpPut("{id:guid}")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -173,7 +172,7 @@ namespace ZonaMatch.Api.Controllers
             return Ok(await renameAnalysis.ExecuteAsync(id, userId, request, cancellationToken));
         }
 
-        // DELETE /Analisis/{id} deletes an original and all of its versions.
+        // DELETE /api/v1/analyses/{id} deletes an original and all of its versions.
         [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

@@ -6,10 +6,10 @@ namespace ZonaMatch.Api.Controllers
 {
     // Catalogo de criterios del wizard de analisis. Publico: tambien lo necesita el wizard de invitado.
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/criteria")]
     public class CriteriosController : ControllerBase
     {
-        // GET /Criterios
+        // GET /api/v1/criteria
         [HttpGet]
         [ProducesResponseType<IReadOnlyList<CriterioDto>>(StatusCodes.Status200OK)]
         public async Task<IActionResult> ObtenerTodos(

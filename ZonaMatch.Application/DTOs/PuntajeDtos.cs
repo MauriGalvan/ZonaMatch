@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // POST /Puntajes: automatic ranking around geocoded places, with an optional initial zone and added zones.
+    // POST /api/v1/scores: automatic ranking around geocoded places, with an optional initial zone and added zones.
     // Visitors and signed-in users provide the scoring context in the request.
     public class CalcularPuntajesRequest
     {

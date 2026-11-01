@@ -10,13 +10,13 @@ using ZonaMatch.Application.UseCases.Groups;
 
 namespace ZonaMatch.Api.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/v1/groups")]
     [ApiController]
     [Authorize]
     public class GroupController : ControllerBase
     {
 
-        // GET /Group/{groupId} returns group details to its participants.
+        // GET /api/v1/groups/{groupId} returns group details to its participants.
         [HttpGet("{groupId:guid}")]
         [ProducesResponseType<GroupDetailsResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -34,8 +34,8 @@ namespace ZonaMatch.Api.Controllers
             return Ok(response);
         }
 
-        // POST /Group/{groupId}/CalcularPuntajeEnGrupo calculates the automatic top five and recommendations.
-        [HttpPost("{groupId:guid}/CalcularPuntajeEnGrupo")]
+        // POST /api/v1/groups/{groupId}/rankings calculates the automatic top five and recommendations.
+        [HttpPost("{groupId:guid}/rankings")]
         [ProducesResponseType<GroupRankingResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -54,8 +54,8 @@ namespace ZonaMatch.Api.Controllers
             return Ok(response);
         }
 
-        // POST /Group/{groupId}/Analisis saves the shared result to the current user's analyses.
-        [HttpPost("{groupId:guid}/Analisis")]
+        // POST /api/v1/groups/{groupId}/analyses saves the shared result to the current user's analyses.
+        [HttpPost("{groupId:guid}/analyses")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -74,9 +74,9 @@ namespace ZonaMatch.Api.Controllers
             return StatusCode(StatusCodes.Status201Created, analysis);
         }
 
-        // POST /Group
+        // POST /api/v1/groups
         // Body: { "name": "Capital search" }
-        [HttpPost("Create")]
+        [HttpPost]
         [ProducesResponseType<GroupResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -93,8 +93,8 @@ namespace ZonaMatch.Api.Controllers
             return StatusCode(StatusCodes.Status201Created, group);
         }
 
-        // GET /Group/Get returns the current user's groups.
-        [HttpGet("Get")]
+        // GET /api/v1/groups returns the current user's groups.
+        [HttpGet]
         [ProducesResponseType<GroupListResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
@@ -110,7 +110,7 @@ namespace ZonaMatch.Api.Controllers
         }
 
 
-        [HttpPut("Update/{groupId:guid}")]
+        [HttpPut("{groupId:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -130,7 +130,7 @@ namespace ZonaMatch.Api.Controllers
             return NoContent();
         }
 
-        [HttpDelete("Delete/{groupId:guid}")]
+        [HttpDelete("{groupId:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
@@ -149,8 +149,8 @@ namespace ZonaMatch.Api.Controllers
             return NoContent();
         }
 
-        // DELETE /Group/{groupId}/Participants/{userIdToRemove} removes a participant.
-        [HttpDelete("{groupId}/Participants/{userIdToRemove}")]
+        // DELETE /api/v1/groups/{groupId}/participants/{userIdToRemove} removes a participant.
+        [HttpDelete("{groupId:guid}/participants/{userIdToRemove:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

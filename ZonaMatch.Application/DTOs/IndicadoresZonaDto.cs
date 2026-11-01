@@ -1,6 +1,6 @@
 namespace ZonaMatch.Application.DTOs
 {
-    // GET /Zonas/{slug}/indicadores: datos abiertos de la zona. Los porcentajes tienen un decimal y son null
+    // GET /api/v1/zones/{slug}/indicators: open zone data. Percentages have one decimal place and may be null
     // cuando no hay base para calcularlos. Cada bloque dice de donde sale y a que nivel geografico.
     public record IndicadoresZonaDto(
         string Slug,

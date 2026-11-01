@@ -9,10 +9,10 @@ using ZonaMatch.Domain.Common;
 namespace ZonaMatch.Api.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/geolocation")]
     public class GeolocationController : ControllerBase
     {
-        [HttpGet("~/v1/geolocation/places")]
+        [HttpGet("places")]
         [ProducesResponseType(typeof(IReadOnlyList<PlaceSearchResultResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IReadOnlyList<PlaceSearchResultResponse>>> SearchPlaces(
@@ -24,8 +24,8 @@ namespace ZonaMatch.Api.Controllers
             return Ok(results);
         }
 
-        // GET /Geolocation/resumen?latitud=-34.6&longitud=-58.45&radioMetros=1000
-        [HttpGet("resumen")]
+        // GET /api/v1/geolocation/summary?latitud=-34.6&longitud=-58.45&radioMetros=1000
+        [HttpGet("summary")]
         public async Task<IActionResult> GetResumen(
             [FromQuery] double latitud,
             [FromQuery] double longitud,
@@ -39,8 +39,8 @@ namespace ZonaMatch.Api.Controllers
             return Ok(resumen);
         }
 
-        // GET /Geolocation/escuelas?latitud=&longitud=&radioMetros=&nivel=&sector=
-        [HttpGet("escuelas")]
+        // GET /api/v1/geolocation/schools?latitud=&longitud=&radioMetros=&nivel=&sector=
+        [HttpGet("schools")]
         public async Task<IActionResult> GetEscuelasCercanas(
             [FromQuery] double latitud,
             [FromQuery] double longitud,
@@ -55,8 +55,8 @@ namespace ZonaMatch.Api.Controllers
             return Ok(escuelas);
         }
 
-        // GET /Geolocation/escuelas/mas-cercanas?latitud=&longitud=&cantidad=5
-        [HttpGet("escuelas/mas-cercanas")]
+        // GET /api/v1/geolocation/schools/nearest?latitud=&longitud=&cantidad=5
+        [HttpGet("schools/nearest")]
         public async Task<IActionResult> GetEscuelasMasCercanas(
             [FromQuery] double latitud,
             [FromQuery] double longitud,
@@ -73,9 +73,9 @@ namespace ZonaMatch.Api.Controllers
             return Ok(escuelas);
         }
 
-        // GET /Geolocation/puntos-interes?latitud=&longitud=&radioMetros=1000&categorias=transporte,salud
+        // GET /api/v1/geolocation/points-of-interest?latitud=&longitud=&radioMetros=1000&categorias=transporte,salud
         // Without categorias it returns every category (see CategoriaPuntoInteres)
-        [HttpGet("puntos-interes")]
+        [HttpGet("points-of-interest")]
         public async Task<IActionResult> GetPuntosInteresCercanos(
             [FromQuery] double latitud,
             [FromQuery] double longitud,
@@ -97,8 +97,8 @@ namespace ZonaMatch.Api.Controllers
             return Ok(puntos);
         }
 
-        // GET /Geolocation/puntos-interes/resumen?latitud=&longitud=&radioMetros=1000
-        [HttpGet("puntos-interes/resumen")]
+        // GET /api/v1/geolocation/points-of-interest/summary?latitud=&longitud=&radioMetros=1000
+        [HttpGet("points-of-interest/summary")]
         public async Task<IActionResult> GetResumenPuntosInteres(
             [FromQuery] double latitud,
             [FromQuery] double longitud,
@@ -116,8 +116,8 @@ namespace ZonaMatch.Api.Controllers
             return Ok(resumen);
         }
 
-        // GET /Geolocation/partido?latitud=&longitud=
-        [HttpGet("partido")]
+        // GET /api/v1/geolocation/district?latitud=&longitud=
+        [HttpGet("district")]
         public async Task<IActionResult> GetPartidoPorUbicacion(
             [FromQuery] double latitud,
             [FromQuery] double longitud,
@@ -130,8 +130,8 @@ namespace ZonaMatch.Api.Controllers
             return partido is null ? NotFound("No se encontro un partido para esa ubicacion.") : Ok(partido);
         }
 
-        // GET /Geolocation/comuna?latitud=&longitud=
-        [HttpGet("comuna")]
+        // GET /api/v1/geolocation/commune?latitud=&longitud=
+        [HttpGet("commune")]
         public async Task<IActionResult> GetComunaPorUbicacion(
             [FromQuery] double latitud,
             [FromQuery] double longitud,
@@ -144,9 +144,9 @@ namespace ZonaMatch.Api.Controllers
             return comuna is null ? NotFound("No se encontro una comuna para esa ubicacion.") : Ok(comuna);
         }
 
-        // GET /Geolocation/direccion?latitud=&longitud=
+        // GET /api/v1/geolocation/address?latitud=&longitud=
         // Place name + address of a point picked on the map (reverse geocoding)
-        [HttpGet("direccion")]
+        [HttpGet("address")]
         public async Task<IActionResult> GetDireccionPorUbicacion(
             [FromQuery] double latitud,
             [FromQuery] double longitud,

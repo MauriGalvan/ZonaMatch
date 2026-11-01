@@ -4,7 +4,7 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // GET /Zonas/{slug}/aportes/resumen. Total cuenta los aportes aprobados y los pendientes.
+    // GET /api/v1/zones/{slug}/contributions/summary. Total counts approved and pending contributions.
     public record ResumenAportesDto(int Total, int Aprobados, int Pendientes);
 
     // Un aporte tal como lo ven los otros vecinos para validarlo.
@@ -32,7 +32,7 @@ namespace ZonaMatch.Application.DTOs
         MotivoCorreccion? Motivo,
         string? Comentario);
 
-    // POST /Zonas/{slug}/aportes/puntos. El punto tiene que estar dentro de la zona.
+    // POST /api/v1/zones/{slug}/contributions/points. The point must be inside the zone.
     public record CrearPuntoNuevoDto(
         [Required(ErrorMessage = "La categoria es obligatoria.")]
         string Categoria,
@@ -49,7 +49,7 @@ namespace ZonaMatch.Application.DTOs
         double Longitud,
         bool ViveOTrabajaEnZona);
 
-    // POST /Zonas/{slug}/aportes/correcciones. Lo obligatorio depende del Motivo:
+    // POST /api/v1/zones/{slug}/contributions/corrections. Required fields depend on the reason:
     // nombre -> NombrePropuesto, categoria -> CategoriaPropuesta, ubicacion -> Latitud/Longitud dentro de la zona,
     // otro -> Comentario. Cerro no pide nada mas.
     public record CrearCorreccionDto(
@@ -72,7 +72,7 @@ namespace ZonaMatch.Application.DTOs
         [StringLength(Longitudes.Comentario, ErrorMessage = "El comentario no puede superar los 500 caracteres.")]
         string? Comentario);
 
-    // PUT /Zonas/{slug}/aportes/{id}/validacion
+    // PUT /api/v1/zones/{slug}/contributions/{id}/validation
     public record ValidarAporteDto(
         [Required(ErrorMessage = "Indica si el aporte es correcto.")]
         bool? Confirma);

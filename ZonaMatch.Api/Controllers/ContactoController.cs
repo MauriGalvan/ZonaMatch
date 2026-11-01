@@ -7,10 +7,10 @@ namespace ZonaMatch.Api.Controllers
 {
     // Formulario de contacto de la landing: es publico y cada envio manda un mail al equipo
     [ApiController]
-    [Route("Contacto")]
+    [Route("api/v1/contact-messages")]
     public class ContactoController : ControllerBase
     {
-        // POST /Contacto    Cuerpo: { "email": "...", "nombre": "...", "zona": "...", "sitio": "" }
+        // POST /api/v1/contact-messages    Body: { "email": "...", "nombre": "...", "zona": "...", "sitio": "" }
         [HttpPost]
         [EnableRateLimiting("contacto")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

@@ -7,13 +7,13 @@ namespace ZonaMatch.Api.Controllers
 {
     // GeoJSON FeatureCollections (RFC 7946) to draw layers on the map
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/map")]
     public class MapaController : ControllerBase
     {
         private const string GeoJson = "application/geo+json";
 
-        // GET /Mapa/partidos?tolerancia=0.0005
-        [HttpGet("partidos")]
+        // GET /api/v1/map/districts?tolerancia=0.0005
+        [HttpGet("districts")]
         [ResponseCache(Duration = 3600)]
         public async Task<IActionResult> GetPartidos(
             [FromQuery] double? tolerancia,
@@ -23,8 +23,8 @@ namespace ZonaMatch.Api.Controllers
             return Content(geoJson, GeoJson);
         }
 
-        // GET /Mapa/comunas?tolerancia=0.0005
-        [HttpGet("comunas")]
+        // GET /api/v1/map/communes?tolerancia=0.0005
+        [HttpGet("communes")]
         [ResponseCache(Duration = 3600)]
         public async Task<IActionResult> GetComunas(
             [FromQuery] double? tolerancia,
@@ -34,8 +34,8 @@ namespace ZonaMatch.Api.Controllers
             return Content(geoJson, GeoJson);
         }
 
-        // GET /Mapa/radios?minLon=-58.5&minLat=-34.7&maxLon=-58.4&maxLat=-34.6
-        [HttpGet("radios")]
+        // GET /api/v1/map/census-tracts?minLon=-58.5&minLat=-34.7&maxLon=-58.4&maxLat=-34.6
+        [HttpGet("census-tracts")]
         public async Task<IActionResult> GetRadios(
             [FromQuery] double minLon, [FromQuery] double minLat, [FromQuery] double maxLon, [FromQuery] double maxLat,
             [FromQuery] double? tolerancia,
@@ -49,8 +49,8 @@ namespace ZonaMatch.Api.Controllers
             return geoJson is null ? BadRequest(DemasiadosElementos("radios")) : Content(geoJson, GeoJson);
         }
 
-        // GET /Mapa/escuelas?minLon=&minLat=&maxLon=&maxLat=&nivel=&sector=
-        [HttpGet("escuelas")]
+        // GET /api/v1/map/schools?minLon=&minLat=&maxLon=&maxLat=&nivel=&sector=
+        [HttpGet("schools")]
         public async Task<IActionResult> GetEscuelas(
             [FromQuery] double minLon, [FromQuery] double minLat, [FromQuery] double maxLon, [FromQuery] double maxLat,
             [FromServices] IMapaService mapService,

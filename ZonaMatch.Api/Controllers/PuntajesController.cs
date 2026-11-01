@@ -10,13 +10,13 @@ namespace ZonaMatch.Api.Controllers
     // Motor de puntaje: que tanto le cierra cada zona a un usuario segun su criterio.
     // Publico: el visitante tambien ve el resultado de su analisis (el criterio viaja en el pedido).
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/scores")]
     public class PuntajesController : ControllerBase
     {
         // Above this the request is logged as a warning so slow scoring (usually MOTIS) is easy to spot
         private const long SlowScoringMilliseconds = 5_000;
 
-        // POST /Puntajes
+        // POST /api/v1/scores
         // Body: { "zonaInicial": "villa-luro", "zonasAgregadas": [], "criterios": { "seguridad": "alta" },
         //         "lugares": [{ "nombre": "Trabajo", "latitude": -34.6, "longitude": -58.38, "prioridad": "Alta", "tiempoMax": "45 min" }],
         //         "alquilerMaximo": "800000", "movilidad": ["transporte-publico"] }

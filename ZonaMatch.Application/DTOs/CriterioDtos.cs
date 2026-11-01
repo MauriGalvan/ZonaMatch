@@ -5,7 +5,7 @@ namespace ZonaMatch.Application.DTOs
     // Respuestas del perfil y de los analisis, armadas desde las tablas normalizadas.
     // Los nombres de campos mantienen la forma que ya usaba el frontend.
 
-    // GET /Perfil
+    // GET /api/v1/profile
     public record PerfilDto(
         ContextoDto Contexto,
         Dictionary<string, string> Criterios,

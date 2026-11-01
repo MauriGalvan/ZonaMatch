@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // Criterio completo de un usuario: el perfil (PUT /Perfil) o el ajuste de una version de analisis.
+    // A user's full criteria: the profile (PUT /api/v1/profile) or an analysis version adjustment.
     // Body: { "contexto": { personas, edades[], movilidad[], mascotas[] }, "criterios": { "seguridad": "alta" },
     //         "puntos": { "alquilerMaximo": "800000", "lugares": [] } }
     public class CriterioUsuarioRequest

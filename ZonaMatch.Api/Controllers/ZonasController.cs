@@ -9,12 +9,12 @@ namespace ZonaMatch.Api.Controllers
 {
     // Zones (barrios, comunas, localidades, partidos) taken from the OpenStreetMap administrative boundaries
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/zones")]
     public class ZonasController : ControllerBase
     {
         private const string GeoJson = "application/geo+json";
 
-        // GET /Zonas?buscar=villa l&limite=10
+        // GET /api/v1/zones?buscar=villa l&limite=10
         // Zones whose name contains the text (ignoring case and accents); names that start with it come first
         [HttpGet]
         public async Task<IActionResult> Buscar(
@@ -33,7 +33,7 @@ namespace ZonaMatch.Api.Controllers
             return Ok(zonas);
         }
 
-        // GET /Zonas/villa-luro?tolerancia=0.00015
+        // GET /api/v1/zones/villa-luro?tolerancia=0.00015
         // GeoJSON Feature: boundary as geometry; nombre, nivelAdministrativo, jurisdicciones (containing boundaries,
         // most specific first, each with nombre and nivelAdministrativo), superficieKm2 and centro as properties
         [HttpGet("{slug}")]
@@ -51,10 +51,10 @@ namespace ZonaMatch.Api.Controllers
             return zona is null ? NotFound("No se encontro una zona con ese identificador.") : Content(zona, GeoJson);
         }
 
-        // GET /Zonas/villa-luro/puntos-interes?categorias=transporte,salud
+        // GET /api/v1/zones/villa-luro/points-of-interest?categorias=transporte,salud
         // Points inside the zone, closest to its center first (DistanciaMetros is measured from the center).
         // Without categorias it returns every category; an unknown zone gives an empty list.
-        [HttpGet("{slug}/puntos-interes")]
+        [HttpGet("{slug}/points-of-interest")]
         public async Task<IActionResult> GetPuntosInteres(
             [FromRoute] string slug,
             [FromQuery] string? categorias,
@@ -71,8 +71,8 @@ namespace ZonaMatch.Api.Controllers
             return Ok(puntos);
         }
 
-        // GET /Zonas/villa-luro/puntos-interes/resumen
-        [HttpGet("{slug}/puntos-interes/resumen")]
+        // GET /api/v1/zones/villa-luro/points-of-interest/summary
+        [HttpGet("{slug}/points-of-interest/summary")]
         public async Task<IActionResult> GetResumenPuntosInteres(
             [FromRoute] string slug,
             [FromServices] IZonaService zoneService,
@@ -85,11 +85,11 @@ namespace ZonaMatch.Api.Controllers
             return Ok(resumen);
         }
 
-        // GET /Zonas/villa-luro/indicadores
+        // GET /api/v1/zones/villa-luro/indicators
         // Poblacion, conectividad, condiciones de vida (Censo 2022) y seguridad (Mapa del Delito en CABA, SNIC
         // por partido en provincia),
         // con la fuente y el nivel geografico de cada dato. 404 si la zona no tiene datos cargados.
-        [HttpGet("{slug}/indicadores")]
+        [HttpGet("{slug}/indicators")]
         [ResponseCache(Duration = 3600)]
         [ProducesResponseType<IndicadoresZonaDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -104,10 +104,10 @@ namespace ZonaMatch.Api.Controllers
             return Ok(await useCase.EjecutarAsync(slug, cancellationToken));
         }
 
-        // GET /Zonas/villa-luro/transporte
+        // GET /api/v1/zones/villa-luro/transit
         // Colectivos, trenes y subte de un dia habil: paradas, lineas y salidas por hora en cada franja horaria
         // (madrugada, manana, mediodia, tarde y noche), en total y por linea. Sale de los GTFS publicos.
-        [HttpGet("{slug}/transporte")]
+        [HttpGet("{slug}/transit")]
         [ResponseCache(Duration = 3600)]
         [ProducesResponseType<TransporteZonaDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
