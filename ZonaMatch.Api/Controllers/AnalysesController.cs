@@ -8,24 +8,25 @@ using ZonaMatch.Application.UseCases.AnalisisGuardados;
 
 namespace ZonaMatch.Api.Controllers
 {
-    // Saved user analyses: compared zones, a snapshot of the user's criteria, and adjusted versions.
+    // Saved user analyses include compared zones, a criteria snapshot, and adjusted versions.
     [ApiController]
-    [Route("[controller]")]
+    // Keep the legacy route explicit while controller and action names are migrated.
+    [Route("Analisis")]
     [Authorize]
-    public class AnalisisController : ControllerBase
+    public class AnalysesController : ControllerBase
     {
         // GET /Analisis returns original analyses with their versions, newest first.
         [HttpGet]
         [ProducesResponseType<IReadOnlyList<AnalysisResponse>>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> Listar(
-            [FromServices] ListarMisAnalisis listarMisAnalisis,
+        public async Task<IActionResult> GetMineAsync(
+            [FromServices] ListarMisAnalisis listMyAnalyses,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            return Ok(await listarMisAnalisis.EjecutarAsync(usuarioId, cancellationToken));
+            return Ok(await listMyAnalyses.EjecutarAsync(userId, cancellationToken));
         }
 
         // POST /Analisis/Comparar recalculates saved zones using each selected analysis.
@@ -33,30 +34,30 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ComparacionAnalisisDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Comparar(
-            [FromBody] CompararAnalisisRequest solicitud,
-            [FromServices] CompararAnalisis compararAnalisis,
+        public async Task<IActionResult> CompareAsync(
+            [FromBody] CompararAnalisisRequest request,
+            [FromServices] CompararAnalisis compareAnalyses,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            return Ok(await compararAnalisis.EjecutarAsync(usuarioId, solicitud, cancellationToken));
+            return Ok(await compareAnalyses.EjecutarAsync(userId, request, cancellationToken));
         }
 
         // GET /Analisis/{id}
         [HttpGet("{id:guid}")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Obtener(
-            Guid id,
-            [FromServices] ObtenerAnalisis obtenerAnalisis,
+        public async Task<IActionResult> GetByIdAsync(
+            [FromRoute] Guid id,
+            [FromServices] ObtenerAnalisis getAnalysis,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            return Ok(await obtenerAnalisis.EjecutarAsync(id, usuarioId, cancellationToken));
+            return Ok(await getAnalysis.EjecutarAsync(id, userId, cancellationToken));
         }
 
         // POST /Analisis
@@ -66,16 +67,16 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Crear(
-            [FromBody] CreateAnalysisRequest solicitud,
-            [FromServices] CrearAnalisis crearAnalisis,
+        public async Task<IActionResult> CreateAsync(
+            [FromBody] CreateAnalysisRequest request,
+            [FromServices] CrearAnalisis createAnalysis,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            var analisis = await crearAnalisis.EjecutarAsync(usuarioId, solicitud, cancellationToken);
-            return CreatedAtAction(nameof(Obtener), new { id = analisis.Id }, analisis);
+            var analysis = await createAnalysis.EjecutarAsync(userId, request, cancellationToken);
+            return CreatedAtAction(nameof(GetByIdAsync), new { id = analysis.Id }, analysis);
         }
 
         // POST /Analisis/{id}/versiones
@@ -85,17 +86,17 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> CrearVersion(
-            Guid id,
-            [FromBody] CreateAnalysisVersionRequest solicitud,
-            [FromServices] CrearVersionAnalisis crearVersionAnalisis,
+        public async Task<IActionResult> CreateVersionAsync(
+            [FromRoute] Guid id,
+            [FromBody] CreateAnalysisVersionRequest request,
+            [FromServices] CrearVersionAnalisis createAnalysisVersion,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            var version = await crearVersionAnalisis.EjecutarAsync(id, usuarioId, solicitud, cancellationToken);
-            return CreatedAtAction(nameof(Obtener), new { id = version.Id }, version);
+            var version = await createAnalysisVersion.EjecutarAsync(id, userId, request, cancellationToken);
+            return CreatedAtAction(nameof(GetByIdAsync), new { id = version.Id }, version);
         }
 
         // POST /api/v1/analyses/{id}/recalculations
@@ -105,7 +106,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Recalculate(
+        public async Task<IActionResult> RecalculateAsync(
             [FromRoute] Guid id,
             [FromServices] RecalculateAnalysis useCase,
             CancellationToken cancellationToken)
@@ -114,7 +115,7 @@ namespace ZonaMatch.Api.Controllers
                 return Unauthorized();
 
             var version = await useCase.ExecuteAsync(id, userId, cancellationToken);
-            return CreatedAtAction(nameof(Obtener), new { id = version.Id }, version);
+            return CreatedAtAction(nameof(GetByIdAsync), new { id = version.Id }, version);
         }
 
         // PUT /api/v1/analyses/{id}/favorite    Body: { "isFavorite": true }
@@ -140,31 +141,31 @@ namespace ZonaMatch.Api.Controllers
         [HttpPut("{id:guid}")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Renombrar(
-            Guid id,
-            [FromBody] RenameAnalysisRequest solicitud,
-            [FromServices] RenombrarAnalisis renombrarAnalisis,
+        public async Task<IActionResult> RenameAsync(
+            [FromRoute] Guid id,
+            [FromBody] RenameAnalysisRequest request,
+            [FromServices] RenombrarAnalisis renameAnalysis,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            return Ok(await renombrarAnalisis.EjecutarAsync(id, usuarioId, solicitud, cancellationToken));
+            return Ok(await renameAnalysis.EjecutarAsync(id, userId, request, cancellationToken));
         }
 
         // DELETE /Analisis/{id} deletes an original and all of its versions.
         [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Eliminar(
-            Guid id,
-            [FromServices] EliminarAnalisis eliminarAnalisis,
+        public async Task<IActionResult> DeleteAsync(
+            [FromRoute] Guid id,
+            [FromServices] EliminarAnalisis deleteAnalysis,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } usuarioId)
+            if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            await eliminarAnalisis.EjecutarAsync(id, usuarioId, cancellationToken);
+            await deleteAnalysis.EjecutarAsync(id, userId, cancellationToken);
             return NoContent();
         }
     }
