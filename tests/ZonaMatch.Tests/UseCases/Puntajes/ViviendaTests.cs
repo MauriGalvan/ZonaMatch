@@ -36,6 +36,24 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
         }
 
         [Theory]
+        [InlineData(null, null)]
+        [InlineData(0, null)]
+        [InlineData(1, 1)]
+        [InlineData(5, 5)]
+        public void ValidarAmbientes_WhenOptionalOrInRange_ReturnsThem(int? requested, int? expected)
+        {
+            Assert.Equal(expected, Vivienda.ValidarAmbientes(requested));
+        }
+
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(6)]
+        public void ValidarAmbientes_WhenOutOfRange_ThrowsBadRequestException(int rooms)
+        {
+            Assert.Throws<BadRequestException>(() => Vivienda.ValidarAmbientes(rooms));
+        }
+
+        [Theory]
         [InlineData(5)]
         [InlineData(2001)]
         public void Rechaza_superficies_fuera_de_rango(int superficie)

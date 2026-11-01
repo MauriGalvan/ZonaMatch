@@ -45,4 +45,5 @@ public sealed record GroupRestrictionsResponse(
     string SuggestedOperation = "alquiler",
     decimal? SuggestedMaxPurchaseUsd = null,
     string? SuggestedPropertyType = null,
-    int? SuggestedSurfaceM2 = null);
+    int? SuggestedSurfaceM2 = null,
+    int? SuggestedRooms = null);

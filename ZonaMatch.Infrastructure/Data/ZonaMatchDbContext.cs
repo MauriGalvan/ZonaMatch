@@ -36,6 +36,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<ContextoCriterio> ContextoCriterios => Set<ContextoCriterio>();
         public DbSet<Criterio> Criterios => Set<Criterio>();
         public DbSet<ZoneMarket> ZoneMarkets => Set<ZoneMarket>();
+        public DbSet<ZoneMarketRooms> ZoneMarketRooms => Set<ZoneMarketRooms>();
         public DbSet<SavedZone> SavedZones => Set<SavedZone>();
         public DbSet<UserNotification> Notifications => Set<UserNotification>();
         public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
@@ -110,6 +111,7 @@ namespace ZonaMatch.Infrastructure.Data
                     t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
                     t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
                     t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
+                    t.HasCheckConstraint("ck_contextos_ambientes", "ambientes IS NULL OR ambientes BETWEEN 1 AND 5");
                 });
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Tipo).HasMaxLength(10).IsRequired();
@@ -314,6 +316,40 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.AveragePriceM2).HasColumnType("numeric(12,0)");
                 e.Property(x => x.MedianPriceM2).HasColumnType("numeric(12,0)");
                 e.Property(x => x.AverageExpensesArs).HasColumnType("numeric(12,0)");
+                e.Property(x => x.MedianCoveredM2).HasColumnType("numeric(8,0)");
+                e.Property(x => x.MedianTotalM2).HasColumnType("numeric(8,0)");
+                e.Property(x => x.CreditEligibleShare).HasColumnType("numeric(5,4)");
+                e.Property(x => x.OwnerShare).HasColumnType("numeric(5,4)");
+                e.Property(x => x.PetsAllowedShare).HasColumnType("numeric(5,4)");
+                e.Property(x => x.Source).HasMaxLength(30).IsRequired();
+                e.Property(x => x.InheritedFrom).HasMaxLength(100);
+                e.Property(x => x.UpdatedAt).HasColumnType("timestamptz");
+            });
+
+            // The same market per number of rooms (1 to 4, 5 = 5 or more), loaded by the ETL (etl/zonaprop/)
+            modelBuilder.Entity<ZoneMarketRooms>(e =>
+            {
+                e.ToTable("zone_market_rooms", t =>
+                {
+                    t.HasCheckConstraint("ck_zone_market_rooms_operation", "operation IN ('sale', 'rent')");
+                    t.HasCheckConstraint("ck_zone_market_rooms_property_type",
+                        "property_type IN ('apartment', 'house', 'ph', 'all')");
+                    t.HasCheckConstraint("ck_zone_market_rooms_rooms", "rooms BETWEEN 1 AND 5");
+                    t.HasCheckConstraint("ck_zone_market_rooms_currency", "currency IN ('ARS', 'USD')");
+                    t.HasCheckConstraint("ck_zone_market_rooms_counts", "listings >= 0 AND sample_size >= 0");
+                });
+                e.HasKey(x => new { x.ZoneSlug, x.Operation, x.PropertyType, x.Rooms });
+                e.Property(x => x.ZoneSlug).HasMaxLength(100);
+                e.Property(x => x.Operation).HasMaxLength(10);
+                e.Property(x => x.PropertyType).HasMaxLength(20);
+                e.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+                e.Property(x => x.AveragePrice).HasColumnType("numeric(14,0)");
+                e.Property(x => x.MedianPrice).HasColumnType("numeric(14,0)");
+                e.Property(x => x.AveragePriceM2).HasColumnType("numeric(12,0)");
+                e.Property(x => x.MedianPriceM2).HasColumnType("numeric(12,0)");
+                e.Property(x => x.AverageExpensesArs).HasColumnType("numeric(12,0)");
+                e.Property(x => x.MedianCoveredM2).HasColumnType("numeric(8,0)");
+                e.Property(x => x.MedianTotalM2).HasColumnType("numeric(8,0)");
                 e.Property(x => x.Source).HasMaxLength(30).IsRequired();
                 e.Property(x => x.InheritedFrom).HasMaxLength(100);
                 e.Property(x => x.UpdatedAt).HasColumnType("timestamptz");

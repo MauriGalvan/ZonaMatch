@@ -202,7 +202,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
 
             return new PedidoPuntaje(
                 criterios, lugares, Pesos(solicitud.AlquilerMaximo), operacion, compraMaxima, tipoVivienda,
-                Vivienda.ValidarSuperficie(solicitud.SuperficieM2));
+                Vivienda.ValidarSuperficie(solicitud.SuperficieM2), Vivienda.ValidarAmbientes(solicitud.Ambientes));
         }
 
         // "45 min" -> 45.
@@ -230,7 +230,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 resultado.Limites.Select(l => new LimitePuntajeDto(l.Tipo, l.Cumple, l.Detalle)).ToList(),
                 resultado.Lugares.Select(l => new TiempoLugarDto(
                     l.Nombre, l.Minutos, l.MaximoMinutos, l.Estimado, l.DistanciaKm)).ToList(),
-                Vivienda.Alquiler(resultado.Zona, pedido.TipoVivienda, pedido.SuperficieM2),
-                Vivienda.Compra(resultado.Zona, pedido.TipoVivienda, pedido.SuperficieM2));
+                Vivienda.Alquiler(resultado.Zona, pedido.TipoVivienda, pedido.SuperficieM2, pedido.Ambientes),
+                Vivienda.Compra(resultado.Zona, pedido.TipoVivienda, pedido.SuperficieM2, pedido.Ambientes));
     }
 }

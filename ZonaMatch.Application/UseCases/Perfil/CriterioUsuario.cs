@@ -28,6 +28,7 @@ namespace ZonaMatch.Application.UseCases.Perfil
             var (operacion, compraMaxima, tipoVivienda) = Vivienda.Validar(
                 solicitud.Puntos.Operacion, solicitud.Puntos.CompraMaximaUsd, solicitud.Puntos.TipoVivienda);
             var superficie = Vivienda.ValidarSuperficie(solicitud.Puntos.SuperficieM2);
+            var ambientes = Vivienda.ValidarAmbientes(solicitud.Puntos.Ambientes);
 
             contexto.Personas = solicitud.Contexto.Personas;
             contexto.Mascotas = solicitud.Contexto.Mascotas.Distinct(StringComparer.Ordinal).ToArray();
@@ -37,6 +38,7 @@ namespace ZonaMatch.Application.UseCases.Perfil
             contexto.CompraMaximaUsd = compraMaxima;
             contexto.TipoVivienda = tipoVivienda;
             contexto.SuperficieM2 = superficie;
+            contexto.Ambientes = ambientes;
 
             Reemplazar(contexto.Integrantes, integrantes);
             Reemplazar(contexto.Criterios, criterios);
@@ -186,6 +188,7 @@ namespace ZonaMatch.Application.UseCases.Perfil
                 contexto.Operacion,
                 contexto.CompraMaximaUsd,
                 contexto.TipoVivienda,
-                contexto.SuperficieM2);
+                contexto.SuperficieM2,
+                contexto.Ambientes);
     }
 }

@@ -24,6 +24,18 @@ namespace ZonaMatch.Application.UseCases.Puntajes
             return superficieM2;
         }
 
+        // Sin ambientes (o 0), los precios son los de todos los tamanos. 5 es 5 ambientes o mas.
+        public static int? ValidarAmbientes(int? ambientes)
+        {
+            if (ambientes is null or 0)
+                return null;
+
+            if (!Ambientes.EsValido(ambientes.Value))
+                throw new BadRequestException("Los ambientes deben estar entre 1 y 5 (5 o más).");
+
+            return ambientes;
+        }
+
         // Sin operacion es alquiler (los perfiles de antes de que hubiera compra). El tope de compra solo vale si
         // compra; sin tipo de vivienda (o "all"), todos los tipos.
         public static (string Operacion, decimal? CompraMaximaUsd, string? TipoVivienda) Validar(
@@ -45,9 +57,10 @@ namespace ZonaMatch.Application.UseCases.Puntajes
         }
 
         // Alquiler del tipo pedido en la zona; null sin dato. Con superficie, el costo mensual usa el alquiler estimado.
-        public static AlquilerZonaDto? Alquiler(PerfilZona zona, string? tipo, int? superficieM2 = null)
+        // Con ambientes, los precios de ese tamano si la zona los tiene.
+        public static AlquilerZonaDto? Alquiler(PerfilZona zona, string? tipo, int? superficieM2 = null, int? ambientes = null)
         {
-            var mercado = zona.Mercado(tipo);
+            var mercado = zona.Mercado(tipo, ambientes);
             return mercado.AlquilerPromedio is { } promedio
                 ? new AlquilerZonaDto(
                     promedio,
@@ -56,14 +69,15 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                     mercado.CostoMensualAlquilerPara(superficieM2),
                     mercado.AlquilerM2,
                     mercado.EstimaAlquiler(superficieM2) ? superficieM2 : null,
-                    mercado.EstimaAlquiler(superficieM2) ? mercado.AlquilerPara(superficieM2) : null)
+                    mercado.EstimaAlquiler(superficieM2) ? mercado.AlquilerPara(superficieM2) : null,
+                    mercado.AmbientesAlquiler)
                 : null;
         }
 
-        // Venta del tipo pedido en la zona; null sin dato
-        public static CompraZonaDto? Compra(PerfilZona zona, string? tipo, int? superficieM2 = null)
+        // Venta del tipo pedido en la zona; null sin dato. Con ambientes, los precios de ese tamano si la zona los tiene.
+        public static CompraZonaDto? Compra(PerfilZona zona, string? tipo, int? superficieM2 = null, int? ambientes = null)
         {
-            var mercado = zona.Mercado(tipo);
+            var mercado = zona.Mercado(tipo, ambientes);
             return mercado.VentaPromedioUsd is { } promedio
                 ? new CompraZonaDto(
                     promedio,
@@ -71,7 +85,8 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                     mercado.ExpensasPromedio,
                     mercado.VentaM2Usd,
                     mercado.EstimaVenta(superficieM2) ? superficieM2 : null,
-                    mercado.EstimaVenta(superficieM2) ? mercado.VentaParaUsd(superficieM2) : null)
+                    mercado.EstimaVenta(superficieM2) ? mercado.VentaParaUsd(superficieM2) : null,
+                    mercado.AmbientesVenta)
                 : null;
         }
     }

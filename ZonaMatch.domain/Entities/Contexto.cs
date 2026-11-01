@@ -41,6 +41,9 @@ namespace ZonaMatch.Domain.Entities
         // Superficie que busca en m2: los precios se estiman por m2; null usa los promedios de cada zona
         public int? SuperficieM2 { get; set; }
 
+        // Ambientes que busca (1 a 4, 5 = 5 o mas): los precios son los de ese tamano; null usa los de todos
+        public int? Ambientes { get; set; }
+
         public DateTimeOffset FechaCreacion { get; set; }
 
         public DateTimeOffset FechaActualizacion { get; set; }
@@ -67,6 +70,7 @@ namespace ZonaMatch.Domain.Entities
             CompraMaximaUsd = CompraMaximaUsd,
             TipoVivienda = TipoVivienda,
             SuperficieM2 = SuperficieM2,
+            Ambientes = Ambientes,
             FechaCreacion = ahora,
             FechaActualizacion = ahora,
             Integrantes = Integrantes

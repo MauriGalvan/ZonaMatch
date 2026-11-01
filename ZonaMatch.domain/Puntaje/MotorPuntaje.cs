@@ -5,7 +5,8 @@ namespace ZonaMatch.Domain.Puntaje
     // Lo que pidio el usuario: criterios con su prioridad, sus lugares y sus topes.
     // GastoMensualMaximo es en pesos: alquiler mas expensas si alquila, solo expensas si compra.
     // CompraMaximaUsd es el precio maximo de compra en dolares (solo si compra). Sin TipoVivienda, todos los tipos.
-    // Con SuperficieM2, los precios de cada zona se estiman por m2 para esa superficie.
+    // Con SuperficieM2, los precios de cada zona se estiman por m2 para esa superficie. Con Ambientes (1 a 5, 5 = 5 o
+    // mas), los precios son los de ese tamano en cada zona (y con superficie, su precio por m2).
     public sealed record PedidoPuntaje(
         IReadOnlyDictionary<string, string> Criterios,
         IReadOnlyList<LugarDelUsuario> Lugares,
@@ -13,7 +14,8 @@ namespace ZonaMatch.Domain.Puntaje
         string Operacion = Operaciones.Alquiler,
         decimal? CompraMaximaUsd = null,
         string? TipoVivienda = null,
-        int? SuperficieM2 = null)
+        int? SuperficieM2 = null,
+        int? Ambientes = null)
     {
         public bool EsCompra => Operacion == Operaciones.Compra;
     }
@@ -143,7 +145,7 @@ namespace ZonaMatch.Domain.Puntaje
 
             var limites = new List<ResultadoLimite>();
             var excesoPresupuesto = 0.0;
-            var mercado = zona.Mercado(pedido.TipoVivienda);
+            var mercado = zona.Mercado(pedido.TipoVivienda, pedido.Ambientes);
 
             if (pedido.EsCompra && pedido.CompraMaximaUsd is { } compraMaxima && compraMaxima > 0)
             {
@@ -277,7 +279,7 @@ namespace ZonaMatch.Domain.Puntaje
         private static (ResultadoLimite Limite, double Exceso) LimiteDeAlquiler(
             MercadoVivienda mercado, decimal maximo, string? tipo, int? superficieM2)
         {
-            var vivienda = TiposVivienda.Sufijo(tipo);
+            var vivienda = TiposVivienda.Sufijo(tipo) + Ambientes.Sufijo(mercado.AmbientesAlquiler);
             if (mercado.CostoMensualAlquilerPara(superficieM2) is not { } costo)
                 return (new ResultadoLimite(LimiteAlquiler, null, $"Sin datos de alquiler{vivienda} para esta zona"), 0);
 
@@ -307,7 +309,7 @@ namespace ZonaMatch.Domain.Puntaje
         private static (ResultadoLimite Limite, double Exceso) LimiteDeCompra(
             MercadoVivienda mercado, decimal maximo, string? tipo, int? superficieM2)
         {
-            var vivienda = TiposVivienda.Sufijo(tipo);
+            var vivienda = TiposVivienda.Sufijo(tipo) + Ambientes.Sufijo(mercado.AmbientesVenta);
             if (mercado.VentaParaUsd(superficieM2) is not { } precio)
                 return (new ResultadoLimite(LimiteCompra, null, $"Sin datos de venta{vivienda} para esta zona"), 0);
 
