@@ -283,15 +283,13 @@ namespace ZonaMatch.Domain.Puntaje
             if (mercado.CostoMensualAlquilerPara(superficieM2) is not { } costo)
                 return (new ResultadoLimite(LimiteAlquiler, null, $"Sin datos de alquiler{vivienda} para esta zona"), 0);
 
-            // Con distribucion: el rango de lo que se paga por mes y el precio medio (la mitad de los avisos cuesta menos),
-            // que es el que se compara con el tope
+            // Con distribucion: el tope se compara con el rango de lo que se paga por mes (CompararConDistribucion)
             if (mercado.DistribucionMensualAlquiler(superficieM2) is { } mensual)
             {
                 var tamano = superficieM2 is > 0 && Distribucion.EsValida(mercado.AlquilerM2Deciles) ? $" para {superficieM2} m²" : string.Empty;
-                var medio = Distribucion.Medio(mensual);
-                var rango = $"Alquiler + expensas{vivienda}{tamano}: de {Pesos(Distribucion.Minimo(mensual))} a {Pesos(Distribucion.Maximo(mensual))} por mes " +
-                            $"(entra el {Distribucion.PorcentajeHasta(mensual, maximo)} % de las publicaciones); precio medio {Pesos(medio)}";
-                return Comparar(LimiteAlquiler, medio, maximo, rango, $"tu tope de {Pesos(maximo)}");
+                var rango = $"Alquiler + expensas{vivienda}{tamano}: de {Pesos(Distribucion.Minimo(mensual))} a {Pesos(Distribucion.Maximo(mensual))} por mes, " +
+                            $"precio medio {Pesos(Distribucion.Medio(mensual))}";
+                return CompararConDistribucion(LimiteAlquiler, mensual, maximo, rango, $"tu tope de {Pesos(maximo)}");
             }
 
             var alquiler = mercado.AlquilerPara(superficieM2)!.Value;
@@ -327,10 +325,9 @@ namespace ZonaMatch.Domain.Puntaje
             if (mercado.DistribucionVentaUsd(superficieM2) is { } ventas)
             {
                 var tamano = superficieM2 is > 0 && Distribucion.EsValida(mercado.VentaM2DecilesUsd) ? $" para {superficieM2} m²" : string.Empty;
-                var medio = Distribucion.Medio(ventas);
-                var rango = $"Precio{vivienda}{tamano}: de {Dolares(Distribucion.Minimo(ventas))} a {Dolares(Distribucion.Maximo(ventas))} " +
-                            $"(entra el {Distribucion.PorcentajeHasta(ventas, maximo)} % de las publicaciones); precio medio {Dolares(medio)}";
-                return Comparar(LimiteCompra, medio, maximo, rango, $"tu tope de compra de {Dolares(maximo)}");
+                var rango = $"Precio{vivienda}{tamano}: de {Dolares(Distribucion.Minimo(ventas))} a {Dolares(Distribucion.Maximo(ventas))}, " +
+                            $"precio medio {Dolares(Distribucion.Medio(ventas))}";
+                return CompararConDistribucion(LimiteCompra, ventas, maximo, rango, $"tu tope de compra de {Dolares(maximo)}");
             }
 
             var detalle = mercado.EstimaVenta(superficieM2)
@@ -338,6 +335,29 @@ namespace ZonaMatch.Domain.Puntaje
                 : $"Precio promedio{vivienda} {Dolares(precio)}";
 
             return Comparar(LimiteCompra, precio, maximo, detalle, $"tu tope de compra de {Dolares(maximo)}");
+        }
+
+        // Tope contra la distribucion de precios, con la misma escala de Penalizar:
+        // - todas las publicaciones entran: no resta;
+        // - entra una parte: cumple y resta hasta ExcesoLeve segun la parte que no entra (3 % adentro, unos 19 puntos);
+        // - ninguna entra (tope por debajo de la mas barata): resta ExcesoLeve y desde ahi cae como cualquier limite.
+        // Asi el puntaje no salta al mover el tope.
+        private static (ResultadoLimite Limite, double Exceso) CompararConDistribucion(
+            string tipo, decimal[] deciles, decimal maximo, string detalle, string tope)
+        {
+            var minimo = Distribucion.Minimo(deciles);
+            if (maximo < minimo)
+            {
+                var faltante = (double)(minimo / maximo - 1);
+                return (new ResultadoLimite(tipo, false,
+                    $"{detalle}: ninguna entra, la más barata supera {tope} en un {(int)Math.Ceiling(faltante * 100)} %"), ExcesoLeve + faltante);
+            }
+
+            var porcentaje = Distribucion.PorcentajeHasta(deciles, maximo);
+            var texto = porcentaje >= 100
+                ? $"{detalle}: todas entran en {tope}"
+                : $"{detalle}: entra el {porcentaje} % de las publicaciones en {tope}";
+            return (new ResultadoLimite(tipo, true, texto), ExcesoLeve * (100 - porcentaje) / 100.0);
         }
 
         private static (ResultadoLimite Limite, double Exceso) Comparar(string tipo, decimal valor, decimal maximo, string detalle, string tope)

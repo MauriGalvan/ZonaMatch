@@ -245,8 +245,9 @@ SELECT zone_slug, osm_id, operation, 'all', rooms, sum(listings), sum(sample_siz
 FROM weighted
 GROUP BY zone_slug, osm_id, operation, rooms;
 
--- Price distribution: the price at every tenth of the listings, from the cheapest to the most expensive of the
--- trimmed sample (the same 10 % per end left out of the averages), weighted like the averages. "all" pools the types.
+-- Price distribution: the price at every tenth of the listings, from the cheapest to the most expensive of the whole
+-- sample, weighted like the averages. Nothing is trimmed: the share of listings under a cap has to count the cheap
+-- ones too (trimming left the cheapest 10 % out and under-counted low caps). "all" pools the types.
 DROP TABLE IF EXISTS pg_temp.deciles;
 CREATE TEMP TABLE deciles AS
 WITH pooled AS (
@@ -254,21 +255,12 @@ WITH pooled AS (
     UNION ALL
     SELECT zone_slug, operation, 'all', rooms, metric, value, w FROM vals WHERE metric IN ('price', 'price_m2')
 ),
-ranked AS (
-    SELECT p.*,
-           sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric
-                        ORDER BY value, w ROWS UNBOUNDED PRECEDING) AS cumulative,
-           sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric) AS total_w,
-           count(*) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric) AS n
-    FROM pooled p
-),
 kept AS (
     SELECT *,
            sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric
                         ORDER BY value, w ROWS UNBOUNDED PRECEDING)
                / sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric) AS position
-    FROM ranked
-    WHERE n < 10 OR (cumulative - w / 2) / total_w BETWEEN 0.1 AND 0.9
+    FROM pooled
 ),
 points AS (
     SELECT zone_slug, operation, property_type, rooms, metric, q,
