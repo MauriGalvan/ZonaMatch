@@ -6,7 +6,7 @@ using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Domain.Entities;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Groups;
 
@@ -70,7 +70,7 @@ public sealed partial class CalcularPuntajeEnGrupo
             group.Participants.Select(participant => participant.UserId).Distinct().ToArray(),
             cancellationToken);
         var profilesByUserId = profiles.ToDictionary(profile => profile.UsuarioId);
-        var motor = new MotorPuntaje(universe);
+        var motor = new ScoringEngine(universe);
         using var routeLimit = new SemaphoreSlim(ViajesEnParalelo);
 
         var members = group.Participants
@@ -87,7 +87,7 @@ public sealed partial class CalcularPuntajeEnGrupo
                         TipoVivienda = propertyType,
                         SuperficieM2 = surface,
                     },
-                    ModosViaje.DesdeMovilidad(profile.Movilidad ?? []),
+                    TravelModes.FromMobility(profile.Movilidad ?? []),
                     profile.Puntos.OrderBy(point => point.Orden).ToArray());
             })
             .ToArray();
@@ -261,14 +261,14 @@ public sealed partial class CalcularPuntajeEnGrupo
         return weights;
     }
 
-    private async Task<Dictionary<string, IReadOnlyList<TiempoViaje?>>> MeasureTripsAsync(
-        IReadOnlyList<PerfilZona> zones,
-        IReadOnlyList<LugarDelUsuario> places,
-        ModoViaje mode,
+    private async Task<Dictionary<string, IReadOnlyList<TravelTime?>>> MeasureTripsAsync(
+        IReadOnlyList<ZoneProfile> zones,
+        IReadOnlyList<UserPlace> places,
+        TravelMode mode,
         SemaphoreSlim limiter,
         CancellationToken cancellationToken)
     {
-        async Task<TiempoViaje?> MeasureAsync(PerfilZona zone, LugarDelUsuario place)
+        async Task<TravelTime?> MeasureAsync(ZoneProfile zone, UserPlace place)
         {
             if (!place.TieneUbicacion)
                 return null;
@@ -280,7 +280,7 @@ public sealed partial class CalcularPuntajeEnGrupo
                            zone.Latitud, zone.Longitud,
                            place.Latitud!.Value, place.Longitud!.Value,
                            mode, cancellationToken)
-                       ?? ModosViaje.Estimar(
+                       ?? TravelModes.Estimate(
                            mode, zone.Latitud, zone.Longitud,
                            place.Latitud!.Value, place.Longitud!.Value);
             }
@@ -293,19 +293,19 @@ public sealed partial class CalcularPuntajeEnGrupo
         var zoneTasks = zones.Select(async zone =>
             (zone.Slug, Times: await Task.WhenAll(places.Select(place => MeasureAsync(zone, place)))));
         var results = await Task.WhenAll(zoneTasks);
-        return results.ToDictionary(result => result.Slug, result => (IReadOnlyList<TiempoViaje?>)result.Times, StringComparer.Ordinal);
+        return results.ToDictionary(result => result.Slug, result => (IReadOnlyList<TravelTime?>)result.Times, StringComparer.Ordinal);
     }
 
-    private static PedidoPuntaje BuildRequest(Contexto profile, decimal? sharedRentLimit)
+    private static ScoringRequest BuildRequest(Contexto profile, decimal? sharedRentLimit)
     {
         var criteria = profile.Criterios
-            .Where(criterion => MotorPuntaje.EsCriterioConocido(criterion.CriterioId)
+            .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterioId)
                                 && criterion.Prioridad is "baja" or "media" or "alta")
             .ToDictionary(criterion => criterion.CriterioId, criterion => criterion.Prioridad, StringComparer.Ordinal);
 
         var places = profile.Puntos
             .OrderBy(point => point.Orden)
-            .Select(point => new LugarDelUsuario(
+            .Select(point => new UserPlace(
                 point.Nombre,
                 point.Latitude,
                 point.Longitude,
@@ -313,7 +313,7 @@ public sealed partial class CalcularPuntajeEnGrupo
                 ParseMinutes(point.TiempoMax)))
             .ToArray();
 
-        return new PedidoPuntaje(criteria, places, sharedRentLimit is > 0 ? sharedRentLimit : null);
+        return new ScoringRequest(criteria, places, sharedRentLimit is > 0 ? sharedRentLimit : null);
     }
 
     private static int ParseMinutes(string? value)
@@ -326,7 +326,7 @@ public sealed partial class CalcularPuntajeEnGrupo
 
     private static IReadOnlyList<ParticipantTripResponse> BuildPlaceDetails(
         MemberInput member,
-        IReadOnlyList<TiempoViaje?> times) => member.Points
+        IReadOnlyList<TravelTime?> times) => member.Points
         .Select((point, index) =>
         {
             var maximumMinutes = ParseMinutes(point.TiempoMax);
@@ -339,16 +339,16 @@ public sealed partial class CalcularPuntajeEnGrupo
                 point.Direccion,
                 point.Tipo,
                 point.Prioridad,
-                ModosViaje.Codigo(member.Mode),
+                TravelModes.ToCode(member.Mode),
                 time?.Minutos,
                 maximumMinutes,
                 time?.Estimado ?? false,
-                time is null ? null : MotorPuntaje.PuntajeViaje(time.Minutos, maximumMinutes));
+                time is null ? null : ScoringEngine.PuntajeViaje(time.Minutos, maximumMinutes));
         })
         .ToArray();
 
     private static RankedZoneResponse BuildZoneResult(
-        PerfilZona zone,
+        ZoneProfile zone,
         IEnumerable<Participant> participants,
         IReadOnlyDictionary<Guid, decimal> weights,
         IReadOnlyList<MemberCalculation> memberScores,
@@ -414,7 +414,7 @@ public sealed partial class CalcularPuntajeEnGrupo
                         entry.Component.Detalle))
                     .ToArray();
                 var details = group.Select(entry => entry.Component.Detalle).Where(detail => !string.IsNullOrWhiteSpace(detail)).Distinct().ToArray();
-                var detail = group.Key == MotorPuntaje.Lugares
+                var detail = group.Key == ScoringEngine.Lugares
                     ? "Promedio ponderado de los viajes individuales con datos disponibles."
                     : string.Join(" · ", details);
 
@@ -436,10 +436,10 @@ public sealed partial class CalcularPuntajeEnGrupo
             .ToArray();
         // The budget is the group's: its limits are the same for everyone, so they are shown once
         var limits = participantLimits
-            .Where(limit => MotorPuntaje.EsLimiteDePresupuesto(limit.Type))
+            .Where(limit => ScoringEngine.EsLimiteDePresupuesto(limit.Type))
             .DistinctBy(limit => limit.Type)
             .Select(limit => limit with { ParticipantId = Guid.Empty, ParticipantName = "Grupo", NormalizedWeight = 100 })
-            .Concat(participantLimits.Where(limit => !MotorPuntaje.EsLimiteDePresupuesto(limit.Type)))
+            .Concat(participantLimits.Where(limit => !ScoringEngine.EsLimiteDePresupuesto(limit.Type)))
             .ToArray();
         var places = memberScores
             .Where(member => member.Zones.ContainsKey(zone.Slug))
@@ -463,7 +463,7 @@ public sealed partial class CalcularPuntajeEnGrupo
         Participant participant,
         decimal weight,
         IReadOnlyDictionary<Guid, Contexto> profilesByUserId,
-        IReadOnlyList<PerfilZona> selectedZones,
+        IReadOnlyList<ZoneProfile> selectedZones,
         IReadOnlyList<MemberCalculation> memberScores)
     {
         string? reason = null;
@@ -485,8 +485,8 @@ public sealed partial class CalcularPuntajeEnGrupo
 
     private sealed record MemberInput(
         Participant Participant,
-        PedidoPuntaje Request,
-        ModoViaje Mode,
+        ScoringRequest Request,
+        TravelMode Mode,
         IReadOnlyList<PuntoDeInteres> Points);
 
     private sealed record MemberCalculation(
@@ -494,6 +494,6 @@ public sealed partial class CalcularPuntajeEnGrupo
         IReadOnlyDictionary<string, MemberZoneResult> Zones);
 
     private sealed record MemberZoneResult(
-        ResultadoZona Resultado,
+        ZoneScoreResult Resultado,
         IReadOnlyList<ParticipantTripResponse> Places);
 }

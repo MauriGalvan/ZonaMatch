@@ -1,4 +1,4 @@
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
@@ -11,7 +11,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         private readonly SemaphoreSlim _calculando = new(1, 1);
         private readonly TimeProvider _reloj;
 
-        private IReadOnlyList<PerfilZona>? _perfiles;
+        private IReadOnlyList<ZoneProfile>? _perfiles;
         private DateTimeOffset _vence;
 
         public PerfilesZonaCache(TimeProvider reloj)
@@ -19,8 +19,8 @@ namespace ZonaMatch.Infrastructure.Repositories
             _reloj = reloj;
         }
 
-        public async Task<IReadOnlyList<PerfilZona>> ObtenerAsync(
-            Func<CancellationToken, Task<IReadOnlyList<PerfilZona>>> calcular, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<ZoneProfile>> ObtenerAsync(
+            Func<CancellationToken, Task<IReadOnlyList<ZoneProfile>>> calcular, CancellationToken cancellationToken)
         {
             if (Vigentes() is { } perfiles)
                 return perfiles;
@@ -47,7 +47,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
         }
 
-        private IReadOnlyList<PerfilZona>? Vigentes() =>
+        private IReadOnlyList<ZoneProfile>? Vigentes() =>
             _perfiles is not null && _reloj.GetUtcNow() < _vence ? _perfiles : null;
     }
 }

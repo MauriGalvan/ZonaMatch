@@ -2,7 +2,7 @@ using ZonaMatch.Application.DTOs.Routes.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Routes;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Tests.UseCases.Routes
 {
@@ -33,7 +33,7 @@ namespace ZonaMatch.Tests.UseCases.Routes
 
             Assert.Equal("transporte-publico", response.Mode);
             Assert.Equal(59, response.DurationMinutes);
-            Assert.Equal(ModoViaje.TransportePublico, _planner.RequestedMode);
+            Assert.Equal(TravelMode.PublicTransit, _planner.RequestedMode);
             Assert.Collection(response.Legs,
                 walk =>
                 {
@@ -58,7 +58,7 @@ namespace ZonaMatch.Tests.UseCases.Routes
 
             var response = await new GetRoute(_planner).ExecuteAsync(Request("bici"));
 
-            Assert.Equal(ModoViaje.Bici, _planner.RequestedMode);
+            Assert.Equal(TravelMode.Bicycle, _planner.RequestedMode);
             Assert.Equal("bici", response.Mode);
         }
 
@@ -72,7 +72,7 @@ namespace ZonaMatch.Tests.UseCases.Routes
 
             var response = await new GetRoute(_planner).ExecuteAsync(request);
 
-            Assert.Equal(ModoViaje.APie, _planner.RequestedMode);
+            Assert.Equal(TravelMode.Walking, _planner.RequestedMode);
             Assert.Equal("a-pie", response.Mode);
         }
 
@@ -86,7 +86,7 @@ namespace ZonaMatch.Tests.UseCases.Routes
 
             var response = await new GetRoute(_planner).ExecuteAsync(request);
 
-            Assert.Equal(ModoViaje.TransportePublico, _planner.RequestedMode);
+            Assert.Equal(TravelMode.PublicTransit, _planner.RequestedMode);
         }
 
         [Fact]
@@ -99,7 +99,7 @@ namespace ZonaMatch.Tests.UseCases.Routes
 
             var response = await new GetRoute(_planner).ExecuteAsync(request);
 
-            Assert.Equal(ModoViaje.Auto, _planner.RequestedMode);
+            Assert.Equal(TravelMode.Car, _planner.RequestedMode);
             Assert.Equal("auto", response.Mode);
         }
 
@@ -130,10 +130,10 @@ namespace ZonaMatch.Tests.UseCases.Routes
         private sealed class FakeRoutePlanner : IRoutePlanner
         {
             public RoutePlan? Plan { get; set; }
-            public ModoViaje? RequestedMode { get; private set; }
+            public TravelMode? RequestedMode { get; private set; }
 
             public Task<RoutePlan?> PlanAsync(
-                double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, ModoViaje mode,
+                double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, TravelMode mode,
                 CancellationToken cancellationToken = default)
             {
                 RequestedMode = mode;

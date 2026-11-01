@@ -6,7 +6,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Infrastructure.Geo
 {
@@ -42,15 +42,15 @@ namespace ZonaMatch.Infrastructure.Geo
             _fechaReferencia = configuracion["Motis:FechaReferencia"] ?? FechaReferenciaPorDefecto;
         }
 
-        public async Task<TiempoViaje?> CalcularAsync(
-            double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, ModoViaje modo,
+        public async Task<TravelTime?> CalcularAsync(
+            double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, TravelMode modo,
             CancellationToken cancellationToken = default)
         {
             // ~10 m: dos pedidos desde el mismo centro al mismo lugar comparten el resultado
             var clave = string.Create(CultureInfo.InvariantCulture,
                 $"motis:{modo}:{latitudOrigen:F4},{longitudOrigen:F4}:{latitudDestino:F4},{longitudDestino:F4}");
 
-            if (_cache.TryGetValue(clave, out TiempoViaje? guardado))
+            if (_cache.TryGetValue(clave, out TravelTime? guardado))
                 return guardado;
 
             if (_reloj.GetUtcNow() < _noConsultarHasta)
@@ -75,8 +75,8 @@ namespace ZonaMatch.Infrastructure.Geo
                     .Where(i => i.Duracion is >= 0)
                     .MinBy(i => i.Duracion!.Value);
                 var tiempo = itinerario is null
-                    ? new TiempoViaje(null, Estimado: false)
-                    : new TiempoViaje(
+                    ? new TravelTime(null, Estimado: false)
+                    : new TravelTime(
                         (int)Math.Round(itinerario.Duracion!.Value / 60.0),
                         Estimado: false,
                         DistanciaKm: CalcularDistanciaKm(itinerario));
@@ -120,11 +120,11 @@ namespace ZonaMatch.Infrastructure.Geo
         }
 
         // Transporte publico con caminatas; los demas modos, solo el viaje directo
-        private static string Modos(ModoViaje modo) => modo switch
+        private static string Modos(TravelMode modo) => modo switch
         {
-            ModoViaje.Auto => "transitModes=&directModes=CAR",
-            ModoViaje.Bici => $"transitModes=&directModes=BIKE&maxDirectTime={MaximoDirectoSegundos}",
-            ModoViaje.APie => $"transitModes=&directModes=WALK&maxDirectTime={MaximoDirectoSegundos}",
+            TravelMode.Car => "transitModes=&directModes=CAR",
+            TravelMode.Bicycle => $"transitModes=&directModes=BIKE&maxDirectTime={MaximoDirectoSegundos}",
+            TravelMode.Walking => $"transitModes=&directModes=WALK&maxDirectTime={MaximoDirectoSegundos}",
             _ => "transitModes=TRANSIT&directModes=WALK",
         };
 

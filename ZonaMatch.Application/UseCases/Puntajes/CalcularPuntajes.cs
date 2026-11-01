@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Puntajes
 {
@@ -38,8 +38,8 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 throw new NotFoundException("Todavía no hay zonas disponibles para calcular el ranking.");
 
             var pedido = ArmarPedido(solicitud);
-            var modo = ModosViaje.DesdeMovilidad(solicitud.Movilidad);
-            var motor = new MotorPuntaje(universo);
+            var modo = TravelModes.FromMobility(solicitud.Movilidad);
+            var motor = new ScoringEngine(universo);
             var zonasAgregadas = ResolverZonasAgregadas(solicitud.ZonasAgregadas, porSlug);
             var zonaInicialSlug = solicitud.ZonaInicial?.Trim();
             var zonaInicial = string.IsNullOrWhiteSpace(zonaInicialSlug)
@@ -64,7 +64,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
 
             var candidatas = zonasDelEntorno
                 .Concat(zonasAgregadas)
-                .Concat(zonaInicial is { } inicial ? [inicial] : Array.Empty<PerfilZona>())
+                .Concat(zonaInicial is { } inicial ? [inicial] : Array.Empty<ZoneProfile>())
                 .DistinctBy(zona => zona.Slug, StringComparer.Ordinal)
                 .ToArray();
 
@@ -104,14 +104,14 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 .ToArray();
 
             return new PuntajesDto(
-                ModosViaje.Codigo(modo),
+                TravelModes.ToCode(modo),
                 incluidas.Select(resultado => ADto(resultado, pedido)).ToArray(),
                 recomendadas.Select(resultado => ADto(resultado, pedido)).ToArray());
         }
 
-        private static PerfilZona[] ResolverZonasAgregadas(
+        private static ZoneProfile[] ResolverZonasAgregadas(
             IReadOnlyCollection<string>? slugsSolicitados,
-            IReadOnlyDictionary<string, PerfilZona> porSlug)
+            IReadOnlyDictionary<string, ZoneProfile> porSlug)
         {
             var slugs = (slugsSolicitados ?? [])
                 .Select(slug => slug?.Trim() ?? string.Empty)
@@ -127,7 +127,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
 
         // Starting points chosen by the user, by zone slug. Each one must fall inside its zone.
         private async Task<Dictionary<string, (double Latitud, double Longitud)>> ResolverOrigenesAsync(
-            IReadOnlyCollection<OrigenZonaRequest>? origenes, IReadOnlyDictionary<string, PerfilZona> porSlug,
+            IReadOnlyCollection<OrigenZonaRequest>? origenes, IReadOnlyDictionary<string, ZoneProfile> porSlug,
             CancellationToken cancellationToken)
         {
             var resultado = new Dictionary<string, (double Latitud, double Longitud)>(StringComparer.Ordinal);
@@ -150,14 +150,14 @@ namespace ZonaMatch.Application.UseCases.Puntajes
 
         // One trip per zone and located place, starting at the zone center or at the point the user chose in it.
         // Estimate the time if routing is unavailable.
-        private async Task<Dictionary<string, IReadOnlyList<TiempoViaje?>>> MedirViajesAsync(
-            IReadOnlyList<PerfilZona> zonas, IReadOnlyList<LugarDelUsuario> lugares, ModoViaje modo,
+        private async Task<Dictionary<string, IReadOnlyList<TravelTime?>>> MedirViajesAsync(
+            IReadOnlyList<ZoneProfile> zonas, IReadOnlyList<UserPlace> lugares, TravelMode modo,
             IReadOnlyDictionary<string, (double Latitud, double Longitud)> origenes,
             CancellationToken cancellationToken)
         {
             using var limite = new SemaphoreSlim(ViajesEnParalelo);
 
-            async Task<TiempoViaje?> MedirAsync(PerfilZona zona, LugarDelUsuario lugar)
+            async Task<TravelTime?> MedirAsync(ZoneProfile zona, UserPlace lugar)
             {
                 if (!lugar.TieneUbicacion)
                     return null;
@@ -167,10 +167,10 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 await limite.WaitAsync(cancellationToken);
                 try
                 {
-                    // Five blocks or less are walked (ModosViaje.DistanciaACaminarKm)
-                    var modoDelViaje = ModosViaje.ParaDistancia(modo, latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
+                    // Five blocks or less are walked (TravelModes.WalkingDistanceThresholdKm)
+                    var modoDelViaje = TravelModes.ForDistance(modo, latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
                     return await _ruteo.CalcularAsync(latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value, modoDelViaje, cancellationToken)
-                           ?? ModosViaje.Estimar(modoDelViaje, latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
+                           ?? TravelModes.Estimate(modoDelViaje, latitud, longitud, lugar.Latitud!.Value, lugar.Longitud!.Value);
                 }
                 finally
                 {
@@ -184,23 +184,23 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                 .ToList();
 
             var resultados = await Task.WhenAll(porZona);
-            return resultados.ToDictionary(r => r.Slug, r => (IReadOnlyList<TiempoViaje?>)r.Tiempos);
+            return resultados.ToDictionary(r => r.Slug, r => (IReadOnlyList<TravelTime?>)r.Tiempos);
         }
 
-        private static PedidoPuntaje ArmarPedido(CalcularPuntajesRequest solicitud)
+        private static ScoringRequest ArmarPedido(CalcularPuntajesRequest solicitud)
         {
             var criterios = solicitud.Criterios
-                .Where(c => MotorPuntaje.EsCriterioConocido(c.Key) && c.Value is "baja" or "media" or "alta")
+                .Where(c => ScoringEngine.EsCriterioConocido(c.Key) && c.Value is "baja" or "media" or "alta")
                 .ToDictionary(c => c.Key, c => c.Value!);
 
             var lugares = solicitud.Lugares
-                .Select(l => new LugarDelUsuario(l.Nombre.Trim(), l.Latitude, l.Longitude, l.Prioridad, Minutos(l.TiempoMax)))
+                .Select(l => new UserPlace(l.Nombre.Trim(), l.Latitude, l.Longitude, l.Prioridad, Minutos(l.TiempoMax)))
                 .ToList();
 
             var (operacion, compraMaxima, tipoVivienda) = Vivienda.Validar(
                 solicitud.Operacion, solicitud.CompraMaximaUsd, solicitud.TipoVivienda);
 
-            return new PedidoPuntaje(
+            return new ScoringRequest(
                 criterios, lugares, Pesos(solicitud.AlquilerMaximo), operacion, compraMaxima, tipoVivienda,
                 Vivienda.ValidarSuperficie(solicitud.SuperficieM2));
         }
@@ -221,7 +221,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
         [GeneratedRegex(@"\d+")]
         private static partial Regex Numero();
 
-        private static PuntajeZonaDto ADto(ResultadoZona resultado, PedidoPuntaje pedido) =>
+        private static PuntajeZonaDto ADto(ZoneScoreResult resultado, ScoringRequest pedido) =>
             new(
                 resultado.Zona.Slug,
                 resultado.Zona.Nombre,

@@ -1,4 +1,4 @@
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.Interfaces
 {
@@ -7,8 +7,8 @@ namespace ZonaMatch.Application.Interfaces
     {
         // Minutos de viaje un dia habil a la mañana; Minutos null si no hay recorrido.
         // Null si el servicio de ruteo no esta disponible: el que llama decide si estima.
-        Task<TiempoViaje?> CalcularAsync(
-            double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, ModoViaje modo,
+        Task<TravelTime?> CalcularAsync(
+            double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, TravelMode modo,
             CancellationToken cancellationToken = default);
     }
 }

@@ -1,6 +1,6 @@
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Puntajes;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Tests.UseCases.Puntajes
 {
@@ -9,9 +9,9 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
         [Fact]
         public void Sin_operacion_es_alquiler_y_el_tope_de_compra_no_cuenta()
         {
-            var (operacion, compra, tipo) = Vivienda.Validar(null, 150_000, TiposVivienda.Todos);
+            var (operacion, compra, tipo) = Vivienda.Validar(null, 150_000, HousingTypes.All);
 
-            Assert.Equal(Operaciones.Alquiler, operacion);
+            Assert.Equal(HousingOperations.Rent, operacion);
             Assert.Null(compra);
             Assert.Null(tipo);
         }
@@ -21,9 +21,9 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
         {
             var (operacion, compra, tipo) = Vivienda.Validar("compra", 150_000, "ph");
 
-            Assert.Equal(Operaciones.Compra, operacion);
+            Assert.Equal(HousingOperations.Purchase, operacion);
             Assert.Equal(150_000, compra);
-            Assert.Equal(TiposVivienda.Ph, tipo);
+            Assert.Equal(HousingTypes.Ph, tipo);
         }
 
         [Theory]

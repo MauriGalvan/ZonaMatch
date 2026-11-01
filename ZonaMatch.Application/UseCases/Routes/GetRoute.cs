@@ -2,7 +2,7 @@ using ZonaMatch.Application.DTOs.Routes.Requests;
 using ZonaMatch.Application.DTOs.Routes.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Routes
 {
@@ -16,11 +16,11 @@ namespace ZonaMatch.Application.UseCases.Routes
             if (!IsValid(request.FromLatitude, request.FromLongitude) || !IsValid(request.ToLatitude, request.ToLongitude))
                 throw new BadRequestException("The origin and the destination need a valid latitude and longitude.");
 
-            var requestedMode = ModosViaje.DesdeCodigo(request.Mode)
+            var requestedMode = TravelModes.FromCode(request.Mode)
                 ?? throw new BadRequestException("Unknown travel mode: use transporte-publico, auto, bici or a-pie.");
 
             // Five blocks or less are walked, as in the scoring: the response says which mode was used
-            var mode = ModosViaje.ParaDistancia(
+            var mode = TravelModes.ForDistance(
                 requestedMode, request.FromLatitude, request.FromLongitude, request.ToLatitude, request.ToLongitude);
 
             var plan = await planner.PlanAsync(
@@ -32,7 +32,7 @@ namespace ZonaMatch.Application.UseCases.Routes
                 throw new NotFoundException("No trip was found between those points for the selected travel mode.");
 
             return new RouteResponse(
-                ModosViaje.Codigo(mode),
+                TravelModes.ToCode(mode),
                 Minutes(plan.DurationSeconds),
                 plan.Legs.Select(leg => new RouteLegResponse(
                     leg.Mode,

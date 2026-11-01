@@ -1,6 +1,6 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Puntajes
 {
@@ -29,49 +29,49 @@ namespace ZonaMatch.Application.UseCases.Puntajes
         public static (string Operacion, decimal? CompraMaximaUsd, string? TipoVivienda) Validar(
             string? operacion, decimal? compraMaximaUsd, string? tipoVivienda)
         {
-            var pedida = string.IsNullOrWhiteSpace(operacion) ? Operaciones.Alquiler : operacion.Trim();
-            if (!Operaciones.EsValida(pedida))
+            var pedida = string.IsNullOrWhiteSpace(operacion) ? HousingOperations.Rent : operacion.Trim();
+            if (!HousingOperations.IsValid(pedida))
                 throw new BadRequestException("La operación debe ser alquiler o compra.");
 
             if (compraMaximaUsd is < 0 or > CompraMaximaPermitidaUsd)
                 throw new BadRequestException("El precio máximo de compra no es válido.");
 
-            var tipo = string.IsNullOrWhiteSpace(tipoVivienda) || tipoVivienda.Trim() == TiposVivienda.Todos ? null : tipoVivienda.Trim();
-            if (tipo is not null && !TiposVivienda.EsValido(tipo))
+            var tipo = string.IsNullOrWhiteSpace(tipoVivienda) || tipoVivienda.Trim() == HousingTypes.All ? null : tipoVivienda.Trim();
+            if (tipo is not null && !HousingTypes.IsValid(tipo))
                 throw new BadRequestException("El tipo de vivienda debe ser departamento, casa o PH.");
 
-            var compra = pedida == Operaciones.Compra && compraMaximaUsd > 0 ? compraMaximaUsd : null;
+            var compra = pedida == HousingOperations.Purchase && compraMaximaUsd > 0 ? compraMaximaUsd : null;
             return (pedida, compra, tipo);
         }
 
         // Alquiler del tipo pedido en la zona; null sin dato. Con superficie, el costo mensual usa el alquiler estimado.
-        public static AlquilerZonaDto? Alquiler(PerfilZona zona, string? tipo, int? superficieM2 = null)
+        public static AlquilerZonaDto? Alquiler(ZoneProfile zona, string? tipo, int? superficieM2 = null)
         {
-            var mercado = zona.Mercado(tipo);
+            var mercado = zona.GetMarket(tipo);
             return mercado.AlquilerPromedio is { } promedio
                 ? new AlquilerZonaDto(
                     promedio,
                     mercado.PropiedadesEnAlquiler ?? 0,
                     mercado.ExpensasPromedio,
-                    mercado.CostoMensualAlquilerPara(superficieM2),
+                    mercado.MonthlyRentCostForArea(superficieM2),
                     mercado.AlquilerM2,
-                    mercado.EstimaAlquiler(superficieM2) ? superficieM2 : null,
-                    mercado.EstimaAlquiler(superficieM2) ? mercado.AlquilerPara(superficieM2) : null)
+                    mercado.EstimatesRent(superficieM2) ? superficieM2 : null,
+                    mercado.EstimatesRent(superficieM2) ? mercado.RentForArea(superficieM2) : null)
                 : null;
         }
 
         // Venta del tipo pedido en la zona; null sin dato
-        public static CompraZonaDto? Compra(PerfilZona zona, string? tipo, int? superficieM2 = null)
+        public static CompraZonaDto? Compra(ZoneProfile zona, string? tipo, int? superficieM2 = null)
         {
-            var mercado = zona.Mercado(tipo);
+            var mercado = zona.GetMarket(tipo);
             return mercado.VentaPromedioUsd is { } promedio
                 ? new CompraZonaDto(
                     promedio,
                     mercado.PropiedadesEnVenta ?? 0,
                     mercado.ExpensasPromedio,
                     mercado.VentaM2Usd,
-                    mercado.EstimaVenta(superficieM2) ? superficieM2 : null,
-                    mercado.EstimaVenta(superficieM2) ? mercado.VentaParaUsd(superficieM2) : null)
+                    mercado.EstimatesSale(superficieM2) ? superficieM2 : null,
+                    mercado.EstimatesSale(superficieM2) ? mercado.SalePriceUsdForArea(superficieM2) : null)
                 : null;
         }
     }

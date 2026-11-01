@@ -1,4 +1,4 @@
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.Interfaces
 {
@@ -6,7 +6,7 @@ namespace ZonaMatch.Application.Interfaces
     public interface IPerfilesZonaRepository
     {
         // Todas las zonas con datos; el motor compara cada una con las demas de su tipo
-        Task<IReadOnlyList<PerfilZona>> ListarAsync(CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<ZoneProfile>> ListarAsync(CancellationToken cancellationToken = default);
 
         // Zones containing geocoded locations, contiguous zones at the same level, and zones crossed by direct
         // segments between each pair of locations (using the more detailed level of the pair).

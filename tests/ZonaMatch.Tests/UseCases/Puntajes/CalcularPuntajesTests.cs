@@ -2,7 +2,7 @@ using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Puntajes;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Tests.UseCases.Puntajes
 {
@@ -18,7 +18,7 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
             _casoDeUso = new CalcularPuntajes(_perfiles, _ruteo, _zonas);
         }
 
-        private void Zona(string slug, int delitos) => _perfiles.Zonas.Add(new PerfilZona
+        private void Zona(string slug, int delitos) => _perfiles.Zonas.Add(new ZoneProfile
         {
             Slug = slug,
             Nombre = slug,
@@ -114,8 +114,8 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
 
             var resultado = await _casoDeUso.EjecutarAsync(pedido);
 
-            Assert.Equal("auto", resultado.ModoViaje);
-            Assert.Equal([ModoViaje.Auto], _ruteo.Modos.Distinct());
+            Assert.Equal("auto", resultado.TravelMode);
+            Assert.Equal([TravelMode.Car], _ruteo.Modos.Distinct());
         }
 
         [Fact]
@@ -161,11 +161,11 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
         }
       
         [Theory]
-        [InlineData("vehiculo", ModoViaje.Auto)]
-        [InlineData("bici", ModoViaje.Bici)]
-        [InlineData("a-pie", ModoViaje.APie)]
-        [InlineData("transporte-publico", ModoViaje.TransportePublico)]
-        public async Task Devuelve_la_distancia_del_recorrido_segun_la_movilidad(string movilidad, ModoViaje modo)
+        [InlineData("vehiculo", TravelMode.Car)]
+        [InlineData("bici", TravelMode.Bicycle)]
+        [InlineData("a-pie", TravelMode.Walking)]
+        [InlineData("transporte-publico", TravelMode.PublicTransit)]
+        public async Task Devuelve_la_distancia_del_recorrido_segun_la_movilidad(string movilidad, TravelMode modo)
         {
             Zona("recoleta", 30);
             var pedido = Pedido();
@@ -195,10 +195,10 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
 
         private sealed class FakePerfilesZonaRepository : IPerfilesZonaRepository
         {
-            public List<PerfilZona> Zonas { get; } = [];
+            public List<ZoneProfile> Zonas { get; } = [];
 
-            public Task<IReadOnlyList<PerfilZona>> ListarAsync(CancellationToken cancellationToken = default) =>
-                Task.FromResult<IReadOnlyList<PerfilZona>>(Zonas);
+            public Task<IReadOnlyList<ZoneProfile>> ListarAsync(CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<ZoneProfile>>(Zonas);
 
             public Task<IReadOnlyList<string>> ListarZonasDelEntornoAsync(
                 IReadOnlyCollection<(double Latitud, double Longitud)> ubicaciones,
@@ -209,11 +209,11 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
         private sealed class FakeRuteoClient : IRuteoClient
         {
             public bool Disponible { get; set; } = true;
-            public List<ModoViaje> Modos { get; } = [];
+            public List<TravelMode> Modos { get; } = [];
             public List<(double, double)> Origenes { get; } = [];
 
-            public Task<TiempoViaje?> CalcularAsync(
-                double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, ModoViaje modo,
+            public Task<TravelTime?> CalcularAsync(
+                double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, TravelMode modo,
                 CancellationToken cancellationToken = default)
             {
                 lock (Modos)
@@ -222,7 +222,7 @@ namespace ZonaMatch.Tests.UseCases.Puntajes
                     Origenes.Add((latitudOrigen, longitudOrigen));
                 }
 
-                return Task.FromResult<TiempoViaje?>(Disponible ? new TiempoViaje(25, false, 8.75) : null);
+                return Task.FromResult<TravelTime?>(Disponible ? new TravelTime(25, false, 8.75) : null);
             }
         }
     }

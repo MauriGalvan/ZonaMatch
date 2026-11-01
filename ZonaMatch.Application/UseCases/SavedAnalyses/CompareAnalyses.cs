@@ -6,7 +6,7 @@ using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Domain.Entities;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.SavedAnalyses
 {
@@ -70,8 +70,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 .Select(group => group.First())
                 .ToArray();
 
-            var zonesBySlug = new Dictionary<string, PerfilZona>(StringComparer.Ordinal);
-            MotorPuntaje? motor = null;
+            var zonesBySlug = new Dictionary<string, ZoneProfile>(StringComparer.Ordinal);
+            ScoringEngine? motor = null;
             if (personalAnalyses.Length > 0)
             {
                 var universe = await _zoneProfilesRepository.ListarAsync(cancellationToken);
@@ -83,7 +83,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 if (unavailableZones.Length > 0)
                     throw new BadRequestException($"No hay datos para calcular estas zonas: {string.Join(", ", unavailableZones)}.");
 
-                motor = new MotorPuntaje(universe);
+                motor = new ScoringEngine(universe);
             }
 
             using var routeLimit = new SemaphoreSlim(ParallelTrips);
@@ -97,12 +97,12 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                     return new ComparedAnalysisResponse(
                         analysis.Id,
                         analysis.Nombre,
-                        saved.ModoViaje,
+                        saved.TravelMode,
                         saved.Zonas.Select(ToComparedZone).ToArray());
 
                 var context = analysis.Contexto;
                 var request = BuildRequest(context);
-                var mode = ModosViaje.DesdeMovilidad(context.Movilidad ?? []);
+                var mode = TravelModes.FromMobility(context.Movilidad ?? []);
                 var analysisZones = analysis.Zonas
                     .OrderBy(zone => zone.Orden)
                     .Select(zone => zonesBySlug[zone.ZonaSlug])
@@ -118,7 +118,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 return new ComparedAnalysisResponse(
                     analysis.Id,
                     analysis.Nombre,
-                    ModosViaje.Codigo(mode),
+                    TravelModes.ToCode(mode),
                     rankedZones.Select(ToComparedZone).ToArray(),
                     null);
             }));
@@ -174,14 +174,14 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 snapshot with { Zones = rankedGroupZones, NearbyZones = [] });
         }
 
-        private async Task<Dictionary<string, IReadOnlyList<TiempoViaje?>>> MeasureTripsAsync(
-            IReadOnlyList<PerfilZona> zones,
-            IReadOnlyList<LugarDelUsuario> places,
-            ModoViaje mode,
+        private async Task<Dictionary<string, IReadOnlyList<TravelTime?>>> MeasureTripsAsync(
+            IReadOnlyList<ZoneProfile> zones,
+            IReadOnlyList<UserPlace> places,
+            TravelMode mode,
             SemaphoreSlim limiter,
             CancellationToken cancellationToken)
         {
-            async Task<TiempoViaje?> MeasureAsync(PerfilZona zone, LugarDelUsuario place)
+            async Task<TravelTime?> MeasureAsync(ZoneProfile zone, UserPlace place)
             {
                 if (!place.TieneUbicacion)
                     return null;
@@ -193,7 +193,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                                zone.Latitud, zone.Longitud,
                                place.Latitud!.Value, place.Longitud!.Value,
                                mode, cancellationToken)
-                           ?? ModosViaje.Estimar(
+                           ?? TravelModes.Estimate(
                                mode, zone.Latitud, zone.Longitud,
                                place.Latitud!.Value, place.Longitud!.Value);
                 }
@@ -208,20 +208,20 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             var results = await Task.WhenAll(zoneTasks);
             return results.ToDictionary(
                 result => result.Slug,
-                result => (IReadOnlyList<TiempoViaje?>)result.Times,
+                result => (IReadOnlyList<TravelTime?>)result.Times,
                 StringComparer.Ordinal);
         }
 
-        private static PedidoPuntaje BuildRequest(Contexto context)
+        private static ScoringRequest BuildRequest(Contexto context)
         {
             var criteria = context.Criterios
-                .Where(criterion => MotorPuntaje.EsCriterioConocido(criterion.CriterioId)
+                .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterioId)
                                     && criterion.Prioridad is "baja" or "media" or "alta")
                 .ToDictionary(criterion => criterion.CriterioId, criterion => criterion.Prioridad, StringComparer.Ordinal);
 
             var places = context.Puntos
                 .OrderBy(point => point.Orden)
-                .Select(point => new LugarDelUsuario(
+                .Select(point => new UserPlace(
                     point.Nombre,
                     point.Latitude,
                     point.Longitude,
@@ -229,7 +229,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                     ParseMinutes(point.TiempoMax)))
                 .ToArray();
 
-            return new PedidoPuntaje(
+            return new ScoringRequest(
                 criteria, places, ParseRent(context.AlquilerMaximo), context.Operacion, context.CompraMaximaUsd, context.TipoVivienda,
                 context.SuperficieM2);
         }
@@ -248,7 +248,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             return decimal.TryParse(digits, out var amount) && amount > 0 ? amount : null;
         }
 
-        private static PuntajeZonaDto ToDto(ResultadoZona result, PedidoPuntaje request) =>
+        private static PuntajeZonaDto ToDto(ZoneScoreResult result, ScoringRequest request) =>
             new(
                 result.Zona.Slug,
                 result.Zona.Nombre,

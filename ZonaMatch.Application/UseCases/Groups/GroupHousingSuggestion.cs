@@ -1,6 +1,6 @@
 using System.Globalization;
 using ZonaMatch.Domain.Entities;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Groups;
 
@@ -14,15 +14,15 @@ public sealed record GroupHousingSuggestion(
 {
     public static GroupHousingSuggestion From(IReadOnlyList<Contexto> profiles)
     {
-        var operation = profiles.Count > 0 && profiles.All(profile => profile.Operacion == Operaciones.Compra)
-            ? Operaciones.Compra
-            : Operaciones.Alquiler;
+        var operation = profiles.Count > 0 && profiles.All(profile => profile.Operacion == HousingOperations.Purchase)
+            ? HousingOperations.Purchase
+            : HousingOperations.Rent;
         var sameSearch = profiles
-            .Where(profile => (profile.Operacion == Operaciones.Compra) == (operation == Operaciones.Compra))
+            .Where(profile => (profile.Operacion == HousingOperations.Purchase) == (operation == HousingOperations.Purchase))
             .ToArray();
 
         var monthly = sameSearch.Select(profile => ParseAmount(profile.AlquilerMaximo) ?? 0).Sum();
-        var purchase = operation == Operaciones.Compra ? sameSearch.Sum(profile => profile.CompraMaximaUsd ?? 0) : 0;
+        var purchase = operation == HousingOperations.Purchase ? sameSearch.Sum(profile => profile.CompraMaximaUsd ?? 0) : 0;
         var types = profiles
             .Select(profile => profile.TipoVivienda)
             .OfType<string>()

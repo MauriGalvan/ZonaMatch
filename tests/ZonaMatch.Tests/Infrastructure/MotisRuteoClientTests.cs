@@ -3,7 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 using ZonaMatch.Infrastructure.Geo;
 
 namespace ZonaMatch.Tests.Infrastructure;
@@ -43,7 +43,7 @@ public class MotisRuteoClientTests
             }
             """;
 
-        var (viaje, _) = await ConsultarAsync(json, ModoViaje.TransportePublico);
+        var (viaje, _) = await ConsultarAsync(json, TravelMode.PublicTransit);
 
         Assert.Equal(30, viaje!.Minutos);
         Assert.InRange(viaje.DistanciaKm!.Value, 111.69, 111.70);
@@ -88,11 +88,11 @@ public class MotisRuteoClientTests
     }
 
     [Theory]
-    [InlineData(ModoViaje.Auto, "directModes=CAR")]
-    [InlineData(ModoViaje.Bici, "directModes=BIKE")]
-    [InlineData(ModoViaje.APie, "directModes=WALK")]
-    [InlineData(ModoViaje.TransportePublico, "transitModes=TRANSIT")]
-    public async Task Consulta_el_medio_de_transporte_elegido(ModoViaje modo, string parametro)
+    [InlineData(TravelMode.Car, "directModes=CAR")]
+    [InlineData(TravelMode.Bicycle, "directModes=BIKE")]
+    [InlineData(TravelMode.Walking, "directModes=WALK")]
+    [InlineData(TravelMode.PublicTransit, "transitModes=TRANSIT")]
+    public async Task Consulta_el_medio_de_transporte_elegido(TravelMode modo, string parametro)
     {
         var (_, query) = await ConsultarAsync(
             """{"direct":[{"duration":600,"legs":[{"distance":1000}]}]}""", modo);
@@ -114,8 +114,8 @@ public class MotisRuteoClientTests
         Assert.Null(viaje);
     }
 
-    private static async Task<(TiempoViaje? Viaje, string Query)> ConsultarAsync(
-        string json, ModoViaje modo = ModoViaje.Auto)
+    private static async Task<(TravelTime? Viaje, string Query)> ConsultarAsync(
+        string json, TravelMode modo = TravelMode.Car)
     {
         using var handler = new JsonHandler(json);
         using var http = new HttpClient(handler) { BaseAddress = new Uri("http://motis.test/") };

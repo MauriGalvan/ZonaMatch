@@ -3,7 +3,7 @@ using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.SavedAnalyses;
 using ZonaMatch.Domain.Entities;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Tests.UseCases.SavedAnalyses;
 
@@ -31,12 +31,12 @@ public class CompareAnalysisDistanceTests
             .ReturnsAsync(analyses);
         var perfiles = new Mock<IPerfilesZonaRepository>();
         perfiles.Setup(r => r.ListarAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PerfilZona[] { new() { Slug = "recoleta", Nombre = "Recoleta", Nivel = 9 } });
+            .ReturnsAsync(new ZoneProfile[] { new() { Slug = "recoleta", Nombre = "Recoleta", Nivel = 9 } });
         var ruteo = new Mock<IRuteoClient>();
         ruteo.Setup(r => r.CalcularAsync(
                 It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>(),
-                ModoViaje.Auto, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new TiempoViaje(25, false, 8.75));
+                TravelMode.Car, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new TravelTime(25, false, 8.75));
 
         var result = await new CompareAnalyses(repositorio.Object, perfiles.Object, ruteo.Object)
             .ExecuteAsync(userId, new CompareAnalysesRequest { AnalysisIds = analyses.Select(analysis => analysis.Id).ToList() });

@@ -29,13 +29,13 @@ namespace ZonaMatch.Domain.Entities
         // Si alquila es alquiler mas expensas; si compra, solo expensas.
         public string? AlquilerMaximo { get; set; }
 
-        // alquiler | compra (Puntaje.Operaciones)
+        // alquiler | compra (Puntaje.HousingOperations)
         public string Operacion { get; set; } = "alquiler";
 
         // Precio maximo de compra en dolares; solo si compra
         public decimal? CompraMaximaUsd { get; set; }
 
-        // apartment | house | ph (Puntaje.TiposVivienda); null si le sirve cualquiera
+        // apartment | house | ph (Puntaje.HousingTypes); null si le sirve cualquiera
         public string? TipoVivienda { get; set; }
 
         // Superficie que busca en m2: los precios se estiman por m2; null usa los promedios de cada zona

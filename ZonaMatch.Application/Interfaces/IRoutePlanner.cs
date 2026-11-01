@@ -1,4 +1,4 @@
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.Interfaces
 {
@@ -8,7 +8,7 @@ namespace ZonaMatch.Application.Interfaces
         // Null when there is no trip for that mode. Throws ServiceUnavailableException when the routing service
         // does not answer.
         Task<RoutePlan?> PlanAsync(
-            double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, ModoViaje mode,
+            double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, TravelMode mode,
             CancellationToken cancellationToken = default);
     }
 

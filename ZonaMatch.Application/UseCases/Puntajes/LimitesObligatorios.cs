@@ -1,5 +1,5 @@
 using ZonaMatch.Application.Exceptions;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Puntajes
 {
@@ -10,7 +10,7 @@ namespace ZonaMatch.Application.UseCases.Puntajes
         public static void Validar(string? gastoMensual, string? operacion, decimal? compraMaximaUsd, IEnumerable<string?> tiemposMaximos)
         {
             // Buying, the monthly cap is only the building fee (expensas): optional, and 0 means no cap
-            if (operacion?.Trim() == Operaciones.Compra)
+            if (operacion?.Trim() == HousingOperations.Purchase)
             {
                 if (compraMaximaUsd is not > 0)
                     throw new BadRequestException("El precio máximo de compra es obligatorio.");

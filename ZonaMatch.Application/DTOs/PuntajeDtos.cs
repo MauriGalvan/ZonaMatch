@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ZonaMatch.Application.DTOs
 {
-    // POST /Puntajes — automatic ranking around geocoded places, with an optional initial zone and added zones.
-    // Visitors and signed-in users send the scoring context in the request.
+    // POST /Puntajes: automatic ranking around geocoded places, with an optional initial zone and added zones.
+    // Visitors and signed-in users provide the scoring context in the request.
     public class CalcularPuntajesRequest
     {
         [MaxLength(5, ErrorMessage = "Se pueden agregar hasta 5 zonas después del ranking.")]
@@ -12,31 +13,31 @@ namespace ZonaMatch.Application.DTOs
         [StringLength(100)]
         public string? ZonaInicial { get; set; }
 
-        // Clave: id del criterio (seguridad, movilidad, espacios-verdes, educacion, salud); valor: baja|media|alta
+        // Key: criterion ID (seguridad, movilidad, espacios-verdes, educacion, salud); value: baja|media|alta.
         public Dictionary<string, string?> Criterios { get; set; } = [];
 
         // Visitors: up to 3 (PuntajesController); signed-in users: up to 15
         [MaxLength(15, ErrorMessage = "Se pueden medir hasta 15 lugares.")]
         public List<LugarPuntajeRequest> Lugares { get; set; } = [];
 
-        // Tope de gasto mensual en pesos, como lo tipeo el usuario (ej: "800000"): alquiler mas expensas, o solo
-        // expensas si compra
+        // Maximum monthly expense in Argentine pesos, as entered by the user (for example, "800000"): rent plus
+        // building expenses when renting, or building expenses only when purchasing.
         [StringLength(30)]
         public string? AlquilerMaximo { get; set; }
 
-        // alquiler | compra; sin dato, alquiler
+        // alquiler | compra; defaults to alquiler when omitted.
         [StringLength(10)]
         public string? Operacion { get; set; }
 
-        // Precio maximo de compra en dolares (solo si compra)
+        // Maximum purchase price in US dollars (only when purchasing).
         [Range(typeof(decimal), "0", "100000000")]
         public decimal? CompraMaximaUsd { get; set; }
 
-        // apartment | house | ph; sin dato, todos los tipos
+        // apartment | house | ph; all housing types when omitted.
         [StringLength(20)]
         public string? TipoVivienda { get; set; }
 
-        // Superficie que busca en m2: los precios se estiman por m2; sin dato, los promedios de cada zona
+        // Desired area in square meters: prices are estimated per square meter; zone averages are used when omitted.
         [Range(0, 2000, ErrorMessage = "La superficie debe estar entre 10 y 2.000 m².")]
         public int? SuperficieM2 { get; set; }
 
@@ -72,21 +73,21 @@ namespace ZonaMatch.Application.DTOs
 
         public double? Longitude { get; set; }
 
-        // Muy importante | Alta | Media | Baja
+        // Muy importante | Alta | Media | Baja.
         [StringLength(20)]
         public string? Prioridad { get; set; }
 
-        // "45 min"
+        // Example: "45 min".
         [StringLength(10)]
         public string? TiempoMax { get; set; }
     }
 
     public record PuntajesDto(
-        string ModoViaje,
+        [property: JsonPropertyName("modoViaje")] string TravelMode,
         IReadOnlyList<PuntajeZonaDto> Zonas,
         IReadOnlyList<PuntajeZonaDto> Cercanas);
 
-    // Puntaje null si ningun criterio tiene datos para la zona
+    // Score is null when no criterion has data for the zone.
     public record PuntajeZonaDto(
         string Slug,
         string Nombre,
@@ -99,10 +100,10 @@ namespace ZonaMatch.Application.DTOs
 
     public record ComponentePuntajeDto(string Criterio, string Prioridad, int? Puntaje, string Detalle);
 
-    // Cumple null si no hay datos para saberlo
+    // IsMet is null when there is not enough data to determine the result.
     public record LimitePuntajeDto(string Tipo, bool? Cumple, string Detalle);
 
-    // Distancia del recorrido, no la separacion en linea recta. Null si no se conoce el recorrido completo.
+    // Route distance, not straight-line distance. Null when the complete route is unknown.
     public record TiempoLugarDto(
         string Nombre,
         int? Minutos,
@@ -110,9 +111,9 @@ namespace ZonaMatch.Application.DTOs
         bool Estimado,
         double? DistanciaKm = null);
 
-    // Expensas: promedio mensual en pesos (null sin dato). CostoMensual: alquiler mas expensas.
-    // PrecioM2: alquiler promedio por m2. Con superficie pedida, SuperficieM2 y Estimado (alquiler para esa superficie);
-    // CostoMensual usa ese estimado.
+    // Expenses is the monthly average in Argentine pesos (null when unavailable). MonthlyCost is rent plus expenses.
+    // PricePerM2 is the average rent per square meter. When an area is requested, SurfaceM2 and Estimated provide the
+    // rent estimate for that area, and MonthlyCost uses that estimate.
     public record AlquilerZonaDto(
         decimal Promedio,
         int PropiedadesDisponibles,
@@ -122,8 +123,9 @@ namespace ZonaMatch.Application.DTOs
         int? SuperficieM2 = null,
         decimal? Estimado = null);
 
-    // PromedioUsd: precio de venta promedio en dolares. Expensas: promedio mensual en pesos (null sin dato).
-    // PrecioM2Usd: venta promedio por m2. Con superficie pedida, SuperficieM2 y EstimadoUsd (precio para esa superficie).
+    // AverageUsd is the average sale price in US dollars. Expenses is the monthly average in Argentine pesos (null
+    // when unavailable). PricePerM2Usd is the average sale price per square meter. When an area is requested, SurfaceM2
+    // and EstimatedUsd provide the estimated price for that area.
     public record CompraZonaDto(
         decimal PromedioUsd,
         int PropiedadesDisponibles,

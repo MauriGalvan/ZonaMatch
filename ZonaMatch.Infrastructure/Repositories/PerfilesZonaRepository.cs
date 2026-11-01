@@ -1,9 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using NpgsqlTypes;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
@@ -200,7 +200,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             _logger = logger;
         }
 
-        public Task<IReadOnlyList<PerfilZona>> ListarAsync(CancellationToken cancellationToken = default) =>
+        public Task<IReadOnlyList<ZoneProfile>> ListarAsync(CancellationToken cancellationToken = default) =>
             _cache.ObtenerAsync(CalcularAsync, cancellationToken);
 
         public async Task<IReadOnlyList<string>> ListarZonasDelEntornoAsync(
@@ -229,7 +229,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
         }
 
-        private async Task<IReadOnlyList<PerfilZona>> CalcularAsync(CancellationToken cancellationToken)
+        private async Task<IReadOnlyList<ZoneProfile>> CalcularAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -271,22 +271,22 @@ namespace ZonaMatch.Infrastructure.Repositories
             public double Latitud { get; set; }
             public double Longitud { get; set; }
 
-            public PerfilZona APerfil(IEnumerable<MercadoFila> mercado)
+            public ZoneProfile APerfil(IEnumerable<MercadoFila> mercado)
             {
                 var porClave = mercado.ToDictionary(f => (f.Operacion, f.Tipo));
 
-                MercadoVivienda Vivienda(string tipo)
+                HousingMarket Vivienda(string tipo)
                 {
                     var alquiler = porClave.GetValueOrDefault(("rent", tipo));
                     var venta = porClave.GetValueOrDefault(("sale", tipo));
-                    return new MercadoVivienda(
+                    return new HousingMarket(
                         alquiler?.Promedio, alquiler?.Propiedades, alquiler?.Expensas, venta?.Promedio, venta?.Propiedades,
                         alquiler?.PrecioM2, venta?.PrecioM2);
                 }
 
-                var todos = Vivienda(TiposVivienda.Todos);
+                var todos = Vivienda(HousingTypes.All);
 
-                return new PerfilZona
+                return new ZoneProfile
                 {
                 Slug = Slug,
                 Nombre = Nombre,
@@ -309,7 +309,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 PropiedadesEnVenta = todos.PropiedadesEnVenta,
                 AlquilerM2 = todos.AlquilerM2,
                 VentaM2Usd = todos.VentaM2Usd,
-                MercadoPorTipo = new[] { TiposVivienda.Departamento, TiposVivienda.Casa, TiposVivienda.Ph }
+                MercadoPorTipo = new[] { HousingTypes.Apartment, HousingTypes.House, HousingTypes.Ph }
                     .ToDictionary(tipo => tipo, Vivienda),
                 };
             }
