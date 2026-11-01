@@ -284,11 +284,11 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                     place.IsEstimated)).ToArray() ?? [],
                 result.Rent is { } rent
                     ? new AlquilerZonaDto(
-                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated, rent.Rooms)
+                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated, rent.Rooms, rent.Distribution)
                     : null,
                 result.Sale is { } sale
                     ? new CompraZonaDto(
-                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd, sale.Rooms)
+                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd, sale.Rooms, sale.Distribution)
                     : null);
     }
 }

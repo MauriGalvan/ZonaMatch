@@ -11,4 +11,6 @@ public sealed record ZoneRentResponse(
     decimal? PricePerM2 = null,
     int? SurfaceM2 = null,
     decimal? Estimated = null,
-    int? Rooms = null);
+    int? Rooms = null,
+    // Rent plus expenses at every tenth of the listings (11 values)
+    decimal[]? Distribution = null);

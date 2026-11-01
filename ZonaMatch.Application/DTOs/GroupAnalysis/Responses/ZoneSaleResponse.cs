@@ -10,4 +10,6 @@ public sealed record ZoneSaleResponse(
     decimal? PricePerM2Usd = null,
     int? SurfaceM2 = null,
     decimal? EstimatedUsd = null,
-    int? Rooms = null);
+    int? Rooms = null,
+    // Price in dollars at every tenth of the listings (11 values)
+    decimal[]? Distribution = null);

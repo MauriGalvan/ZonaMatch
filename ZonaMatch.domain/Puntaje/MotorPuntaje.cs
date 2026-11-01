@@ -283,6 +283,17 @@ namespace ZonaMatch.Domain.Puntaje
             if (mercado.CostoMensualAlquilerPara(superficieM2) is not { } costo)
                 return (new ResultadoLimite(LimiteAlquiler, null, $"Sin datos de alquiler{vivienda} para esta zona"), 0);
 
+            // Con distribucion: el rango de lo que se paga por mes y el precio medio (la mitad de los avisos cuesta menos),
+            // que es el que se compara con el tope
+            if (mercado.DistribucionMensualAlquiler(superficieM2) is { } mensual)
+            {
+                var tamano = superficieM2 is > 0 && Distribucion.EsValida(mercado.AlquilerM2Deciles) ? $" para {superficieM2} m²" : string.Empty;
+                var medio = Distribucion.Medio(mensual);
+                var rango = $"Alquiler + expensas{vivienda}{tamano}: de {Pesos(Distribucion.Minimo(mensual))} a {Pesos(Distribucion.Maximo(mensual))} por mes " +
+                            $"(entra el {Distribucion.PorcentajeHasta(mensual, maximo)} % de las publicaciones); precio medio {Pesos(medio)}";
+                return Comparar(LimiteAlquiler, medio, maximo, rango, $"tu tope de {Pesos(maximo)}");
+            }
+
             var alquiler = mercado.AlquilerPara(superficieM2)!.Value;
             var estimado = mercado.EstimaAlquiler(superficieM2);
             var etiqueta = estimado
@@ -312,6 +323,15 @@ namespace ZonaMatch.Domain.Puntaje
             var vivienda = TiposVivienda.Sufijo(tipo) + Ambientes.Sufijo(mercado.AmbientesVenta);
             if (mercado.VentaParaUsd(superficieM2) is not { } precio)
                 return (new ResultadoLimite(LimiteCompra, null, $"Sin datos de venta{vivienda} para esta zona"), 0);
+
+            if (mercado.DistribucionVentaUsd(superficieM2) is { } ventas)
+            {
+                var tamano = superficieM2 is > 0 && Distribucion.EsValida(mercado.VentaM2DecilesUsd) ? $" para {superficieM2} m²" : string.Empty;
+                var medio = Distribucion.Medio(ventas);
+                var rango = $"Precio{vivienda}{tamano}: de {Dolares(Distribucion.Minimo(ventas))} a {Dolares(Distribucion.Maximo(ventas))} " +
+                            $"(entra el {Distribucion.PorcentajeHasta(ventas, maximo)} % de las publicaciones); precio medio {Dolares(medio)}";
+                return Comparar(LimiteCompra, medio, maximo, rango, $"tu tope de compra de {Dolares(maximo)}");
+            }
 
             var detalle = mercado.EstimaVenta(superficieM2)
                 ? $"Precio estimado{vivienda} para {superficieM2} m² {Dolares(precio)} ({Dolares(mercado.VentaM2Usd!.Value)}/m²)"

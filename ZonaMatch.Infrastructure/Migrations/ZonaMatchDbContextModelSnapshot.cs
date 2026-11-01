@@ -1417,6 +1417,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("numeric(5,4)")
                         .HasColumnName("pets_allowed_share");
 
+                    b.PrimitiveCollection<decimal[]>("PriceDeciles")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_deciles");
+
+                    b.PrimitiveCollection<decimal[]>("PriceM2Deciles")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_m2_deciles");
+
                     b.Property<int>("SampleSize")
                         .HasColumnType("integer")
                         .HasColumnName("sample_size");
@@ -1510,6 +1518,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Property<decimal?>("MedianTotalM2")
                         .HasColumnType("numeric(8,0)")
                         .HasColumnName("median_total_m2");
+
+                    b.PrimitiveCollection<decimal[]>("PriceDeciles")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_deciles");
+
+                    b.PrimitiveCollection<decimal[]>("PriceM2Deciles")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_m2_deciles");
 
                     b.Property<int>("SampleSize")
                         .HasColumnType("integer")

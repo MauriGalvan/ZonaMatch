@@ -125,7 +125,9 @@ namespace ZonaMatch.Application.DTOs
         decimal? PrecioM2 = null,
         int? SuperficieM2 = null,
         decimal? Estimado = null,
-        int? Ambientes = null);
+        int? Ambientes = null,
+        // Precio en cada decimo de las publicaciones (11 valores): alquiler + expensas por mes, o venta en dolares
+        decimal[]? Distribucion = null);
 
     // PromedioUsd: precio de venta promedio en dolares. Expensas: promedio mensual en pesos (null sin dato).
     // PrecioM2Usd: venta promedio por m2. Con superficie pedida, SuperficieM2 y EstimadoUsd (precio para esa superficie).
@@ -137,5 +139,7 @@ namespace ZonaMatch.Application.DTOs
         decimal? PrecioM2Usd = null,
         int? SuperficieM2 = null,
         decimal? EstimadoUsd = null,
-        int? Ambientes = null);
+        int? Ambientes = null,
+        // Precio en cada decimo de las publicaciones (11 valores): alquiler + expensas por mes, o venta en dolares
+        decimal[]? Distribucion = null);
 }

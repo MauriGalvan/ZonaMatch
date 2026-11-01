@@ -49,6 +49,12 @@ namespace ZonaMatch.Domain.Puntaje
         public decimal? AlquilerM2 { get; init; }
         public decimal? VentaM2Usd { get; init; }
 
+        // Distribucion de precios de todos los tipos (Distribucion): alquiler y alquiler por m2 en pesos, venta en dolares
+        public decimal[]? AlquilerDeciles { get; init; }
+        public decimal[]? AlquilerM2Deciles { get; init; }
+        public decimal[]? VentaDecilesUsd { get; init; }
+        public decimal[]? VentaM2DecilesUsd { get; init; }
+
         // Mercado de departamentos, casas y PH por separado (clave: TiposVivienda); los datos de arriba son de todos juntos
         public IReadOnlyDictionary<string, MercadoVivienda> MercadoPorTipo { get; init; } = new Dictionary<string, MercadoVivienda>();
 
@@ -62,7 +68,9 @@ namespace ZonaMatch.Domain.Puntaje
         {
             if (!TiposVivienda.EsValido(tipo))
                 return new MercadoVivienda(
-                    AlquilerPromedio, PropiedadesDisponibles, ExpensasPromedio, VentaPromedioUsd, PropiedadesEnVenta, AlquilerM2, VentaM2Usd);
+                    AlquilerPromedio, PropiedadesDisponibles, ExpensasPromedio, VentaPromedioUsd, PropiedadesEnVenta, AlquilerM2, VentaM2Usd,
+                    AlquilerDeciles: AlquilerDeciles, AlquilerM2Deciles: AlquilerM2Deciles,
+                    VentaDecilesUsd: VentaDecilesUsd, VentaM2DecilesUsd: VentaM2DecilesUsd);
 
             var mercado = MercadoPorTipo.TryGetValue(tipo!, out var propio) ? propio : MercadoVivienda.SinDatos;
             return mercado with { ExpensasPromedio = TiposVivienda.PagaExpensas(tipo) ? mercado.ExpensasPromedio ?? ExpensasPromedio : 0 };
@@ -96,6 +104,10 @@ namespace ZonaMatch.Domain.Puntaje
                 VentaM2Usd = venta ? tamano.VentaM2Usd : general.VentaM2Usd,
                 AmbientesAlquiler = alquiler ? clave.Item2 : null,
                 AmbientesVenta = venta ? clave.Item2 : null,
+                AlquilerDeciles = alquiler ? tamano.AlquilerDeciles : general.AlquilerDeciles,
+                AlquilerM2Deciles = alquiler ? tamano.AlquilerM2Deciles : general.AlquilerM2Deciles,
+                VentaDecilesUsd = venta ? tamano.VentaDecilesUsd : general.VentaDecilesUsd,
+                VentaM2DecilesUsd = venta ? tamano.VentaM2DecilesUsd : general.VentaM2DecilesUsd,
             };
         }
 

@@ -452,12 +452,12 @@ public sealed partial class CalcularPuntajeEnGrupo
         var rent = Vivienda.Alquiler(zone, propertyType, surface, rooms) is { } zoneRent
             ? new ZoneRentResponse(
                 zoneRent.Promedio, zoneRent.PropiedadesDisponibles, zoneRent.Expensas, zoneRent.CostoMensual,
-                zoneRent.PrecioM2, zoneRent.SuperficieM2, zoneRent.Estimado, zoneRent.Ambientes)
+                zoneRent.PrecioM2, zoneRent.SuperficieM2, zoneRent.Estimado, zoneRent.Ambientes, zoneRent.Distribucion)
             : null;
         var sale = Vivienda.Compra(zone, propertyType, surface, rooms) is { } zoneSale
             ? new ZoneSaleResponse(
                 zoneSale.PromedioUsd, zoneSale.PropiedadesDisponibles, zoneSale.Expensas,
-                zoneSale.PrecioM2Usd, zoneSale.SuperficieM2, zoneSale.EstimadoUsd, zoneSale.Ambientes)
+                zoneSale.PrecioM2Usd, zoneSale.SuperficieM2, zoneSale.EstimadoUsd, zoneSale.Ambientes, zoneSale.Distribucion)
             : null;
 
         return new RankedZoneResponse(zone.Slug, zone.Nombre, groupScore, breakdown, componentGroups, limits, places, rent, sale);

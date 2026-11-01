@@ -12,7 +12,11 @@ namespace ZonaMatch.Domain.Puntaje
         decimal? AlquilerM2 = null,
         decimal? VentaM2Usd = null,
         int? AmbientesAlquiler = null,
-        int? AmbientesVenta = null)
+        int? AmbientesVenta = null,
+        decimal[]? AlquilerDeciles = null,
+        decimal[]? AlquilerM2Deciles = null,
+        decimal[]? VentaDecilesUsd = null,
+        decimal[]? VentaM2DecilesUsd = null)
     {
         public static readonly MercadoVivienda SinDatos = new(null, null, null, null, null);
 
@@ -33,6 +37,28 @@ namespace ZonaMatch.Domain.Puntaje
 
         public decimal? CostoMensualAlquilerPara(int? superficieM2) =>
             AlquilerPara(superficieM2) is { } alquiler ? alquiler + (ExpensasPromedio ?? 0) : null;
+
+        // Distribucion de lo que se paga por mes alquilando (alquiler mas expensas), para la superficie si hay dato
+        // por m2; null sin distribucion
+        public decimal[]? DistribucionMensualAlquiler(int? superficieM2)
+        {
+            var expensas = ExpensasPromedio ?? 0;
+            if (superficieM2 is > 0 && Distribucion.EsValida(AlquilerM2Deciles))
+                return Distribucion.Escalar(AlquilerM2Deciles!, superficieM2.Value, expensas);
+
+            return !EstimaAlquiler(superficieM2) && Distribucion.EsValida(AlquilerDeciles)
+                ? Distribucion.Escalar(AlquilerDeciles!, 1, expensas)
+                : null;
+        }
+
+        // Distribucion del precio de venta en dolares, para la superficie si hay dato por m2; null sin distribucion
+        public decimal[]? DistribucionVentaUsd(int? superficieM2)
+        {
+            if (superficieM2 is > 0 && Distribucion.EsValida(VentaM2DecilesUsd))
+                return Distribucion.Escalar(VentaM2DecilesUsd!, superficieM2.Value);
+
+            return !EstimaVenta(superficieM2) && Distribucion.EsValida(VentaDecilesUsd) ? VentaDecilesUsd : null;
+        }
     }
 
     // Lo que busca el usuario: alquilar o comprar

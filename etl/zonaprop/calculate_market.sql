@@ -195,7 +195,9 @@ CREATE TEMP TABLE market (
     pets_allowed_share    numeric,
     source                text NOT NULL,
     inherited_from        text,
-    updated_at            timestamptz NOT NULL
+    updated_at            timestamptz NOT NULL,
+    price_deciles         numeric[],
+    price_m2_deciles      numeric[]
 );
 
 WITH pivot AS (
@@ -243,6 +245,50 @@ SELECT zone_slug, osm_id, operation, 'all', rooms, sum(listings), sum(sample_siz
 FROM weighted
 GROUP BY zone_slug, osm_id, operation, rooms;
 
+-- Price distribution: the price at every tenth of the listings, from the cheapest to the most expensive of the
+-- trimmed sample (the same 10 % per end left out of the averages), weighted like the averages. "all" pools the types.
+DROP TABLE IF EXISTS pg_temp.deciles;
+CREATE TEMP TABLE deciles AS
+WITH pooled AS (
+    SELECT zone_slug, operation, property_type, rooms, metric, value, w FROM vals WHERE metric IN ('price', 'price_m2')
+    UNION ALL
+    SELECT zone_slug, operation, 'all', rooms, metric, value, w FROM vals WHERE metric IN ('price', 'price_m2')
+),
+ranked AS (
+    SELECT p.*,
+           sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric
+                        ORDER BY value, w ROWS UNBOUNDED PRECEDING) AS cumulative,
+           sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric) AS total_w,
+           count(*) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric) AS n
+    FROM pooled p
+),
+kept AS (
+    SELECT *,
+           sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric
+                        ORDER BY value, w ROWS UNBOUNDED PRECEDING)
+               / sum(w) OVER (PARTITION BY zone_slug, operation, property_type, rooms, metric) AS position
+    FROM ranked
+    WHERE n < 10 OR (cumulative - w / 2) / total_w BETWEEN 0.1 AND 0.9
+),
+points AS (
+    SELECT zone_slug, operation, property_type, rooms, metric, q,
+           min(value) FILTER (WHERE position >= q / 10.0 - 0.000001) AS value
+    FROM kept
+    CROSS JOIN generate_series(0, 10) q
+    GROUP BY zone_slug, operation, property_type, rooms, metric, q
+)
+SELECT zone_slug, operation, property_type, rooms,
+       array_agg(round(value) ORDER BY q) FILTER (WHERE metric = 'price') AS price_deciles,
+       array_agg(round(value) ORDER BY q) FILTER (WHERE metric = 'price_m2') AS price_m2_deciles
+FROM points
+GROUP BY zone_slug, operation, property_type, rooms;
+
+UPDATE market m
+SET price_deciles = d.price_deciles, price_m2_deciles = d.price_m2_deciles
+FROM deciles d
+WHERE m.zone_slug = d.zone_slug AND m.operation = d.operation AND m.property_type = d.property_type
+  AND m.rooms = d.rooms;
+
 -- Filter shares: Zonaprop totals of each filter over the listings of the three types, both for the whole Zonaprop
 -- location (so a partido answer keeps its proportion)
 WITH filters AS (
@@ -275,7 +321,8 @@ WHERE m.zone_slug = s.zone_slug AND m.operation = s.operation AND m.property_typ
 INSERT INTO market
 SELECT c.slug, c.osm_id, m.operation, m.property_type, m.rooms, NULL, m.sample_size, m.average_price, m.median_price,
        m.average_price_m2, m.median_price_m2, m.average_expenses_ars, m.median_covered_m2, m.median_total_m2,
-       m.credit_eligible_share, m.owner_share, m.pets_allowed_share, 'zonaprop-inherited', p.slug, m.updated_at
+       m.credit_eligible_share, m.owner_share, m.pets_allowed_share, 'zonaprop-inherited', p.slug, m.updated_at,
+       m.price_deciles, m.price_m2_deciles
 FROM geo.zonas c
 CROSS JOIN LATERAL (
     SELECT z.osm_id, z.slug
@@ -291,7 +338,9 @@ WHERE c.elegida AND c.nivel > 5
   AND NOT EXISTS (SELECT 1 FROM market x WHERE x.osm_id = c.osm_id);
 
 -- 4. Partidos and comunas add up the outermost measured zones inside them (a measured zone inside another measured
--- zone is already counted by it)
+-- zone is already counted by it). Their price distribution averages the members' at every tenth, weighted by listings.
+DROP TABLE IF EXISTS pg_temp.parent_members;
+CREATE TEMP TABLE parent_members AS
 WITH measured AS (
     SELECT DISTINCT z.osm_id, z.superficie_km2, z.geom, ST_PointOnSurface(z.geom) AS point
     FROM geo.zonas z
@@ -309,6 +358,8 @@ members AS (
           WHERE y.osm_id <> z.osm_id AND y.superficie_km2 > z.superficie_km2 AND y.superficie_km2 <= p.superficie_km2
             AND ST_Contains(y.geom, z.point))
 )
+SELECT * FROM members;
+
 INSERT INTO market
 SELECT b.parent_slug, b.parent_id, m.operation, m.property_type, m.rooms, sum(m.listings), sum(m.sample_size),
        sum(m.average_price * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.average_price IS NOT NULL), 0),
@@ -328,17 +379,41 @@ SELECT b.parent_slug, b.parent_id, m.operation, m.property_type, m.rooms, sum(m.
        sum(m.owner_share * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.owner_share IS NOT NULL), 0),
        sum(m.pets_allowed_share * m.listings)
            / nullif(sum(m.listings) FILTER (WHERE m.pets_allowed_share IS NOT NULL), 0),
-       'zonaprop-sum', NULL, min(m.updated_at)
-FROM members b
+       'zonaprop-sum', NULL, min(m.updated_at), NULL, NULL
+FROM parent_members b
 JOIN market m ON m.osm_id = b.osm_id
 GROUP BY b.parent_id, b.parent_slug, m.operation, m.property_type, m.rooms;
+
+WITH points AS (
+    SELECT b.parent_id, m.operation, m.property_type, m.rooms, d.i,
+           sum(d.price * greatest(coalesce(m.listings, 0), 1))
+               / nullif(sum(greatest(coalesce(m.listings, 0), 1)) FILTER (WHERE d.price IS NOT NULL), 0) AS price,
+           sum(d.price_m2 * greatest(coalesce(m.listings, 0), 1))
+               / nullif(sum(greatest(coalesce(m.listings, 0), 1)) FILTER (WHERE d.price_m2 IS NOT NULL), 0) AS price_m2
+    FROM parent_members b
+    JOIN market m ON m.osm_id = b.osm_id
+    CROSS JOIN LATERAL unnest(m.price_deciles, m.price_m2_deciles) WITH ORDINALITY AS d(price, price_m2, i)
+    GROUP BY b.parent_id, m.operation, m.property_type, m.rooms, d.i
+)
+UPDATE market s
+SET price_deciles = a.price_deciles, price_m2_deciles = a.price_m2_deciles
+FROM (
+    SELECT parent_id, operation, property_type, rooms,
+           CASE WHEN bool_and(price IS NOT NULL) THEN array_agg(round(price) ORDER BY i) END AS price_deciles,
+           CASE WHEN bool_and(price_m2 IS NOT NULL) THEN array_agg(round(price_m2) ORDER BY i) END AS price_m2_deciles
+    FROM points
+    GROUP BY parent_id, operation, property_type, rooms
+) a
+WHERE s.osm_id = a.parent_id AND s.source = 'zonaprop-sum' AND s.operation = a.operation
+  AND s.property_type = a.property_type AND s.rooms = a.rooms;
 
 -- 4b. Zones still without data (not in Zonaprop and not inside a measured zone) take the values of their partido
 -- or comuna
 INSERT INTO market
 SELECT c.slug, c.osm_id, m.operation, m.property_type, m.rooms, NULL, m.sample_size, m.average_price, m.median_price,
        m.average_price_m2, m.median_price_m2, m.average_expenses_ars, m.median_covered_m2, m.median_total_m2,
-       m.credit_eligible_share, m.owner_share, m.pets_allowed_share, 'zonaprop-inherited', p.slug, m.updated_at
+       m.credit_eligible_share, m.owner_share, m.pets_allowed_share, 'zonaprop-inherited', p.slug, m.updated_at,
+       m.price_deciles, m.price_m2_deciles
 FROM geo.zonas c
 JOIN LATERAL (
     SELECT z.osm_id, z.slug
@@ -358,14 +433,14 @@ DELETE FROM app.zone_market_rooms;
 INSERT INTO app.zone_market (zone_slug, operation, property_type, listings, sample_size, average_price, median_price,
                              currency, average_price_m2, median_price_m2, average_expenses_ars, median_covered_m2,
                              median_total_m2, credit_eligible_share, owner_share, pets_allowed_share, source,
-                             inherited_from, updated_at)
+                             inherited_from, updated_at, price_deciles, price_m2_deciles)
 SELECT DISTINCT ON (zone_slug, operation, property_type)
        zone_slug, operation, property_type, listings, sample_size,
        round(average_price, CASE operation WHEN 'rent' THEN -3 ELSE 0 END), round(median_price),
        CASE operation WHEN 'rent' THEN 'ARS' ELSE 'USD' END,
        round(average_price_m2), round(median_price_m2), round(average_expenses_ars, -2), round(median_covered_m2),
        round(median_total_m2), round(credit_eligible_share, 4), round(owner_share, 4), round(pets_allowed_share, 4),
-       source, inherited_from, updated_at
+       source, inherited_from, updated_at, price_deciles, price_m2_deciles
 FROM market
 WHERE rooms = 0
 ORDER BY zone_slug, operation, property_type, osm_id
@@ -385,17 +460,20 @@ ON CONFLICT (zone_slug, operation, property_type) DO UPDATE
         pets_allowed_share = excluded.pets_allowed_share,
         source = excluded.source,
         inherited_from = excluded.inherited_from,
-        updated_at = excluded.updated_at;
+        updated_at = excluded.updated_at,
+        price_deciles = excluded.price_deciles,
+        price_m2_deciles = excluded.price_m2_deciles;
 
 INSERT INTO app.zone_market_rooms (zone_slug, operation, property_type, rooms, listings, sample_size, average_price,
                                    median_price, currency, average_price_m2, median_price_m2, average_expenses_ars,
-                                   median_covered_m2, median_total_m2, source, inherited_from, updated_at)
+                                   median_covered_m2, median_total_m2, source, inherited_from, updated_at,
+                                   price_deciles, price_m2_deciles)
 SELECT DISTINCT ON (zone_slug, operation, property_type, rooms)
        zone_slug, operation, property_type, rooms, listings, sample_size,
        round(average_price, CASE operation WHEN 'rent' THEN -3 ELSE 0 END), round(median_price),
        CASE operation WHEN 'rent' THEN 'ARS' ELSE 'USD' END,
        round(average_price_m2), round(median_price_m2), round(average_expenses_ars, -2), round(median_covered_m2),
-       round(median_total_m2), source, inherited_from, updated_at
+       round(median_total_m2), source, inherited_from, updated_at, price_deciles, price_m2_deciles
 FROM market
 WHERE rooms > 0 AND sample_size > 0
 ORDER BY zone_slug, operation, property_type, rooms, osm_id;

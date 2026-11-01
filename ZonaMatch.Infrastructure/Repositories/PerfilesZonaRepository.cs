@@ -102,13 +102,15 @@ namespace ZonaMatch.Infrastructure.Repositories
                 ORDER BY z.slug, z.nivel DESC
             ),
             filas AS (
-                SELECT zone_slug, operation, property_type, average_price, average_expenses_ars, average_price_m2, listings
+                SELECT zone_slug, operation, property_type, average_price, average_expenses_ars, average_price_m2, listings,
+                       price_deciles, price_m2_deciles
                 FROM {App}.zone_market
                 WHERE average_price IS NOT NULL
             ),
             propias AS (
                 SELECT z.slug, f.operation, f.property_type, f.average_price AS promedio, f.listings AS propiedades,
-                       f.average_expenses_ars AS expensas, f.average_price_m2 AS precio_m2
+                       f.average_expenses_ars AS expensas, f.average_price_m2 AS precio_m2,
+                       f.price_deciles AS deciles, f.price_m2_deciles AS deciles_m2
                 FROM zonas z
                 JOIN filas f ON f.zone_slug = z.slug
             ),
@@ -119,7 +121,8 @@ namespace ZonaMatch.Infrastructure.Repositories
                        round(sum(b.average_expenses_ars * greatest(b.listings, 1))
                              / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_expenses_ars IS NOT NULL), 0)) AS expensas,
                        round(sum(b.average_price_m2 * greatest(b.listings, 1))
-                             / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_price_m2 IS NOT NULL), 0)) AS precio_m2
+                             / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_price_m2 IS NOT NULL), 0)) AS precio_m2,
+                       NULL::numeric[] AS deciles, NULL::numeric[] AS deciles_m2
                 FROM zonas z
                 JOIN zonas h ON h.nivel > 5 AND ST_Contains(z.geom, ST_PointOnSurface(h.geom))
                 JOIN filas b ON b.zone_slug = h.slug
@@ -129,10 +132,11 @@ namespace ZonaMatch.Infrastructure.Repositories
                 GROUP BY z.slug, b.operation, b.property_type
             )
             SELECT slug AS "Slug", operation AS "Operacion", property_type AS "Tipo", promedio AS "Promedio",
-                   propiedades AS "Propiedades", expensas AS "Expensas", precio_m2 AS "PrecioM2"
+                   propiedades AS "Propiedades", expensas AS "Expensas", precio_m2 AS "PrecioM2",
+                   deciles AS "Deciles", deciles_m2 AS "DecilesM2"
             FROM propias
             UNION ALL
-            SELECT slug, operation, property_type, promedio, propiedades, expensas, precio_m2
+            SELECT slug, operation, property_type, promedio, propiedades, expensas, precio_m2, deciles, deciles_m2
             FROM sumadas
             """;
 
@@ -141,7 +145,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         private static readonly string SqlMercadoAmbientes = $"""
             SELECT zone_slug AS "Slug", operation AS "Operacion", property_type AS "Tipo", rooms AS "Ambientes",
                    average_price AS "Promedio", listings AS "Propiedades", average_expenses_ars AS "Expensas",
-                   average_price_m2 AS "PrecioM2"
+                   average_price_m2 AS "PrecioM2", price_deciles AS "Deciles", price_m2_deciles AS "DecilesM2"
             FROM {App}.zone_market_rooms
             WHERE average_price IS NOT NULL AND sample_size >= {ZoneMarketRooms.MinSampleSize}
             """;
@@ -313,7 +317,9 @@ namespace ZonaMatch.Infrastructure.Repositories
                             var venta = g.FirstOrDefault(f => f.Operacion == "sale");
                             return new MercadoVivienda(
                                 alquiler?.Promedio, alquiler?.Propiedades, alquiler?.Expensas, venta?.Promedio, venta?.Propiedades,
-                                alquiler?.PrecioM2, venta?.PrecioM2);
+                                alquiler?.PrecioM2, venta?.PrecioM2,
+                                AlquilerDeciles: alquiler?.Deciles, AlquilerM2Deciles: alquiler?.DecilesM2,
+                                VentaDecilesUsd: venta?.Deciles, VentaM2DecilesUsd: venta?.DecilesM2);
                         });
 
                 MercadoVivienda Vivienda(string tipo)
@@ -322,7 +328,9 @@ namespace ZonaMatch.Infrastructure.Repositories
                     var venta = porClave.GetValueOrDefault(("sale", tipo));
                     return new MercadoVivienda(
                         alquiler?.Promedio, alquiler?.Propiedades, alquiler?.Expensas, venta?.Promedio, venta?.Propiedades,
-                        alquiler?.PrecioM2, venta?.PrecioM2);
+                        alquiler?.PrecioM2, venta?.PrecioM2,
+                        AlquilerDeciles: alquiler?.Deciles, AlquilerM2Deciles: alquiler?.DecilesM2,
+                        VentaDecilesUsd: venta?.Deciles, VentaM2DecilesUsd: venta?.DecilesM2);
                 }
 
                 var todos = Vivienda(TiposVivienda.Todos);
@@ -350,6 +358,10 @@ namespace ZonaMatch.Infrastructure.Repositories
                 PropiedadesEnVenta = todos.PropiedadesEnVenta,
                 AlquilerM2 = todos.AlquilerM2,
                 VentaM2Usd = todos.VentaM2Usd,
+                AlquilerDeciles = todos.AlquilerDeciles,
+                AlquilerM2Deciles = todos.AlquilerM2Deciles,
+                VentaDecilesUsd = todos.VentaDecilesUsd,
+                VentaM2DecilesUsd = todos.VentaM2DecilesUsd,
                 MercadoPorTipo = new[] { TiposVivienda.Departamento, TiposVivienda.Casa, TiposVivienda.Ph }
                     .ToDictionary(tipo => tipo, Vivienda),
                 MercadoPorAmbientes = porAmbientes,
@@ -367,6 +379,8 @@ namespace ZonaMatch.Infrastructure.Repositories
             public int? Propiedades { get; set; }
             public decimal? Expensas { get; set; }
             public decimal? PrecioM2 { get; set; }
+            public decimal[]? Deciles { get; set; }
+            public decimal[]? DecilesM2 { get; set; }
         }
 
         // Resultado sin clave de SqlMercadoAmbientes: una fila por operacion, tipo y ambientes (1 a 5)
@@ -380,6 +394,8 @@ namespace ZonaMatch.Infrastructure.Repositories
             public int? Propiedades { get; set; }
             public decimal? Expensas { get; set; }
             public decimal? PrecioM2 { get; set; }
+            public decimal[]? Deciles { get; set; }
+            public decimal[]? DecilesM2 { get; set; }
         }
     }
 }

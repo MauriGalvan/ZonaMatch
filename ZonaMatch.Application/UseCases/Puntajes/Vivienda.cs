@@ -70,7 +70,8 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                     mercado.AlquilerM2,
                     mercado.EstimaAlquiler(superficieM2) ? superficieM2 : null,
                     mercado.EstimaAlquiler(superficieM2) ? mercado.AlquilerPara(superficieM2) : null,
-                    mercado.AmbientesAlquiler)
+                    mercado.AmbientesAlquiler,
+                    mercado.DistribucionMensualAlquiler(superficieM2))
                 : null;
         }
 
@@ -86,7 +87,8 @@ namespace ZonaMatch.Application.UseCases.Puntajes
                     mercado.VentaM2Usd,
                     mercado.EstimaVenta(superficieM2) ? superficieM2 : null,
                     mercado.EstimaVenta(superficieM2) ? mercado.VentaParaUsd(superficieM2) : null,
-                    mercado.AmbientesVenta)
+                    mercado.AmbientesVenta,
+                    mercado.DistribucionVentaUsd(superficieM2))
                 : null;
         }
     }

@@ -297,6 +297,8 @@ namespace ZonaMatch.Infrastructure.Data
             // Real estate market per zone, operation and property type, loaded by the ETL (etl/zonaprop/)
             modelBuilder.Entity<ZoneMarket>(e =>
             {
+                e.Property(x => x.PriceDeciles).HasColumnType("numeric[]");
+                e.Property(x => x.PriceM2Deciles).HasColumnType("numeric[]");
                 e.ToTable("zone_market", t =>
                 {
                     t.HasCheckConstraint("ck_zone_market_operation", "operation IN ('sale', 'rent')");
@@ -329,6 +331,8 @@ namespace ZonaMatch.Infrastructure.Data
             // The same market per number of rooms (1 to 4, 5 = 5 or more), loaded by the ETL (etl/zonaprop/)
             modelBuilder.Entity<ZoneMarketRooms>(e =>
             {
+                e.Property(x => x.PriceDeciles).HasColumnType("numeric[]");
+                e.Property(x => x.PriceM2Deciles).HasColumnType("numeric[]");
                 e.ToTable("zone_market_rooms", t =>
                 {
                     t.HasCheckConstraint("ck_zone_market_rooms_operation", "operation IN ('sale', 'rent')");
