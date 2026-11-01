@@ -9,19 +9,14 @@ namespace ZonaMatch.Api.Controllers
     [Route("[controller]")]
     public class CriteriosController : ControllerBase
     {
-        private readonly ListarCriterios _listarCriterios;
-
-        public CriteriosController(ListarCriterios listarCriterios)
-        {
-            _listarCriterios = listarCriterios;
-        }
-
         // GET /Criterios
         [HttpGet]
         [ProducesResponseType<IReadOnlyList<CriterioDto>>(StatusCodes.Status200OK)]
-        public async Task<IActionResult> ObtenerTodos(CancellationToken cancellationToken)
+        public async Task<IActionResult> ObtenerTodos(
+            [FromServices] ListarCriterios useCase,
+            CancellationToken cancellationToken)
         {
-            var criterios = await _listarCriterios.EjecutarAsync(cancellationToken);
+            var criterios = await useCase.EjecutarAsync(cancellationToken);
             return Ok(criterios);
         }
     }

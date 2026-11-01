@@ -14,23 +14,14 @@ namespace ZonaMatch.Api.Controllers
     {
         private const string GeoJson = "application/geo+json";
 
-        private readonly IZonaService _zonaService;
-        private readonly ObtenerIndicadoresZona _obtenerIndicadores;
-        private readonly ObtenerTransporteZona _obtenerTransporte;
-
-        public ZonasController(
-            IZonaService zonaService, ObtenerIndicadoresZona obtenerIndicadores, ObtenerTransporteZona obtenerTransporte)
-        {
-            _zonaService = zonaService;
-            _obtenerIndicadores = obtenerIndicadores;
-            _obtenerTransporte = obtenerTransporte;
-        }
-
         // GET /Zonas?buscar=villa l&limite=10
         // Zones whose name contains the text (ignoring case and accents); names that start with it come first
         [HttpGet]
         public async Task<IActionResult> Buscar(
-            [FromQuery] string? buscar, [FromQuery] int limite = 10, CancellationToken cancellationToken = default)
+            [FromQuery] string? buscar,
+            [FromServices] IZonaService zoneService,
+            [FromQuery] int limite = 10,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(buscar))
                 return BadRequest("Indica el texto a buscar en buscar.");
@@ -38,7 +29,7 @@ namespace ZonaMatch.Api.Controllers
             if (limite is < 1 or > ZonaService.MaxResultadosBusqueda)
                 return BadRequest($"El limite debe estar entre 1 y {ZonaService.MaxResultadosBusqueda}.");
 
-            var zonas = await _zonaService.BuscarAsync(buscar, limite, cancellationToken);
+            var zonas = await zoneService.BuscarAsync(buscar, limite, cancellationToken);
             return Ok(zonas);
         }
 
@@ -48,12 +39,15 @@ namespace ZonaMatch.Api.Controllers
         [HttpGet("{slug}")]
         [ResponseCache(Duration = 3600)]
         public async Task<IActionResult> GetPorSlug(
-            string slug, [FromQuery] double? tolerancia, CancellationToken cancellationToken)
+            [FromRoute] string slug,
+            [FromQuery] double? tolerancia,
+            [FromServices] IZonaService zoneService,
+            CancellationToken cancellationToken)
         {
             if (!SlugZona.EsValido(slug))
                 return BadRequest(SlugInvalido);
 
-            var zona = await _zonaService.GetPorSlugAsync(slug, tolerancia, cancellationToken);
+            var zona = await zoneService.GetPorSlugAsync(slug, tolerancia, cancellationToken);
             return zona is null ? NotFound("No se encontro una zona con ese identificador.") : Content(zona, GeoJson);
         }
 
@@ -62,7 +56,10 @@ namespace ZonaMatch.Api.Controllers
         // Without categorias it returns every category; an unknown zone gives an empty list.
         [HttpGet("{slug}/puntos-interes")]
         public async Task<IActionResult> GetPuntosInteres(
-            string slug, [FromQuery] string? categorias, CancellationToken cancellationToken)
+            [FromRoute] string slug,
+            [FromQuery] string? categorias,
+            [FromServices] IZonaService zoneService,
+            CancellationToken cancellationToken)
         {
             if (!SlugZona.EsValido(slug))
                 return BadRequest(SlugInvalido);
@@ -70,18 +67,21 @@ namespace ZonaMatch.Api.Controllers
             if (!CategoriaPuntoInteres.TryParseLista(categorias, out var codigos, out var error))
                 return BadRequest(error);
 
-            var puntos = await _zonaService.GetPuntosInteresAsync(slug, codigos, cancellationToken);
+            var puntos = await zoneService.GetPuntosInteresAsync(slug, codigos, cancellationToken);
             return Ok(puntos);
         }
 
         // GET /Zonas/villa-luro/puntos-interes/resumen
         [HttpGet("{slug}/puntos-interes/resumen")]
-        public async Task<IActionResult> GetResumenPuntosInteres(string slug, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetResumenPuntosInteres(
+            [FromRoute] string slug,
+            [FromServices] IZonaService zoneService,
+            CancellationToken cancellationToken)
         {
             if (!SlugZona.EsValido(slug))
                 return BadRequest(SlugInvalido);
 
-            var resumen = await _zonaService.GetResumenPuntosInteresAsync(slug, cancellationToken);
+            var resumen = await zoneService.GetResumenPuntosInteresAsync(slug, cancellationToken);
             return Ok(resumen);
         }
 
@@ -93,12 +93,15 @@ namespace ZonaMatch.Api.Controllers
         [ResponseCache(Duration = 3600)]
         [ProducesResponseType<IndicadoresZonaDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetIndicadores(string slug, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetIndicadores(
+            [FromRoute] string slug,
+            [FromServices] ObtenerIndicadoresZona useCase,
+            CancellationToken cancellationToken)
         {
             if (!SlugZona.EsValido(slug))
                 return BadRequest(SlugInvalido);
 
-            return Ok(await _obtenerIndicadores.EjecutarAsync(slug, cancellationToken));
+            return Ok(await useCase.EjecutarAsync(slug, cancellationToken));
         }
 
         // GET /Zonas/villa-luro/transporte
@@ -108,12 +111,15 @@ namespace ZonaMatch.Api.Controllers
         [ResponseCache(Duration = 3600)]
         [ProducesResponseType<TransporteZonaDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetTransporte(string slug, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetTransporte(
+            [FromRoute] string slug,
+            [FromServices] ObtenerTransporteZona useCase,
+            CancellationToken cancellationToken)
         {
             if (!SlugZona.EsValido(slug))
                 return BadRequest(SlugInvalido);
 
-            return Ok(await _obtenerTransporte.EjecutarAsync(slug, cancellationToken));
+            return Ok(await useCase.EjecutarAsync(slug, cancellationToken));
         }
 
         private const string SlugInvalido =

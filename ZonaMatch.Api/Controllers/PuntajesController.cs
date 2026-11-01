@@ -16,15 +16,6 @@ namespace ZonaMatch.Api.Controllers
         // Above this the request is logged as a warning so slow scoring (usually MOTIS) is easy to spot
         private const long SlowScoringMilliseconds = 5_000;
 
-        private readonly CalcularPuntajes _calcularPuntajes;
-        private readonly ILogger<PuntajesController> _logger;
-
-        public PuntajesController(CalcularPuntajes calcularPuntajes, ILogger<PuntajesController> logger)
-        {
-            _calcularPuntajes = calcularPuntajes;
-            _logger = logger;
-        }
-
         // POST /Puntajes
         // Body: { "zonaInicial": "villa-luro", "zonasAgregadas": [], "criterios": { "seguridad": "alta" },
         //         "lugares": [{ "nombre": "Trabajo", "latitude": -34.6, "longitude": -58.38, "prioridad": "Alta", "tiempoMax": "45 min" }],
@@ -33,7 +24,11 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<PuntajesDto>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Calcular(CalcularPuntajesRequest solicitud, CancellationToken cancellationToken)
+        public async Task<IActionResult> Calcular(
+            [FromBody] CalcularPuntajesRequest solicitud,
+            [FromServices] CalcularPuntajes useCase,
+            [FromServices] ILogger<PuntajesController> logger,
+            CancellationToken cancellationToken)
         {
             // The visitor tries it with a few places; with an account, up to 15 (checked by the request)
             if (User.GetAuthenticatedUserId() is null && solicitud.Lugares.Count > LimitesLugares.Visitante)
@@ -44,10 +39,10 @@ namespace ZonaMatch.Api.Controllers
                 solicitud.AlquilerMaximo, solicitud.Operacion, solicitud.CompraMaximaUsd, solicitud.Lugares.Select(lugar => lugar.TiempoMax));
 
             var reloj = Stopwatch.StartNew();
-            var resultado = await _calcularPuntajes.EjecutarAsync(solicitud, cancellationToken);
+            var resultado = await useCase.EjecutarAsync(solicitud, cancellationToken);
             reloj.Stop();
 
-            _logger.Log(
+            logger.Log(
                 reloj.ElapsedMilliseconds > SlowScoringMilliseconds ? LogLevel.Warning : LogLevel.Information,
                 "Scores calculated in {ElapsedMs} ms", reloj.ElapsedMilliseconds);
 

@@ -12,28 +12,25 @@ namespace ZonaMatch.Api.Controllers
     {
         private const string GeoJson = "application/geo+json";
 
-        private readonly IMapaService _mapaService;
-
-        public MapaController(IMapaService mapaService)
-        {
-            _mapaService = mapaService;
-        }
-
         // GET /Mapa/partidos?tolerancia=0.0005
         [HttpGet("partidos")]
         [ResponseCache(Duration = 3600)]
-        public async Task<IActionResult> GetPartidos([FromQuery] double? tolerancia)
+        public async Task<IActionResult> GetPartidos(
+            [FromQuery] double? tolerancia,
+            [FromServices] IMapaService mapService)
         {
-            var geoJson = await _mapaService.GetPartidosAsync(tolerancia);
+            var geoJson = await mapService.GetPartidosAsync(tolerancia);
             return Content(geoJson, GeoJson);
         }
 
         // GET /Mapa/comunas?tolerancia=0.0005
         [HttpGet("comunas")]
         [ResponseCache(Duration = 3600)]
-        public async Task<IActionResult> GetComunas([FromQuery] double? tolerancia)
+        public async Task<IActionResult> GetComunas(
+            [FromQuery] double? tolerancia,
+            [FromServices] IMapaService mapService)
         {
-            var geoJson = await _mapaService.GetComunasAsync(tolerancia);
+            var geoJson = await mapService.GetComunasAsync(tolerancia);
             return Content(geoJson, GeoJson);
         }
 
@@ -41,13 +38,14 @@ namespace ZonaMatch.Api.Controllers
         [HttpGet("radios")]
         public async Task<IActionResult> GetRadios(
             [FromQuery] double minLon, [FromQuery] double minLat, [FromQuery] double maxLon, [FromQuery] double maxLat,
-            [FromQuery] double? tolerancia)
+            [FromQuery] double? tolerancia,
+            [FromServices] IMapaService mapService)
         {
             var bbox = new BoundingBox(minLon, minLat, maxLon, maxLat);
             if (!bbox.EsValido)
                 return BadRequest(ViewportInvalido);
 
-            var geoJson = await _mapaService.GetRadiosAsync(bbox, tolerancia);
+            var geoJson = await mapService.GetRadiosAsync(bbox, tolerancia);
             return geoJson is null ? BadRequest(DemasiadosElementos("radios")) : Content(geoJson, GeoJson);
         }
 
@@ -55,13 +53,14 @@ namespace ZonaMatch.Api.Controllers
         [HttpGet("escuelas")]
         public async Task<IActionResult> GetEscuelas(
             [FromQuery] double minLon, [FromQuery] double minLat, [FromQuery] double maxLon, [FromQuery] double maxLat,
+            [FromServices] IMapaService mapService,
             [FromQuery] string? nivel = null, [FromQuery] string? sector = null)
         {
             var bbox = new BoundingBox(minLon, minLat, maxLon, maxLat);
             if (!bbox.EsValido)
                 return BadRequest(ViewportInvalido);
 
-            var geoJson = await _mapaService.GetEscuelasAsync(bbox, nivel, sector);
+            var geoJson = await mapService.GetEscuelasAsync(bbox, nivel, sector);
             return geoJson is null ? BadRequest(DemasiadosElementos("escuelas")) : Content(geoJson, GeoJson);
         }
 

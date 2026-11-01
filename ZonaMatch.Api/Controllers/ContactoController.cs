@@ -10,13 +10,6 @@ namespace ZonaMatch.Api.Controllers
     [Route("Contacto")]
     public class ContactoController : ControllerBase
     {
-        private readonly EnviarFormularioContacto _enviarFormulario;
-
-        public ContactoController(EnviarFormularioContacto enviarFormulario)
-        {
-            _enviarFormulario = enviarFormulario;
-        }
-
         // POST /Contacto    Cuerpo: { "email": "...", "nombre": "...", "zona": "...", "sitio": "" }
         [HttpPost]
         [EnableRateLimiting("contacto")]
@@ -24,9 +17,12 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> Enviar(FormularioContactoDto solicitud, CancellationToken cancellationToken)
+        public async Task<IActionResult> Enviar(
+            [FromBody] FormularioContactoDto solicitud,
+            [FromServices] EnviarFormularioContacto useCase,
+            CancellationToken cancellationToken)
         {
-            await _enviarFormulario.EjecutarAsync(solicitud, cancellationToken);
+            await useCase.EjecutarAsync(solicitud, cancellationToken);
             return NoContent();
         }
     }
