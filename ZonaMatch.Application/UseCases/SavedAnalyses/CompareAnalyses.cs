@@ -35,23 +35,23 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             _routingClient = routingClient;
         }
 
-        public async Task<ComparacionAnalisisDto> ExecuteAsync(
+        public async Task<AnalysisComparisonResponse> ExecuteAsync(
             Guid userId,
-            CompararAnalisisRequest request,
+            CompareAnalysesRequest request,
             CancellationToken cancellationToken = default)
         {
-            if (request.AnalisisIds.Count is < 2 or > MaxAnalyses)
+            if (request.AnalysisIds.Count is < 2 or > MaxAnalyses)
                 throw new BadRequestException("Elegí entre dos y cinco análisis para comparar.");
 
-            if (request.AnalisisIds.Distinct().Count() != request.AnalisisIds.Count)
+            if (request.AnalysisIds.Distinct().Count() != request.AnalysisIds.Count)
                 throw new BadRequestException("No se puede comparar el mismo análisis más de una vez.");
 
             var ownedAnalyses = await _analysisRepository.ListarDeUsuarioAsync(userId, cancellationToken);
             var byId = ownedAnalyses.ToDictionary(analysis => analysis.Id);
-            if (request.AnalisisIds.Any(id => !byId.ContainsKey(id)))
+            if (request.AnalysisIds.Any(id => !byId.ContainsKey(id)))
                 throw new NotFoundException("El análisis no existe.");
 
-            var selectedAnalyses = request.AnalisisIds.Select(id => byId[id]).ToArray();
+            var selectedAnalyses = request.AnalysisIds.Select(id => byId[id]).ToArray();
             var analysesWithoutZones = selectedAnalyses.Where(analysis => analysis.Zonas.Count == 0).ToArray();
             if (analysesWithoutZones.Length > 0)
                 throw new BadRequestException("Todos los análisis elegidos deben tener al menos una zona.");
@@ -94,7 +94,11 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                     return FromGroupSnapshot(analysis, groupRankingJson);
 
                 if (AnalysisResultCalculator.Deserialize(analysis.ResultadoJson) is { } saved)
-                    return new AnalisisComparadoDto(analysis.Id, analysis.Nombre, saved.ModoViaje, saved.Zonas, null);
+                    return new ComparedAnalysisResponse(
+                        analysis.Id,
+                        analysis.Nombre,
+                        saved.ModoViaje,
+                        saved.Zonas.Select(ToComparedZone).ToArray());
 
                 var context = analysis.Contexto;
                 var request = BuildRequest(context);
@@ -111,21 +115,21 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                     .ThenBy(zone => zone.Nombre, StringComparer.CurrentCulture)
                     .ToArray();
 
-                return new AnalisisComparadoDto(
+                return new ComparedAnalysisResponse(
                     analysis.Id,
                     analysis.Nombre,
                     ModosViaje.Codigo(mode),
-                    rankedZones,
+                    rankedZones.Select(ToComparedZone).ToArray(),
                     null);
             }));
 
-            if (calculations.All(result => result.Zonas.All(zone => zone.Puntaje is null)))
+            if (calculations.All(result => result.Zones.All(zone => zone.Score is null)))
                 throw new BadRequestException("No hay datos suficientes para puntuar las zonas de los análisis elegidos.");
 
-            return new ComparacionAnalisisDto(calculations);
+            return new AnalysisComparisonResponse(calculations);
         }
 
-        private static AnalisisComparadoDto FromGroupSnapshot(Analisis analysis, string serializedRanking)
+        private static ComparedAnalysisResponse FromGroupSnapshot(Analisis analysis, string serializedRanking)
         {
             GroupRankingResponse? snapshot;
             try
@@ -158,15 +162,15 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 .ThenByDescending(zone => zone.Score)
                 .ThenBy(zone => zone.Name, StringComparer.CurrentCulture)
                 .ToArray();
-            var zones = rankedGroupZones
+            var legacyZones = rankedGroupZones
                 .Select(ToDto)
                 .ToArray();
 
-            return new AnalisisComparadoDto(
+            return new ComparedAnalysisResponse(
                 analysis.Id,
                 analysis.Nombre,
                 "grupo",
-                zones,
+                legacyZones.Select(ToComparedZone).ToArray(),
                 snapshot with { Zones = rankedGroupZones, NearbyZones = [] });
         }
 
@@ -289,6 +293,33 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 result.Sale is { } sale
                     ? new CompraZonaDto(
                         sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd)
+                    : null);
+
+        private static ComparedZoneResponse ToComparedZone(PuntajeZonaDto zone) =>
+            new(
+                zone.Slug,
+                zone.Nombre,
+                zone.Puntaje,
+                zone.Componentes
+                    .Select(component => new ComparedScoreComponentResponse(
+                        component.Criterio, component.Prioridad, component.Puntaje, component.Detalle))
+                    .ToArray(),
+                zone.Limites
+                    .Select(limit => new ComparedScoreLimitResponse(limit.Tipo, limit.Cumple, limit.Detalle))
+                    .ToArray(),
+                zone.Lugares
+                    .Select(place => new ComparedPlaceTravelTimeResponse(
+                        place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm))
+                    .ToArray(),
+                zone.Alquiler is { } rent
+                    ? new ComparedRentResponse(
+                        rent.Promedio, rent.PropiedadesDisponibles, rent.Expensas, rent.CostoMensual,
+                        rent.PrecioM2, rent.SuperficieM2, rent.Estimado)
+                    : null,
+                zone.Compra is { } sale
+                    ? new ComparedSaleResponse(
+                        sale.PromedioUsd, sale.PropiedadesDisponibles, sale.Expensas, sale.PrecioM2Usd,
+                        sale.SuperficieM2, sale.EstimadoUsd)
                     : null);
     }
 }

@@ -29,13 +29,33 @@ namespace ZonaMatch.Api.Controllers
             return Ok(await listMyAnalyses.ExecuteAsync(userId, cancellationToken));
         }
 
-        // POST /Analisis/Comparar recalculates saved zones using each selected analysis.
+        // Keep the original request and response contract available to existing clients.
         [HttpPost("Comparar")]
-        [ProducesResponseType<ComparacionAnalisisDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<LegacyAnalysisComparisonResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> CompareLegacyAsync(
+            [FromBody] LegacyCompareAnalysesRequest legacyRequest,
+            [FromServices] CompareAnalyses compareAnalyses,
+            CancellationToken cancellationToken)
+        {
+            if (User.GetAuthenticatedUserId() is not { } userId)
+                return Unauthorized();
+
+            var response = await compareAnalyses.ExecuteAsync(
+                userId,
+                new CompareAnalysesRequest { AnalysisIds = legacyRequest.AnalysisIds },
+                cancellationToken);
+            return Ok(ToLegacyResponse(response));
+        }
+
+        // POST /api/v1/analyses/comparisons
+        [HttpPost("~/api/v1/analyses/comparisons")]
+        [ProducesResponseType<AnalysisComparisonResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CompareAsync(
-            [FromBody] CompararAnalisisRequest request,
+            [FromBody] CompareAnalysesRequest request,
             [FromServices] CompareAnalyses compareAnalyses,
             CancellationToken cancellationToken)
         {
@@ -168,5 +188,34 @@ namespace ZonaMatch.Api.Controllers
             await deleteAnalysis.ExecuteAsync(id, userId, cancellationToken);
             return NoContent();
         }
+
+        private static LegacyAnalysisComparisonResponse ToLegacyResponse(AnalysisComparisonResponse response) =>
+            new(response.Analyses
+                .Select(analysis => new LegacyComparedAnalysisResponse(
+                    analysis.Id,
+                    analysis.Name,
+                    analysis.TravelMode,
+                    analysis.Zones.Select(zone => new PuntajeZonaDto(
+                        zone.Slug,
+                        zone.Name,
+                        zone.Score,
+                        zone.Components.Select(component => new ComponentePuntajeDto(
+                            component.Criterion, component.Priority, component.Score, component.Details)).ToArray(),
+                        zone.Limits.Select(limit => new LimitePuntajeDto(
+                            limit.Type, limit.IsMet, limit.Details)).ToArray(),
+                        zone.Places.Select(place => new TiempoLugarDto(
+                            place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm)).ToArray(),
+                        zone.Rent is { } rent
+                            ? new AlquilerZonaDto(
+                                rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost,
+                                rent.PricePerM2, rent.SurfaceM2, rent.Estimated)
+                            : null,
+                        zone.Sale is { } sale
+                            ? new CompraZonaDto(
+                                sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd,
+                                sale.SurfaceM2, sale.EstimatedUsd)
+                            : null)).ToArray(),
+                    analysis.GroupScores))
+                .ToArray());
     }
 }
