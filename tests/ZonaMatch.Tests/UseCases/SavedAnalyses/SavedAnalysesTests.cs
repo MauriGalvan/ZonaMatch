@@ -3,13 +3,14 @@ using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.AnalisisGuardados;
+using ZonaMatch.Application.UseCases.SavedAnalyses;
 using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Tests.UseCases.Perfil;
 
-namespace ZonaMatch.Tests.UseCases.Perfil
+namespace ZonaMatch.Tests.UseCases.SavedAnalyses
 {
-    public class AnalisisGuardadosTests
+    public class SavedAnalysesTests
     {
         private static readonly DateTimeOffset Ahora = new(2026, 10, 14, 12, 0, 0, TimeSpan.Zero);
         private static readonly Guid Usuario = Guid.NewGuid();
@@ -21,8 +22,8 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         private readonly FixedTimeProvider _reloj = new(Ahora);
         private readonly FakeResultCalculator _resultados = new();
 
-        private CrearAnalisis Crear => new(_analisis, _perfiles, _zonas, _reloj, _resultados);
-        private CrearVersionAnalisis Versionar => new(_analisis, _criterios, _zonas, _reloj, _resultados);
+        private CreateAnalysis Crear => new(_analisis, _perfiles, _zonas, _reloj, _resultados);
+        private CreateAnalysisVersion Versionar => new(_analisis, _criterios, _zonas, _reloj, _resultados);
         private RecalculateAnalysis Recalcular => new(_analisis, _resultados, _reloj);
 
         private async Task ConPerfil(string criterio = "seguridad", string prioridad = "alta") =>
@@ -38,7 +39,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
             await ConPerfil();
             _resultados.Puntaje = 81;
 
-            var dto = await Crear.EjecutarAsync(Usuario, Pedido());
+            var dto = await Crear.ExecuteAsync(Usuario, Pedido());
 
             Assert.Equal(81, Assert.Single(dto.Result!.Zonas).Puntaje);
             Assert.Equal(Ahora, dto.CalculatedAt);
@@ -49,7 +50,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         {
             await ConPerfil();
             _resultados.Puntaje = 81;
-            var original = await Crear.EjecutarAsync(Usuario, Pedido());
+            var original = await Crear.ExecuteAsync(Usuario, Pedido());
             _resultados.Puntaje = 74;
 
             var recalculated = await Recalcular.ExecuteAsync(original.Id, Usuario);
@@ -80,7 +81,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         {
             await ConPerfil();
 
-            var dto = await Crear.EjecutarAsync(Usuario, Pedido("Con punto", ZonaConOrigen(-34.63)));
+            var dto = await Crear.ExecuteAsync(Usuario, Pedido("Con punto", ZonaConOrigen(-34.63)));
 
             Assert.Equal(new AnalysisZoneOriginResponse(-34.63, -58.5), Assert.Single(dto.Zones).Origin);
             var calculated = Assert.Single(Assert.Single(_resultados.Calculados).Zonas);
@@ -92,7 +93,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         {
             await ConPerfil();
 
-            await Assert.ThrowsAsync<BadRequestException>(() => Crear.EjecutarAsync(Usuario, Pedido("Afuera", ZonaConOrigen(10))));
+            await Assert.ThrowsAsync<BadRequestException>(() => Crear.ExecuteAsync(Usuario, Pedido("Afuera", ZonaConOrigen(10))));
             Assert.Empty(_analisis.Analisis);
         }
 
@@ -100,7 +101,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         public async Task Recalculate_KeepsTheStartingPointsOfTheZones()
         {
             await ConPerfil();
-            var original = await Crear.EjecutarAsync(Usuario, Pedido("Con punto", ZonaConOrigen(-34.63)));
+            var original = await Crear.ExecuteAsync(Usuario, Pedido("Con punto", ZonaConOrigen(-34.63)));
 
             var recalculated = await Recalcular.ExecuteAsync(original.Id, Usuario);
 
@@ -127,7 +128,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         [Fact]
         public async Task Crear_SinPerfil_LanzaPerfilNoEncontrado()
         {
-            await Assert.ThrowsAsync<NotFoundException>(() => Crear.EjecutarAsync(Usuario, Pedido()));
+            await Assert.ThrowsAsync<NotFoundException>(() => Crear.ExecuteAsync(Usuario, Pedido()));
             Assert.Empty(_analisis.Analisis);
         }
 
@@ -136,7 +137,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         {
             await ConPerfil("seguridad", "alta");
 
-            var dto = await Crear.EjecutarAsync(Usuario, Pedido());
+            var dto = await Crear.ExecuteAsync(Usuario, Pedido());
 
             var analisis = Assert.Single(_analisis.Analisis);
             var perfil = Assert.Single(_perfiles.Perfiles);
@@ -157,7 +158,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
             await ConPerfil();
 
             await Assert.ThrowsAsync<NotFoundException>(
-                () => Crear.EjecutarAsync(Usuario, Pedido(zones: Pedidos.Zona("no-existe"))));
+                () => Crear.ExecuteAsync(Usuario, Pedido(zones: Pedidos.Zona("no-existe"))));
             Assert.Empty(_analisis.Analisis);
         }
 
@@ -167,7 +168,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
             await ConPerfil();
 
             var error = await Assert.ThrowsAsync<BadRequestException>(
-                () => Crear.EjecutarAsync(Usuario, Pedido(zones: [Pedidos.Zona(), Pedidos.Zona()])));
+                () => Crear.ExecuteAsync(Usuario, Pedido(zones: [Pedidos.Zona(), Pedidos.Zona()])));
             Assert.Contains("repetidas", error.Message);
         }
 
@@ -175,9 +176,9 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         public async Task Version_CuelgaDelOriginalConElCriterioAjustadoYNombreNumerado()
         {
             await ConPerfil("seguridad", "alta");
-            var original = await Crear.EjecutarAsync(Usuario, Pedido("Cerca del trabajo"));
+            var original = await Crear.ExecuteAsync(Usuario, Pedido("Cerca del trabajo"));
 
-            var version = await Versionar.EjecutarAsync(original.Id, Usuario, new CreateAnalysisVersionRequest
+            var version = await Versionar.ExecuteAsync(original.Id, Usuario, new CreateAnalysisVersionRequest
             {
                 Criterion = Pedidos.Criterio(new() { ["salud"] = "alta" }),
             });
@@ -196,10 +197,10 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         public async Task Version_DeUnaVersion_TambienCuelgaDelOriginal()
         {
             await ConPerfil();
-            var original = await Crear.EjecutarAsync(Usuario, Pedido("Facu"));
-            var primera = await Versionar.EjecutarAsync(original.Id, Usuario, new() { Criterion = Pedidos.Criterio() });
+            var original = await Crear.ExecuteAsync(Usuario, Pedido("Facu"));
+            var primera = await Versionar.ExecuteAsync(original.Id, Usuario, new() { Criterion = Pedidos.Criterio() });
 
-            var segunda = await Versionar.EjecutarAsync(primera.Id, Usuario, new() { Criterion = Pedidos.Criterio() });
+            var segunda = await Versionar.ExecuteAsync(primera.Id, Usuario, new() { Criterion = Pedidos.Criterio() });
 
             Assert.Equal(original.Id, segunda.OriginAnalysisId);
             Assert.Equal("Facu (3)", segunda.Name);
@@ -209,21 +210,21 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         public async Task Version_DeOtroUsuario_LanzaNoEncontrado()
         {
             await ConPerfil();
-            var original = await Crear.EjecutarAsync(Usuario, Pedido());
+            var original = await Crear.ExecuteAsync(Usuario, Pedido());
 
             await Assert.ThrowsAsync<NotFoundException>(
-                () => Versionar.EjecutarAsync(original.Id, Guid.NewGuid(), new() { Criterion = Pedidos.Criterio() }));
+                () => Versionar.ExecuteAsync(original.Id, Guid.NewGuid(), new() { Criterion = Pedidos.Criterio() }));
         }
 
         [Fact]
         public async Task Listar_DevuelveLosOriginalesConSusVersionesAdentro()
         {
             await ConPerfil();
-            var original = await Crear.EjecutarAsync(Usuario, Pedido("A"));
-            await Crear.EjecutarAsync(Usuario, Pedido("B"));
-            await Versionar.EjecutarAsync(original.Id, Usuario, new() { Criterion = Pedidos.Criterio() });
+            var original = await Crear.ExecuteAsync(Usuario, Pedido("A"));
+            await Crear.ExecuteAsync(Usuario, Pedido("B"));
+            await Versionar.ExecuteAsync(original.Id, Usuario, new() { Criterion = Pedidos.Criterio() });
 
-            var listado = await new ListarMisAnalisis(_analisis).EjecutarAsync(Usuario);
+            var listado = await new ListMyAnalyses(_analisis).ExecuteAsync(Usuario);
 
             Assert.Equal(2, listado.Count);
             var a = listado.Single(x => x.Name == "A");
@@ -235,11 +236,11 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         public async Task Eliminar_UnOriginal_BorraTambienSusVersiones()
         {
             await ConPerfil();
-            var original = await Crear.EjecutarAsync(Usuario, Pedido());
-            await Versionar.EjecutarAsync(original.Id, Usuario, new() { Criterion = Pedidos.Criterio() });
-            var otro = await Crear.EjecutarAsync(Usuario, Pedido("Otro"));
+            var original = await Crear.ExecuteAsync(Usuario, Pedido());
+            await Versionar.ExecuteAsync(original.Id, Usuario, new() { Criterion = Pedidos.Criterio() });
+            var otro = await Crear.ExecuteAsync(Usuario, Pedido("Otro"));
 
-            await new EliminarAnalisis(_analisis).EjecutarAsync(original.Id, Usuario);
+            await new DeleteAnalysis(_analisis).ExecuteAsync(original.Id, Usuario);
 
             Assert.Equal(otro.Id, Assert.Single(_analisis.Analisis).Id);
         }
@@ -248,10 +249,10 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         public async Task Renombrar_SoloCambiaElNombre()
         {
             await ConPerfil();
-            var original = await Crear.EjecutarAsync(Usuario, Pedido("Viejo"));
+            var original = await Crear.ExecuteAsync(Usuario, Pedido("Viejo"));
 
-            var dto = await new RenombrarAnalisis(_analisis, _reloj)
-                .EjecutarAsync(original.Id, Usuario, new RenameAnalysisRequest { Name = "  Nuevo " });
+            var dto = await new RenameAnalysis(_analisis, _reloj)
+                .ExecuteAsync(original.Id, Usuario, new RenameAnalysisRequest { Name = "  Nuevo " });
 
             Assert.Equal("Nuevo", dto.Name);
             Assert.Equal(original.Criteria, dto.Criteria);
@@ -261,7 +262,7 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         public async Task Favorito_SeGuardaSinTocarLaFechaDeActualizacion()
         {
             await ConPerfil();
-            var original = await Crear.EjecutarAsync(Usuario, Pedido("Favorito"));
+            var original = await Crear.ExecuteAsync(Usuario, Pedido("Favorito"));
             var useCase = new SetAnalysisFavorite(_analisis);
 
             await useCase.ExecuteAsync(original.Id, Usuario, true);
@@ -273,9 +274,9 @@ namespace ZonaMatch.Tests.UseCases.Perfil
         }
 
         [Fact]
-        public void NombreDeVersion_RecortaParaNoPasarElMaximo()
+        public void BuildVersionName_TrimsToStayWithinMaximumLength()
         {
-            var nombre = CrearVersionAnalisis.NombreDeVersion(new string('a', 50), 12);
+            var nombre = CreateAnalysisVersion.BuildVersionName(new string('a', 50), 12);
 
             Assert.Equal(50, nombre.Length);
             Assert.EndsWith(" (12)", nombre);

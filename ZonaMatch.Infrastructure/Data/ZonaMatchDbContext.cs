@@ -164,7 +164,7 @@ namespace ZonaMatch.Infrastructure.Data
                     .WithMany()
                     .HasForeignKey(x => x.UsuarioId)
                     .OnDelete(DeleteBehavior.Cascade);
-                // Cada analisis tiene su propia copia del criterio; se borran juntos (ver EliminarAnalisis)
+                // Each analysis has its own criteria snapshot; both are deleted together (see DeleteAnalysis).
                 e.HasOne(x => x.Contexto)
                     .WithMany()
                     .HasForeignKey(x => x.ContextoId)

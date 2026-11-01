@@ -9,41 +9,41 @@ using ZonaMatch.Application.UseCases.Comunidad;
 using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Application.UseCases.AnalisisGuardados
+namespace ZonaMatch.Application.UseCases.SavedAnalyses
 {
-    public static class AnalisisMapeo
+    public static class AnalysisMapping
     {
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-        public static AnalysisResponse ToResponse(Analisis analisis, IEnumerable<Analisis>? versions = null) =>
+        public static AnalysisResponse ToResponse(Analisis analysis, IEnumerable<Analisis>? versions = null) =>
             new(
-                analisis.Id,
-                analisis.Nombre,
-                analisis.AnalisisOrigenId,
-                analisis.Zonas
+                analysis.Id,
+                analysis.Nombre,
+                analysis.AnalisisOrigenId,
+                analysis.Zonas
                     .OrderBy(z => z.Orden)
                     .Select(z => new AnalysisZoneResponse(
                         z.ZonaSlug, z.Nombre, z.EsInicial, z.EsAgregada,
                         z.TieneOrigen ? new AnalysisZoneOriginResponse(z.OrigenLatitud!.Value, z.OrigenLongitud!.Value) : null))
                     .ToList(),
-                CriterioUsuario.ContextoADto(analisis.Contexto),
-                CriterioUsuario.CriteriosADto(analisis.Contexto),
-                CriterioUsuario.PuntosADto(analisis.Contexto),
-                analisis.FechaCreacion,
-                analisis.FechaActualizacion,
-                analisis.PuntajesEnGrupoJson is null
+                CriterioUsuario.ContextoADto(analysis.Contexto),
+                CriterioUsuario.CriteriosADto(analysis.Contexto),
+                CriterioUsuario.PuntosADto(analysis.Contexto),
+                analysis.FechaCreacion,
+                analysis.FechaActualizacion,
+                analysis.PuntajesEnGrupoJson is null
                     ? null
-                    : GroupRankingSnapshotJson.Deserialize(analisis.PuntajesEnGrupoJson, JsonOptions),
+                    : GroupRankingSnapshotJson.Deserialize(analysis.PuntajesEnGrupoJson, JsonOptions),
                 (versions ?? [])
                     .OrderBy(v => v.FechaCreacion)
                     .Select(v => ToResponse(v))
                     .ToList(),
-                AnalysisResultCalculator.Deserialize(analisis.ResultadoJson),
-                analisis.FechaResultado,
-                analisis.EsFavorito);
+                AnalysisResultCalculator.Deserialize(analysis.ResultadoJson),
+                analysis.FechaResultado,
+                analysis.EsFavorito);
 
         // Request zones must exist, be unique, and include at most one initial zone.
-        public static async Task<List<AnalisisZona>> ArmarZonasAsync(
+        public static async Task<List<AnalisisZona>> BuildZonesAsync(
             IReadOnlyList<AnalysisZoneRequest> zones, IZonaRepository repository, CancellationToken cancellationToken)
         {
             if (zones.Count == 0)

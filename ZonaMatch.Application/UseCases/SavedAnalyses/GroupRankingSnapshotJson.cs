@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 
-namespace ZonaMatch.Application.UseCases.AnalisisGuardados;
+namespace ZonaMatch.Application.UseCases.SavedAnalyses;
 
 /// <summary>
 /// Reads ranking snapshots saved before the group DTO fields were standardized in English.

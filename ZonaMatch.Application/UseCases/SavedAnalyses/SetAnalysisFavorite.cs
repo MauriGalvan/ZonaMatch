@@ -1,7 +1,7 @@
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 
-namespace ZonaMatch.Application.UseCases.AnalisisGuardados;
+namespace ZonaMatch.Application.UseCases.SavedAnalyses;
 
 // Stars or unstars one of the user's analyses (or versions). It is a list preference, not a change to the
 // analysis, so the update date stays as it was.

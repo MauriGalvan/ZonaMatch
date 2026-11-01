@@ -4,7 +4,7 @@ using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.AnalisisGuardados;
+using ZonaMatch.Application.UseCases.SavedAnalyses;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Groups;
@@ -68,7 +68,7 @@ public sealed class GuardarAnalisisEnGrupo
             FechaCreacion = now,
             FechaActualizacion = now,
         };
-        var zones = await AnalisisMapeo.ArmarZonasAsync(request.Zones, _zones, cancellationToken);
+        var zones = await AnalysisMapping.BuildZonesAsync(request.Zones, _zones, cancellationToken);
 
         var analysis = new Analisis
         {
@@ -84,6 +84,6 @@ public sealed class GuardarAnalisisEnGrupo
         _analyses.Agregar(analysis);
         await _analyses.GuardarCambiosAsync(cancellationToken);
 
-        return AnalisisMapeo.ToResponse(analysis);
+        return AnalysisMapping.ToResponse(analysis);
     }
 }

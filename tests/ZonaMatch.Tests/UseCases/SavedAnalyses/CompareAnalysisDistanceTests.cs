@@ -1,16 +1,16 @@
 using Moq;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.AnalisisGuardados;
+using ZonaMatch.Application.UseCases.SavedAnalyses;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Puntaje;
 
-namespace ZonaMatch.Tests.UseCases.Perfil;
+namespace ZonaMatch.Tests.UseCases.SavedAnalyses;
 
-public class CompararAnalisisDistanciaTests
+public class CompareAnalysisDistanceTests
 {
     [Fact]
-    public async Task Comparar_conserva_la_distancia_en_los_lugares_de_cada_analisis_personal()
+    public async Task Compare_PreservesDistanceForPlacesInEachPersonalAnalysis()
     {
         var usuarioId = Guid.NewGuid();
         var analisis = Enumerable.Range(1, 2).Select(numero => new Analisis
@@ -38,8 +38,8 @@ public class CompararAnalisisDistanciaTests
                 ModoViaje.Auto, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new TiempoViaje(25, false, 8.75));
 
-        var resultado = await new CompararAnalisis(repositorio.Object, perfiles.Object, ruteo.Object)
-            .EjecutarAsync(usuarioId, new CompararAnalisisRequest { AnalisisIds = analisis.Select(a => a.Id).ToList() });
+        var resultado = await new CompareAnalyses(repositorio.Object, perfiles.Object, ruteo.Object)
+            .ExecuteAsync(usuarioId, new CompararAnalisisRequest { AnalisisIds = analisis.Select(a => a.Id).ToList() });
 
         Assert.Equal(2, resultado.Analisis.Count);
         Assert.All(resultado.Analisis, comparado =>

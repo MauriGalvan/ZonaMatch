@@ -4,7 +4,7 @@ using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Application.UseCases.AnalisisGuardados
+namespace ZonaMatch.Application.UseCases.SavedAnalyses
 {
     // Recalculates a saved analysis with today's data (rents, safety, transport, scoring rules) as a new version: same
     // criteria and zones as the analysis it starts from, the profile untouched, and the earlier result kept, so both
@@ -52,7 +52,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             analyses.Agregar(version);
             await analyses.GuardarCambiosAsync(cancellationToken);
 
-            return AnalisisMapeo.ToResponse(version);
+            return AnalysisMapping.ToResponse(version);
         }
 
         // "Cerca del trabajo · datos al 25/10", trimmed to the maximum name length

@@ -4,7 +4,7 @@ using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.DTOs.Analysis.Responses;
-using ZonaMatch.Application.UseCases.AnalisisGuardados;
+using ZonaMatch.Application.UseCases.SavedAnalyses;
 
 namespace ZonaMatch.Api.Controllers
 {
@@ -20,13 +20,13 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<IReadOnlyList<AnalysisResponse>>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetMineAsync(
-            [FromServices] ListarMisAnalisis listMyAnalyses,
+            [FromServices] ListMyAnalyses listMyAnalyses,
             CancellationToken cancellationToken)
         {
             if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            return Ok(await listMyAnalyses.EjecutarAsync(userId, cancellationToken));
+            return Ok(await listMyAnalyses.ExecuteAsync(userId, cancellationToken));
         }
 
         // POST /Analisis/Comparar recalculates saved zones using each selected analysis.
@@ -36,13 +36,13 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CompareAsync(
             [FromBody] CompararAnalisisRequest request,
-            [FromServices] CompararAnalisis compareAnalyses,
+            [FromServices] CompareAnalyses compareAnalyses,
             CancellationToken cancellationToken)
         {
             if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            return Ok(await compareAnalyses.EjecutarAsync(userId, request, cancellationToken));
+            return Ok(await compareAnalyses.ExecuteAsync(userId, request, cancellationToken));
         }
 
         // GET /Analisis/{id}
@@ -51,13 +51,13 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetByIdAsync(
             [FromRoute] Guid id,
-            [FromServices] ObtenerAnalisis getAnalysis,
+            [FromServices] GetAnalysisById getAnalysis,
             CancellationToken cancellationToken)
         {
             if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            return Ok(await getAnalysis.EjecutarAsync(id, userId, cancellationToken));
+            return Ok(await getAnalysis.ExecuteAsync(id, userId, cancellationToken));
         }
 
         // POST /Analisis
@@ -69,13 +69,13 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> CreateAsync(
             [FromBody] CreateAnalysisRequest request,
-            [FromServices] CrearAnalisis createAnalysis,
+            [FromServices] CreateAnalysis createAnalysis,
             CancellationToken cancellationToken)
         {
             if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            var analysis = await createAnalysis.EjecutarAsync(userId, request, cancellationToken);
+            var analysis = await createAnalysis.ExecuteAsync(userId, request, cancellationToken);
             return CreatedAtAction(nameof(GetByIdAsync), new { id = analysis.Id }, analysis);
         }
 
@@ -89,13 +89,13 @@ namespace ZonaMatch.Api.Controllers
         public async Task<IActionResult> CreateVersionAsync(
             [FromRoute] Guid id,
             [FromBody] CreateAnalysisVersionRequest request,
-            [FromServices] CrearVersionAnalisis createAnalysisVersion,
+            [FromServices] CreateAnalysisVersion createAnalysisVersion,
             CancellationToken cancellationToken)
         {
             if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            var version = await createAnalysisVersion.EjecutarAsync(id, userId, request, cancellationToken);
+            var version = await createAnalysisVersion.ExecuteAsync(id, userId, request, cancellationToken);
             return CreatedAtAction(nameof(GetByIdAsync), new { id = version.Id }, version);
         }
 
@@ -119,7 +119,7 @@ namespace ZonaMatch.Api.Controllers
         }
 
         // PUT /api/v1/analyses/{id}/favorite    Body: { "isFavorite": true }
-        // Stars or unstars an analysis or a version in "Mis análisis".
+        // Stars or unstars an analysis or a version in the user's saved analyses.
         [HttpPut("~/api/v1/analyses/{id:guid}/favorite")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -144,13 +144,13 @@ namespace ZonaMatch.Api.Controllers
         public async Task<IActionResult> RenameAsync(
             [FromRoute] Guid id,
             [FromBody] RenameAnalysisRequest request,
-            [FromServices] RenombrarAnalisis renameAnalysis,
+            [FromServices] RenameAnalysis renameAnalysis,
             CancellationToken cancellationToken)
         {
             if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            return Ok(await renameAnalysis.EjecutarAsync(id, userId, request, cancellationToken));
+            return Ok(await renameAnalysis.ExecuteAsync(id, userId, request, cancellationToken));
         }
 
         // DELETE /Analisis/{id} deletes an original and all of its versions.
@@ -159,13 +159,13 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteAsync(
             [FromRoute] Guid id,
-            [FromServices] EliminarAnalisis deleteAnalysis,
+            [FromServices] DeleteAnalysis deleteAnalysis,
             CancellationToken cancellationToken)
         {
             if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            await deleteAnalysis.EjecutarAsync(id, userId, cancellationToken);
+            await deleteAnalysis.ExecuteAsync(id, userId, cancellationToken);
             return NoContent();
         }
     }

@@ -8,55 +8,55 @@ using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Puntaje;
 
-namespace ZonaMatch.Application.UseCases.AnalisisGuardados
+namespace ZonaMatch.Application.UseCases.SavedAnalyses
 {
     /// <summary>
     /// Compares the results saved with each analysis (personal or group), so an analysis and its recalculation show
     /// what changed. Analyses saved before results were kept are recalculated with the criteria saved with them.
     /// </summary>
-    public sealed class CompararAnalisis
+    public sealed class CompareAnalyses
     {
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-        private const int MaximoAnalisis = 5;
-        private const int MaximoZonas = 10;
-        private const int ViajesEnParalelo = 6;
+        private const int MaxAnalyses = 5;
+        private const int MaxZones = 10;
+        private const int ParallelTrips = 6;
 
-        private readonly IAnalisisRepository _analisis;
-        private readonly IPerfilesZonaRepository _perfilesZona;
-        private readonly IRuteoClient _ruteo;
+        private readonly IAnalisisRepository _analysisRepository;
+        private readonly IPerfilesZonaRepository _zoneProfilesRepository;
+        private readonly IRuteoClient _routingClient;
 
-        public CompararAnalisis(
-            IAnalisisRepository analisis,
-            IPerfilesZonaRepository perfilesZona,
-            IRuteoClient ruteo)
+        public CompareAnalyses(
+            IAnalisisRepository analysisRepository,
+            IPerfilesZonaRepository zoneProfilesRepository,
+            IRuteoClient routingClient)
         {
-            _analisis = analisis;
-            _perfilesZona = perfilesZona;
-            _ruteo = ruteo;
+            _analysisRepository = analysisRepository;
+            _zoneProfilesRepository = zoneProfilesRepository;
+            _routingClient = routingClient;
         }
 
-        public async Task<ComparacionAnalisisDto> EjecutarAsync(
-            Guid usuarioId,
-            CompararAnalisisRequest solicitud,
+        public async Task<ComparacionAnalisisDto> ExecuteAsync(
+            Guid userId,
+            CompararAnalisisRequest request,
             CancellationToken cancellationToken = default)
         {
-            if (solicitud.AnalisisIds.Count is < 2 or > MaximoAnalisis)
+            if (request.AnalisisIds.Count is < 2 or > MaxAnalyses)
                 throw new BadRequestException("Elegí entre dos y cinco análisis para comparar.");
 
-            if (solicitud.AnalisisIds.Distinct().Count() != solicitud.AnalisisIds.Count)
+            if (request.AnalisisIds.Distinct().Count() != request.AnalisisIds.Count)
                 throw new BadRequestException("No se puede comparar el mismo análisis más de una vez.");
 
-            var ownedAnalyses = await _analisis.ListarDeUsuarioAsync(usuarioId, cancellationToken);
+            var ownedAnalyses = await _analysisRepository.ListarDeUsuarioAsync(userId, cancellationToken);
             var byId = ownedAnalyses.ToDictionary(analysis => analysis.Id);
-            if (solicitud.AnalisisIds.Any(id => !byId.ContainsKey(id)))
+            if (request.AnalisisIds.Any(id => !byId.ContainsKey(id)))
                 throw new NotFoundException("El análisis no existe.");
 
-            var selectedAnalyses = solicitud.AnalisisIds.Select(id => byId[id]).ToArray();
+            var selectedAnalyses = request.AnalisisIds.Select(id => byId[id]).ToArray();
             var analysesWithoutZones = selectedAnalyses.Where(analysis => analysis.Zonas.Count == 0).ToArray();
             if (analysesWithoutZones.Length > 0)
                 throw new BadRequestException("Todos los análisis elegidos deben tener al menos una zona.");
 
-            var analysesWithTooManyZones = selectedAnalyses.Where(analysis => analysis.Zonas.Count > MaximoZonas).ToArray();
+            var analysesWithTooManyZones = selectedAnalyses.Where(analysis => analysis.Zonas.Count > MaxZones).ToArray();
             if (analysesWithTooManyZones.Length > 0)
                 throw new BadRequestException("Cada análisis puede incluir hasta diez zonas en la comparación.");
 
@@ -74,7 +74,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
             MotorPuntaje? motor = null;
             if (personalAnalyses.Length > 0)
             {
-                var universe = await _perfilesZona.ListarAsync(cancellationToken);
+                var universe = await _zoneProfilesRepository.ListarAsync(cancellationToken);
                 zonesBySlug = universe.ToDictionary(zone => zone.Slug, StringComparer.Ordinal);
                 var unavailableZones = selectedPersonalZones
                     .Where(zone => !zonesBySlug.ContainsKey(zone.ZonaSlug))
@@ -86,7 +86,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 motor = new MotorPuntaje(universe);
             }
 
-            using var routeLimit = new SemaphoreSlim(ViajesEnParalelo);
+            using var routeLimit = new SemaphoreSlim(ParallelTrips);
 
             var calculations = await Task.WhenAll(selectedAnalyses.Select(async analysis =>
             {
@@ -185,7 +185,7 @@ namespace ZonaMatch.Application.UseCases.AnalisisGuardados
                 await limiter.WaitAsync(cancellationToken);
                 try
                 {
-                    return await _ruteo.CalcularAsync(
+                    return await _routingClient.CalcularAsync(
                                zone.Latitud, zone.Longitud,
                                place.Latitud!.Value, place.Longitud!.Value,
                                mode, cancellationToken)
