@@ -65,6 +65,7 @@ namespace ZonaMatch.Api.Controllers
 
         // GET /api/v1/analyses/{id}
         [HttpGet("{id:guid}")]
+        [ActionName(nameof(GetByIdAsync))]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetByIdAsync(
