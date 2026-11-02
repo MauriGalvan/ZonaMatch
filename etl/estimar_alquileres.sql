@@ -17,18 +17,18 @@
 \endif
 
 -- The backend migration ReplaceRentByZoneMarket creates this table; without it, there is nowhere to load the data.
-SELECT to_regclass('app.zone_market') IS NOT NULL AS existe \gset
-\if :existe
+SELECT to_regclass('app.zone_market') IS NOT NULL AS market_table_exists \gset
+\if :market_table_exists
 BEGIN;
 
-WITH caba AS (
+WITH caba_zone AS (
     SELECT geom FROM geo.zonas WHERE nivel = 4 ORDER BY superficie_km2 DESC LIMIT 1
 ),
 base AS (
     SELECT z.slug,
            i.hogares_alquilan,
-           i.personas_universitario::numeric / nullif(i.personas_con_dato_educacion, 0) AS universitarios,
-           EXISTS (SELECT 1 FROM caba c WHERE ST_Contains(c.geom, ST_PointOnSurface(z.geom))) AS en_caba
+           i.personas_universitario::numeric / nullif(i.personas_con_dato_educacion, 0) AS university_education_share,
+           EXISTS (SELECT 1 FROM caba_zone c WHERE ST_Contains(c.geom, ST_PointOnSurface(z.geom))) AS within_caba
     FROM geo.zonas z
     JOIN geo.zona_indicadores i USING (osm_id)
     WHERE z.elegida AND z.nivel > 5 AND i.hogares > 0
@@ -40,7 +40,7 @@ SELECT DISTINCT ON (slug)
        round(hogares_alquilan * 0.03)::int,
        0,
        -- Rounded to the nearest thousand pesos.
-       round(:base * (0.6 + 2.5 * coalesce(universitarios, 0.07)) * CASE WHEN en_caba THEN 1 ELSE 0.75 END, -3),
+       round(:base * (0.6 + 2.5 * coalesce(university_education_share, 0.07)) * CASE WHEN within_caba THEN 1 ELSE 0.75 END, -3),
        'ARS',
        'estimated',
        now()
@@ -54,5 +54,5 @@ ON CONFLICT (zone_slug, operation, property_type) DO UPDATE
 
 COMMIT;
 \else
-\echo 'Falta app.zone_market: aplicar las migraciones del backend (dotnet ef database update) y volver a correr este script.'
+\echo 'app.zone_market is missing: apply the backend migrations (dotnet ef database update) and run this script again.'
 \endif

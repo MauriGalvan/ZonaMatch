@@ -138,7 +138,7 @@ WHERE z.osm_id = e.osm_id;
 -- one visible. The others get a slug with their district or commune (villa-sarmiento-moron), as Zonaprop does;
 -- the selected zone keeps its existing slug so links and saved analyses do not change. If two levels refer to the
 -- same area (one contains the other), the less specific one remains hidden.
-WITH repetidas AS (
+WITH duplicate_zones AS (
     SELECT n.osm_id, n.slug, n.geom
     FROM geo.zonas n
     JOIN geo.zonas e ON e.slug = n.slug AND e.elegida
@@ -146,7 +146,7 @@ WITH repetidas AS (
       AND NOT ST_Contains(e.geom, ST_PointOnSurface(n.geom))
       AND NOT ST_Contains(n.geom, ST_PointOnSurface(e.geom))
 ),
-renombradas AS (
+renamed_zones AS (
     SELECT r.osm_id,
            r.slug || '-' || coalesce(
                (SELECT regexp_replace(p.slug, '^partido-de-', '') FROM geo.zonas p
@@ -156,18 +156,18 @@ renombradas AS (
                 WHERE l.nivel = 8 AND l.osm_id <> r.osm_id AND ST_Contains(l.geom, ST_PointOnSurface(r.geom))
                 ORDER BY l.superficie_km2 LIMIT 1),
                abs(r.osm_id)::text) AS slug
-    FROM repetidas r
+    FROM duplicate_zones r
 ),
-unicas AS (
+unique_zone_slugs AS (
     -- If two slugs still match (same name and district) or collide with another zone, append the OSM ID.
     SELECT n.osm_id,
            CASE WHEN count(*) OVER (PARTITION BY n.slug) > 1
                      OR EXISTS (SELECT 1 FROM geo.zonas o WHERE o.slug = n.slug)
                 THEN n.slug || '-' || abs(n.osm_id) ELSE n.slug END AS slug
-    FROM renombradas n
+    FROM renamed_zones n
 )
 UPDATE geo.zonas z SET slug = u.slug, elegida = true
-FROM unicas u
+FROM unique_zone_slugs u
 WHERE z.osm_id = u.osm_id;
 
 CREATE INDEX ON geo.zonas USING gist (geom);
@@ -220,12 +220,12 @@ CREATE TABLE geo.zona_indicadores (
     delitos_reparto_homicidios   double precision
 );
 
-WITH asignacion AS (
+WITH census_assignments AS (
     SELECT z.osm_id, r.cod, r.poblacion, r.viviendas
     FROM geo.zonas z
     JOIN geo.censo_radios r ON ST_Contains(z.geom, r.punto)
 ),
-censo AS (
+census_counts AS (
     SELECT a.osm_id,
            count(DISTINCT a.cod)::int AS radios,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '1') AS p_0_14,
@@ -245,22 +245,22 @@ censo AS (
            -- More than 2 people per room (INDEC: 2.00 to 3.00 and above 3.00).
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H20CP' AND i.categoria IN ('5', '6')) AS h_hacinamiento,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H22' AND i.categoria = '2') AS h_alquilan
-    FROM asignacion a
+    FROM census_assignments a
     JOIN geo.censo_indicadores i USING (cod)
     GROUP BY a.osm_id
 ),
-totales AS (
+zone_totals AS (
     SELECT osm_id, sum(poblacion)::int AS poblacion, sum(viviendas)::int AS viviendas
-    FROM asignacion
+    FROM census_assignments
     GROUP BY osm_id
 ),
 -- Zones within CABA (level 4): these have geolocated crime data.
-zonas_caba AS (
+caba_zones AS (
     SELECT z.osm_id, z.geom
     FROM geo.zonas z
     JOIN geo.zonas caba ON caba.nivel = 4 AND ST_Contains(caba.geom, ST_PointOnSurface(z.geom))
 ),
-delitos_mapa AS (
+crime_map_totals AS (
     SELECT z.osm_id,
            coalesce(sum(d.cantidad) FILTER (WHERE d.tipo <> 'Vialidad'), 0)::int AS total,
            coalesce(sum(d.cantidad) FILTER (WHERE d.tipo = 'Robo'), 0)::int AS robos,
@@ -269,13 +269,13 @@ delitos_mapa AS (
            coalesce(sum(d.cantidad) FILTER (WHERE d.tipo = 'Homicidios'), 0)::int AS homicidios,
            coalesce(sum(d.cantidad) FILTER (WHERE d.tipo = 'Amenazas'), 0)::int AS amenazas,
            coalesce(sum(d.cantidad) FILTER (WHERE d.tipo = 'Vialidad'), 0)::int AS viales
-    FROM zonas_caba z
+    FROM caba_zones z
     LEFT JOIN geo.delitos_caba d ON ST_Contains(z.geom, d.geom)
     GROUP BY z.osm_id
 ),
 -- SNIC rate by tract: its district (or commune) rate per population. Census and SNIC department codes match in the
 -- province; in CABA, census commune numbers advance by 7 (007 is Commune 1, 014 is Commune 2, and so on).
-snic_radio AS (
+snic_tract_rates AS (
     SELECT r.cod, r.poblacion, r.prov = '02' AS en_caba, s.department_name, s.year, s.crime_group,
            r.poblacion * s.rate_per_100k / 100000.0 AS hechos
     FROM geo.censo_radios r
@@ -291,22 +291,22 @@ snic_radio AS (
 -- Source: INDEC, 2017 National Victimization Survey, Table 1 (prevalence among people aged 18 and older,
 -- 2016; "Buenos Aires" refers to the entire province). Injuries have no separate prevalence estimate and use the
 -- violent robbery rate. Homicides are almost always recorded and are not adjusted.
-encuesta (crime_group, caba, provincia) AS (
+victimization_rates (crime_group, caba, provincia) AS (
     VALUES ('thefts', 11.9, 7.4), ('robberies', 5.9, 7.8), ('injuries', 5.9, 7.8), ('threats', 3.6, 4.6)
 ),
-registrados AS (
+recorded_rates AS (
     SELECT crime_group,
            sum(hechos) FILTER (WHERE en_caba) / nullif(sum(poblacion) FILTER (WHERE en_caba), 0) AS caba,
            sum(hechos) FILTER (WHERE NOT en_caba) / nullif(sum(poblacion) FILTER (WHERE NOT en_caba), 0) AS provincia
-    FROM snic_radio
+    FROM snic_tract_rates
     GROUP BY crime_group
 ),
-calibracion AS (
+reporting_adjustments AS (
     SELECT r.crime_group, (e.provincia / e.caba) / nullif(r.provincia / nullif(r.caba, 0), 0) AS factor
-    FROM registrados r
-    JOIN encuesta e USING (crime_group)
+    FROM recorded_rates r
+    JOIN victimization_rates e USING (crime_group)
 ),
-delitos_snic AS (
+snic_zone_totals AS (
     SELECT a.osm_id,
            max(s.year) AS periodo,
            round(sum(s.hechos * CASE WHEN s.en_caba THEN 1 ELSE coalesce(c.factor, 1) END)
@@ -319,64 +319,64 @@ delitos_snic AS (
            round(sum(s.hechos) FILTER (WHERE s.crime_group = 'homicides'))::int AS homicidios,
            round(sum(s.hechos) FILTER (WHERE s.crime_group = 'threats'))::int AS amenazas,
            round(sum(s.hechos) FILTER (WHERE s.crime_group = 'road'))::int AS viales
-    FROM asignacion a
-    JOIN snic_radio s USING (cod)
-    LEFT JOIN calibracion c USING (crime_group)
+    FROM census_assignments a
+    JOIN snic_tract_rates s USING (cod)
+    LEFT JOIN reporting_adjustments c USING (crime_group)
     GROUP BY a.osm_id
 ),
 -- Districts contributing population to each zone, ordered from largest to smallest (usually one district).
-ambitos AS (
+zone_source_areas AS (
     SELECT osm_id, string_agg(department_name, ', ' ORDER BY poblacion DESC) AS ambito
     FROM (
         SELECT a.osm_id, s.department_name, sum(a.poblacion) AS poblacion
-        FROM asignacion a
-        JOIN (SELECT DISTINCT cod, department_name FROM snic_radio) s USING (cod)
+        FROM census_assignments a
+        JOIN (SELECT DISTINCT cod, department_name FROM snic_tract_rates) s USING (cod)
         GROUP BY a.osm_id, s.department_name
     ) p
     GROUP BY osm_id
 ),
 -- Ratio used to scale the CABA Crime Map to SNIC figures.
-escala_caba AS (
+caba_crime_scale AS (
     SELECT s.total::numeric / nullif(m.total, 0) AS factor
     FROM geo.zonas caba
-    JOIN delitos_mapa m ON m.osm_id = caba.osm_id
-    JOIN delitos_snic s ON s.osm_id = caba.osm_id
+    JOIN crime_map_totals m ON m.osm_id = caba.osm_id
+    JOIN snic_zone_totals s ON s.osm_id = caba.osm_id
     WHERE caba.nivel = 4
     ORDER BY caba.superficie_km2 DESC
     LIMIT 1
 ),
-delitos_base AS (
+base_crime_totals AS (
     SELECT m.osm_id, m.total, m.robos, m.hurtos, m.lesiones, m.homicidios, m.amenazas, m.viales,
            'mapa-delito' AS fuente, (SELECT max(anio) FROM geo.carga_delitos) AS periodo, NULL::text AS ambito,
-           m.total * (SELECT factor FROM escala_caba) AS estimados, s.homicidios_5a
-    FROM delitos_mapa m
-    LEFT JOIN delitos_snic s USING (osm_id)
+           m.total * (SELECT factor FROM caba_crime_scale) AS estimados, s.homicidios_5a
+    FROM crime_map_totals m
+    LEFT JOIN snic_zone_totals s USING (osm_id)
     UNION ALL
     SELECT s.osm_id, s.total, s.robos, s.hurtos, s.lesiones, s.homicidios, s.amenazas, s.viales,
            'snic', s.periodo, b.ambito, s.comparables, s.homicidios_5a
-    FROM delitos_snic s
-    LEFT JOIN ambitos b USING (osm_id)
-    WHERE s.osm_id NOT IN (SELECT osm_id FROM delitos_mapa)
+    FROM snic_zone_totals s
+    LEFT JOIN zone_source_areas b USING (osm_id)
+    WHERE s.osm_id NOT IN (SELECT osm_id FROM crime_map_totals)
 ),
 -- Reporting also varies within each region: Morón records more robberies and thefts per resident than Moreno but
 -- half as many homicides; the same pattern appears between northern and southern CABA communes. Homicides are
 -- almost always recorded, so the final value is the geometric mean of estimated crimes and 2021-2025 homicides
 -- (SNIC, by district or commune), scaled to regional crime figures so CABA and province remain aligned with the
 -- survey. Differences between neighborhoods in the same commune (Crime Map) are preserved.
-escala_homicidios AS (
+homicide_scale AS (
     SELECT d.fuente, sum(d.estimados) / nullif(sum(d.homicidios_5a), 0) AS factor
-    FROM delitos_base d
+    FROM base_crime_totals d
     JOIN geo.zonas z USING (osm_id)
     WHERE z.elegida AND z.nivel = 5
     GROUP BY d.fuente
 ),
-delitos AS (
+crime_totals AS (
     SELECT d.*,
            round(CASE WHEN d.homicidios_5a > 0 AND e.factor IS NOT NULL
                       THEN sqrt(d.estimados * d.homicidios_5a * e.factor)
                       ELSE d.estimados END)::int AS comparables
-    FROM delitos_base d
-    LEFT JOIN escala_homicidios e USING (fuente)
+    FROM base_crime_totals d
+    LEFT JOIN homicide_scale e USING (fuente)
 )
 INSERT INTO geo.zona_indicadores
 SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
@@ -391,15 +391,15 @@ SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
        -- Per-resident rates are not meaningful for places with very few residents (clubs, small gated communities);
        -- scoring treats these values as missing.
        d.fuente, d.periodo, d.ambito, CASE WHEN t.poblacion >= 500 THEN d.comparables END, NULL, NULL
-FROM totales t
-JOIN censo c USING (osm_id)
-LEFT JOIN delitos d USING (osm_id);
+FROM zone_totals t
+JOIN census_counts c USING (osm_id)
+LEFT JOIN crime_totals d USING (osm_id);
 
 DROP TABLE geo.carga_censo_radios, geo.carga_censo_indicadores, geo.carga_delitos, geo.carga_snic;
 
 COMMIT;
 
-SELECT nivel, count(*) AS zonas, count(i.osm_id) AS con_indicadores, count(i.delitos_anio) AS con_delitos,
-       count(i.delitos_anio) FILTER (WHERE i.delitos_fuente = 'snic') AS con_delitos_snic
+SELECT nivel, count(*) AS zones, count(i.osm_id) AS zones_with_indicators, count(i.delitos_anio) AS zones_with_crime_data,
+       count(i.delitos_anio) FILTER (WHERE i.delitos_fuente = 'snic') AS zones_with_snic_crime_data
 FROM geo.zonas z LEFT JOIN geo.zona_indicadores i USING (osm_id)
 GROUP BY nivel ORDER BY nivel;

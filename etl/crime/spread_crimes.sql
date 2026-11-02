@@ -13,7 +13,7 @@
 \set ON_ERROR_STOP on
 BEGIN;
 
-WITH radios AS (
+WITH census_tracts AS (
     SELECT r.prov, r.poblacion, r.punto,
            -- District, or commune in CABA (the census numbers communes by 7).
            CASE WHEN r.prov = '02' THEN (r.depto::int / 7)::text ELSE r.depto END AS ambito,
@@ -21,20 +21,20 @@ WITH radios AS (
     FROM geo.censo_radios r
     LEFT JOIN geo.carga_delitos_fracciones f ON f.fraction_id = r.prov || r.depto || r.fracc
 ),
-ambitos AS (
+district_averages AS (
     SELECT prov, ambito,
            sum(poblacion * factor) / nullif(sum(poblacion), 0) AS factor_medio,
            sum(poblacion * homicidios) / nullif(sum(poblacion), 0) AS homicidios_medio
-    FROM radios
+    FROM census_tracts
     GROUP BY prov, ambito
 ),
-zonas AS (
+zone_factors AS (
     SELECT z.osm_id,
            sum(r.poblacion * r.factor / a.factor_medio) / nullif(sum(r.poblacion), 0) AS factor,
            sum(r.poblacion * r.homicidios / a.homicidios_medio) / nullif(sum(r.poblacion), 0) AS homicidios
     FROM geo.zonas z
-    JOIN radios r ON ST_Contains(z.geom, r.punto)
-    JOIN ambitos a USING (prov, ambito)
+    JOIN census_tracts r ON ST_Contains(z.geom, r.punto)
+    JOIN district_averages a USING (prov, ambito)
     GROUP BY z.osm_id
 )
 UPDATE geo.zona_indicadores i
@@ -47,7 +47,7 @@ SET delitos_anio = CASE WHEN i.delitos_fuente = 'snic' THEN round(i.delitos_anio
     delitos_comparables = round(i.delitos_comparables * sqrt(CASE WHEN i.delitos_fuente = 'snic' THEN z.factor ELSE 1 END * z.homicidios)),
     delitos_reparto = CASE WHEN i.delitos_fuente = 'snic' THEN z.factor END,
     delitos_reparto_homicidios = z.homicidios
-FROM zonas z
+FROM zone_factors z
 -- Run only once after each calcular_zonas.sql execution; running it again would apply the factor twice.
 WHERE i.osm_id = z.osm_id AND i.delitos_fuente IS NOT NULL AND i.delitos_reparto_homicidios IS NULL;
 

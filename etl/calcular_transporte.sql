@@ -22,7 +22,7 @@ CREATE TABLE geo.transporte_salidas (
 );
 
 INSERT INTO geo.transporte_salidas
-SELECT modo, parada_id, min(parada), linea, franja, sum(salidas)::int,
+SELECT modo, parada_id, min(parada), normalized_route_name, franja, sum(salidas)::int,
        ST_SetSRID(ST_MakePoint(min(longitud), min(latitud)), 4326)
 FROM (
     SELECT c.*,
@@ -30,11 +30,11 @@ FROM (
                WHEN c.modo = 'colectivo' AND c.linea ~ '^[0-9]+' THEN substring(c.linea FROM '^[0-9]+')
                WHEN c.modo = 'tren' THEN regexp_replace(c.linea, '^Linea ', '')
                ELSE c.linea
-           END AS linea_normalizada
+           END AS normalized_route_name
     FROM geo.carga_transporte_salidas c
     WHERE c.latitud IS NOT NULL AND c.longitud IS NOT NULL
-) s (modo, parada_id, parada, latitud, longitud, linea_original, franja, salidas, linea)
-GROUP BY modo, parada_id, linea, franja;
+) s (modo, parada_id, parada, latitud, longitud, original_route_name, franja, salidas, normalized_route_name)
+GROUP BY modo, parada_id, normalized_route_name, franja;
 
 CREATE INDEX ON geo.transporte_salidas USING gist (geom);
 
