@@ -1,12 +1,12 @@
 namespace ZonaMatch.Application.DTOs.Geolocation.Responses;
 
 public sealed record SchoolResponse(
-    string ClaveNatural,
-    string Nombre,
-    string? Nivel,
+    string NaturalKey,
+    string Name,
+    string? Level,
     string? Sector,
-    string? Direccion,
-    string? Localidad,
-    double Latitud,
-    double Longitud,
-    double? DistanciaMetros = null);
+    string? Address,
+    string? Locality,
+    double Latitude,
+    double Longitude,
+    double? DistanceMeters = null);

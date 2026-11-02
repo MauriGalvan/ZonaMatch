@@ -36,15 +36,15 @@ public sealed class ReverseGeocode(
             throw new NotFoundException("No se encontro una direccion para esa ubicacion.");
 
         return new ReverseGeocodeResponse(
-            Ubicacion: new CoordinateResponse(latitude, longitude),
-            Nombre: geocodedAddress?.Name,
-            Calle: geocodedAddress?.Street,
-            Altura: geocodedAddress?.StreetNumber,
-            Localidad: geocodedAddress?.Locality,
-            District: district?.Nombre,
-            Commune: commune?.Nombre,
-            Provincia: district?.Provincia ?? geocodedAddress?.Province,
-            CodigoPostal: geocodedAddress?.PostalCode,
-            DireccionCompleta: geocodedAddress?.FullAddress);
+            Location: new CoordinateResponse(latitude, longitude),
+            Name: geocodedAddress?.Name,
+            Street: geocodedAddress?.Street,
+            StreetNumber: geocodedAddress?.StreetNumber,
+            Locality: geocodedAddress?.Locality,
+            District: district?.Name,
+            Commune: commune?.Name,
+            Province: district?.Provincia ?? geocodedAddress?.Province,
+            PostalCode: geocodedAddress?.PostalCode,
+            FullAddress: geocodedAddress?.FullAddress);
     }
 }
