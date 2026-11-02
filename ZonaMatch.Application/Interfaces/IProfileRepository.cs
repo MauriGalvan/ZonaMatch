@@ -8,7 +8,7 @@ namespace ZonaMatch.Application.Interfaces
         // Includes details and change tracking; null when the profile has not been created.
         Task<Context?> GetByUserAsync(Guid userId, CancellationToken cancellationToken = default);
 
-        // Perfiles existentes de varios usuarios, con sus preferencias y restricciones.
+        // Existing profiles for multiple users, including their preferences and constraints.
         Task<IReadOnlyList<Context>> GetByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default);
 
         void Add(Context profile);

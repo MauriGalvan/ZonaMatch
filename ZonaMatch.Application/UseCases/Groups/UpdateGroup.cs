@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using ZonaMatch.Application.DTOs.Group;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -19,18 +17,18 @@ public class UpdateGroup
 
     public async Task ExecuteAsync(Guid groupId, Guid userId, UpdateGroupRequest request, CancellationToken cancellationToken)
     {
-        var grupo = await _groupRepository.GetByIdAsync(groupId, cancellationToken);
+        var group = await _groupRepository.GetByIdAsync(groupId, cancellationToken);
 
-        if (grupo == null)
+        if (group == null)
             throw new NotFoundException("Grupo no encontrado");
 
-        var esPropietario = grupo.Participants.Any(p => p.UserId == userId && GroupRole.Owner == p.Role);
+        var isOwner = group.Participants.Any(participant => participant.UserId == userId && GroupRole.Owner == participant.Role);
 
-        if (!esPropietario)
+        if (!isOwner)
             throw new ForbiddenException("No tienes permiso para modificar este grupo");
 
-        grupo.Name = request.Name;
+        group.Name = request.Name;
 
-        await _groupRepository.UpdateAsync(grupo, cancellationToken);
+        await _groupRepository.UpdateAsync(group, cancellationToken);
     }
 }

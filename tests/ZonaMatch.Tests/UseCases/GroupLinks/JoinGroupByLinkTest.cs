@@ -27,7 +27,7 @@ public class JoinGroupByLinkTests
 
         _groupRepositoryMock
             .Setup(repo => repo.GetByInviteTokenAsync(token, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Group?)null); // Simulamos que no encontró el grupo
+            .ReturnsAsync((Group?)null); // Simulate that the group was not found.
 
         // Act
         Func<Task> action = async () => await _useCase.ExecuteAsync(token, currentUserId, CancellationToken.None);
@@ -51,7 +51,7 @@ public class JoinGroupByLinkTests
             InviteToken = token,
             Participants = new List<Participant>
             {
-                // El usuario actual YA está en la lista de participantes del grupo
+                // The current user is already in the group's participant list.
                 new Participant { UserId = currentUserId, Role = GroupRole.Guest }
             }
         };
@@ -80,7 +80,7 @@ public class JoinGroupByLinkTests
         {
             Id = groupId,
             InviteToken = token,
-            Participants = new List<Participant>() // La lista está vacía, el usuario NO es miembro
+            Participants = new List<Participant>() // The list is empty; the user is not a member.
         };
 
         _groupRepositoryMock
@@ -91,7 +91,7 @@ public class JoinGroupByLinkTests
         await _useCase.ExecuteAsync(token, currentUserId, CancellationToken.None);
 
         // Assert
-        // Verificamos que se haya llamado al método de inserción directa con los datos correctos
+        // Verify that the direct insert method was called with the expected data.
         _groupRepositoryMock.Verify(
             repo => repo.AddParticipantAsync(
                 It.Is<Participant>(p =>

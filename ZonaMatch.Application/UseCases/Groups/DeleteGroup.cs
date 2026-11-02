@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Enums;
@@ -18,20 +16,20 @@ public class DeleteGroup
 
     public async Task ExecuteAsync(Guid groupId, Guid userId, CancellationToken cancellationToken)
     {
-        var grupo = await _groupRepository.GetByIdAsync(groupId, cancellationToken);
+        var group = await _groupRepository.GetByIdAsync(groupId, cancellationToken);
 
-        if (grupo == null)
+        if (group == null)
         {
             throw new NotFoundException("Grupo no encontrado");
         }
 
-        var esPropietario = grupo.Participants.Any(p => p.UserId == userId && GroupRole.Owner == p.Role);
+        var isOwner = group.Participants.Any(participant => participant.UserId == userId && GroupRole.Owner == participant.Role);
 
-        if (!esPropietario)
+        if (!isOwner)
         {
             throw new ForbiddenException("No tienes permiso para eliminar este grupo");
         }
 
-        await _groupRepository.DeleteAsync(grupo, cancellationToken);
+        await _groupRepository.DeleteAsync(group, cancellationToken);
     }
 }

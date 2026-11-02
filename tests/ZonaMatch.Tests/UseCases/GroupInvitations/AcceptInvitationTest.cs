@@ -43,7 +43,7 @@ public class AcceptInvitationTests
     {
         var token = Guid.NewGuid();
         var currentUserId = Guid.NewGuid();
-        var invitation = new GroupInvitation { Status = InvitationStatus.Accepted }; // Estado inválido
+        var invitation = new GroupInvitation { Status = InvitationStatus.Accepted }; // Invalid state.
 
         _invitationRepositoryMock
             .Setup(repo => repo.GetByTokenAsync(token, It.IsAny<CancellationToken>()))
@@ -64,7 +64,7 @@ public class AcceptInvitationTests
         var invitation = new GroupInvitation
         {
             Status = InvitationStatus.Pending,
-            ExpiresAt = DateTime.UtcNow.AddDays(-1) // Expiró ayer
+            ExpiresAt = DateTime.UtcNow.AddDays(-1) // Expired yesterday.
         };
 
         _invitationRepositoryMock
@@ -73,10 +73,10 @@ public class AcceptInvitationTests
 
         Func<Task> action = async () => await _useCase.ExecuteAsync(token, currentUserId, CancellationToken.None);
 
-        // Verificamos que lanza la excepción
+        // Verify that the exception is thrown.
         await action.Should().ThrowAsync<Exception>().WithMessage("La invitación ha expirado.");
 
-        // ADEMÁS: Verificamos que se haya llamado al UpdateAsync para guardar el estado 'Expired' en BD
+        // Also verify that UpdateAsync was called to save the 'Expired' status in the database.
         invitation.Status.Should().Be(InvitationStatus.Expired);
         _invitationRepositoryMock.Verify(
             repo => repo.UpdateAsync(invitation, It.IsAny<CancellationToken>()),
@@ -94,7 +94,7 @@ public class AcceptInvitationTests
         {
             GroupId = groupId,
             Status = InvitationStatus.Pending,
-            ExpiresAt = DateTime.UtcNow.AddDays(1) // Válida
+            ExpiresAt = DateTime.UtcNow.AddDays(1) // Valid.
         };
 
         _invitationRepositoryMock
@@ -103,7 +103,7 @@ public class AcceptInvitationTests
 
         _groupRepositoryMock
             .Setup(repo => repo.GetByIdAsync(groupId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Group?)null); // El grupo no existe
+            .ReturnsAsync((Group?)null); // The group does not exist.
 
         Func<Task> action = async () => await _useCase.ExecuteAsync(token, currentUserId, CancellationToken.None);
 
@@ -129,7 +129,7 @@ public class AcceptInvitationTests
             Id = groupId,
             Participants = new List<Participant>
             {
-                new Participant { UserId = currentUserId, Role = GroupRole.Guest } // El usuario ya está adentro
+                new Participant { UserId = currentUserId, Role = GroupRole.Guest } // The user is already a member.
             }
         };
 
@@ -164,7 +164,7 @@ public class AcceptInvitationTests
         var group = new Group
         {
             Id = groupId,
-            Participants = new List<Participant>() // Grupo vacío
+            Participants = new List<Participant>() // Empty group.
         };
 
         _invitationRepositoryMock
@@ -179,13 +179,13 @@ public class AcceptInvitationTests
         await _useCase.ExecuteAsync(token, currentUserId, CancellationToken.None);
 
         // Assert
-        // 1. Verificamos que el estado cambió a Accepted y se actualizó en la BD
+        // 1. Verify that the status changed to Accepted and was updated in the database.
         invitation.Status.Should().Be(InvitationStatus.Accepted);
         _invitationRepositoryMock.Verify(
             repo => repo.UpdateAsync(invitation, It.IsAny<CancellationToken>()),
             Times.Once);
 
-        // 2. Verificamos que se insertó el participante en la BD
+        // 2. Verify that the participant was inserted into the database.
         _groupRepositoryMock.Verify(
             repo => repo.AddParticipantAsync(
                 It.Is<Participant>(p => p.GroupId == groupId && p.UserId == currentUserId && p.Role == GroupRole.Guest),

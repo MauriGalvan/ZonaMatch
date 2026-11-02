@@ -47,7 +47,7 @@ public class RemoveParticipantTest
         var group = new Group
         {
             Id = groupId,
-            Participants = new List<Participant>() // Lista vacía
+            Participants = new List<Participant>() // Empty list.
         };
 
         _groupRepositoryMock
@@ -72,7 +72,7 @@ public class RemoveParticipantTest
             Participants = new List<Participant>
             {
                 new Participant { UserId = userIdToRemove, Role = GroupRole.Guest },
-                // El usuario actual intenta echar a alguien, pero solo es Guest, no Owner
+                // The current user tries to remove someone but is a Guest, not the Owner.
                 new Participant { UserId = currentUserId, Role = GroupRole.Guest }
             }
         };
@@ -91,7 +91,7 @@ public class RemoveParticipantTest
     {
         var groupId = Guid.NewGuid();
         var currentUserId = Guid.NewGuid();
-        var userIdToRemove = currentUserId; // El usuario se borra a sí mismo
+        var userIdToRemove = currentUserId; // The user removes themselves.
 
         var participantToRemove = new Participant { UserId = userIdToRemove, Role = GroupRole.Guest };
         var group = new Group

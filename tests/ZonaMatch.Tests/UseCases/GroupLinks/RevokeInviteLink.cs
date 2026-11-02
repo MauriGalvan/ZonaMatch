@@ -49,7 +49,7 @@ public class RevokeInviteLinkTests
             Id = groupId,
             Participants = new List<Participant>
             {
-                // El usuario es Member o Guest, no Owner
+                // The user is a Member or Guest, not the Owner.
                 new Participant { UserId = currentUserId, Role = GroupRole.Guest }
             }
         };
@@ -72,7 +72,7 @@ public class RevokeInviteLinkTests
         // Arrange
         var groupId = Guid.NewGuid();
         var currentUserId = Guid.NewGuid();
-        var oldToken = Guid.NewGuid(); // Guardamos el token original para comparar
+        var oldToken = Guid.NewGuid(); // Keep the original token for comparison.
 
         var group = new Group
         {
@@ -80,7 +80,7 @@ public class RevokeInviteLinkTests
             InviteToken = oldToken,
             Participants = new List<Participant>
             {
-                // El usuario sí es el Owner
+                // The user is the Owner.
                 new Participant { UserId = currentUserId, Role = GroupRole.Owner }
             }
         };
@@ -93,14 +93,14 @@ public class RevokeInviteLinkTests
         var newToken = await _useCase.ExecuteAsync(groupId, currentUserId, CancellationToken.None);
 
         // Assert
-        // 1. Verificamos que el token devuelto sea distinto al original (¡La magia funcionó!)
+        // 1. Verify that the returned token differs from the original.
         newToken.Should().NotBeEmpty();
         newToken.Should().NotBe(oldToken);
 
-        // 2. Verificamos que el objeto group en memoria se haya actualizado con el nuevo token
+        // 2. Verify that the in-memory group was updated with the new token.
         group.InviteToken.Should().Be(newToken);
 
-        // 3. Verificamos que se haya mandado a guardar a la base de datos
+        // 3. Verify that the group was saved to the database.
         _groupRepositoryMock.Verify(
             repo => repo.UpdateAsync(group, It.IsAny<CancellationToken>()),
             Times.Once);

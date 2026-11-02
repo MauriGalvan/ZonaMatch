@@ -11,26 +11,26 @@ namespace ZonaMatch.Tests.Application.UseCases.GroupInvitations;
 
 public class CreateInvitationTests
 {
-    // 1. Declaramos los "Falsos" (Mocks) que vamos a usar
+    // 1. Declare the mocks used by this test.
     private readonly Mock<IGroupRepository> _groupRepositoryMock;
     private readonly Mock<IGroupInvitationRepository> _invitationRepositoryMock;
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<INotificationRepository> _notificationRepositoryMock;
     private readonly Mock<IEmailService> _emailServiceMock;
 
-    // El caso de uso real que vamos a testear
+    // The real use case under test.
     private readonly CreateInvitation _useCase;
 
     public CreateInvitationTests()
     {
-        // 2. Inicializamos los Mocks
+        // 2. Initialize the mocks.
         _groupRepositoryMock = new Mock<IGroupRepository>();
         _invitationRepositoryMock = new Mock<IGroupInvitationRepository>();
         _userRepositoryMock = new Mock<IUserRepository>();
         _notificationRepositoryMock = new Mock<INotificationRepository>();
         _emailServiceMock = new Mock<IEmailService>();
 
-        // 3. Le inyectamos los Mocks a la clase real
+        // 3. Inject the mocks into the real class.
         _useCase = new CreateInvitation(
             _groupRepositoryMock.Object,
             _invitationRepositoryMock.Object,
@@ -48,7 +48,7 @@ public class CreateInvitationTests
         var request = new CreateInvitationRequest { GroupId = Guid.NewGuid(), Email = "test@test.com" };
         var currentUserId = Guid.NewGuid();
 
-        // Le decimos al mock: "Cuando alguien llame a GetByIdAsync, devuelve NULL"
+        // Configure the mock to return null when GetByIdAsync is called.
         _groupRepositoryMock
             .Setup(repo => repo.GetByIdAsync(request.GroupId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Group?)null);
@@ -74,7 +74,7 @@ public class CreateInvitationTests
             Name = "Grupo Test",
             Participants = new List<Participant>
             {
-                // El usuario actual existe, pero solo es "Guest", no "Owner"
+                // The current user exists, but is a "Guest", not the "Owner".
                 new Participant { UserId = currentUserId, Role = GroupRole.Guest }
             }
         };
@@ -107,7 +107,7 @@ public class CreateInvitationTests
             Name = "Grupo Test",
             Participants = new List<Participant>
             {
-                // Ahora sí, el usuario actual es el "Owner"
+                // The current user is the "Owner" in this scenario.
                 new Participant { UserId = currentUserId, Role = GroupRole.Owner }
             }
         };
@@ -116,19 +116,19 @@ public class CreateInvitationTests
             .Setup(repo => repo.GetByIdAsync(request.GroupId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(group);
 
-        // No necesitamos preparar _invitationRepository ni _emailService 
-        // porque sus métodos no devuelven nada (Task), solo ejecutan acciones.
+        // No setup is needed for _invitationRepository or _emailService because their
+        // methods return a Task without a value and only perform actions.
 
         // Act
         await _useCase.ExecuteAsync(request, currentUserId, CancellationToken.None);
 
         // Assert
-        // Verificamos que se haya llamado a AddAsync exactamente 1 vez con cualquier objeto GroupInvitation
+        // Verify that AddAsync was called exactly once with any GroupInvitation.
         _invitationRepositoryMock.Verify(
             repo => repo.AddAsync(It.IsAny<GroupInvitation>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
-        // Verificamos que se haya enviado el correo exactamente 1 vez a la dirección correcta
+        // Verify that the email was sent exactly once to the expected address.
         _emailServiceMock.Verify(
             email => email.SendEmailAsync(request.Email, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);

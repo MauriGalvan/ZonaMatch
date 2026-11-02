@@ -54,7 +54,7 @@ public class GetInvitationByTokenTests
             {
                 Id = groupId,
                 Name = "Grupo de Pruebas"
-            } // ¡Clave! Instanciamos el grupo anidado para simular el .Include() de EF Core
+            } // Create the nested group to simulate the EF Core .Include().
         };
 
         _invitationRepositoryMock
@@ -67,7 +67,7 @@ public class GetInvitationByTokenTests
         // Assert
         result.Should().NotBeNull();
 
-        // Verificamos que el mapeo hacia el DTO se haya hecho correctamente
+        // Verify that the DTO mapping was performed correctly.
         result.GroupId.Should().Be(groupId);
         result.GroupName.Should().Be("Grupo de Pruebas");
         result.Status.Should().Be("Pending");
