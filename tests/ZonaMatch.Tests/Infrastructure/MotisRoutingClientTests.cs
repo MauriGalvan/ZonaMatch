@@ -8,7 +8,7 @@ using ZonaMatch.Infrastructure.Geo;
 
 namespace ZonaMatch.Tests.Infrastructure;
 
-public class MotisRuteoClientTests
+public class MotisRoutingClientTests
 {
     [Fact]
     public async Task Usa_tiempo_y_distancia_del_mismo_itinerario()

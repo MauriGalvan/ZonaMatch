@@ -1,8 +1,8 @@
-using ZonaMatch.Application.UseCases.Comunidad;
+using ZonaMatch.Application.UseCases.Community;
 
-namespace ZonaMatch.Tests.UseCases.Comunidad
+namespace ZonaMatch.Tests.UseCases.Community
 {
-    public class AutorTests
+    public class AuthorInitialsTests
     {
         [Theory]
         [InlineData("ana.perez@example.com", "AP")]
@@ -12,9 +12,9 @@ namespace ZonaMatch.Tests.UseCases.Comunidad
         [InlineData("1990.mara@example.com", "MA")]
         [InlineData("123@example.com", "?")]
         [InlineData(null, "?")]
-        public void Las_iniciales_salen_del_email_sin_exponerlo(string? email, string esperado)
+        public void GetInitials_DerivesInitialsWithoutExposingTheEmail(string? email, string expected)
         {
-            Assert.Equal(esperado, Autor.Iniciales(email));
+            Assert.Equal(expected, AuthorInitials.GetInitials(email));
         }
     }
 }

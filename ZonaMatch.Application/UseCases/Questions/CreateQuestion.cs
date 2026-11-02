@@ -2,7 +2,7 @@ using ZonaMatch.Application.DTOs.Questions.Requests;
 using ZonaMatch.Application.DTOs.Questions.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
-using ZonaMatch.Application.UseCases.Comunidad;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
 
@@ -33,7 +33,7 @@ namespace ZonaMatch.Application.UseCases.Questions
         public async Task<QuestionResponse> ExecuteAsync(
             string zoneSlug, AuthenticatedUserContext currentUser, CreateQuestionRequest request, CancellationToken cancellationToken = default)
         {
-            await _zones.ValidarExisteAsync(zoneSlug, cancellationToken);
+            await _zones.EnsureZoneExistsAsync(zoneSlug, cancellationToken);
 
             var question = new Question
             {
@@ -58,7 +58,7 @@ namespace ZonaMatch.Application.UseCases.Questions
 
             await _questions.SaveChangesAsync(cancellationToken);
 
-            return new QuestionResponse(question.Id, question.Texto, Autor.Iniciales(currentUser.Email), question.FechaCreacion, IsMine: true, []);
+            return new QuestionResponse(question.Id, question.Texto, AuthorInitials.GetInitials(currentUser.Email), question.FechaCreacion, IsMine: true, []);
         }
     }
 }

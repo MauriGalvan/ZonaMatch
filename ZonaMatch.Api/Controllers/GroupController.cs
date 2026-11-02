@@ -61,16 +61,16 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GuardarAnalisisEnGrupo(
+        public async Task<IActionResult> SaveGroupAnalysis(
             [FromRoute] Guid groupId,
             [FromBody] SaveGroupAnalysisRequest request,
-            [FromServices] GuardarAnalisisEnGrupo guardarAnalisisEnGrupo,
+            [FromServices] SaveGroupAnalysis saveGroupAnalysis,
             CancellationToken cancellationToken)
         {
             if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            var analysis = await guardarAnalisisEnGrupo.EjecutarAsync(groupId, userId, request, cancellationToken);
+            var analysis = await saveGroupAnalysis.ExecuteAsync(groupId, userId, request, cancellationToken);
             return StatusCode(StatusCodes.Status201Created, analysis);
         }
 

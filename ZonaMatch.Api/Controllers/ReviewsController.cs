@@ -9,7 +9,7 @@ namespace ZonaMatch.Api.Controllers;
 
 // Community reviews for a zone. Reading is public; writing requires an authenticated user.
 [ApiController]
-[Route("api/v1/zones/{slug:regex(" + RutasZona.Slug + ")}/reviews")]
+[Route("api/v1/zones/{slug:regex(" + ZoneRouteConstraints.Slug + ")}/reviews")]
 public sealed class ReviewsController : ControllerBase
 {
     // GET /api/v1/zones/villa-luro/reviews

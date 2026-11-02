@@ -9,7 +9,7 @@ namespace ZonaMatch.Api.Controllers;
 
 // Community contributions to a zone map stay pending until other users validate them.
 [ApiController]
-[Route("api/v1/zones/{slug:regex(" + RutasZona.Slug + ")}/contributions")]
+[Route("api/v1/zones/{slug:regex(" + ZoneRouteConstraints.Slug + ")}/contributions")]
 public sealed class ContributionsController : ControllerBase
 {
     // GET /api/v1/zones/villa-luro/contributions/summary

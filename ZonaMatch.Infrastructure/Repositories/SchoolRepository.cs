@@ -10,18 +10,18 @@ namespace ZonaMatch.Infrastructure.Repositories
         {
         }
 
-        public Task<IReadOnlyList<(School Entidad, double DistanciaMetros)>> GetCercanasAsync(
-            double latitud, double longitud, double radioMetros, string? nivel, string? sector)
+        public Task<IReadOnlyList<(School Entity, double DistanceMeters)>> GetNearbyByFiltersAsync(
+            double latitude, double longitude, double radiusMeters, string? level, string? sector)
         {
             IQueryable<School> query = _dbContext.Set<School>();
 
-            if (!string.IsNullOrWhiteSpace(nivel))
-                query = query.Where(e => e.Nivel == nivel);
+            if (!string.IsNullOrWhiteSpace(level))
+                query = query.Where(school => school.Nivel == level);
 
             if (!string.IsNullOrWhiteSpace(sector))
-                query = query.Where(e => e.Sector == sector);
+                query = query.Where(school => school.Sector == sector);
 
-            return BuscarEnRadioAsync(query, latitud, longitud, radioMetros);
+            return FindWithinRadiusAsync(query, latitude, longitude, radiusMeters);
         }
     }
 }

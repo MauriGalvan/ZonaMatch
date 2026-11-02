@@ -2,7 +2,7 @@ using ZonaMatch.Application.DTOs.Contributions.Requests;
 using ZonaMatch.Application.DTOs.Contributions.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
-using ZonaMatch.Application.UseCases.Comunidad;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Contributions
@@ -25,7 +25,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
             string zoneSlug, AuthenticatedUserContext currentUser, CreatePointContributionRequest request, CancellationToken cancellationToken = default)
         {
             var category = ContributionMapper.ValidateCategory(request.Category);
-            await _zones.ValidarContienePuntoAsync(zoneSlug, request.Latitude, request.Longitude, cancellationToken);
+            await _zones.EnsurePointBelongsToZoneAsync(zoneSlug, request.Latitude, request.Longitude, cancellationToken);
 
             var contribution = new Contribution
             {

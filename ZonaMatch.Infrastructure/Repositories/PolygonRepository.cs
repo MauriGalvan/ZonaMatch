@@ -5,46 +5,42 @@ using ZonaMatch.Domain.Common;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 
-namespace ZonaMatch.Infrastructure.Repositories
+namespace ZonaMatch.Infrastructure.Repositories;
+
+// Base repository for entities geolocated by an area (a geometry column).
+public class PolygonRepository<T> : Repository<T>, IPolygonRepository<T> where T : class, IPolygonLocation
 {
-    // Repositorio base para entidades geo-localizadas mediante un area (columna "geometry")
-    public class PolygonRepository<T> : Repository<T>, IPolygonRepository<T> where T : class, IPolygonLocation
+    // One degree of latitude is approximately 111,320 meters. Geometry columns in SRID 4326 use degrees.
+    // Reproject to a metric SRID or migrate the column to geography when exact distance calculations are required.
+    private const double MetersPerDegree = 111_320d;
+
+    public PolygonRepository(ZonaMatchDbContext dbContext) : base(dbContext)
     {
-        // 1 grado de latitud ~ 111.320 metros: aproximacion para el radio de busqueda sobre
-        // columnas "geometry" en SRID 4326 (que trabajan en grados, no en metros).
-        // Si se necesita precision exacta conviene reproyectar a un SRID metrico
-        // (ej. EPSG:5343 para AMBA) o migrar la columna a "geography".
-        private const double MetrosPorGrado = 111_320d;
+    }
 
-        public PolygonRepository(ZonaMatchDbContext dbContext) : base(dbContext)
+    public async Task<T?> GetContainingPointAsync(double latitude, double longitude)
+    {
+        var point = GeoFactory.CreatePoint(latitude, longitude);
+
+        try
         {
-        }
-
-        public async Task<T?> GetContainingPointAsync(double latitud, double longitud)
-        {
-            var punto = GeoFactory.CrearPunto(latitud, longitud);
-
-            try
-            {
-                return await _dbContext.Set<T>()
-                    .FirstOrDefaultAsync(e => e.Geometria.Contains(punto));
-            }
-            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
-            {
-                // Sin el dump de geo (zonamatch.sql) no estan partidos ni comunas: el dato queda vacio en lugar de
-                // romper la consulta que lo usa (por ejemplo, la direccion de un punto del mapa)
-                return null;
-            }
-        }
-
-        public async Task<IReadOnlyList<T>> GetNearbyAsync(double latitud, double longitud, double radioMetros)
-        {
-            var punto = GeoFactory.CrearPunto(latitud, longitud);
-            var radioGrados = radioMetros / MetrosPorGrado;
-
             return await _dbContext.Set<T>()
-                .Where(e => e.Geometria.IsWithinDistance(punto, radioGrados))
-                .ToListAsync();
+                .FirstOrDefaultAsync(entity => entity.Geometria.Contains(point));
         }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UndefinedTable)
+        {
+            // If the geo dump (zonamatch.sql) is missing, return no result instead of breaking dependent queries.
+            return null;
+        }
+    }
+
+    public async Task<IReadOnlyList<T>> GetNearbyAsync(double latitude, double longitude, double radiusMeters)
+    {
+        var point = GeoFactory.CreatePoint(latitude, longitude);
+        var radiusDegrees = radiusMeters / MetersPerDegree;
+
+        return await _dbContext.Set<T>()
+            .Where(entity => entity.Geometria.IsWithinDistance(point, radiusDegrees))
+            .ToListAsync();
     }
 }

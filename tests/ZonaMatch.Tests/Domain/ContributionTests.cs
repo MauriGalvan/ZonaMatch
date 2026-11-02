@@ -2,7 +2,7 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Tests.Domain
 {
-    public class AporteTests
+    public class ContributionTests
     {
         private static readonly DateTimeOffset Ahora = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 

@@ -9,7 +9,7 @@ namespace ZonaMatch.Api.Controllers
 {
     // Site administrators resolve community contributions without waiting for the votes
     [ApiController]
-    [Route("api/v1/zones/{slug:regex(" + RutasZona.Slug + ")}/contributions")]
+    [Route("api/v1/zones/{slug:regex(" + ZoneRouteConstraints.Slug + ")}/contributions")]
     [Authorize(Roles = AppRoles.Admin)]
     public sealed class ContributionModerationController : ControllerBase
     {

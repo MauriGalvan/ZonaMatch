@@ -2,7 +2,7 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Tests.Domain
 {
-    public class ResenaTests
+    public class ReviewTests
     {
         [Theory]
         [InlineData(3, 5, 4, 4, 2, 3.6)]

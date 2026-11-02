@@ -9,7 +9,7 @@ namespace ZonaMatch.Api.Controllers;
 
 // Questions for a zone's community and their answers. Reading is public; writing requires authentication.
 [ApiController]
-[Route("api/v1/zones/{slug:regex(" + RutasZona.Slug + ")}/questions")]
+[Route("api/v1/zones/{slug:regex(" + ZoneRouteConstraints.Slug + ")}/questions")]
 public sealed class QuestionsController : ControllerBase
 {
     // GET /api/v1/zones/villa-luro/questions

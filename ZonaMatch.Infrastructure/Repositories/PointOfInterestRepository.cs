@@ -118,9 +118,9 @@ namespace ZonaMatch.Infrastructure.Repositories
         // A polygon counts when the point that represents it falls inside the zone.
         private static readonly string PuntosEnZona = PuntosEn(
             $"""
-            {ZonaSql.ZonaPorSlug},
+            {ZoneSql.ZoneBySlug},
             o AS (
-                SELECT z.way AS g, z.geom, ({ZonaSql.Centro("z.geom")})::geography AS geog
+                SELECT z.way AS g, z.geom, ({ZoneSql.GetCenter("z.geom")})::geography AS geog
                 FROM zona z
             )
             """,
@@ -157,11 +157,11 @@ namespace ZonaMatch.Infrastructure.Repositories
         private static readonly string SqlResumenZona = Resumen(PuntosEnZona);
 
         private static readonly string SqlProfileRecommendations = $"""
-            WITH {ZonaSql.ZonaPorSlug},
+            WITH {ZoneSql.ZoneBySlug},
             zone_area AS (
                 SELECT z.way AS geometry_3857, z.geom AS geometry_4326,
                        -- Distances from the point chosen on the map, or from the zone center without one
-                       COALESCE(ST_SetSRID(ST_MakePoint(@longitude, @latitude), 4326), {ZonaSql.Centro("z.geom")})::geography AS center
+                       COALESCE(ST_SetSRID(ST_MakePoint(@longitude, @latitude), 4326), {ZoneSql.GetCenter("z.geom")})::geography AS center
                 FROM zona z
             ),
             raw_candidates AS (

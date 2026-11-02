@@ -11,7 +11,7 @@ namespace ZonaMatch.Infrastructure.Repositories
     // Arma el perfil de todas las zonas elegidas de geo.zonas para el motor de puntaje: censo y delitos
     // (geo.zona_indicadores), transporte (geo.zona_transporte_*), equipamiento de OSM y alquiler
     // (app.zone_market). Contar el equipamiento de todas las zonas tarda unos segundos, asi que el resultado
-    // se guarda en PerfilesZonaCache: los datos solo cambian cuando se vuelve a correr el ETL.
+    // se guarda en ZoneProfilesCache: los datos solo cambian cuando se vuelve a correr el ETL.
     public class ZoneProfilesRepository : IZoneProfilesRepository
     {
         private const string Geo = ZonaMatchDbOptions.GeoSchema;
@@ -81,7 +81,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                    COALESCE(l.lineas, 0) AS "LineasTransporte", COALESCE(p.salidas, 0) AS "SalidasHoraPico",
                    e.escuelas AS "Escuelas", e.salud AS "CentrosSalud", e.verdes AS "EspaciosVerdes",
                    v.m2 AS "SuperficieVerdeM2",
-                   ST_Y({ZonaSql.Centro("z.geom")}) AS "Latitud", ST_X({ZonaSql.Centro("z.geom")}) AS "Longitud"
+                   ST_Y({ZoneSql.GetCenter("z.geom")}) AS "Latitud", ST_X({ZoneSql.GetCenter("z.geom")}) AS "Longitud"
             FROM zonas z
             LEFT JOIN {Geo}.zona_indicadores i USING (osm_id)
             LEFT JOIN lineas l USING (osm_id)
@@ -190,10 +190,10 @@ namespace ZonaMatch.Infrastructure.Repositories
             """;
 
         private readonly ZonaMatchDbContext _dbContext;
-        private readonly PerfilesZonaCache _cache;
+        private readonly ZoneProfilesCache _cache;
         private readonly ILogger<ZoneProfilesRepository> _logger;
 
-        public ZoneProfilesRepository(ZonaMatchDbContext dbContext, PerfilesZonaCache cache, ILogger<ZoneProfilesRepository> logger)
+        public ZoneProfilesRepository(ZonaMatchDbContext dbContext, ZoneProfilesCache cache, ILogger<ZoneProfilesRepository> logger)
         {
             _dbContext = dbContext;
             _cache = cache;

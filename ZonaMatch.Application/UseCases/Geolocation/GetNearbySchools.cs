@@ -16,7 +16,7 @@ public sealed class GetNearbySchools(ISchoolRepository schoolRepository)
     {
         GeolocationRequestValidator.ValidateCoordinates(latitude, longitude, radiusMeters);
 
-        var schools = await schoolRepository.GetCercanasAsync(latitude, longitude, radiusMeters, level, sector);
-        return schools.Select(school => SchoolResponseMapper.Map(school.Entidad, school.DistanciaMetros)).ToList();
+        var schools = await schoolRepository.GetNearbyByFiltersAsync(latitude, longitude, radiusMeters, level, sector);
+        return schools.Select(school => SchoolResponseMapper.Map(school.Entity, school.DistanceMeters)).ToList();
     }
 }

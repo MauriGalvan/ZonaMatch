@@ -3,7 +3,7 @@ using ZonaMatch.Application.DTOs.Reviews.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
-using ZonaMatch.Application.UseCases.Comunidad;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
@@ -36,7 +36,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
         public async Task<ReviewResponse> ExecuteAsync(
             string zoneSlug, AuthenticatedUserContext currentUser, SaveReviewRequest request, CancellationToken cancellationToken = default)
         {
-            await _zones.ValidarExisteAsync(zoneSlug, cancellationToken);
+            await _zones.EnsureZoneExistsAsync(zoneSlug, cancellationToken);
 
             if (!ReviewAspect.TryNormalize(request.Topics, out var topics, out var error))
                 throw new BadRequestException(error);

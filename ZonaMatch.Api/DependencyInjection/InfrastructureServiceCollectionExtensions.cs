@@ -69,7 +69,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddMemoryCache();
-        services.AddSingleton<PerfilesZonaCache>();
+        services.AddSingleton<ZoneProfilesCache>();
         services.AddHttpClient<IRoutingClient, MotisRoutingClient>(client =>
         {
             client.BaseAddress = new Uri(configuration["Motis:Url"] ?? "http://localhost:18080/");

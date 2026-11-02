@@ -1,7 +1,7 @@
 using NetTopologySuite.Geometries;
 using ZonaMatch.Application.DTOs.Contributions.Responses;
 using ZonaMatch.Application.Exceptions;
-using ZonaMatch.Application.UseCases.Comunidad;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 
@@ -29,7 +29,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
                 contribution.Id,
                 contribution.Tipo,
                 contribution.Estado,
-                Autor.Iniciales(authorEmail),
+                AuthorInitials.GetInitials(authorEmail),
                 contribution.FechaCreacion,
                 contribution.UsuarioId == currentUserId,
                 contribution.Validaciones.FirstOrDefault(v => v.UsuarioId == currentUserId)?.Confirma,

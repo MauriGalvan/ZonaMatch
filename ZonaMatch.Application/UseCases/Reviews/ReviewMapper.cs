@@ -1,5 +1,5 @@
 using ZonaMatch.Application.DTOs.Reviews.Responses;
-using ZonaMatch.Application.UseCases.Comunidad;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 
@@ -29,7 +29,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
         public static ReviewResponse ToResponse(Review review, string? authorEmail, Guid? currentUserId) =>
             new(
                 review.Id,
-                Autor.Iniciales(authorEmail),
+                AuthorInitials.GetInitials(authorEmail),
                 review.AniosEnZona,
                 review.Verificada,
                 review.Puntaje,

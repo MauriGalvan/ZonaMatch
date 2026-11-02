@@ -2,7 +2,7 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Tests.Domain
 {
-    public class IndicadoresZonaTests
+    public class ZoneIndicatorsTests
     {
         [Theory]
         [InlineData(907, 1000, 90.7)]

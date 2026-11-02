@@ -1,6 +1,6 @@
 using ZonaMatch.Application.DTOs.Questions.Responses;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.Comunidad;
+using ZonaMatch.Application.UseCases.Community;
 
 namespace ZonaMatch.Application.UseCases.Questions
 {
@@ -23,7 +23,7 @@ namespace ZonaMatch.Application.UseCases.Questions
                 .Select(question => new QuestionResponse(
                     question.Id,
                     question.Texto,
-                    Autor.Iniciales(question.User?.Email),
+                    AuthorInitials.GetInitials(question.User?.Email),
                     question.FechaCreacion,
                     question.UsuarioId == currentUserId,
                     question.Respuestas

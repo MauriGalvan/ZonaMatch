@@ -21,7 +21,7 @@ namespace ZonaMatch.Tests.UseCases.Contacto
         [Fact]
         public async Task Enviar_MandaUnMailAlEquipoConLosDatos()
         {
-            await _casoDeUso.EjecutarAsync(new FormularioContactoDto("  ana@example.com ", "  Ana  ", "Caballito\r\no Almagro", null));
+            await _casoDeUso.ExecuteAsync(new FormularioContactoDto("  ana@example.com ", "  Ana  ", "Caballito\r\no Almagro", null));
 
             var mail = Assert.Single(_email.Enviados);
             Assert.Equal(Equipo, mail.Para);
@@ -35,7 +35,7 @@ namespace ZonaMatch.Tests.UseCases.Contacto
         [Fact]
         public async Task Enviar_SinNombreNiZona_LoAclaraEnElMail()
         {
-            await _casoDeUso.EjecutarAsync(new FormularioContactoDto("ana@example.com", "  ", null, null));
+            await _casoDeUso.ExecuteAsync(new FormularioContactoDto("ana@example.com", "  ", null, null));
 
             var mail = Assert.Single(_email.Enviados);
             Assert.Equal("Formulario de contacto: ana@example.com", mail.Asunto);
@@ -46,7 +46,7 @@ namespace ZonaMatch.Tests.UseCases.Contacto
         [Fact]
         public async Task Enviar_CodificaElHtmlQueEscribeLaPersona()
         {
-            await _casoDeUso.EjecutarAsync(new FormularioContactoDto("ana@example.com", "<b>Ana</b>", "<script>alert(1)</script>", null));
+            await _casoDeUso.ExecuteAsync(new FormularioContactoDto("ana@example.com", "<b>Ana</b>", "<script>alert(1)</script>", null));
 
             var mail = Assert.Single(_email.Enviados);
             Assert.DoesNotContain("<script>", mail.Cuerpo);
@@ -57,7 +57,7 @@ namespace ZonaMatch.Tests.UseCases.Contacto
         [Fact]
         public async Task Enviar_ConElCampoTrampaCompleto_NoMandaNada()
         {
-            await _casoDeUso.EjecutarAsync(new FormularioContactoDto("bot@example.com", null, null, "https://spam.example.com"));
+            await _casoDeUso.ExecuteAsync(new FormularioContactoDto("bot@example.com", null, null, "https://spam.example.com"));
 
             Assert.Empty(_email.Enviados);
         }
@@ -68,7 +68,7 @@ namespace ZonaMatch.Tests.UseCases.Contacto
             _email.Falla = new InvalidOperationException("SMTP caido");
 
             var error = await Assert.ThrowsAsync<ServiceUnavailableException>(
-                () => _casoDeUso.EjecutarAsync(new FormularioContactoDto("ana@example.com", null, null, null)));
+                () => _casoDeUso.ExecuteAsync(new FormularioContactoDto("ana@example.com", null, null, null)));
             Assert.IsType<InvalidOperationException>(error.InnerException);
         }
 

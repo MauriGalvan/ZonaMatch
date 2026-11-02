@@ -106,7 +106,7 @@ namespace ZonaMatch.Infrastructure.Geo
             foreach (var tramo in tramos)
             {
                 // En transporte publico, MOTIS puede entregar la geometria sin el campo distance.
-                var distancia = tramo.DistanciaMetros ?? RutaPolyline.LongitudMetros(
+                var distancia = tramo.DistanciaMetros ?? RoutePolyline.GetLengthInMeters(
                     tramo.Geometria?.Puntos, tramo.Geometria?.Precision);
 
                 // No presentar solo las caminatas como si fueran la distancia total del viaje.

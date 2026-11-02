@@ -5,7 +5,7 @@ using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.Comunidad;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Domain.Entities;
 
@@ -59,9 +59,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             foreach (var zone in zones)
             {
                 if (zone.Origin is { } origin)
-                    await repository.ValidarContienePuntoAsync(zone.Slug, origin.Latitude, origin.Longitude, cancellationToken);
+                    await repository.EnsurePointBelongsToZoneAsync(zone.Slug, origin.Latitude, origin.Longitude, cancellationToken);
                 else
-                    await repository.ValidarExisteAsync(zone.Slug, cancellationToken);
+                    await repository.EnsureZoneExistsAsync(zone.Slug, cancellationToken);
             }
 
             return zones

@@ -3,7 +3,7 @@ using ZonaMatch.Application.DTOs.Contributions.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
-using ZonaMatch.Application.UseCases.Comunidad;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Contributions
@@ -54,7 +54,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
                 case CorrectionReason.Ubicacion:
                     if (request.Latitude is not { } latitude || request.Longitude is not { } longitude)
                         throw new BadRequestException("Marca en el mapa la ubicacion correcta del lugar.");
-                    await _zones.ValidarContienePuntoAsync(zoneSlug, latitude, longitude, cancellationToken);
+                    await _zones.EnsurePointBelongsToZoneAsync(zoneSlug, latitude, longitude, cancellationToken);
                     contribution.Ubicacion = ContributionMapper.CreatePoint(latitude, longitude);
                     break;
 
@@ -64,7 +64,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
 
             // Location validation above already checks the zone; other reasons are validated here.
             if (reason != CorrectionReason.Ubicacion)
-                await _zones.ValidarExisteAsync(zoneSlug, cancellationToken);
+                await _zones.EnsureZoneExistsAsync(zoneSlug, cancellationToken);
 
             _contributions.Add(contribution);
             await _contributions.SaveChangesAsync(cancellationToken);

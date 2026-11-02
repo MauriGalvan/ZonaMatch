@@ -59,7 +59,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<CreateGroup>();
         services.AddScoped<GetGroupDetails>();
         services.AddScoped<CalculateGroupScore>();
-        services.AddScoped<GuardarAnalisisEnGrupo>();
+        services.AddScoped<SaveGroupAnalysis>();
         services.AddScoped<GetGroups>();
         services.AddScoped<DeleteGroup>();
         services.AddScoped<UpdateGroup>();

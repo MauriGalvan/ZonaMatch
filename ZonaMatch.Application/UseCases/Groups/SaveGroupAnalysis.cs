@@ -9,7 +9,7 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Groups;
 
-public sealed class GuardarAnalisisEnGrupo
+public sealed class SaveGroupAnalysis
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -19,7 +19,7 @@ public sealed class GuardarAnalisisEnGrupo
     private readonly IZoneRepository _zones;
     private readonly TimeProvider _clock;
 
-    public GuardarAnalisisEnGrupo(
+    public SaveGroupAnalysis(
         CalculateGroupScore calculateRanking,
         IAnalysisRepository analyses,
         IProfileRepository profiles,
@@ -33,7 +33,7 @@ public sealed class GuardarAnalisisEnGrupo
         _clock = clock;
     }
 
-    public async Task<AnalysisResponse> EjecutarAsync(
+    public async Task<AnalysisResponse> ExecuteAsync(
         Guid groupId,
         Guid currentUserId,
         SaveGroupAnalysisRequest request,

@@ -35,7 +35,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
-builder.Services.AddHostedService<PrecalcularPerfilesZona>();
+builder.Services.AddHostedService<WarmZoneProfilesService>();
 
 // Keep the database health check in the API composition root because it backs the HTTP health endpoint.
 builder.Services.AddHealthChecks().AddDbContextCheck<ZonaMatchDbContext>("postgres");

@@ -22,12 +22,12 @@ public sealed class GetLocationSummary(
         // The repositories share a scoped DbContext, so keep these queries sequential.
         var district = await boundaryLookup.GetDistrictAsync(latitude, longitude);
         var commune = await boundaryLookup.GetCommuneAsync(latitude, longitude);
-        var schools = await schoolRepository.GetCercanasAsync(latitude, longitude, radiusMeters, null, null);
+        var schools = await schoolRepository.GetNearbyByFiltersAsync(latitude, longitude, radiusMeters, null, null);
 
         return new UbicacionResumenDto(
             new CoordenadaDto(latitude, longitude),
             district,
             commune,
-            schools.Select(school => SchoolResponseMapper.Map(school.Entidad, school.DistanciaMetros)).ToList());
+            schools.Select(school => SchoolResponseMapper.Map(school.Entity, school.DistanceMeters)).ToList());
     }
 }

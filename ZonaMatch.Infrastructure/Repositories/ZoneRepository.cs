@@ -6,7 +6,7 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    // Zones are the administrative boundaries of the OSM import (see ZonaSql).
+    // Zones are the administrative boundaries of the OSM import (see ZoneSql).
     // The GeoJSON is built inside PostGIS, like MapRepository.
     public class ZoneRepository : IZoneRepository
     {
@@ -16,23 +16,23 @@ namespace ZonaMatch.Infrastructure.Repositories
         // ~1 m precision, keeps the payload small
         private const int Decimales = 5;
 
-        private static string Nivel(string alias) => ZonaSql.Nivel(alias);
+        private static string GetAdministrativeLevel(string alias) => ZoneSql.GetAdministrativeLevel(alias);
 
-        // The zone is chosen as in ZonaSql.ZonaPorSlug.
+        // The zone is chosen as in ZoneSql.ZoneBySlug.
         // Jurisdicciones: the boundaries that contain the zone, most specific first. Only ones at least as
         // large count, and one that covers the same area as a wider one is skipped (the city "Buenos Aires", level 8,
         // repeats CABA).
         private static readonly string SqlPorSlug = $"""
-            WITH {ZonaSql.ZonaPorSlug},
+            WITH {ZoneSql.ZoneBySlug},
             centro AS (
-                SELECT {ZonaSql.Centro("z.geom")} AS punto
+                SELECT {ZoneSql.GetCenter("z.geom")} AS punto
                 FROM zona z
             ),
             contenedores AS (
-                SELECT j.osm_id, j.name, {Nivel("j")} AS nivel, j.way_area
+                SELECT j.osm_id, j.name, {GetAdministrativeLevel("j")} AS nivel, j.way_area
                 FROM {Schema}.planet_osm_polygon j, zona z
                 WHERE j.boundary = 'administrative' AND j.name IS NOT NULL
-                  AND {Nivel("j")} BETWEEN 4 AND z.nivel - 1
+                  AND {GetAdministrativeLevel("j")} BETWEEN 4 AND z.nivel - 1
                   AND ST_Contains(j.way, ST_PointOnSurface(z.way))
                   -- a smaller boundary can also hold that point (a comuna inside the city "Buenos Aires");
                   -- one of the same size counts (Commune 14 is exactly Palermo)
@@ -91,10 +91,10 @@ namespace ZonaMatch.Infrastructure.Repositories
             FROM elegidas e
             LEFT JOIN LATERAL (
                 WITH contenedores AS (
-                    SELECT c.name, {Nivel("c")} AS nivel, c.way_area
+                    SELECT c.name, {GetAdministrativeLevel("c")} AS nivel, c.way_area
                     FROM {Schema}.planet_osm_polygon c
                     WHERE c.boundary = 'administrative' AND c.name IS NOT NULL
-                      AND {Nivel("c")} BETWEEN 4 AND e.nivel - 1
+                      AND {GetAdministrativeLevel("c")} BETWEEN 4 AND e.nivel - 1
                       AND ST_Contains(c.way, e.punto)
                       AND c.way_area >= 0.99 * e.way_area
                 )
@@ -116,12 +116,12 @@ namespace ZonaMatch.Infrastructure.Repositories
         }
 
         private static readonly string SqlExiste = $"""
-            WITH {ZonaSql.ZonaPorSlug}
+            WITH {ZoneSql.ZoneBySlug}
             SELECT EXISTS (SELECT 1 FROM zona) AS "Value"
             """;
 
         private static readonly string SqlContienePunto = $"""
-            WITH {ZonaSql.ZonaPorSlug}
+            WITH {ZoneSql.ZoneBySlug}
             SELECT EXISTS (
                 SELECT 1 FROM zona z
                 WHERE ST_Intersects(z.geom, ST_SetSRID(ST_MakePoint(@lon, @lat), 4326))) AS "Value"
