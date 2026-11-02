@@ -85,6 +85,26 @@ namespace ZonaMatch.Tests.UseCases.Contribution
         }
 
         [Fact]
+        public async Task Validate_WhenUserChangesTheirVote_UpdatesItAndCanResolveTheContribution()
+        {
+            var voterId = Guid.NewGuid();
+            _contribution.Location = new NetTopologySuite.Geometries.Point(-58.5, -34.63) { SRID = 4326 };
+            _contribution.Votes.AddRange([
+                new ContributionVote { ContributionId = _contribution.Id, UserId = Guid.NewGuid(), Confirms = true },
+                new ContributionVote { ContributionId = _contribution.Id, UserId = Guid.NewGuid(), Confirms = true },
+                new ContributionVote { ContributionId = _contribution.Id, UserId = voterId, Confirms = false }
+            ]);
+
+            await _useCase.ExecuteAsync(Zone, _contribution.Id, voterId, Vote(confirm: true));
+
+            Assert.Equal(3, _contribution.Votes.Count);
+            Assert.True(Assert.Single(_contribution.Votes.Where(vote => vote.UserId == voterId)).Confirms);
+            Assert.Equal(ContributionStatus.Approved, _contribution.Status);
+            Assert.Equal(Now, _contribution.ResolvedAt);
+            Assert.Equal("a" + _contribution.Id, Assert.Single(_pois.Pois).Id);
+        }
+
+        [Fact]
         public async Task Validate_ReturnsTheCurrentUsersVote()
         {
             var response = await _useCase.ExecuteAsync(Zone, _contribution.Id, Guid.NewGuid(), Vote(confirm: false));

@@ -50,6 +50,32 @@ namespace ZonaMatch.Tests.UseCases.Contribution
             Assert.Equal(-58.5, location.X);
         }
 
+        [Fact]
+        public async Task CreateCorrection_WhenReasonIsCategory_SavesTheNormalizedCategory()
+        {
+            await _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Category, proposedCategory: " Salud "));
+
+            var contribution = Assert.Single(_contributions.Contributions);
+            Assert.Equal(CorrectionReason.Category, contribution.Reason);
+            Assert.Equal("salud", contribution.Category);
+            Assert.Null(contribution.Name);
+            Assert.Null(contribution.Location);
+        }
+
+        [Fact]
+        public async Task CreateCorrection_WhenReasonIsOtherWithComment_SavesTheNormalizedComment()
+        {
+            await _useCase.ExecuteAsync(Zone, _author,
+                Correction(CorrectionReason.Other, comment: "  Abre solo por la tarde.  "));
+
+            var contribution = Assert.Single(_contributions.Contributions);
+            Assert.Equal(CorrectionReason.Other, contribution.Reason);
+            Assert.Equal("Abre solo por la tarde.", contribution.Comment);
+            Assert.Null(contribution.Name);
+            Assert.Null(contribution.Category);
+            Assert.Null(contribution.Location);
+        }
+
         [Theory]
         [InlineData(CorrectionReason.Name)]
         [InlineData(CorrectionReason.Category)]

@@ -53,5 +53,13 @@ namespace ZonaMatch.Tests.UseCases.Question
 
             Assert.False(item.IsMine);
         }
+
+        [Fact]
+        public async Task List_WhenZoneHasNoQuestions_ReturnsAnEmptyList()
+        {
+            var questions = await _useCase.ExecuteAsync(Zone, currentUserId: null);
+
+            Assert.Empty(questions);
+        }
     }
 }

@@ -33,7 +33,9 @@ namespace ZonaMatch.Tests.UseCases.Contribution
             Assert.Equal(ContributionStatus.Pending, savedContribution.Status);
             Assert.Equal("salud", savedContribution.Category);
             Assert.Equal("Farmacia Nueva", savedContribution.Name);
+            Assert.Equal("Lun a vie 9 a 20", savedContribution.OpeningHours);
             Assert.Null(savedContribution.Address);
+            Assert.Equal(-58.50, savedContribution.Location!.X);
             Assert.Equal(-34.63, savedContribution.Location!.Y);
             Assert.Equal(4326, savedContribution.Location.SRID);
             Assert.Equal(Now, savedContribution.CreatedAt);

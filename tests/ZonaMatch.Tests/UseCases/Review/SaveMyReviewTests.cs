@@ -3,6 +3,8 @@ using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Review;
 using ZonaMatch.Domain.Common;
+using ZonaMatch.Domain.Enums;
+using DomainSavedZone = ZonaMatch.Domain.Entities.SavedZone;
 
 namespace ZonaMatch.Tests.UseCases.Review
 {
@@ -12,6 +14,8 @@ namespace ZonaMatch.Tests.UseCases.Review
         private static readonly DateTimeOffset CurrentTime = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
         private readonly FakeReviewRepository _reviews = new();
+        private readonly FakeSavedZoneRepository _savedZones = new();
+        private readonly FakeNotificationRepository _notifications = new();
         private readonly SaveMyReview _useCase;
         private readonly AuthenticatedUserContext _ana = new(Guid.NewGuid(), "ana@example.com");
 
@@ -20,8 +24,8 @@ namespace ZonaMatch.Tests.UseCases.Review
             _useCase = new SaveMyReview(
                 _reviews,
                 new FakeZoneRepository(),
-                new FakeSavedZoneRepository(),
-                new FakeNotificationRepository(),
+                _savedZones,
+                _notifications,
                 new FixedTimeProvider(CurrentTime));
         }
 
@@ -42,6 +46,24 @@ namespace ZonaMatch.Tests.UseCases.Review
             Assert.Equal(CurrentTime, savedReview.CreatedAt);
             Assert.True(second.IsMine);
             Assert.Equal("AN", second.Initials);
+        }
+
+        [Fact]
+        public async Task Save_WhenCreatingReview_NotifiesOtherUsersWhoSavedTheZoneOnlyOnce()
+        {
+            var savedZoneUserId = Guid.NewGuid();
+            _savedZones.SavedZones.Add(new DomainSavedZone { UserId = savedZoneUserId, ZoneSlug = Zone, Name = "Villa Luro" });
+            _savedZones.SavedZones.Add(new DomainSavedZone { UserId = _ana.Id, ZoneSlug = Zone, Name = "Villa Luro" });
+            _savedZones.SavedZones.Add(new DomainSavedZone { UserId = Guid.NewGuid(), ZoneSlug = "otra-zona", Name = "Otra zona" });
+
+            await _useCase.ExecuteAsync(Zone, _ana, Review());
+            await _useCase.ExecuteAsync(Zone, _ana, Review(safety: 4));
+
+            var notification = Assert.Single(_notifications.Notifications);
+            Assert.Equal(savedZoneUserId, notification.UserId);
+            Assert.Equal(NotificationType.SavedZoneReview, notification.Type);
+            Assert.Equal($"/zonas/{Zone}?tab=comunidad", notification.Link);
+            Assert.Single(_reviews.Reviews);
         }
 
         [Fact]

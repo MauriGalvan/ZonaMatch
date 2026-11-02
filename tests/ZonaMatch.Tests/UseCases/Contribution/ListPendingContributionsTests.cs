@@ -60,5 +60,13 @@ namespace ZonaMatch.Tests.UseCases.Contribution
             Assert.True(item.IsMine);
             Assert.Null(item.MyVote);
         }
+
+        [Fact]
+        public async Task ListPending_WhenThereAreNoPendingContributions_ReturnsAnEmptyList()
+        {
+            var contributions = await _useCase.ExecuteAsync(Zone, _neighborId);
+
+            Assert.Empty(contributions);
+        }
     }
 }

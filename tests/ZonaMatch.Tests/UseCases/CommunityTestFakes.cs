@@ -5,6 +5,7 @@ using ZonaMatch.Domain.Entities;
 using DomainContribution = ZonaMatch.Domain.Entities.Contribution;
 using DomainQuestion = ZonaMatch.Domain.Entities.Question;
 using DomainReview = ZonaMatch.Domain.Entities.Review;
+using DomainSavedZone = ZonaMatch.Domain.Entities.SavedZone;
 
 namespace ZonaMatch.Tests.UseCases
 {
@@ -120,19 +121,23 @@ namespace ZonaMatch.Tests.UseCases
 
     internal sealed class FakeSavedZoneRepository : ISavedZoneRepository
     {
-        public Task<IReadOnlyList<SavedZone>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        public List<DomainSavedZone> SavedZones { get; } = [];
+
+        public Task<IReadOnlyList<DomainSavedZone>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<SavedZone?> GetAsync(Guid userId, string zoneSlug, CancellationToken cancellationToken = default) =>
+        public Task<DomainSavedZone?> GetAsync(Guid userId, string zoneSlug, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<SavedZone>> GetForZoneAsync(
+        public Task<IReadOnlyList<DomainSavedZone>> GetForZoneAsync(
             string zoneSlug, Guid excludedUserId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<SavedZone>>([]);
+            Task.FromResult<IReadOnlyList<DomainSavedZone>>(SavedZones
+                .Where(savedZone => savedZone.ZoneSlug == zoneSlug && savedZone.UserId != excludedUserId)
+                .ToList());
 
-        public void Add(SavedZone savedZone) => throw new NotSupportedException();
+        public void Add(DomainSavedZone savedZone) => throw new NotSupportedException();
 
-        public void Remove(SavedZone savedZone) => throw new NotSupportedException();
+        public void Remove(DomainSavedZone savedZone) => throw new NotSupportedException();
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }

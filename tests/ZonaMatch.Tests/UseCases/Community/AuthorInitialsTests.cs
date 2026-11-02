@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Application.UseCases.Community;
 
 namespace ZonaMatch.Tests.UseCases.Community
@@ -12,9 +13,9 @@ namespace ZonaMatch.Tests.UseCases.Community
         [InlineData("1990.mara@example.com", "MA")]
         [InlineData("123@example.com", "?")]
         [InlineData(null, "?")]
-        public void GetInitials_DerivesInitialsWithoutExposingTheEmail(string? email, string expected)
+        public void GetInitials_WhenEmailIsProvided_ReturnsInitialsWithoutExposingTheEmail(string? email, string expected)
         {
-            Assert.Equal(expected, AuthorInitials.GetInitials(email));
+            AuthorInitials.GetInitials(email).Should().Be(expected);
         }
     }
 }

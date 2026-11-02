@@ -94,6 +94,22 @@ namespace ZonaMatch.Tests.UseCases.Contribution
         }
 
         [Fact]
+        public async Task Execute_WhenApprovingCategoryCorrection_UpdatesTheExistingPointOfInterest()
+        {
+            var correction = Correction("n321", CorrectionReason.Category);
+            correction.Category = "salud";
+
+            await _useCase.ExecuteAsync(Zone, correction.Id, _administrator, approve: true);
+
+            var poi = Assert.Single(_pois.Pois);
+            Assert.Equal("n321", poi.Id);
+            Assert.False(poi.IsNew);
+            Assert.Equal("salud", poi.Category);
+            Assert.Equal(correction.Id, poi.LastContributionId);
+            Assert.Equal(Now, poi.UpdatedAt);
+        }
+
+        [Fact]
         public async Task Execute_WhenApprovingAnInformativeCorrection_ChangesNoPoint()
         {
             var other = Correction("n9", CorrectionReason.Other);
