@@ -18,7 +18,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             _useCase = new ListPendingContributions(_contributions);
         }
 
-        private Contribution Agregar(ContributionStatus estado = ContributionStatus.Pendiente)
+        private Contribution Add(ContributionStatus estado = ContributionStatus.Pendiente)
         {
             var aporte = new Contribution
             {
@@ -30,16 +30,16 @@ namespace ZonaMatch.Tests.UseCases.Contributions
                 Nombre = "Farmacia Nueva",
                 FechaCreacion = Now
             };
-            _contributions.Agregar(aporte);
+            _contributions.Add(aporte);
             return aporte;
         }
 
         [Fact]
         public async Task ListPending_WhenUserHasVoted_ReturnsPendingItemsWithTheirVote()
         {
-            var pendiente = Agregar();
+            var pendiente = Add();
             pendiente.Validar(_neighborId, confirma: false, Now);
-            Agregar(ContributionStatus.Aprobado);
+            Add(ContributionStatus.Aprobado);
 
             var item = Assert.Single(await _useCase.ExecuteAsync(Zone, _neighborId));
 
@@ -52,7 +52,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task ListPending_WhenUserIsTheAuthor_IndicatesOwnershipAndNoVote()
         {
-            Agregar();
+            Add();
 
             var item = Assert.Single(await _useCase.ExecuteAsync(Zone, _author.Id));
 

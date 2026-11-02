@@ -15,7 +15,7 @@ public sealed class GetMyProfile
 
     public async Task<ProfileResponse?> ExecuteAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var profile = await _profiles.ObtenerDeUsuarioAsync(userId, cancellationToken);
+        var profile = await _profiles.GetByUserAsync(userId, cancellationToken);
 
         return profile is null ? null : ProfileMapper.ToResponse(profile);
     }

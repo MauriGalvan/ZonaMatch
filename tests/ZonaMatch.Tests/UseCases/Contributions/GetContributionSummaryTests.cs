@@ -17,7 +17,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         }
 
         private void Add(ContributionStatus status, string zone = Zone) =>
-            _contributions.Agregar(new Contribution { ZonaSlug = zone, UsuarioId = Guid.NewGuid(), Estado = status });
+            _contributions.Add(new Contribution { ZonaSlug = zone, UsuarioId = Guid.NewGuid(), Estado = status });
 
         [Fact]
         public async Task GetSummary_CountsApprovedAndPendingButNotRejectedContributions()

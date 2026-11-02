@@ -27,7 +27,7 @@ namespace ZonaMatch.Tests.UseCases.Questions
                 NullLogger<AnswerQuestion>.Instance,
                 new FixedTimeProvider(CurrentTime),
                 new FrontendLinks("http://localhost:5173/"));
-            _questions.Agregar(_question);
+            _questions.Add(_question);
         }
 
         [Fact]

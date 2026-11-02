@@ -76,10 +76,10 @@ namespace ZonaMatch.Tests.UseCases.Zones
             public List<ZoneTransitModeStops> Stops { get; } = [];
             public List<TransitLineDepartures> Departures { get; } = [];
 
-            public Task<IReadOnlyList<ZoneTransitModeStops>> ListarParadasAsync(string slug, CancellationToken cancellationToken = default) =>
+            public Task<IReadOnlyList<ZoneTransitModeStops>> ListStopsAsync(string slug, CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZoneTransitModeStops>>(slug == ZoneSlug ? Stops : []);
 
-            public Task<IReadOnlyList<TransitLineDepartures>> ListarSalidasAsync(string slug, CancellationToken cancellationToken = default) =>
+            public Task<IReadOnlyList<TransitLineDepartures>> ListDeparturesAsync(string slug, CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<TransitLineDepartures>>(slug == ZoneSlug ? Departures : []);
         }
     }

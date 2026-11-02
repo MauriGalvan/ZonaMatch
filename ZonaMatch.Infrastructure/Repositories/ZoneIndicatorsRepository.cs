@@ -50,10 +50,10 @@ namespace ZonaMatch.Infrastructure.Repositories
             _logger = logger;
         }
 
-        public Task<ZoneIndicators?> ObtenerPorSlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        public Task<ZoneIndicators?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
             PrimeraAsync(SqlPorSlug, cancellationToken, new NpgsqlParameter("slug", slug));
 
-        public Task<ZoneIndicators?> ObtenerCabaAsync(CancellationToken cancellationToken = default) =>
+        public Task<ZoneIndicators?> GetCapitalCityAsync(CancellationToken cancellationToken = default) =>
             PrimeraAsync(SqlCaba, cancellationToken);
 
         private async Task<ZoneIndicators?> PrimeraAsync(

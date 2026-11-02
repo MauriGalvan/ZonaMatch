@@ -6,13 +6,13 @@ namespace ZonaMatch.Application.Interfaces
     public interface IProfileRepository
     {
         // Con su detalle y seguimiento de cambios; null si todavia no lo armo
-        Task<Context?> ObtenerDeUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+        Task<Context?> GetByUserAsync(Guid usuarioId, CancellationToken cancellationToken = default);
 
         // Perfiles existentes de varios usuarios, con sus preferencias y restricciones.
-        Task<IReadOnlyList<Context>> ObtenerDeUsuariosAsync(IReadOnlyCollection<Guid> usuarioIds, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<Context>> GetByUserIdsAsync(IReadOnlyCollection<Guid> usuarioIds, CancellationToken cancellationToken = default);
 
-        void Agregar(Context perfil);
+        void Add(Context perfil);
 
-        Task GuardarCambiosAsync(CancellationToken cancellationToken = default);
+        Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }

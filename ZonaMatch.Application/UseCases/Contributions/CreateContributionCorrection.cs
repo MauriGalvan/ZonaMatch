@@ -66,8 +66,8 @@ namespace ZonaMatch.Application.UseCases.Contributions
             if (reason != CorrectionReason.Ubicacion)
                 await _zones.ValidarExisteAsync(zoneSlug, cancellationToken);
 
-            _contributions.Agregar(contribution);
-            await _contributions.GuardarCambiosAsync(cancellationToken);
+            _contributions.Add(contribution);
+            await _contributions.SaveChangesAsync(cancellationToken);
 
             return ContributionMapper.ToResponse(contribution, currentUser.Email, currentUser.Id);
         }

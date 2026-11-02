@@ -10,8 +10,8 @@ public sealed class GetMapSchools(IMapRepository mapRepository)
     {
         MapQueryPolicy.ValidateViewport(boundingBox);
         MapQueryPolicy.ValidateFeatureCount(
-            await mapRepository.ContarEscuelasAsync(boundingBox, level, sector), "escuelas");
+            await mapRepository.CountSchoolsAsync(boundingBox, level, sector), "escuelas");
 
-        return await mapRepository.GetEscuelasAsync(boundingBox, level, sector);
+        return await mapRepository.GetSchoolsAsync(boundingBox, level, sector);
     }
 }

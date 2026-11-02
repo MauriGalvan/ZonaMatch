@@ -73,7 +73,7 @@ namespace ZonaMatch.Infrastructure.Geo
             _dbContext = dbContext;
         }
 
-        public async Task<DireccionGeocodificadaDto?> ReversaAsync(
+        public async Task<DireccionGeocodificadaDto?> ReverseAsync(
             double latitud, double longitud, CancellationToken cancellationToken = default)
         {
             var fila = await _dbContext.Database

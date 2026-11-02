@@ -15,7 +15,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
 
         public async Task<ZoneReviewListResponse> ExecuteAsync(string zoneSlug, Guid? currentUserId, CancellationToken cancellationToken = default)
         {
-            var reviews = await _reviews.ListarPorZonaAsync(zoneSlug, cancellationToken);
+            var reviews = await _reviews.ListByZoneAsync(zoneSlug, cancellationToken);
 
             return new ZoneReviewListResponse(
                 ReviewMapper.Summarize(reviews),

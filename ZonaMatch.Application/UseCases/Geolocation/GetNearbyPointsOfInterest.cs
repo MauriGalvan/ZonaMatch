@@ -24,7 +24,7 @@ public sealed class GetNearbyPointsOfInterest(
         if (!PointOfInterestCategory.TryParseList(categories, out var categoryCodes, out var error))
             throw new BadRequestException(error);
 
-        var points = await pointOfInterestRepository.GetCercanosAsync(
+        var points = await pointOfInterestRepository.GetNearbyAsync(
             latitude,
             longitude,
             radiusMeters,

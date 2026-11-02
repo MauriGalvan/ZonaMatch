@@ -15,7 +15,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
 
         public async Task<ContributionSummaryResponse> ExecuteAsync(string zoneSlug, CancellationToken cancellationToken = default)
         {
-            var (approved, pending) = await _contributions.ContarAsync(zoneSlug, cancellationToken);
+            var (approved, pending) = await _contributions.CountAsync(zoneSlug, cancellationToken);
             return new ContributionSummaryResponse(approved + pending, approved, pending);
         }
     }

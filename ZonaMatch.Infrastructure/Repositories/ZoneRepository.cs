@@ -132,7 +132,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .SqlQueryRaw<bool>(SqlExiste, new NpgsqlParameter("slug", slug))
                 .SingleAsync(cancellationToken);
 
-        public Task<bool> ContienePuntoAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default) =>
+        public Task<bool> ContainsPointAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default) =>
             _dbContext.Database
                 .SqlQueryRaw<bool>(SqlContienePunto,
                     new NpgsqlParameter("slug", slug),
@@ -140,7 +140,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                     new NpgsqlParameter("lon", longitud))
                 .SingleAsync(cancellationToken);
 
-        public async Task<string?> GetPorSlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default)
+        public async Task<string?> GetBySlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default)
         {
             var filas = await _dbContext.Database
                 .SqlQueryRaw<string>(SqlPorSlug,
@@ -151,7 +151,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             return filas.SingleOrDefault();
         }
 
-        public async Task<IReadOnlyList<ZonaResumenDto>> BuscarAsync(
+        public async Task<IReadOnlyList<ZonaResumenDto>> SearchAsync(
             string fragmento, int limite, CancellationToken cancellationToken = default)
         {
             var filas = await _dbContext.Database

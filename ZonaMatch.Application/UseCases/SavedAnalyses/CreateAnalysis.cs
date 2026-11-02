@@ -31,7 +31,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
         public async Task<AnalysisResponse> ExecuteAsync(
             Guid userId, CreateAnalysisRequest request, CancellationToken cancellationToken = default)
         {
-            var profile = await _profileRepository.ObtenerDeUsuarioAsync(userId, cancellationToken)
+            var profile = await _profileRepository.GetByUserAsync(userId, cancellationToken)
                 ?? throw new NotFoundException("Todavía no armaste tu perfil.");
 
             var zones = await AnalysisMapping.BuildZonesAsync(request.Zones, _zoneRepository, cancellationToken);
@@ -54,8 +54,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 analysis.FechaResultado = now;
             }
 
-            _analysisRepository.Agregar(analysis);
-            await _analysisRepository.GuardarCambiosAsync(cancellationToken);
+            _analysisRepository.Add(analysis);
+            await _analysisRepository.SaveChangesAsync(cancellationToken);
 
             return AnalysisMapping.ToResponse(analysis);
         }

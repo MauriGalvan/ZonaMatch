@@ -16,7 +16,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<(int Aprobados, int Pendientes)> ContarAsync(string zonaSlug, CancellationToken cancellationToken = default)
+        public async Task<(int Aprobados, int Pendientes)> CountAsync(string zonaSlug, CancellationToken cancellationToken = default)
         {
             var cantidades = await _dbContext.Aportes
                 .Where(a => a.ZonaSlug == zonaSlug && a.Estado != ContributionStatus.Rechazado)
@@ -29,7 +29,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             return (Cantidad(ContributionStatus.Aprobado), Cantidad(ContributionStatus.Pendiente));
         }
 
-        public async Task<IReadOnlyList<Contribution>> ListarPendientesAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
+        public async Task<IReadOnlyList<Contribution>> ListPendingAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
             await _dbContext.Aportes
                 .AsNoTracking()
                 .AsSplitQuery()
@@ -39,15 +39,15 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .OrderBy(a => a.FechaCreacion)
                 .ToListAsync(cancellationToken);
 
-        public Task<Contribution?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<Contribution?> GetAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Aportes
                 .Include(a => a.User)
                 .Include(a => a.Validaciones)
                 .FirstOrDefaultAsync(a => a.ZonaSlug == zonaSlug && a.Id == id, cancellationToken);
 
-        public void Agregar(Contribution aporte) => _dbContext.Aportes.Add(aporte);
+        public void Add(Contribution aporte) => _dbContext.Aportes.Add(aporte);
 
-        public async Task GuardarCambiosAsync(CancellationToken cancellationToken = default)
+        public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             try
             {

@@ -24,7 +24,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         {
             contribution.ZonaSlug = Zone;
             contribution.UsuarioId = Guid.NewGuid();
-            _contributions.Agregar(contribution);
+            _contributions.Add(contribution);
             return contribution;
         }
 

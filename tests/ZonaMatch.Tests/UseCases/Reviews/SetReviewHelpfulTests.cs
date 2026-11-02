@@ -19,7 +19,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         {
             _useCase = new SetReviewHelpful(_reviews, new FixedTimeProvider(CurrentTime));
             _anaReview = new Review { ZonaSlug = Zone, UsuarioId = _ana, FechaCreacion = CurrentTime };
-            _reviews.Agregar(_anaReview);
+            _reviews.Add(_anaReview);
         }
 
         [Fact]

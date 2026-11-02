@@ -20,7 +20,7 @@ public sealed class ReverseGeocode(
         DireccionGeocodificadaDto? geocodedAddress;
         try
         {
-            geocodedAddress = await geocodingClient.ReversaAsync(latitude, longitude, cancellationToken);
+            geocodedAddress = await geocodingClient.ReverseAsync(latitude, longitude, cancellationToken);
         }
         catch (HttpRequestException exception)
         {

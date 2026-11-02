@@ -6,12 +6,12 @@ namespace ZonaMatch.Application.Interfaces
     public interface IPointOfInterestRepository
     {
         // Points of the given categories within the radius (meters), closest first, at most "limite" items
-        Task<IReadOnlyList<PuntoInteresDto>> GetCercanosAsync(
+        Task<IReadOnlyList<PuntoInteresDto>> GetNearbyAsync(
             double latitud, double longitud, double radioMetros, IReadOnlyCollection<string> categorias, int limite,
             CancellationToken cancellationToken = default);
 
         // Number of points per (categoria, tipo) within the radius; only pairs with at least one point
-        Task<IReadOnlyList<CantidadPorTipo>> ContarPorTipoAsync(
+        Task<IReadOnlyList<CantidadPorTipo>> CountByTypeAsync(
             double latitud, double longitud, double radioMetros, CancellationToken cancellationToken = default);
 
         // Same as above for the points inside a zone (same zone selection as GET /api/v1/zones/{slug}); distances are
@@ -19,7 +19,7 @@ namespace ZonaMatch.Application.Interfaces
         Task<IReadOnlyList<PuntoInteresDto>> GetEnZonaAsync(
             string slug, IReadOnlyCollection<string> categorias, int limite, CancellationToken cancellationToken = default);
 
-        Task<IReadOnlyList<CantidadPorTipo>> ContarPorTipoEnZonaAsync(string slug, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<CantidadPorTipo>> CountByTypeInZoneAsync(string slug, CancellationToken cancellationToken = default);
 
         // Profile-specific OSM places inside a zone, limited per recommendation category.
         Task<IReadOnlyList<ProfileRecommendationCandidate>> GetProfileRecommendationsInZoneAsync(

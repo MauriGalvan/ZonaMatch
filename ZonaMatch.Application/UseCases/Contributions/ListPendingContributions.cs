@@ -16,7 +16,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
         public async Task<IReadOnlyList<ContributionResponse>> ExecuteAsync(
             string zoneSlug, Guid? currentUserId, CancellationToken cancellationToken = default)
         {
-            var contributions = await _contributions.ListarPendientesAsync(zoneSlug, cancellationToken);
+            var contributions = await _contributions.ListPendingAsync(zoneSlug, cancellationToken);
             return contributions.Select(item => ContributionMapper.ToResponse(item, item.User?.Email, currentUserId)).ToList();
         }
     }

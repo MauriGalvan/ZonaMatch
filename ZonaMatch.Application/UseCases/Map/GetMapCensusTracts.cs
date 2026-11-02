@@ -9,10 +9,10 @@ public sealed class GetMapCensusTracts(IMapRepository mapRepository)
     public async Task<string> ExecuteAsync(BoundingBox boundingBox, double? tolerance)
     {
         MapQueryPolicy.ValidateViewport(boundingBox);
-        MapQueryPolicy.ValidateFeatureCount(await mapRepository.ContarRadiosAsync(boundingBox), "radios");
+        MapQueryPolicy.ValidateFeatureCount(await mapRepository.CountCensusTractsAsync(boundingBox), "radios");
 
         var defaultTolerance = MapQueryPolicy.GetViewportTolerance(boundingBox);
-        return await mapRepository.GetRadiosAsync(
+        return await mapRepository.GetCensusTractsAsync(
             boundingBox,
             MapQueryPolicy.NormalizeTolerance(tolerance, defaultTolerance));
     }

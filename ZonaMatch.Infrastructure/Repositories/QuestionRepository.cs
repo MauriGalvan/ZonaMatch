@@ -14,7 +14,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<Question>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
+        public async Task<IReadOnlyList<Question>> ListByZoneAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
             await _dbContext.Preguntas
                 .AsNoTracking()
                 .AsSplitQuery()
@@ -24,7 +24,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .OrderByDescending(p => p.FechaCreacion)
                 .ToListAsync(cancellationToken);
 
-        public Task<bool> ExisteAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<bool> ExistsAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Preguntas.AnyAsync(p => p.ZonaSlug == zonaSlug && p.Id == id, cancellationToken);
 
         public Task<Question?> GetByIdAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
@@ -32,11 +32,11 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .Include(question => question.User)
                 .FirstOrDefaultAsync(question => question.ZonaSlug == zonaSlug && question.Id == id, cancellationToken);
 
-        public void Agregar(Question pregunta) => _dbContext.Preguntas.Add(pregunta);
+        public void Add(Question pregunta) => _dbContext.Preguntas.Add(pregunta);
 
-        public void Agregar(Answer respuesta) => _dbContext.Respuestas.Add(respuesta);
+        public void Add(Answer respuesta) => _dbContext.Respuestas.Add(respuesta);
 
-        public Task GuardarCambiosAsync(CancellationToken cancellationToken = default) =>
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
             _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

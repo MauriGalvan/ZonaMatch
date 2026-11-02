@@ -12,7 +12,7 @@ public sealed class GetZone(IZoneRepository zoneRepository)
         CancellationToken cancellationToken = default)
     {
         ZoneQueryPolicy.ValidateSlug(slug);
-        return await zoneRepository.GetPorSlugAsync(
+        return await zoneRepository.GetBySlugAsync(
             slug, ZoneQueryPolicy.NormalizeBoundaryTolerance(tolerance), cancellationToken)
             ?? throw new NotFoundException("No se encontro una zona con ese identificador.");
     }

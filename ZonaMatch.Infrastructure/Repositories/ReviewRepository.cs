@@ -16,7 +16,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<Review>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
+        public async Task<IReadOnlyList<Review>> ListByZoneAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
             await _dbContext.Resenas
                 .AsNoTracking()
                 .AsSplitQuery()
@@ -26,21 +26,21 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .OrderByDescending(r => r.FechaCreacion)
                 .ToListAsync(cancellationToken);
 
-        public Task<Review?> ObtenerDeUsuarioAsync(string zonaSlug, Guid usuarioId, CancellationToken cancellationToken = default) =>
+        public Task<Review?> GetByUserAsync(string zonaSlug, Guid usuarioId, CancellationToken cancellationToken = default) =>
             _dbContext.Resenas
                 .Include(r => r.VotosUtil)
                 .FirstOrDefaultAsync(r => r.ZonaSlug == zonaSlug && r.UsuarioId == usuarioId, cancellationToken);
 
-        public Task<Review?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<Review?> GetAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Resenas
                 .Include(r => r.VotosUtil)
                 .FirstOrDefaultAsync(r => r.ZonaSlug == zonaSlug && r.Id == id, cancellationToken);
 
-        public void Agregar(Review resena) => _dbContext.Resenas.Add(resena);
+        public void Add(Review resena) => _dbContext.Resenas.Add(resena);
 
-        public void Eliminar(Review resena) => _dbContext.Resenas.Remove(resena);
+        public void Delete(Review resena) => _dbContext.Resenas.Remove(resena);
 
-        public async Task GuardarCambiosAsync(CancellationToken cancellationToken = default)
+        public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             try
             {

@@ -15,17 +15,17 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
         public async Task ExecuteAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
         {
-            var analysis = await _analysisRepository.ObtenerAsync(id, userId, cancellationToken)
+            var analysis = await _analysisRepository.GetAsync(id, userId, cancellationToken)
                 ?? throw new NotFoundException("El análisis no existe.");
 
             if (analysis.AnalisisOrigenId is null)
             {
-                foreach (var version in await _analysisRepository.ListarVersionesAsync(analysis.Id, cancellationToken))
-                    _analysisRepository.Eliminar(version);
+                foreach (var version in await _analysisRepository.ListVersionsAsync(analysis.Id, cancellationToken))
+                    _analysisRepository.Delete(version);
             }
 
-            _analysisRepository.Eliminar(analysis);
-            await _analysisRepository.GuardarCambiosAsync(cancellationToken);
+            _analysisRepository.Delete(analysis);
+            await _analysisRepository.SaveChangesAsync(cancellationToken);
         }
     }
 }

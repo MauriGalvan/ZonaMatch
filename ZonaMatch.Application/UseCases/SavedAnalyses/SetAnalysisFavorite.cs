@@ -16,13 +16,13 @@ public sealed class SetAnalysisFavorite
 
     public async Task ExecuteAsync(Guid id, Guid userId, bool isFavorite, CancellationToken cancellationToken = default)
     {
-        var analysis = await _analyses.ObtenerAsync(id, userId, cancellationToken)
+        var analysis = await _analyses.GetAsync(id, userId, cancellationToken)
             ?? throw new NotFoundException("El análisis no existe.");
 
         if (analysis.EsFavorito == isFavorite)
             return;
 
         analysis.EsFavorito = isFavorite;
-        await _analyses.GuardarCambiosAsync(cancellationToken);
+        await _analyses.SaveChangesAsync(cancellationToken);
     }
 }

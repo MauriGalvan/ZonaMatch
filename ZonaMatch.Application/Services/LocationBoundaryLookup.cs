@@ -12,13 +12,13 @@ public sealed class LocationBoundaryLookup(
 {
     public async Task<PartidoDto?> GetDistrictAsync(double latitude, double longitude)
     {
-        var district = await districtRepository.GetQueContienePuntoAsync(latitude, longitude);
+        var district = await districtRepository.GetContainingPointAsync(latitude, longitude);
         return district is null ? null : new PartidoDto(district.Key, district.Nombre, district.Provincia);
     }
 
     public async Task<ComunaDto?> GetCommuneAsync(double latitude, double longitude)
     {
-        var commune = await communeRepository.GetQueContienePuntoAsync(latitude, longitude);
+        var commune = await communeRepository.GetContainingPointAsync(latitude, longitude);
         return commune is null ? null : new ComunaDto(commune.Key, commune.Nombre);
     }
 }

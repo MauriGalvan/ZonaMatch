@@ -42,13 +42,13 @@ namespace ZonaMatch.Application.UseCases.Reviews
                 throw new BadRequestException(error);
 
             var now = _clock.GetUtcNow();
-            var review = await _reviews.ObtenerDeUsuarioAsync(zoneSlug, currentUser.Id, cancellationToken);
+            var review = await _reviews.GetByUserAsync(zoneSlug, currentUser.Id, cancellationToken);
             var isNewReview = review is null;
 
             if (review is null)
             {
                 review = new Review { ZonaSlug = zoneSlug, UsuarioId = currentUser.Id, FechaCreacion = now };
-                _reviews.Agregar(review);
+                _reviews.Add(review);
             }
 
             var scores = request.Aspects!; // Required by request validation.
@@ -76,7 +76,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
                 }));
             }
 
-            await _reviews.GuardarCambiosAsync(cancellationToken);
+            await _reviews.SaveChangesAsync(cancellationToken);
 
             return ReviewMapper.ToResponse(review, currentUser.Email, currentUser.Id);
         }

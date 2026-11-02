@@ -112,10 +112,10 @@ namespace ZonaMatch.Tests.UseCases.Zones
             public ZoneIndicators? CityReference { get; set; }
             public bool DidLoadCityReference { get; private set; }
 
-            public Task<ZoneIndicators?> ObtenerPorSlugAsync(string slug, CancellationToken cancellationToken = default) =>
+            public Task<ZoneIndicators?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
                 Task.FromResult(Zones.FirstOrDefault(zone => zone.Slug == slug));
 
-            public Task<ZoneIndicators?> ObtenerCabaAsync(CancellationToken cancellationToken = default)
+            public Task<ZoneIndicators?> GetCapitalCityAsync(CancellationToken cancellationToken = default)
             {
                 DidLoadCityReference = true;
                 return Task.FromResult(CityReference);

@@ -33,7 +33,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
 
         public async Task<ScoresResponse> ExecuteAsync(CalculateScoresRequest request, CancellationToken cancellationToken = default)
         {
-            var zoneUniverse = await _zoneProfiles.ListarAsync(cancellationToken);
+            var zoneUniverse = await _zoneProfiles.ListAsync(cancellationToken);
             var zonesBySlug = zoneUniverse.ToDictionary(zone => zone.Slug);
             if (zoneUniverse.Count == 0)
                 throw new NotFoundException("Todavía no hay zonas disponibles para calcular el ranking.");
@@ -55,7 +55,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 .ToArray();
             var surroundingZoneSlugs = locations.Length == 0
                 ? zoneUniverse.Select(zone => zone.Slug).ToArray()
-                : await _zoneProfiles.ListarZonasDelEntornoAsync(locations, cancellationToken);
+                : await _zoneProfiles.ListNearbyZoneSlugsAsync(locations, cancellationToken);
             var surroundingZones = surroundingZoneSlugs
                 .Where(zonesBySlug.ContainsKey)
                 .Select(slug => zonesBySlug[slug])
@@ -140,7 +140,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
                     throw new NotFoundException("No se encontró la zona del punto de partida indicado.");
 
                 // The point replaces the center of the zone, so it has to be inside it
-                if (!await _zones.ContienePuntoAsync(slug, origin.Latitude, origin.Longitude, cancellationToken))
+                if (!await _zones.ContainsPointAsync(slug, origin.Latitude, origin.Longitude, cancellationToken))
                     throw new BadRequestException("El punto de partida tiene que estar dentro de su zona.");
 
                 result[slug] = (origin.Latitude, origin.Longitude);
@@ -170,7 +170,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 {
                     // Five blocks or less are walked (TravelModes.WalkingDistanceThresholdKm)
                     var routeMode = TravelModes.ForDistance(travelMode, latitude, longitude, place.Latitud!.Value, place.Longitud!.Value);
-                    return await _routing.CalcularAsync(latitude, longitude, place.Latitud!.Value, place.Longitud!.Value, routeMode, cancellationToken)
+                    return await _routing.GetTravelTimeAsync(latitude, longitude, place.Latitud!.Value, place.Longitud!.Value, routeMode, cancellationToken)
                            ?? TravelModes.Estimate(routeMode, latitude, longitude, place.Latitud!.Value, place.Longitud!.Value);
                 }
                 finally

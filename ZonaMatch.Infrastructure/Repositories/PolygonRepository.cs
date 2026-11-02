@@ -20,7 +20,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         {
         }
 
-        public async Task<T?> GetQueContienePuntoAsync(double latitud, double longitud)
+        public async Task<T?> GetContainingPointAsync(double latitud, double longitud)
         {
             var punto = GeoFactory.CrearPunto(latitud, longitud);
 
@@ -37,7 +37,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
         }
 
-        public async Task<IReadOnlyList<T>> GetCercanosAsync(double latitud, double longitud, double radioMetros)
+        public async Task<IReadOnlyList<T>> GetNearbyAsync(double latitud, double longitud, double radioMetros)
         {
             var punto = GeoFactory.CrearPunto(latitud, longitud);
             var radioGrados = radioMetros / MetrosPorGrado;

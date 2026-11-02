@@ -15,7 +15,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
         public async Task<AnalysisResponse> ExecuteAsync(Guid analysisId, Guid userId, CancellationToken cancellationToken = default)
         {
-            var source = await analyses.ObtenerAsync(analysisId, userId, cancellationToken)
+            var source = await analyses.GetAsync(analysisId, userId, cancellationToken)
                 ?? throw new NotFoundException("El análisis no existe.");
 
             // A group ranking mixes the profiles of several people: it is recalculated from the group
@@ -26,7 +26,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             var originalId = source.AnalisisOrigenId ?? source.Id;
             var original = originalId == source.Id
                 ? source
-                : await analyses.ObtenerAsync(originalId, userId, cancellationToken) ?? throw new NotFoundException("El análisis no existe.");
+                : await analyses.GetAsync(originalId, userId, cancellationToken) ?? throw new NotFoundException("El análisis no existe.");
 
             var now = clock.GetUtcNow();
             var version = new Analysis
@@ -49,8 +49,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 version.FechaResultado = now;
             }
 
-            analyses.Agregar(version);
-            await analyses.GuardarCambiosAsync(cancellationToken);
+            analyses.Add(version);
+            await analyses.SaveChangesAsync(cancellationToken);
 
             return AnalysisMapping.ToResponse(version);
         }

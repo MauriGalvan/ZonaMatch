@@ -41,8 +41,8 @@ namespace ZonaMatch.Application.UseCases.Contributions
                 FechaCreacion = _clock.GetUtcNow()
             };
 
-            _contributions.Agregar(contribution);
-            await _contributions.GuardarCambiosAsync(cancellationToken);
+            _contributions.Add(contribution);
+            await _contributions.SaveChangesAsync(cancellationToken);
 
             return ContributionMapper.ToResponse(contribution, currentUser.Email, currentUser.Id);
         }

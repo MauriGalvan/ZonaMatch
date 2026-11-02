@@ -16,7 +16,7 @@ namespace ZonaMatch.Application.UseCases.Comunidad
         public static async Task ValidarContienePuntoAsync(
             this IZoneRepository zonas, string zonaSlug, double latitud, double longitud, CancellationToken cancellationToken)
         {
-            if (await zonas.ContienePuntoAsync(zonaSlug, latitud, longitud, cancellationToken))
+            if (await zonas.ContainsPointAsync(zonaSlug, latitud, longitud, cancellationToken))
                 return;
 
             await zonas.ValidarExisteAsync(zonaSlug, cancellationToken);

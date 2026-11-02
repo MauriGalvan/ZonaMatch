@@ -24,6 +24,6 @@ public sealed class SearchZones(IZoneRepository zoneRepository)
         if (fragment.Length < ZoneQueryPolicy.MinimumSearchCharacters)
             return [];
 
-        return await zoneRepository.BuscarAsync(fragment, limit, cancellationToken);
+        return await zoneRepository.SearchAsync(fragment, limit, cancellationToken);
     }
 }

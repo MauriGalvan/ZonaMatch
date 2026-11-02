@@ -20,7 +20,7 @@ public sealed class GetZoneTransit(
         CancellationToken cancellationToken = default)
     {
         ZoneQueryPolicy.ValidateSlug(slug);
-        var stops = await transitRepository.ListarParadasAsync(slug, cancellationToken);
+        var stops = await transitRepository.ListStopsAsync(slug, cancellationToken);
 
         // No stops may mean the zone has no transit service or does not exist.
         if (stops.Count == 0 && !await zoneRepository.ExistsAsync(slug, cancellationToken))
@@ -28,7 +28,7 @@ public sealed class GetZoneTransit(
 
         var departures = stops.Count == 0
             ? []
-            : await transitRepository.ListarSalidasAsync(slug, cancellationToken);
+            : await transitRepository.ListDeparturesAsync(slug, cancellationToken);
 
         var modes = stops
             .OrderBy(stop => Array.IndexOf(ModeOrder, stop.Modo) is var order and >= 0 ? order : ModeOrder.Length)

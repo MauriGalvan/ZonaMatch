@@ -6,15 +6,15 @@ namespace ZonaMatch.Application.Interfaces
     {
         // GeoJSON Feature (as JSON text) of the zone whose name matches the slug, or null if there is none.
         // "tolerancia" is the simplification tolerance of the boundary, in degrees.
-        Task<string?> GetPorSlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default);
+        Task<string?> GetBySlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default);
 
         Task<bool> ExistsAsync(string slug, CancellationToken cancellationToken = default);
 
         // Si el punto (WGS84) cae dentro de la zona; false si la zona no existe
-        Task<bool> ContienePuntoAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default);
+        Task<bool> ContainsPointAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default);
 
         // Zones whose slug contains "fragmento" (a slug itself, e.g. "villa-l"); names that start with it come first
-        Task<IReadOnlyList<ZonaResumenDto>> BuscarAsync(
+        Task<IReadOnlyList<ZonaResumenDto>> SearchAsync(
             string fragmento, int limite, CancellationToken cancellationToken = default);
     }
 }

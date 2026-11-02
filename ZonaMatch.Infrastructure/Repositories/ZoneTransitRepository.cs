@@ -37,13 +37,13 @@ namespace ZonaMatch.Infrastructure.Repositories
             _logger = logger;
         }
 
-        public Task<IReadOnlyList<ZoneTransitModeStops>> ListarParadasAsync(string slug, CancellationToken cancellationToken = default) =>
-            ListarAsync<ZoneTransitModeStops>(SqlParadas, slug, cancellationToken);
+        public Task<IReadOnlyList<ZoneTransitModeStops>> ListStopsAsync(string slug, CancellationToken cancellationToken = default) =>
+            ListAsync<ZoneTransitModeStops>(SqlParadas, slug, cancellationToken);
 
-        public Task<IReadOnlyList<TransitLineDepartures>> ListarSalidasAsync(string slug, CancellationToken cancellationToken = default) =>
-            ListarAsync<TransitLineDepartures>(SqlSalidas, slug, cancellationToken);
+        public Task<IReadOnlyList<TransitLineDepartures>> ListDeparturesAsync(string slug, CancellationToken cancellationToken = default) =>
+            ListAsync<TransitLineDepartures>(SqlSalidas, slug, cancellationToken);
 
-        private async Task<IReadOnlyList<T>> ListarAsync<T>(string sql, string slug, CancellationToken cancellationToken)
+        private async Task<IReadOnlyList<T>> ListAsync<T>(string sql, string slug, CancellationToken cancellationToken)
         {
             try
             {

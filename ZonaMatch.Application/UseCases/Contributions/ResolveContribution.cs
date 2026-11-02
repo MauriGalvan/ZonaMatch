@@ -23,7 +23,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
         public async Task<ContributionResponse> ExecuteAsync(
             string zoneSlug, Guid contributionId, Guid administratorId, bool approve, CancellationToken cancellationToken = default)
         {
-            var contribution = await _contributions.ObtenerAsync(zoneSlug, contributionId, cancellationToken)
+            var contribution = await _contributions.GetAsync(zoneSlug, contributionId, cancellationToken)
                 ?? throw new NotFoundException("El aporte no existe.");
 
             if (contribution.Estado != ContributionStatus.Pendiente)
@@ -32,7 +32,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
             var now = _clock.GetUtcNow();
             contribution.Resolve(administratorId, approve, now);
             await _poiUpdater.ApplyAsync(contribution, now, cancellationToken);
-            await _contributions.GuardarCambiosAsync(cancellationToken);
+            await _contributions.SaveChangesAsync(cancellationToken);
 
             return ContributionMapper.ToResponse(contribution, contribution.User?.Email, administratorId);
         }

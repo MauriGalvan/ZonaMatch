@@ -49,7 +49,7 @@ namespace ZonaMatch.Application.UseCases.Questions
                 FechaCreacion = _clock.GetUtcNow()
             };
 
-            _questions.Agregar(answer);
+            _questions.Add(answer);
 
             var shouldNotifyAuthor = question.UsuarioId != currentUser.Id;
             if (shouldNotifyAuthor)
@@ -67,7 +67,7 @@ namespace ZonaMatch.Application.UseCases.Questions
                 ]);
             }
 
-            await _questions.GuardarCambiosAsync(cancellationToken);
+            await _questions.SaveChangesAsync(cancellationToken);
 
             if (shouldNotifyAuthor && !string.IsNullOrWhiteSpace(question.User?.Email))
             {

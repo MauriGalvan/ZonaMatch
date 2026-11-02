@@ -26,7 +26,7 @@ namespace ZonaMatch.Infrastructure.Geo
             _cache = cache;
         }
 
-        public async Task<DireccionGeocodificadaDto?> ReversaAsync(
+        public async Task<DireccionGeocodificadaDto?> ReverseAsync(
             double latitud, double longitud, CancellationToken cancellationToken = default)
         {
             // ~11 m precision: re-clicking the same spot is served from cache

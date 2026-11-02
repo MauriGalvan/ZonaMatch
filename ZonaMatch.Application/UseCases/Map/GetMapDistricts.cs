@@ -6,5 +6,5 @@ namespace ZonaMatch.Application.UseCases.Map;
 public sealed class GetMapDistricts(IMapRepository mapRepository)
 {
     public Task<string> ExecuteAsync(double? tolerance) =>
-        mapRepository.GetPartidosAsync(MapQueryPolicy.NormalizeTolerance(tolerance));
+        mapRepository.GetDistrictsAsync(MapQueryPolicy.NormalizeTolerance(tolerance));
 }

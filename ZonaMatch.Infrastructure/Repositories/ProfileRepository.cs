@@ -16,7 +16,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<Context?> ObtenerDeUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
+        public async Task<Context?> GetByUserAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
             await _context.Contextos
                 .Include(c => c.Integrantes)
                 .Include(c => c.Puntos)
@@ -24,7 +24,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(c => c.UsuarioId == usuarioId && c.Tipo == ContextType.Perfil, cancellationToken);
 
-        public async Task<IReadOnlyList<Context>> ObtenerDeUsuariosAsync(
+        public async Task<IReadOnlyList<Context>> GetByUserIdsAsync(
             IReadOnlyCollection<Guid> usuarioIds,
             CancellationToken cancellationToken = default)
         {
@@ -41,9 +41,9 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        public void Agregar(Context perfil) => _context.Contextos.Add(perfil);
+        public void Add(Context perfil) => _context.Contextos.Add(perfil);
 
-        public async Task GuardarCambiosAsync(CancellationToken cancellationToken = default)
+        public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             try
             {

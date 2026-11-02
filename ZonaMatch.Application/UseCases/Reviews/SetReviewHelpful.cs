@@ -19,7 +19,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
         public async Task ExecuteAsync(
             string zoneSlug, Guid reviewId, Guid userId, bool helpful, CancellationToken cancellationToken = default)
         {
-            var review = await _reviews.ObtenerAsync(zoneSlug, reviewId, cancellationToken)
+            var review = await _reviews.GetAsync(zoneSlug, reviewId, cancellationToken)
                 ?? throw new NotFoundException("La reseña no existe.");
 
             if (review.UsuarioId == userId)
@@ -35,7 +35,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
             else
                 return;
 
-            await _reviews.GuardarCambiosAsync(cancellationToken);
+            await _reviews.SaveChangesAsync(cancellationToken);
         }
     }
 }

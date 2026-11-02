@@ -200,10 +200,10 @@ namespace ZonaMatch.Infrastructure.Repositories
             _logger = logger;
         }
 
-        public Task<IReadOnlyList<ZoneProfile>> ListarAsync(CancellationToken cancellationToken = default) =>
-            _cache.ObtenerAsync(CalcularAsync, cancellationToken);
+        public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
+            _cache.GetAsync(GetTravelTimeAsync, cancellationToken);
 
-        public async Task<IReadOnlyList<string>> ListarZonasDelEntornoAsync(
+        public async Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
             IReadOnlyCollection<(double Latitud, double Longitud)> ubicaciones,
             CancellationToken cancellationToken = default)
         {
@@ -229,7 +229,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
         }
 
-        private async Task<IReadOnlyList<ZoneProfile>> CalcularAsync(CancellationToken cancellationToken)
+        private async Task<IReadOnlyList<ZoneProfile>> GetTravelTimeAsync(CancellationToken cancellationToken)
         {
             try
             {

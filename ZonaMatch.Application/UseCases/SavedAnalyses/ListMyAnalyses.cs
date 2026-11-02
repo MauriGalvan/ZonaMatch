@@ -17,7 +17,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
         public async Task<IReadOnlyList<AnalysisResponse>> ExecuteAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            var allAnalyses = await _analysisRepository.ListarDeUsuarioAsync(userId, cancellationToken);
+            var allAnalyses = await _analysisRepository.GetForUserAsync(userId, cancellationToken);
             var versionsByOriginalId = allAnalyses
                 .Where(a => a.AnalisisOrigenId is not null)
                 .ToLookup(a => a.AnalisisOrigenId!.Value);

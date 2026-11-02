@@ -36,7 +36,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
                 Texto = "Barrio tranquilo y bien conectado con el centro.",
                 FechaCreacion = CurrentTime
             };
-            _reviews.Agregar(resena);
+            _reviews.Add(resena);
             return resena;
         }
 

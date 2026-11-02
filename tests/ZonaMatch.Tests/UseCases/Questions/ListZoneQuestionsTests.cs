@@ -25,10 +25,10 @@ namespace ZonaMatch.Tests.UseCases.Questions
         public async Task List_IndicatesOwnershipAndOrdersAnswersFromOldest()
         {
             var question = new Question { ZonaSlug = Zone, UsuarioId = _ana.Id, User = _ana, Texto = "¿Hay verdulerias?", FechaCreacion = CurrentTime };
-            _questions.Agregar(question);
-            _questions.Agregar(Answer(question, "Segunda", CurrentTime.AddHours(2)));
-            _questions.Agregar(Answer(question, "Primera", CurrentTime.AddHours(1)));
-            _questions.Agregar(new Question { ZonaSlug = "otra-zona", UsuarioId = _ana.Id, Texto = "¿Y aca?" });
+            _questions.Add(question);
+            _questions.Add(Answer(question, "Segunda", CurrentTime.AddHours(2)));
+            _questions.Add(Answer(question, "Primera", CurrentTime.AddHours(1)));
+            _questions.Add(new Question { ZonaSlug = "otra-zona", UsuarioId = _ana.Id, Texto = "¿Y aca?" });
 
             var list = await _useCase.ExecuteAsync(Zone, _ana.Id);
 
@@ -46,7 +46,7 @@ namespace ZonaMatch.Tests.UseCases.Questions
         [Fact]
         public async Task List_WithoutSession_NoItemsAreOwnedByCurrentUser()
         {
-            _questions.Agregar(new Question { ZonaSlug = Zone, UsuarioId = _ana.Id, User = _ana, Texto = "¿Hay verdulerias?" });
+            _questions.Add(new Question { ZonaSlug = Zone, UsuarioId = _ana.Id, User = _ana, Texto = "¿Hay verdulerias?" });
 
             var item = Assert.Single(await _useCase.ExecuteAsync(Zone, currentUserId: null));
 

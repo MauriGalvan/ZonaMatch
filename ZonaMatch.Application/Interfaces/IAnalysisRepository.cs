@@ -2,24 +2,24 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.Interfaces
 {
-    // Analysis guardados. Se leen siempre con su criterio y sus zonas, y con seguimiento de cambios:
-    // lo modificado se guarda con GuardarCambiosAsync.
+    // Saved analyses are loaded with their criteria and zones and tracked for changes.
+    // Call SaveChangesAsync to persist updates.
     public interface IAnalysisRepository
     {
-        // Originales y versiones del usuario, el mas reciente primero
-        Task<IReadOnlyList<Analysis>> ListarDeUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+        // Returns the user's original analyses and versions, newest first.
+        Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid usuarioId, CancellationToken cancellationToken = default);
 
-        // null si no existe o es de otro usuario
-        Task<Analysis?> ObtenerAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default);
+        // Returns null when the analysis does not exist or belongs to another user.
+        Task<Analysis?> GetAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default);
 
-        // Versiones derivadas de un original, la mas vieja primero
-        Task<IReadOnlyList<Analysis>> ListarVersionesAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default);
+        // Returns versions derived from an original, oldest first.
+        Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default);
 
-        void Agregar(Analysis analisis);
+        void Add(Analysis analisis);
 
-        // Borra el analisis junto con la copia de su criterio
-        void Eliminar(Analysis analisis);
+        // Deletes the analysis together with its criteria snapshot.
+        void Delete(Analysis analisis);
 
-        Task GuardarCambiosAsync(CancellationToken cancellationToken = default);
+        Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }

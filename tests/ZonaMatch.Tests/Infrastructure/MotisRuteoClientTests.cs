@@ -124,7 +124,7 @@ public class MotisRuteoClientTests
             http, cache, TimeProvider.System, new ConfigurationBuilder().Build(),
             NullLogger<MotisRoutingClient>.Instance);
 
-        var viaje = await cliente.CalcularAsync(-34.6, -58.4, -34.5, -58.3, modo);
+        var viaje = await cliente.GetTravelTimeAsync(-34.6, -58.4, -34.5, -58.3, modo);
         return (viaje, handler.Query);
     }
 

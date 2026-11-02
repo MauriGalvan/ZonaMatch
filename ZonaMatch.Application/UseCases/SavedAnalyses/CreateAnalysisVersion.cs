@@ -34,14 +34,14 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
         public async Task<AnalysisResponse> ExecuteAsync(
             Guid analysisId, Guid userId, CreateAnalysisVersionRequest request, CancellationToken cancellationToken = default)
         {
-            var sourceAnalysis = await _analysisRepository.ObtenerAsync(analysisId, userId, cancellationToken)
+            var sourceAnalysis = await _analysisRepository.GetAsync(analysisId, userId, cancellationToken)
                 ?? throw new NotFoundException("El análisis no existe.");
 
             var original = sourceAnalysis.AnalisisOrigenId is { } originalId
-                ? await _analysisRepository.ObtenerAsync(originalId, userId, cancellationToken) ?? throw new NotFoundException("El análisis no existe.")
+                ? await _analysisRepository.GetAsync(originalId, userId, cancellationToken) ?? throw new NotFoundException("El análisis no existe.")
                 : sourceAnalysis;
 
-            var criteriaCatalog = await _criteriaRepository.ListarAsync(cancellationToken);
+            var criteriaCatalog = await _criteriaRepository.ListAsync(cancellationToken);
             var now = _clock.GetUtcNow();
 
             var context = new Context
@@ -60,7 +60,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                     .Select(z => z.Copiar())
                     .ToList();
 
-            var versions = await _analysisRepository.ListarVersionesAsync(original.Id, cancellationToken);
+            var versions = await _analysisRepository.ListVersionsAsync(original.Id, cancellationToken);
 
             var version = new Analysis
             {
@@ -81,8 +81,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 version.FechaResultado = now;
             }
 
-            _analysisRepository.Agregar(version);
-            await _analysisRepository.GuardarCambiosAsync(cancellationToken);
+            _analysisRepository.Add(version);
+            await _analysisRepository.SaveChangesAsync(cancellationToken);
 
             return AnalysisMapping.ToResponse(version);
         }

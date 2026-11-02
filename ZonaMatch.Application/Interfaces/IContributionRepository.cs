@@ -4,16 +4,16 @@ namespace ZonaMatch.Application.Interfaces
 {
     public interface IContributionRepository
     {
-        Task<(int Aprobados, int Pendientes)> ContarAsync(string zonaSlug, CancellationToken cancellationToken = default);
+        Task<(int Aprobados, int Pendientes)> CountAsync(string zonaSlug, CancellationToken cancellationToken = default);
 
-        // Aportes pendientes de la zona con su autor y sus votos, el mas viejo primero (solo lectura)
-        Task<IReadOnlyList<Contribution>> ListarPendientesAsync(string zonaSlug, CancellationToken cancellationToken = default);
+        // Returns pending contributions for a zone with their authors and votes, oldest first (read-only).
+        Task<IReadOnlyList<Contribution>> ListPendingAsync(string zonaSlug, CancellationToken cancellationToken = default);
 
-        // Con seguimiento de cambios, con sus votos
-        Task<Contribution?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default);
+        // Returns the contribution with its votes, tracked for changes.
+        Task<Contribution?> GetAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default);
 
-        void Agregar(Contribution aporte);
+        void Add(Contribution aporte);
 
-        Task GuardarCambiosAsync(CancellationToken cancellationToken = default);
+        Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }

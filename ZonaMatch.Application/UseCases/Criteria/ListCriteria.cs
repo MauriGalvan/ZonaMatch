@@ -15,7 +15,7 @@ public sealed class ListCriteria
 
     public async Task<IReadOnlyList<CriterionResponse>> ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var criteria = await _criteria.ListarAsync(cancellationToken);
+        var criteria = await _criteria.ListAsync(cancellationToken);
 
         return criteria
             .Where(criterion => criterion.Activo)

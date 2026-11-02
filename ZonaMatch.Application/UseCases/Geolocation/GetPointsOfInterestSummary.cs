@@ -18,7 +18,7 @@ public sealed class GetPointsOfInterestSummary(
         GeolocationRequestValidator.ValidateCoordinates(latitude, longitude, radiusMeters);
         GeolocationRequestValidator.ValidatePointOfInterestRadius(radiusMeters);
 
-        var counts = await pointOfInterestRepository.ContarPorTipoAsync(
+        var counts = await pointOfInterestRepository.CountByTypeAsync(
             latitude, longitude, radiusMeters, cancellationToken);
         return responseBuilder.BuildSummary(radiusMeters, counts);
     }

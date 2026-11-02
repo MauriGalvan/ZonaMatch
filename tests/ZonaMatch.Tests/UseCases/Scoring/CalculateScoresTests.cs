@@ -150,15 +150,15 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         {
             public bool ContainsStartingPoint { get; set; } = true;
 
-            public Task<string?> GetPorSlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default) =>
+            public Task<string?> GetBySlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default) =>
                 Task.FromResult<string?>(null);
 
             public Task<bool> ExistsAsync(string slug, CancellationToken cancellationToken = default) => Task.FromResult(true);
 
-            public Task<bool> ContienePuntoAsync(string slug, double latitude, double longitude, CancellationToken cancellationToken = default) =>
+            public Task<bool> ContainsPointAsync(string slug, double latitude, double longitude, CancellationToken cancellationToken = default) =>
                 Task.FromResult(ContainsStartingPoint);
 
-            public Task<IReadOnlyList<ZonaResumenDto>> BuscarAsync(string fragmento, int limite, CancellationToken cancellationToken = default) =>
+            public Task<IReadOnlyList<ZonaResumenDto>> SearchAsync(string fragmento, int limite, CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZonaResumenDto>>([]);
         }
       
@@ -199,10 +199,10 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         {
             public List<ZoneProfile> Zones { get; } = [];
 
-            public Task<IReadOnlyList<ZoneProfile>> ListarAsync(CancellationToken cancellationToken = default) =>
+            public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZoneProfile>>(Zones);
 
-            public Task<IReadOnlyList<string>> ListarZonasDelEntornoAsync(
+            public Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
                 IReadOnlyCollection<(double Latitud, double Longitud)> locations,
                 CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<string>>(Zones.Select(zone => zone.Slug).ToArray());
@@ -214,7 +214,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             public List<TravelMode> Modes { get; } = [];
             public List<(double, double)> Origins { get; } = [];
 
-            public Task<TravelTime?> CalcularAsync(
+            public Task<TravelTime?> GetTravelTimeAsync(
                 double originLatitude, double originLongitude, double destinationLatitude, double destinationLongitude, TravelMode mode,
                 CancellationToken cancellationToken = default)
             {

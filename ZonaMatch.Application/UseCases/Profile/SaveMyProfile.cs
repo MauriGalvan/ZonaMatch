@@ -23,9 +23,9 @@ public sealed class SaveMyProfile
     public async Task<ProfileResponse> ExecuteAsync(
         Guid userId, AnalysisCriteriaRequest request, CancellationToken cancellationToken = default)
     {
-        var catalog = await _criteria.ListarAsync(cancellationToken);
+        var catalog = await _criteria.ListAsync(cancellationToken);
         var now = _clock.GetUtcNow();
-        var profile = await _profiles.ObtenerDeUsuarioAsync(userId, cancellationToken);
+        var profile = await _profiles.GetByUserAsync(userId, cancellationToken);
         var isNewProfile = profile is null;
 
         profile ??= new Context { UsuarioId = userId, Tipo = ContextType.Perfil, FechaCreacion = now };
@@ -35,9 +35,9 @@ public sealed class SaveMyProfile
         profile.FechaActualizacion = now;
 
         if (isNewProfile)
-            _profiles.Agregar(profile);
+            _profiles.Add(profile);
 
-        await _profiles.GuardarCambiosAsync(cancellationToken);
+        await _profiles.SaveChangesAsync(cancellationToken);
 
         return ProfileMapper.ToResponse(profile);
     }

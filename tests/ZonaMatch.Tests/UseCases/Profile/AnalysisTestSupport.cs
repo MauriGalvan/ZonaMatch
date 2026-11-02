@@ -7,7 +7,7 @@ namespace ZonaMatch.Tests.UseCases.Profile;
 // In-memory repositories used by profile and saved analysis tests.
 internal sealed class FakeCriterionRepository : ICriterionRepository
 {
-    public Task<IReadOnlyList<Criterion>> ListarAsync(CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<Criterion>> ListAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Criterion>>(
         [
             new Criterion { Id = "seguridad", Nombre = "Seguridad", Activo = true },
@@ -21,18 +21,18 @@ internal sealed class FakeProfileRepository : IProfileRepository
     public List<Context> Profiles { get; } = [];
     public int SaveCount { get; private set; }
 
-    public Task<Context?> ObtenerDeUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
+    public Task<Context?> GetByUserAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Profiles.FirstOrDefault(profile => profile.UsuarioId == usuarioId));
 
-    public Task<IReadOnlyList<Context>> ObtenerDeUsuariosAsync(
+    public Task<IReadOnlyList<Context>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> usuarioIds,
         CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Context>>(
             Profiles.Where(profile => usuarioIds.Contains(profile.UsuarioId)).ToList());
 
-    public void Agregar(Context perfil) => Profiles.Add(perfil);
+    public void Add(Context perfil) => Profiles.Add(perfil);
 
-    public Task GuardarCambiosAsync(CancellationToken cancellationToken = default)
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         SaveCount++;
         return Task.CompletedTask;
@@ -44,22 +44,22 @@ internal sealed class FakeAnalysisRepository : IAnalysisRepository
     public List<Analysis> Analyses { get; } = [];
     public int SaveCount { get; private set; }
 
-    public Task<IReadOnlyList<Analysis>> ListarDeUsuarioAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Analysis>>(
             Analyses.Where(analysis => analysis.UsuarioId == usuarioId).OrderByDescending(analysis => analysis.FechaActualizacion).ToList());
 
-    public Task<Analysis?> ObtenerAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default) =>
+    public Task<Analysis?> GetAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Analyses.FirstOrDefault(analysis => analysis.Id == id && analysis.UsuarioId == usuarioId));
 
-    public Task<IReadOnlyList<Analysis>> ListarVersionesAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Analysis>>(
             Analyses.Where(analysis => analysis.AnalisisOrigenId == analisisOrigenId).OrderBy(analysis => analysis.FechaCreacion).ToList());
 
-    public void Agregar(Analysis analisis) => Analyses.Add(analisis);
+    public void Add(Analysis analisis) => Analyses.Add(analisis);
 
-    public void Eliminar(Analysis analisis) => Analyses.Remove(analisis);
+    public void Delete(Analysis analisis) => Analyses.Remove(analisis);
 
-    public Task GuardarCambiosAsync(CancellationToken cancellationToken = default)
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         SaveCount++;
         return Task.CompletedTask;

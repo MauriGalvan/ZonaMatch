@@ -253,33 +253,33 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public Task<IReadOnlyList<PuntoInteresDto>> GetCercanosAsync(
+        public Task<IReadOnlyList<PuntoInteresDto>> GetNearbyAsync(
             double latitud, double longitud, double radioMetros, IReadOnlyCollection<string> categorias, int limite,
             CancellationToken cancellationToken = default) =>
-            ListarAsync(SqlCercanos, cancellationToken,
+            ListAsync(SqlCercanos, cancellationToken,
                 new NpgsqlParameter("lat", latitud),
                 new NpgsqlParameter("lon", longitud),
                 new NpgsqlParameter("radio", radioMetros),
                 new NpgsqlParameter("categorias", categorias.ToArray()),
                 new NpgsqlParameter("limite", limite));
 
-        public Task<IReadOnlyList<CantidadPorTipo>> ContarPorTipoAsync(
+        public Task<IReadOnlyList<CantidadPorTipo>> CountByTypeAsync(
             double latitud, double longitud, double radioMetros, CancellationToken cancellationToken = default) =>
-            ContarAsync(SqlResumen, cancellationToken,
+            CountAsync(SqlResumen, cancellationToken,
                 new NpgsqlParameter("lat", latitud),
                 new NpgsqlParameter("lon", longitud),
                 new NpgsqlParameter("radio", radioMetros));
 
         public Task<IReadOnlyList<PuntoInteresDto>> GetEnZonaAsync(
             string slug, IReadOnlyCollection<string> categorias, int limite, CancellationToken cancellationToken = default) =>
-            ListarAsync(SqlEnZona, cancellationToken,
+            ListAsync(SqlEnZona, cancellationToken,
                 new NpgsqlParameter("slug", slug),
                 new NpgsqlParameter("categorias", categorias.ToArray()),
                 new NpgsqlParameter("limite", limite));
 
-        public Task<IReadOnlyList<CantidadPorTipo>> ContarPorTipoEnZonaAsync(
+        public Task<IReadOnlyList<CantidadPorTipo>> CountByTypeInZoneAsync(
             string slug, CancellationToken cancellationToken = default) =>
-            ContarAsync(SqlResumenZona, cancellationToken, new NpgsqlParameter("slug", slug));
+            CountAsync(SqlResumenZona, cancellationToken, new NpgsqlParameter("slug", slug));
 
         public async Task<IReadOnlyList<ProfileRecommendationCandidate>> GetProfileRecommendationsInZoneAsync(
             string slug,
@@ -299,7 +299,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        private async Task<IReadOnlyList<PuntoInteresDto>> ListarAsync(
+        private async Task<IReadOnlyList<PuntoInteresDto>> ListAsync(
             string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
         {
             var filas = await _dbContext.Database
@@ -312,7 +312,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .ToList();
         }
 
-        private async Task<IReadOnlyList<CantidadPorTipo>> ContarAsync(
+        private async Task<IReadOnlyList<CantidadPorTipo>> CountAsync(
             string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
         {
             var filas = await _dbContext.Database

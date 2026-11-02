@@ -48,7 +48,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             if (request.AnalysisIds.Distinct().Count() != request.AnalysisIds.Count)
                 throw new BadRequestException("No se puede comparar el mismo análisis más de una vez.");
 
-            var ownedAnalyses = await _analysisRepository.ListarDeUsuarioAsync(userId, cancellationToken);
+            var ownedAnalyses = await _analysisRepository.GetForUserAsync(userId, cancellationToken);
             var byId = ownedAnalyses.ToDictionary(analysis => analysis.Id);
             if (request.AnalysisIds.Any(id => !byId.ContainsKey(id)))
                 throw new NotFoundException("El análisis no existe.");
@@ -76,7 +76,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             ScoringEngine? motor = null;
             if (personalAnalyses.Length > 0)
             {
-                var universe = await _zoneProfilesRepository.ListarAsync(cancellationToken);
+                var universe = await _zoneProfilesRepository.ListAsync(cancellationToken);
                 zonesBySlug = universe.ToDictionary(zone => zone.Slug, StringComparer.Ordinal);
                 var unavailableZones = selectedPersonalZones
                     .Where(zone => !zonesBySlug.ContainsKey(zone.ZonaSlug))
@@ -191,7 +191,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 await limiter.WaitAsync(cancellationToken);
                 try
                 {
-                    return await _routingClient.CalcularAsync(
+                    return await _routingClient.GetTravelTimeAsync(
                                zone.Latitud, zone.Longitud,
                                place.Latitud!.Value, place.Longitud!.Value,
                                mode, cancellationToken)

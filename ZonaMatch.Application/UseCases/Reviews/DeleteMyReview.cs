@@ -14,11 +14,11 @@ namespace ZonaMatch.Application.UseCases.Reviews
 
         public async Task ExecuteAsync(string zoneSlug, Guid userId, CancellationToken cancellationToken = default)
         {
-            var review = await _reviews.ObtenerDeUsuarioAsync(zoneSlug, userId, cancellationToken)
+            var review = await _reviews.GetByUserAsync(zoneSlug, userId, cancellationToken)
                 ?? throw new NotFoundException("No escribiste una reseña de esta zona.");
 
-            _reviews.Eliminar(review);
-            await _reviews.GuardarCambiosAsync(cancellationToken);
+            _reviews.Delete(review);
+            await _reviews.SaveChangesAsync(cancellationToken);
         }
     }
 }

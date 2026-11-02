@@ -42,7 +42,7 @@ namespace ZonaMatch.Infrastructure.Geo
             _fechaReferencia = configuracion["Motis:FechaReferencia"] ?? FechaReferenciaPorDefecto;
         }
 
-        public async Task<TravelTime?> CalcularAsync(
+        public async Task<TravelTime?> GetTravelTimeAsync(
             double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, TravelMode modo,
             CancellationToken cancellationToken = default)
         {

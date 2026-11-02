@@ -13,11 +13,11 @@ namespace ZonaMatch.Infrastructure.Repositories
         {
         }
 
-        public Task<IReadOnlyList<(T Entidad, double DistanciaMetros)>> GetCercanosAsync(
+        public Task<IReadOnlyList<(T Entidad, double DistanciaMetros)>> GetNearbyAsync(
             double latitud, double longitud, double radioMetros) =>
             BuscarEnRadioAsync(_dbContext.Set<T>(), latitud, longitud, radioMetros);
 
-        public async Task<IReadOnlyList<(T Entidad, double DistanciaMetros)>> GetMasCercanosAsync(
+        public async Task<IReadOnlyList<(T Entidad, double DistanciaMetros)>> GetNearestAsync(
             double latitud, double longitud, int cantidad)
         {
             // Equirectangular distance computed in SQL: orders correctly at city scale, unlike raw degrees

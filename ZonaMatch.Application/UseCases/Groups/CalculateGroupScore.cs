@@ -60,13 +60,13 @@ public sealed partial class CalculateGroupScore
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        var universe = await _zoneProfiles.ListarAsync(cancellationToken);
+        var universe = await _zoneProfiles.ListAsync(cancellationToken);
         var zonesBySlug = universe.ToDictionary(zone => zone.Slug, StringComparer.Ordinal);
         var addedZones = slugs.Where(zonesBySlug.ContainsKey).Select(slug => zonesBySlug[slug]).ToArray();
         if (addedZones.Length != slugs.Length)
             throw new NotFoundException("No se encontraron una o más zonas agregadas al análisis.");
 
-        var profiles = await _profiles.ObtenerDeUsuariosAsync(
+        var profiles = await _profiles.GetByUserIdsAsync(
             group.Participants.Select(participant => participant.UserId).Distinct().ToArray(),
             cancellationToken);
         var profilesByUserId = profiles.ToDictionary(profile => profile.UsuarioId);
@@ -100,7 +100,7 @@ public sealed partial class CalculateGroupScore
             .ToArray();
         var nearbySlugs = locations.Length == 0
             ? universe.Select(zone => zone.Slug).ToArray()
-            : await _zoneProfiles.ListarZonasDelEntornoAsync(locations, cancellationToken);
+            : await _zoneProfiles.ListNearbyZoneSlugsAsync(locations, cancellationToken);
         var nearbyZones = nearbySlugs
             .Where(zonesBySlug.ContainsKey)
             .Select(slug => zonesBySlug[slug])
@@ -276,7 +276,7 @@ public sealed partial class CalculateGroupScore
             await limiter.WaitAsync(cancellationToken);
             try
             {
-                return await _routing.CalcularAsync(
+                return await _routing.GetTravelTimeAsync(
                            zone.Latitud, zone.Longitud,
                            place.Latitud!.Value, place.Longitud!.Value,
                            mode, cancellationToken)

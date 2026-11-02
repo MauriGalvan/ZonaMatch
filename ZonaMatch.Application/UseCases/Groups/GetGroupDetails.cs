@@ -38,9 +38,9 @@ public sealed class GetGroupDetails
             .Select(participant => participant.UserId)
             .Distinct()
             .ToArray();
-        var profiles = await _profiles.ObtenerDeUsuariosAsync(participantUserIds, cancellationToken);
+        var profiles = await _profiles.GetByUserIdsAsync(participantUserIds, cancellationToken);
         var profilesByUserId = profiles.ToDictionary(profile => profile.UsuarioId);
-        var catalog = await _criteria.ListarAsync(cancellationToken);
+        var catalog = await _criteria.ListAsync(cancellationToken);
         var criteria = catalog
             .Where(criterion => criterion.Activo)
             .Select(criterion => new GroupCriterionResponse(criterion.Id, criterion.Nombre))

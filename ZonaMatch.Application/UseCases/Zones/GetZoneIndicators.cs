@@ -21,12 +21,12 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
     {
         ZoneQueryPolicy.ValidateSlug(slug);
 
-        var zone = await indicatorsRepository.ObtenerPorSlugAsync(slug, cancellationToken)
+        var zone = await indicatorsRepository.GetBySlugAsync(slug, cancellationToken)
             ?? throw new NotFoundException("Todavia no hay datos de censo ni de seguridad para esta zona.");
 
         // Zones with geolocated crimes are compared against the whole city.
         var cityReference = zone.DelitosGeorreferenciados
-            ? await indicatorsRepository.ObtenerCabaAsync(cancellationToken)
+            ? await indicatorsRepository.GetCapitalCityAsync(cancellationToken)
             : null;
 
         return new IndicadoresZonaDto(

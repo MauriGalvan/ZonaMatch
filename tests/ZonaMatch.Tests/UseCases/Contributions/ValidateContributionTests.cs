@@ -28,7 +28,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
                 Categoria = "salud",
                 Nombre = "Farmacia Nueva"
             };
-            _contributions.Agregar(_contribution);
+            _contributions.Add(_contribution);
         }
 
         private static VoteOnContributionRequest Vote(bool confirm) => new(confirm);

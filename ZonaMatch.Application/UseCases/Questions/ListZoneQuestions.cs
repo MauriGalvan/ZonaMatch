@@ -17,7 +17,7 @@ namespace ZonaMatch.Application.UseCases.Questions
         public async Task<IReadOnlyList<QuestionResponse>> ExecuteAsync(
             string zoneSlug, Guid? currentUserId, CancellationToken cancellationToken = default)
         {
-            var questions = await _questions.ListarPorZonaAsync(zoneSlug, cancellationToken);
+            var questions = await _questions.ListByZoneAsync(zoneSlug, cancellationToken);
 
             return questions
                 .Select(question => new QuestionResponse(

@@ -25,25 +25,25 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public Task<string> GetPartidosAsync(double tolerancia) =>
+        public Task<string> GetDistrictsAsync(double tolerancia) =>
             LeerAsync(
                 FeatureCollection("partidos", "t.key",
                     "json_build_object('key', t.key, 'nombre', t.nombre, 'provincia', t.provincia, 'municipioId', t.municipio_id)",
                     GeometriaSimplificada),
                 new NpgsqlParameter("tol", tolerancia));
 
-        public Task<string> GetComunasAsync(double tolerancia) =>
+        public Task<string> GetCommunesAsync(double tolerancia) =>
             LeerAsync(
                 FeatureCollection("comunas", "t.key",
                     "json_build_object('key', t.key, 'nombre', t.nombre, 'cabaId', t.caba_id)",
                     GeometriaSimplificada),
                 new NpgsqlParameter("tol", tolerancia));
 
-        public Task<int> ContarRadiosAsync(BoundingBox bbox) =>
-            ContarAsync($"SELECT count(*)::int AS \"Value\" FROM {Schema}.radios t WHERE {EnViewport}",
+        public Task<int> CountCensusTractsAsync(BoundingBox bbox) =>
+            CountAsync($"SELECT count(*)::int AS \"Value\" FROM {Schema}.radios t WHERE {EnViewport}",
                 ParametrosViewport(bbox));
 
-        public Task<string> GetRadiosAsync(BoundingBox bbox, double tolerancia) =>
+        public Task<string> GetCensusTractsAsync(BoundingBox bbox, double tolerancia) =>
             LeerAsync(
                 FeatureCollection("radios", "t.id",
                     "json_build_object('id', t.id, 'origen', t.origen, 'depto', t.depto, 'comuna', t.comuna, 'fraccion', t.fraccion, 'radio', t.radio)",
@@ -51,13 +51,13 @@ namespace ZonaMatch.Infrastructure.Repositories
                     $"WHERE {EnViewport}"),
                 ParametrosViewport(bbox).Append(new NpgsqlParameter("tol", tolerancia)).ToArray());
 
-        public Task<int> ContarEscuelasAsync(BoundingBox bbox, string? nivel, string? sector)
+        public Task<int> CountSchoolsAsync(BoundingBox bbox, string? nivel, string? sector)
         {
             var (where, parametros) = FiltroEscuelas(bbox, nivel, sector);
-            return ContarAsync($"SELECT count(*)::int AS \"Value\" FROM {Schema}.escuelas t {where}", parametros);
+            return CountAsync($"SELECT count(*)::int AS \"Value\" FROM {Schema}.escuelas t {where}", parametros);
         }
 
-        public Task<string> GetEscuelasAsync(BoundingBox bbox, string? nivel, string? sector)
+        public Task<string> GetSchoolsAsync(BoundingBox bbox, string? nivel, string? sector)
         {
             var (where, parametros) = FiltroEscuelas(bbox, nivel, sector);
 
@@ -116,7 +116,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         private Task<string> LeerAsync(string sql, params NpgsqlParameter[] parametros) =>
             _dbContext.Database.SqlQueryRaw<string>(sql, parametros).SingleAsync();
 
-        private Task<int> ContarAsync(string sql, params NpgsqlParameter[] parametros) =>
+        private Task<int> CountAsync(string sql, params NpgsqlParameter[] parametros) =>
             _dbContext.Database.SqlQueryRaw<int>(sql, parametros).SingleAsync();
     }
 }

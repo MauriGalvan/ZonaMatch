@@ -14,7 +14,7 @@ public sealed class GetZonePointsOfInterestSummary(
         CancellationToken cancellationToken = default)
     {
         ZoneQueryPolicy.ValidateSlug(slug);
-        var counts = await pointOfInterestRepository.ContarPorTipoEnZonaAsync(slug, cancellationToken);
+        var counts = await pointOfInterestRepository.CountByTypeInZoneAsync(slug, cancellationToken);
         return responseBuilder.BuildSummary(radiusMeters: null, counts: counts);
     }
 }

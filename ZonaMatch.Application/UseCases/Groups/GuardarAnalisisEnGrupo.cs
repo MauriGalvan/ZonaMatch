@@ -59,7 +59,7 @@ public sealed class GuardarAnalisisEnGrupo
             },
             cancellationToken);
 
-        var profile = await _profiles.ObtenerDeUsuarioAsync(currentUserId, cancellationToken);
+        var profile = await _profiles.GetByUserAsync(currentUserId, cancellationToken);
         var context = profile?.CopiarParaAnalisis(now) ?? new Context
         {
             UsuarioId = currentUserId,
@@ -81,8 +81,8 @@ public sealed class GuardarAnalisisEnGrupo
             PuntajesEnGrupoJson = JsonSerializer.Serialize(ranked, JsonOptions),
         };
 
-        _analyses.Agregar(analysis);
-        await _analyses.GuardarCambiosAsync(cancellationToken);
+        _analyses.Add(analysis);
+        await _analyses.SaveChangesAsync(cancellationToken);
 
         return AnalysisMapping.ToResponse(analysis);
     }

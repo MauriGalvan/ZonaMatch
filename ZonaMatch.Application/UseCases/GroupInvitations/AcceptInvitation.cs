@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using ZonaMatch.Application.Exceptions;
@@ -60,7 +60,7 @@ public class AcceptInvitation
             throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
         }
 
-        // 5. Agregar al usuario como participante (Ajusta el "Role" según cómo lo manejes en tu app)
+        // 5. Add the user as a participant, using the role configured for this operation.
         var newParticipant = new Participant
         {
             GroupId = group.Id,

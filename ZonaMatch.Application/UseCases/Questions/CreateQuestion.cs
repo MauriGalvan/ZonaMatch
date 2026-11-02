@@ -43,7 +43,7 @@ namespace ZonaMatch.Application.UseCases.Questions
                 FechaCreacion = _clock.GetUtcNow()
             };
 
-            _questions.Agregar(question);
+            _questions.Add(question);
 
             var savedZones = await _savedZones.GetForZoneAsync(zoneSlug, currentUser.Id, cancellationToken);
             _notifications.AddRange(savedZones.Select(savedZone => new UserNotification
@@ -56,7 +56,7 @@ namespace ZonaMatch.Application.UseCases.Questions
                 CreatedAt = question.FechaCreacion
             }));
 
-            await _questions.GuardarCambiosAsync(cancellationToken);
+            await _questions.SaveChangesAsync(cancellationToken);
 
             return new QuestionResponse(question.Id, question.Texto, Autor.Iniciales(currentUser.Email), question.FechaCreacion, IsMine: true, []);
         }

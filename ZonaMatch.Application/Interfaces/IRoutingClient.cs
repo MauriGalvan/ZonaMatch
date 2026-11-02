@@ -7,7 +7,7 @@ namespace ZonaMatch.Application.Interfaces
     {
         // Minutos de viaje un dia habil a la mañana; Minutos null si no hay recorrido.
         // Null si el servicio de ruteo no esta disponible: el que llama decide si estima.
-        Task<TravelTime?> CalcularAsync(
+        Task<TravelTime?> GetTravelTimeAsync(
             double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, TravelMode modo,
             CancellationToken cancellationToken = default);
     }

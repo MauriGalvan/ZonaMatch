@@ -19,7 +19,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             _reloj = reloj;
         }
 
-        public async Task<IReadOnlyList<ZoneProfile>> ObtenerAsync(
+        public async Task<IReadOnlyList<ZoneProfile>> GetAsync(
             Func<CancellationToken, Task<IReadOnlyList<ZoneProfile>>> calcular, CancellationToken cancellationToken)
         {
             if (Vigentes() is { } perfiles)
