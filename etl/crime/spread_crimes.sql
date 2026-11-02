@@ -1,6 +1,6 @@
 -- Distributes crimes within each district (and homicides within each CABA commune) using census fraction factors
 -- from etl/crime/fit_crime_model.py, loaded into geo.carga_delitos_fracciones. DATOS-ZONAS-DOCKER.bat runs this
--- immediately after calcular_zonas.sql, which assigns district crime rates to localities and commune homicides
+-- immediately after calculate_zones.sql, which assigns district crime rates to localities and commune homicides
 -- to CABA neighborhoods.
 --
 -- Two factors per zone, each the mean across its census tracts divided by the population-weighted mean for its
@@ -48,7 +48,7 @@ SET delitos_anio = CASE WHEN i.delitos_fuente = 'snic' THEN round(i.delitos_anio
     delitos_reparto = CASE WHEN i.delitos_fuente = 'snic' THEN z.factor END,
     delitos_reparto_homicidios = z.homicidios
 FROM zone_factors z
--- Run only once after each calcular_zonas.sql execution; running it again would apply the factor twice.
+-- Run only once after each calculate_zones.sql execution; running it again would apply the factor twice.
 WHERE i.osm_id = z.osm_id AND i.delitos_fuente IS NOT NULL AND i.delitos_reparto_homicidios IS NULL;
 
 DROP TABLE geo.carga_delitos_fracciones;

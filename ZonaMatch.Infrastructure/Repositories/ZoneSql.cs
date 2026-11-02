@@ -17,7 +17,7 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         // CTEs "zone_components" and "selected_zone" (osm_id, name, administrative level, way in SRID 3857,
         // geometry in SRID 4326, and area) for @slug.
-        // The slug is looked up in geo.zonas (etl/calcular_zonas.sql), where every zone has a unique slug. When places
+        // The slug is looked up in geo.zonas (etl/calculate_zones.sql), where every zone has a unique slug. When places
         // share a name, the district is added ("villa-sarmiento-moron"). osm2pgsql stores each multipolygon part in
         // a separate row with the same osm_id, so the parts are joined back together.
         public static readonly string ZoneBySlug = $"""

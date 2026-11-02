@@ -7,7 +7,7 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    // Reads zone transit summaries populated from GTFS data by etl/calcular_transporte.sql.
+    // Reads zone transit summaries populated from GTFS data by etl/calculate_transit.sql.
     public class ZoneTransitRepository : IZoneTransitRepository
     {
         private const string Schema = ZonaMatchDbOptions.GeoSchema;

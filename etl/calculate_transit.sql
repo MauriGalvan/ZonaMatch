@@ -1,6 +1,6 @@
 -- Public transit frequencies by zone and time window on a weekday (geo schema).
--- DATOS-ZONAS-DOCKER.bat runs this after loading datos/transporte_salidas.csv (etl/procesar_gtfs.py) into
--- geo.carga_transporte_salidas. Requires geo.zonas (etl/calcular_zonas.sql).
+-- DATOS-ZONAS-DOCKER.bat runs this after loading datos/transporte_salidas.csv (etl/process_gtfs.py) into
+-- geo.carga_transporte_salidas. Requires geo.zonas (etl/calculate_zones.sql).
 
 \set ON_ERROR_STOP on
 SET client_min_messages = warning;

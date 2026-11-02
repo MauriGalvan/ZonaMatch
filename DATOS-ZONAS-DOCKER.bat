@@ -44,7 +44,7 @@ if exist "datos\censo_radios_amba.csv" if exist "datos\censo_indicadores_amba.cs
     echo Census and crime data already downloaded. Delete their CSV files in datos\ to refresh them.
     goto :gtfs
 )
-python etl\descargar_datos.py
+python etl\download_open_data.py
 if errorlevel 1 goto :err_download
 
 :gtfs
@@ -61,13 +61,13 @@ if exist "datos\transporte_salidas.csv" (
     goto :load
 )
 echo Summarizing bus, train, and subway GTFS feeds (about 210 MB downloaded on the first run)...
-python etl\procesar_gtfs.py
+python etl\process_gtfs.py
 if errorlevel 1 goto :err_download
 
 :load
 echo.
 echo [3/5] Copying CSV files into the database...
-%PSQL% < etl\crear_tablas.sql
+%PSQL% < etl\create_geographic_tables.sql
 if errorlevel 1 goto :err_load
 %PSQL% -c "\copy geo.carga_censo_radios FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\censo_radios_amba.csv
 if errorlevel 1 goto :err_load
@@ -82,9 +82,9 @@ if errorlevel 1 goto :err_load
 
 echo.
 echo [4/5] Calculating zone indicators (takes about one minute)...
-%PSQL% < etl\calcular_zonas.sql
+%PSQL% < etl\calculate_zones.sql
 if errorlevel 1 goto :err_calc
-%PSQL% < etl\calcular_transporte.sql
+%PSQL% < etl\calculate_transit.sql
 if errorlevel 1 goto :err_calc
 rem Province crime data is distributed across each district's localities using a model fitted on CABA data.
 python -c "import numpy" >nul 2>&1
@@ -102,7 +102,7 @@ if errorlevel 1 goto :err_load
 %PSQL% < etl\crime\spread_crimes.sql
 if errorlevel 1 goto :err_calc
 rem Estimated rents for zones without Zonaprop data (MERCADO-ZONAS-DOCKER.bat).
-%PSQL% < etl\estimar_alquileres.sql
+%PSQL% < etl\estimate_rents.sql
 if errorlevel 1 goto :err_calc
 
 echo.
@@ -132,7 +132,7 @@ del /q datos\motis\argentina-latest.osm.pbf
 :motis_gtfs
 rem MOTIS uses the extracted GTFS files in datos\gtfs; if they were deleted, extract them again from the ZIP files.
 if not exist "datos\gtfs\colectivo\stop_times.txt" (
-    python etl\procesar_gtfs.py
+    python etl\process_gtfs.py
     if errorlevel 1 goto :err_motis
 )
 rem Public GTFS feeds (2019 and 2020) have non-overlapping dates; each feed is imported with its own weekly calendar
@@ -140,7 +140,7 @@ rem projected onto the reference week in etl\motis\config.yml.
 for %%m in (colectivo tren subte) do (
     robocopy "datos\gtfs\%%m" "datos\motis\gtfs\%%m" *.txt /XF calendar.txt calendar_dates.txt feed_info.txt /NFL /NDL /NJH /NJS /NP >nul
     if errorlevel 8 goto :err_motis
-    copy /y "etl\motis\calendario-%%m.txt" "datos\motis\gtfs\%%m\calendar.txt" >nul
+    copy /y "etl\motis\calendar-%%m.txt" "datos\motis\gtfs\%%m\calendar.txt" >nul
 )
 copy /y etl\motis\config.yml datos\motis\config.yml >nul
 

@@ -1,6 +1,6 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Open data for a zone (geo.zona_indicadores table, populated by etl/calcular_zonas.sql): 2022 census counts
+    // Open data for a zone (geo.zona_indicadores table, populated by etl/calculate_zones.sql): 2022 census counts
     // for census tracts in the zone and crime data (CABA Crime Map or SNIC district totals in the province).
     // This entity contains the rules that turn those counts into indicators (percentages, density, and crime rates).
     public class ZoneIndicators

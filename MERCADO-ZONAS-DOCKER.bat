@@ -57,7 +57,7 @@ if errorlevel 1 goto :err_load
 %PSQL% < etl\zonaprop\calculate_market.sql
 if errorlevel 1 goto :err_calc
 rem Zones still missing Zonaprop data receive an estimated rent based on census data.
-%PSQL% < etl\estimar_alquileres.sql
+%PSQL% < etl\estimate_rents.sql
 if errorlevel 1 goto :err_calc
 %PSQL% --csv < etl\zonaprop\export_market.sql > datos\zonaprop\market_by_zone.csv
 if errorlevel 1 goto :err_calc

@@ -1,7 +1,7 @@
 -- Loads an ESTIMATED rent into app.zone_market for each base zone (neighborhoods and localities), for all property
 -- types, so rental analysis limits work for zones without Zonaprop data yet (etl/zonaprop/, MERCADO-ZONAS-DOCKER.bat).
--- DATOS-ZONAS-DOCKER.bat runs this after calcular_zonas.sql. It can also be run on its own:
---   docker compose exec -T db psql -U zonamatch -d zonamatch_docker < etl\estimar_alquileres.sql
+-- DATOS-ZONAS-DOCKER.bat runs this after calculate_zones.sql. It can also be run on its own:
+--   docker compose exec -T db psql -U zonamatch -d zonamatch_docker < etl\estimate_rents.sql
 --
 -- These are NOT actual market prices. Starting from a base CABA rent (:base, average one-bedroom apartment), the
 -- estimate is adjusted by the zone's socioeconomic level based on the 2022 census (share of people with university

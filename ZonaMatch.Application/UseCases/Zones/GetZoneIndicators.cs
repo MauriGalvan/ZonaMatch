@@ -10,7 +10,7 @@ namespace ZonaMatch.Application.UseCases.Zones;
 // Population, connectivity, living conditions, and safety data for a zone, with sources.
 public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsRepository)
 {
-    // Year of the data loaded by etl/descargar_datos.py.
+    // Year of the data loaded by etl/download_open_data.py.
     public const int CensusYear = 2022;
 
     private const string BuenosAiresCity = "CABA";

@@ -2,7 +2,7 @@ namespace ZonaMatch.Domain.Entities
 {
     // Real estate market of a zone (table app.zone_market): one row per zone, operation and property type.
     // Loaded by the ETL, not by the API: etl/zonaprop/calculate_market.sql (Zonaprop listings) and
-    // etl/estimar_alquileres.sql (estimated rent for zones still without real data).
+    // etl/estimate_rents.sql (estimated rent for zones still without real data).
     public class ZoneMarket
     {
         // Zone slug, as in GET /api/v1/zones/{slug}.
@@ -69,7 +69,7 @@ namespace ZonaMatch.Domain.Entities
         // For districts and communes, sum the values from the zones inside them.
         public const string ZonapropSum = "zonaprop-sum";
 
-        // Rough rent from the census (etl/estimar_alquileres.sql), only where there is no real data
+        // Rough rent from the census (etl/estimate_rents.sql), only where there is no real data
         public const string Estimated = "estimated";
     }
 }

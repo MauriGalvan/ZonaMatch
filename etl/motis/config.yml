@@ -2,7 +2,7 @@
 # DATOS-ZONAS-DOCKER.bat copies this file to datos\motis\ with the map and GTFS feeds, then runs the import.
 #
 # Public GTFS feeds are from 2019 and 2020 and their dates do not overlap. Each feed therefore uses its own weekly
-# calendar (etl\motis\calendario-*.txt), projected onto a reference week without holidays: Monday, March 2 through
+# calendar files (etl\motis\calendar-*.txt), projected onto a reference week without holidays: Monday, March 2 through
 # Sunday, March 8, 2026. Public transit queries use that week (a typical weekday, Saturday, or Sunday).
 
 osm: amba.osm.pbf

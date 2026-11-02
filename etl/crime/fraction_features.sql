@@ -1,7 +1,7 @@
 -- AMBA census fractions with the features used by etl/crime/fit_crime_model.py to distribute district crimes
 -- across localities: census indicators, density, shops (OSM), public transit departures (GTFS), and Crime Map
 -- data for CABA fractions, where the model is fitted.
--- Run by DATOS-ZONAS-DOCKER.bat after calcular_zonas.sql and calcular_transporte.sql:
+-- Run by DATOS-ZONAS-DOCKER.bat after calculate_zones.sql and calculate_transit.sql:
 --   psql --csv < etl\crime\fraction_features.sql > datos\delitos_fracciones_entrada.csv
 WITH census_fractions AS (
     -- Commune: CABA commune (the census numbers them by 7); null in the province.

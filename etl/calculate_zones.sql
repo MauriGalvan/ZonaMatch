@@ -1,5 +1,5 @@
 -- Moves staged data into its final tables and calculates each zone's indicators (geo schema).
--- DATOS-ZONAS-DOCKER.bat runs this after copying the CSV files (etl/crear_tablas.sql).
+-- DATOS-ZONAS-DOCKER.bat runs this after copying the CSV files (etl/create_geographic_tables.sql).
 --
 -- Zones are OpenStreetMap administrative boundaries (osm schema), as in GET /api/v1/zones/{slug}.
 -- Safety data: geolocated incidents from the CABA Crime Map; in Buenos Aires province, SNIC crimes are distributed
@@ -88,7 +88,7 @@ CREATE INDEX ON geo.delitos_caba USING gist (geom);
 -- ---------------------------------------------------------------------------------------------------
 -- OpenStreetMap zones.
 -- ---------------------------------------------------------------------------------------------------
--- Transit tables (etl/calcular_transporte.sql) also depend on geo.zonas.
+-- Transit tables (etl/calculate_transit.sql) also depend on geo.zonas.
 DROP TABLE IF EXISTS geo.zona_transporte_lineas, geo.zona_transporte_paradas, geo.zona_indicadores, geo.zonas;
 
 -- Same rule as ZoneSql.Slug and SlugZona.Generate: lowercase, remove accents, and replace other characters with "-".

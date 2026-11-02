@@ -5,12 +5,12 @@ latest year, and the same crime groups as the CABA Mapa del Delito.
 
 Source: https://datos.gob.ar/dataset/snic-departamental-estadisticas-criminales-en-la-republica-argentina-por-departamentos
 These are crimes reported to the police, aggregated by district (commune in CABA); there is no finer location.
-etl/calcular_zonas.sql distributes them across the localities of each district by population.
+etl/calculate_zones.sql distributes them across the localities of each district by population.
 
 Output: datos/snic_departamentos.csv with year, department_id (INDEC code, as in the census radios),
 department_name, crime_group, events and rate_per_100k (rate on the population projected for that year). The
 group "homicides_5y" is the yearly average of the last five years of homicides. Homicides are almost always
-recorded, so etl/calcular_zonas.sql uses them to correct reporting differences between districts.
+recorded, so etl/calculate_zones.sql uses them to correct reporting differences between districts.
 
 Usage: python etl/download_snic.py   (from backend/ZonaMatch). No dependencies beyond the standard library.
 """

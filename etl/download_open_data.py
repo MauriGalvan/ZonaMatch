@@ -5,7 +5,7 @@ Downloads open data used to enrich zone details and saves it as CSV files in dat
   from INDEC's REDATAM database. Only AMBA tracts are read.
 - CABA crime data (Buenos Aires Data, Mapa del Delito), including the location of each incident.
 
-Usage:     python etl/descargar_datos.py       (from backend/ZonaMatch)
+Usage:     python etl/download_open_data.py    (from backend/ZonaMatch)
 Requires:  pip install duckdb
 """
 
@@ -23,7 +23,7 @@ CENSUS_BASE_URL = "https://huggingface.co/datasets/pedroorden/censoargentino/res
 # AMBA bounds: the same area used by the OSM map updater, with an additional margin.
 AMBA_BOUNDS = {"xmin": -59.20, "xmax": -57.90, "ymin": -35.20, "ymax": -34.20}
 
-# Census variables used by zone details (see etl/crear_tablas.sql).
+# Census variables used by zone details (see etl/create_geographic_tables.sql).
 CENSUS_VARIABLES = [
     "PERSONA_EDADGRU",  # Age groups.
     "PERSONA_P19",      # Health coverage.

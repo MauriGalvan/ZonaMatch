@@ -1,5 +1,5 @@
 -- Tables for open data used to enrich zone details (geo schema).
--- DATOS-ZONAS-DOCKER.bat creates them before copying CSV files from datos/ (etl/descargar_datos.py).
+-- DATOS-ZONAS-DOCKER.bat creates them before copying CSV files from datos/ (etl/download_open_data.py).
 -- These external data tables are dropped and recreated on each load; they are not part of the application model.
 
 \set ON_ERROR_STOP on
@@ -67,7 +67,7 @@ CREATE TABLE geo.carga_delitos_fracciones (
 
 DROP TABLE IF EXISTS geo.carga_transporte_salidas;
 
--- GTFS summary (etl/procesar_gtfs.py): weekday departures by stop, route, and time window.
+-- GTFS summary (etl/process_gtfs.py): weekday departures by stop, route, and time window.
 CREATE TABLE geo.carga_transporte_salidas (
     modo       text,
     parada_id  text,

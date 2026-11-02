@@ -1,12 +1,12 @@
 """
 Summarizes AMBA public transit GTFS data into departures by stop, route, and time window for a weekday.
 The full GTFS feed is not loaded into the database. Only this summary (datos/transporte_salidas.csv) is
-created; etl/calcular_transporte.sql later assigns it to each zone.
+created; etl/calculate_transit.sql later assigns it to each zone.
 
 Feeds (Buenos Aires Data, public downloads): buses (2019), trains (2020), and subway. These are the latest
 publicly available feeds without credentials; schedules may be outdated.
 
-Usage:     python etl/procesar_gtfs.py       (from backend/ZonaMatch)
+Usage:     python etl/process_gtfs.py        (from backend/ZonaMatch)
 Requires:  pip install duckdb
 """
 
