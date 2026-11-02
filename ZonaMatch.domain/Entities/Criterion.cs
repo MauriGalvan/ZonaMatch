@@ -1,12 +1,12 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Catalogo de criterios del wizard de analisis (tabla app.criterios).
-    // Es dato compartido por todos los usuarios: define que criterios existen y como se muestran.
-    // Las elecciones del usuario viven en contexto_criterios (prioridad por analisis),
-    // punto_de_interes y las demas tablas normalizadas del contexto.
+    // Catalog of criteria shown in the analysis wizard (app.criterios table).
+    // Shared data that defines which criteria exist and how they are displayed.
+    // User selections live in contexto_criterios (priority per analysis), punto_de_interes,
+    // and the other normalized context tables.
     public class Criterion
     {
-        // Slug que viaja como FK en contexto_criterios y como clave en la API ("seguridad", "movilidad", ...)
+        // Slug used as a foreign key in contexto_criterios and as an API key ("seguridad", "movilidad", ...).
         public string Id { get; set; } = string.Empty;
 
         public string Nombre { get; set; } = string.Empty;
@@ -16,10 +16,10 @@ namespace ZonaMatch.Domain.Entities
         // Clase de icono de PrimeIcons, ej: "pi pi-shield"
         public string Icono { get; set; } = string.Empty;
 
-        // Orden de aparicion en el wizard
+        // Display order in the wizard.
         public int Orden { get; set; }
 
-        // Un criterio desaparece del wizard sin borrar analisis que ya lo usan
+        // Hide a criterion from the wizard without deleting existing analyses that use it.
         public bool Activo { get; set; } = true;
     }
 }

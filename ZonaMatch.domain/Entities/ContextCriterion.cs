@@ -1,7 +1,7 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Fila de la relacion N:N contexto <-> criterio (tabla app.contexto_criterios).
-    // La prioridad es el "peso" del criterio dentro de este analisis: baja|media|alta.
+    // Join row for the context-to-criterion relationship (app.contexto_criterios table).
+    // Priority is the criterion's weight in this analysis: baja | media | alta.
     public class ContextCriterion
     {
         public Guid ContextoId { get; set; }

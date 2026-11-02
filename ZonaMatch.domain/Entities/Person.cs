@@ -1,6 +1,6 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Integrante del hogar de un contexto (tabla app.personas), una fila por persona.
+    // A member of a context's household (app.personas table), one row per person.
     public class Person
     {
         public Guid Id { get; set; }
@@ -15,7 +15,7 @@ namespace ZonaMatch.Domain.Entities
         // Display name entered in the profile wizard.
         public string? Nombre { get; set; }
 
-        // Rango etario elegido en el wizard, verbatim (ej: "26–35 años"); null si no eligió
+        // Age range selected in the wizard, stored verbatim (for example, "26–35 años"); null if omitted.
         public string? Edad { get; set; }
     }
 }

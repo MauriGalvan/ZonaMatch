@@ -1,7 +1,7 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Lugar elegido en el wizard (tabla app.puntos_interes), no confundir con los POI
-    // geograficos del dump: este pertenece a un contexto y desaparece con el.
+    // A place selected in the wizard (app.puntos_interes table), not a geographic POI from the data dump.
+    // This record belongs to a context and is deleted with it.
     public class ContextPlace
     {
         public Guid Id { get; set; }
@@ -10,14 +10,14 @@ namespace ZonaMatch.Domain.Entities
 
         public Context? Context { get; set; }
 
-        // Orden en que el usuario los cargó en el mapa del wizard
+        // Order in which the user added places to the wizard map.
         public int Orden { get; set; }
 
         public string Nombre { get; set; } = string.Empty;
 
         public string? Direccion { get; set; }
 
-        // Coordenadas al ubicar el lugar en el mapa; null si quedó sin ubicar
+        // Coordinates selected on the map; null if the place was not geocoded.
         public double? Latitude { get; set; }
 
         public double? Longitude { get; set; }

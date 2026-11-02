@@ -1,9 +1,8 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Datos abiertos de una zona (tabla geo.zona_indicadores, la calcula etl/calcular_zonas.sql): conteos del
-    // Censo 2022 de los radios que caen en la zona y delitos (Mapa del Delito en CABA, SNIC por partido en
-    // provincia). Aca viven las reglas
-    // que convierten esos conteos en indicadores (porcentajes, densidad, tasa de delitos).
+    // Open data for a zone (geo.zona_indicadores table, populated by etl/calcular_zonas.sql): 2022 census counts
+    // for census tracts in the zone and crime data (CABA Crime Map or SNIC district totals in the province).
+    // This entity contains the rules that turn those counts into indicators (percentages, density, and crime rates).
     public class ZoneIndicators
     {
         public string Slug { get; set; } = string.Empty;
@@ -11,7 +10,7 @@ namespace ZonaMatch.Domain.Entities
         public int Nivel { get; set; }
         public double SuperficieKm2 { get; set; }
 
-        // Censo 2022 (INDEC), por radio censal
+        // 2022 census data (INDEC), grouped by census tract.
         public int Radios { get; set; }
         public int Poblacion { get; set; }
         public int Viviendas { get; set; }
@@ -30,8 +29,8 @@ namespace ZonaMatch.Domain.Entities
         public int HogaresHacinamiento { get; set; }
         public int HogaresAlquilan { get; set; }
 
-        // Crimes of the year DelitosPeriodo. CABA: geolocated events of the Mapa del Delito. Province: the SNIC
-        // crimes of the partido, spread over its localidades by population. Null without data.
+        // Crimes for the reported year. CABA uses geolocated CABA Crime Map events; the province uses SNIC district
+        // counts distributed among localities by population. Null when data is unavailable.
         public int? Delitos { get; set; }
         public int? Robos { get; set; }
         public int? Hurtos { get; set; }
@@ -40,11 +39,11 @@ namespace ZonaMatch.Domain.Entities
         public int? Amenazas { get; set; }
         public int? SiniestrosViales { get; set; }
 
-        // FuenteMapaDelito or FuenteSnic
+        // FuenteMapaDelito or FuenteSnic source code.
         public string? DelitosFuente { get; set; }
         public int? DelitosPeriodo { get; set; }
 
-        // SNIC: partidos the zone takes its crimes from, the one with most population first ("Morón")
+        // SNIC districts used for the zone's crime data, ordered by population descending (for example, "Morón").
         public string? DelitosAmbito { get; set; }
 
         public const string FuenteMapaDelito = "mapa-delito";
@@ -72,14 +71,14 @@ namespace ZonaMatch.Domain.Entities
         public double? PorcentajeCoberturaSalud => Porcentaje(PersonasConCoberturaSalud, PersonasConDatoCobertura);
         public double? PorcentajeUniversitario => Porcentaje(PersonasUniversitario, PersonasConDatoEducacion);
 
-        // Delitos (sin siniestros viales) cada 1.000 habitantes en el anio
+        // Crimes per 1,000 residents for the year, excluding road incidents.
         public double? DelitosCada1000Habitantes =>
             Delitos is { } delitos && Poblacion > 0 ? Math.Round(1000.0 * delitos / Poblacion, 1) : null;
 
-        // La edad se cuenta sobre las personas con edad informada, que pueden no ser toda la poblacion
+        // Age percentages use residents with a reported age, who may not represent the entire population.
         private int Poblacion0a65 => Personas0a14 + Personas15a64 + Personas65yMas;
 
-        // Con un decimal; null cuando no hay base para calcularlo
+        // One decimal place; null when there is no valid denominator.
         public static double? Porcentaje(int parte, int total) =>
             total > 0 ? Math.Round(100.0 * parte / total, 1) : null;
     }

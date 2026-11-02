@@ -3,9 +3,9 @@ using System.Globalization;
 namespace ZonaMatch.Domain.Scoring
 {
     // User input for scoring: criteria and priorities, places, and limits.
-    // GastoMensualMaximo is in Argentine pesos: rent plus building expenses when renting, expenses only when purchasing.
-    // CompraMaximaUsd is the maximum purchase price in US dollars. Without TipoVivienda, all housing types are used.
-    // When SuperficieM2 is provided, each zone's prices are estimated for that area.
+    // The monthly budget is in Argentine pesos: rent plus building expenses for renters, and expenses only for buyers.
+    // The purchase price limit is in US dollars. Without a housing type, all types are considered.
+    // If the user provides a desired area, prices are estimated for that area.
     public sealed record ScoringRequest(
         IReadOnlyDictionary<string, string> Criterios,
         IReadOnlyList<UserPlace> Lugares,
@@ -55,8 +55,8 @@ namespace ZonaMatch.Domain.Scoring
     // The total is a weighted average based on the user's priority (low 1, medium 3, high 9; each level weighs three
     // times the previous one). Criteria without data, such as safety outside CABA, neither add nor subtract points.
     // The user's places add a separate high-priority criterion based on travel time.
-    // Limits cover budgets and maximum travel times. A small overage (up to ExcesoLeve) deducts one point per 1%; a
-    // larger overage reduces the remaining score exponentially. A limit without data does not affect the score.
+    // Limits cover budgets and maximum travel times. A small overage deducts one point per 1%; a larger overage reduces
+    // the remaining score exponentially. A limit without data does not affect the score.
     public sealed class ScoringEngine
     {
         public const string Seguridad = "seguridad";
@@ -74,7 +74,7 @@ namespace ZonaMatch.Domain.Scoring
         // In a group analysis, the group sets budget limits instead of individual participants.
         public static bool EsLimiteDePresupuesto(string tipo) => tipo is LimiteAlquiler or LimiteExpensas or LimiteCompra;
 
-        // The penalty is linear up to this overage (20%); every additional EscalaExceso divides the remaining score by e.
+        // The penalty is linear up to this overage (20%); each additional 20% overage divides the remaining score by e.
         public const double ExcesoLeve = 0.20;
         public const double EscalaExceso = 0.20;
 

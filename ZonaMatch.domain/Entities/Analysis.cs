@@ -1,8 +1,8 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Analysis guardado de un usuario (tabla app.analisis): las zonas que comparo y el criterio con el que
-    // se calculo, copiado del perfil al guardarlo. Una version es un analisis derivado de otro, con el
-    // criterio ajustado solo para ese caso: AnalisisOrigenId apunta al original.
+    // A user's saved analysis (app.analisis table): compared zones and the criteria used,
+    // copied from the profile when saved. A version derives from an original analysis and keeps
+    // criteria adjusted for that case only; AnalisisOrigenId points to the original.
     public class Analysis
     {
         // UUIDv7: unique and time-ordered, so the primary key index stays compact
@@ -10,15 +10,15 @@ namespace ZonaMatch.Domain.Entities
 
         public Guid UsuarioId { get; set; }
 
-        // Nombre que el usuario ve en su listado, ej: "Cerca del trabajo"
+        // Name shown in the user's list, for example "Near work".
         public string Nombre { get; set; } = string.Empty;
 
-        // Criterion con el que se calculo (Context de tipo analisis, propio de este analisis)
+        // Criteria used for scoring (a Context of type analisis, owned by this analysis).
         public Guid ContextoId { get; set; }
 
         public Context Context { get; set; } = null!;
 
-        // Snapshot del resultado ponderado cuando el análisis se generó desde un grupo.
+        // Snapshot of the weighted result when the analysis was generated from a group.
         public string? PuntajesEnGrupoJson { get; set; }
 
         // Result of a personal analysis when it was saved or recalculated (zones, scores, limits, trips and
@@ -28,17 +28,17 @@ namespace ZonaMatch.Domain.Entities
 
         public DateTimeOffset? FechaResultado { get; set; }
 
-        // Marcado con la estrella en "Mis analisis": aparece primero, en Favoritos
+        // Starred in the user's "Mis análisis" list; starred analyses appear first in "Favoritos".
         public bool EsFavorito { get; set; }
 
-        // null en los originales; en una version, el analisis del que deriva (siempre un original)
+        // Null for originals; for a version, the original analysis it derives from.
         public Guid? AnalisisOrigenId { get; set; }
 
         public DateTimeOffset FechaCreacion { get; set; }
 
         public DateTimeOffset FechaActualizacion { get; set; }
 
-        // Filas de app.analisis_zonas, en el orden en que el usuario las eligio
+        // app.analisis_zonas rows, ordered as selected by the user.
         public ICollection<AnalysisZone> Zonas { get; set; } = new List<AnalysisZone>();
     }
 }

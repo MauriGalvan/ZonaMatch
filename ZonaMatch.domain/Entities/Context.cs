@@ -1,10 +1,10 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Criterion de busqueda de un usuario (tabla app.contextos): su hogar, la prioridad de cada
-    // criterio, sus lugares y sus topes (alquilar o comprar). Hay dos tipos (ver ContextType):
-    // - perfil: el criterio base del usuario, uno por usuario, que usan todos sus analisis
-    // - analisis: la copia con la que se calculo un analisis guardado (no cambia si despues se edita el perfil)
-    // El detalle vive normalizado en personas, puntos_interes y contexto_criterios.
+    // A user's analysis criteria (app.contextos table): household, criterion priorities, places, and
+    // rental or purchase limits. ContextType defines two types:
+    // - perfil: the user's base criteria, one per user and shared by all their analyses.
+    // - analisis: a snapshot used to calculate a saved analysis; profile edits do not change it.
+    // Details are normalized across personas, puntos_interes, and contexto_criterios.
     public class Context
     {
         // UUIDv7: unique and time-ordered, so the primary key index stays compact
@@ -12,49 +12,49 @@ namespace ZonaMatch.Domain.Entities
 
         public Guid UsuarioId { get; set; }
 
-        // perfil | analisis (ContextType)
+        // Existing type codes: perfil | analisis (ContextType).
         public string Tipo { get; set; } = ContextType.Perfil;
 
-        // Cantidad de personas del hogar (1..8); los rangos etarios viven en Integrantes
+        // Number of people in the household (1..8); age ranges are stored in Person records.
         public int Personas { get; set; }
 
-        // Mascotas marcadas: perro, gato, otras, ninguna (text[] como Review.Temas)
+        // Selected pet codes (perro, gato, otras, ninguna), stored as a text array like Review.Temas.
         public string[]? Mascotas { get; set; }
 
         // Movilidad habitual: a-pie, transporte-publico, vehiculo, bici.
-        // Igual que mascotas: una lista simple de lo que el usuario eligio, sin catalogo.
+        // Like pets, a simple list of user-selected mobility options without a catalog.
         public string[]? Movilidad { get; set; }
 
-        // Tope de gasto mensual tipeado por el usuario, verbatim (ej: "800000"); null si no cargo.
-        // Si alquila es alquiler mas expensas; si compra, solo expensas.
+        // User-entered monthly budget, stored verbatim (for example, "800000"); null if omitted.
+        // Includes rent and expenses for renters, and expenses only for buyers.
         public string? AlquilerMaximo { get; set; }
 
-        // alquiler | compra (Puntaje.HousingOperations)
+        // Existing operation codes: alquiler | compra (Scoring.HousingOperations).
         public string Operacion { get; set; } = "alquiler";
 
-        // Precio maximo de compra en dolares; solo si compra
+        // Maximum purchase price in US dollars; used only when buying.
         public decimal? CompraMaximaUsd { get; set; }
 
-        // apartment | house | ph (Puntaje.HousingTypes); null si le sirve cualquiera
+        // apartment | house | ph (Scoring.HousingTypes); null means any type is acceptable.
         public string? TipoVivienda { get; set; }
 
-        // Superficie que busca en m2: los precios se estiman por m2; null usa los promedios de cada zona
+        // Desired area in square meters; prices are estimated per square meter. Null uses zone averages.
         public int? SuperficieM2 { get; set; }
 
         public DateTimeOffset FechaCreacion { get; set; }
 
         public DateTimeOffset FechaActualizacion { get; set; }
 
-        // Filas de app.personas: una por integrante, con su rango etario
+        // app.personas rows: one per household member, including their age range.
         public ICollection<Person> Integrantes { get; set; } = new List<Person>();
 
-        // Filas de app.puntos_interes: los lugares a los que va el usuario
+        // app.puntos_interes rows: places the user visits.
         public ICollection<ContextPlace> Puntos { get; set; } = new List<ContextPlace>();
 
-        // Filas de app.contexto_criterios: criterio elegido + prioridad (baja|media|alta)
+        // app.contexto_criterios rows: selected criteria and their priorities (baja|media|alta).
         public ICollection<ContextCriterion> Criterios { get; set; } = new List<ContextCriterion>();
 
-        // Copia completa para guardar junto a un analisis: el analisis queda fijo aunque el perfil cambie
+        // Create a full snapshot for a saved analysis so it remains unchanged if the profile changes.
         public Context CopiarParaAnalisis(DateTimeOffset ahora) => new()
         {
             UsuarioId = UsuarioId,
@@ -93,7 +93,7 @@ namespace ZonaMatch.Domain.Entities
         };
     }
 
-    // Valores de Context.Tipo
+    // Values used by Context.Type.
     public static class ContextType
     {
         public const string Perfil = "perfil";

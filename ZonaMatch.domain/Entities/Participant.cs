@@ -9,12 +9,12 @@ public class Participant
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();
 
-    // Llave foránea hacia tu Grupo
+    // Foreign key to the group.
     public Guid GroupId { get; set; }
     public Group Group { get; set; } = null!;
 
-    // Llave foránea hacia la tabla de tu compañero. 
-    // EF Core detectará esto automáticamente sin tocar la clase User.
+    // Foreign key to the participant's user record.
+    // EF Core discovers this relationship without changes to the User class.
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
 

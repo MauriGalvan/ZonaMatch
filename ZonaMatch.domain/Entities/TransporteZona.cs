@@ -1,9 +1,9 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Transporte publico de una zona en un dia habil (tablas geo.zona_transporte_*, las calcula
-    // etl/calcular_transporte.sql a partir de los GTFS).
+    // Public transit in a zone on a weekday (geo.zona_transporte_* tables, populated by
+    // etl/calcular_transporte.sql from GTFS data).
 
-    // Paradas y lineas de un modo (colectivo, tren, subte) dentro de la zona
+    // Stops and lines for one mode (existing codes: colectivo, tren, subte) in the zone.
     public class ZoneTransitModeStops
     {
         public string Modo { get; set; } = string.Empty;
@@ -11,7 +11,7 @@ namespace ZonaMatch.Domain.Entities
         public int Lineas { get; set; }
     }
 
-    // Salidas de una linea en una franja, en la parada de la zona por donde mas pasa
+    // Departures for a line in one time window, measured at the zone stop with the most service.
     public class TransitLineDepartures
     {
         public string Modo { get; set; } = string.Empty;

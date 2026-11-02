@@ -4,9 +4,9 @@ namespace ZonaMatch.Domain.Entities
 {
     public enum ContributionType
     {
-        // Un lugar que falta en el mapa
+        // A place missing from the map.
         PuntoNuevo,
-        // Algo mal en un lugar del mapa
+        // Something is wrong with a place on the map.
         Correccion
     }
 
@@ -26,11 +26,11 @@ namespace ZonaMatch.Domain.Entities
         Otro
     }
 
-    // Contribution de un vecino al mapa de una zona (tabla app.aportes). Queda pendiente hasta que otros vecinos
-    // lo validan: los puntos y correcciones aprobados se aplican a los puntos de interes.
+    // A community contribution to a zone map (app.aportes table). It remains pending until other community
+    // members validate it; approved points and corrections are applied to points of interest.
     public class Contribution
     {
-        // Diferencia entre confirmaciones y rechazos que resuelve un aporte pendiente
+        // Difference between confirmations and rejections needed to resolve a pending contribution.
         public const int DiferenciaParaResolver = 3;
 
         public Guid Id { get; set; } = Guid.CreateVersion7();
@@ -43,17 +43,17 @@ namespace ZonaMatch.Domain.Entities
         public ContributionType Tipo { get; set; }
         public ContributionStatus Estado { get; set; } = ContributionStatus.Pendiente;
 
-        // Punto nuevo: sus datos. Correccion: el valor propuesto (Nombre, Categoria o Ubicacion, segun el Motivo).
+        // For a new point, its data. For a correction, the proposed value (Name, Category, or Location, based on Reason).
         public string? Nombre { get; set; }
         public string? Categoria { get; set; }
         public Point? Ubicacion { get; set; }
 
-        // Solo punto nuevo
+        // Used only for a new point.
         public string? Horario { get; set; }
         public string? Direccion { get; set; }
         public bool ViveOTrabajaEnZona { get; set; }
 
-        // Solo correccion: el lugar corregido (id de OSM como "n123", o "a<id>" para un punto de vecinos)
+        // Used only for a correction: the corrected place (an OSM ID such as "n123", or "a<id>" for a community point).
         public string? PuntoInteresId { get; set; }
         public string? PuntoInteresNombre { get; set; }
         public CorrectionReason? Motivo { get; set; }
@@ -70,8 +70,8 @@ namespace ZonaMatch.Domain.Entities
         public int Confirmaciones => Validaciones.Count(v => v.Confirma);
         public int Rechazos => Validaciones.Count(v => !v.Confirma);
 
-        // Registra (o cambia) el voto de un usuario y resuelve el aporte cuando se llega a la diferencia.
-        // Quien lo llama verifica que el aporte este pendiente y que el usuario no sea su autor.
+        // Record or change a user's vote and resolve the contribution when the vote threshold is reached.
+        // The caller verifies that the contribution is pending and the voter is not its author.
         public void Validar(Guid usuarioId, bool confirma, DateTimeOffset ahora)
         {
             var existente = Validaciones.FirstOrDefault(v => v.UsuarioId == usuarioId);
@@ -101,7 +101,7 @@ namespace ZonaMatch.Domain.Entities
         }
     }
 
-    // Voto de un vecino sobre un aporte (tabla app.aportes_validaciones)
+    // A community member's vote on a contribution (app.aportes_validaciones table).
     public class ContributionVote
     {
         public Guid AporteId { get; set; }

@@ -5,7 +5,7 @@ namespace ZonaMatch.Domain.Entities
     // etl/estimar_alquileres.sql (estimated rent for zones still without real data).
     public class ZoneMarket
     {
-        // Zone slug, the same as in GET /Zonas/{slug}
+        // Zone slug, as in GET /api/v1/zones/{slug}.
         public string ZoneSlug { get; set; } = string.Empty;
 
         // ZoneMarketOperation: sale or rent
@@ -38,7 +38,7 @@ namespace ZonaMatch.Domain.Entities
         // ZoneMarketSource: where the values come from
         public string Source { get; set; } = string.Empty;
 
-        // Slug of the zone the values were taken from, when Source is zonaprop-inherited
+        // Slug of the zone from which values were inherited, when Source is zonaprop-inherited.
         public string? InheritedFrom { get; set; }
 
         public DateTimeOffset UpdatedAt { get; set; }
@@ -66,7 +66,7 @@ namespace ZonaMatch.Domain.Entities
         // The zone has no Zonaprop location: averages of the smallest measured zone around it
         public const string ZonapropInherited = "zonaprop-inherited";
 
-        // Partidos and comunas: sum of the zones inside them
+        // For districts and communes, sum the values from the zones inside them.
         public const string ZonapropSum = "zonaprop-sum";
 
         // Rough rent from the census (etl/estimar_alquileres.sql), only where there is no real data
