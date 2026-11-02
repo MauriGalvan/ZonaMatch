@@ -3,7 +3,7 @@
 -- CABA barrios go first so a partial run already covers the city.
 -- Buenos Aires province neighborhoods inside a locality are omitted: Zonaprop rarely lists them, and the sample
 -- is tiny when it does. calculate_market.sql assigns them their locality's averages (source 'zonaprop-inherited').
--- Used by MERCADO-ZONAS-DOCKER.bat: psql --csv < target_zones.sql > datos\zonaprop\zones.csv
+-- Used by ZONE-MARKET-DOCKER.bat: psql --csv < target_zones.sql > datos\zonaprop\zones.csv
 SELECT z.slug,
        z.nombre AS name,
        z.nivel AS level,

@@ -1,5 +1,5 @@
 -- Distributes crimes within each district (and homicides within each CABA commune) using census fraction factors
--- from etl/crime/fit_crime_model.py, loaded into geo.carga_delitos_fracciones. DATOS-ZONAS-DOCKER.bat runs this
+-- from etl/crime/fit_crime_model.py, loaded into geo.carga_delitos_fracciones. ZONE-DATA-DOCKER.bat runs this
 -- immediately after calculate_zones.sql, which assigns district crime rates to localities and commune homicides
 -- to CABA neighborhoods.
 --

@@ -53,7 +53,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
                 // Transit tables may be missing when the zone data import has not been run.
-                _logger.LogWarning("Zone transit tables are missing. Run DATOS-ZONAS-DOCKER.bat. ({Message})", ex.MessageText);
+                _logger.LogWarning("Zone transit tables are missing. Run ZONE-DATA-DOCKER.bat. ({Message})", ex.MessageText);
                 return [];
             }
         }

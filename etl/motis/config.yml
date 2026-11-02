@@ -1,5 +1,5 @@
 # MOTIS configuration (multimodal routing engine) for the AMBA.
-# DATOS-ZONAS-DOCKER.bat copies this file to datos\motis\ with the map and GTFS feeds, then runs the import.
+# ZONE-DATA-DOCKER.bat copies this file to datos\motis\ with the map and GTFS feeds, then runs the import.
 #
 # Public GTFS feeds are from 2019 and 2020 and their dates do not overlap. Each feed therefore uses its own weekly
 # calendar files (etl\motis\calendar-*.txt), projected onto a reference week without holidays: Monday, March 2 through

@@ -7,7 +7,7 @@ REM (walking, cycling, driving, and public transit travel times). Requires the O
 REM (OSM-DATA-UPDATER-DOCKER.bat), Python 3, and the duckdb package (pip install duckdb).
 REM It is safe to run this again: tables are recalculated. Existing CSV files in datos\ are reused; delete them
 REM to download fresh data. MOTIS is imported only once. To reimport it (for example, with updated GTFS feeds), run:
-REM DATOS-ZONAS-DOCKER.bat reimportar
+REM ZONE-DATA-DOCKER.bat reimport
 
 set DB_USER=zonamatch
 set DB_NAME=zonamatch_docker
@@ -50,12 +50,12 @@ if errorlevel 1 goto :err_download
 :gtfs
 if exist "datos\snic_departamentos.csv" (
     echo SNIC district crime data already downloaded. Delete datos\snic_departamentos.csv to refresh it.
-    goto :transporte
+    goto :transit
 )
 python etl\download_snic.py
 if errorlevel 1 goto :err_download
 
-:transporte
+:transit
 if exist "datos\transporte_salidas.csv" (
     echo Transit data already processed. Delete datos\transporte_salidas.csv to refresh it.
     goto :load
@@ -101,20 +101,21 @@ if errorlevel 1 goto :err_calc
 if errorlevel 1 goto :err_load
 %PSQL% < etl\crime\spread_crimes.sql
 if errorlevel 1 goto :err_calc
-rem Estimated rents for zones without Zonaprop data (MERCADO-ZONAS-DOCKER.bat).
+rem Estimated rents for zones without Zonaprop data (ZONE-MARKET-DOCKER.bat).
 %PSQL% < etl\estimate_rents.sql
 if errorlevel 1 goto :err_calc
 
 echo.
 echo [5/5] Preparing the MOTIS routing engine...
 set MOTIS_RUN=docker compose run --rm --no-deps --entrypoint /bin/sh motis -c
-if /i "%~1"=="reimportar" goto :motis_entrada
+if /i "%~1"=="reimport" goto :motis_import
+if /i "%~1"=="reimportar" goto :motis_import
 %MOTIS_RUN% "test -f /data/importacion-ok" >nul 2>&1
-if errorlevel 1 goto :motis_entrada
-echo MOTIS is already imported. To reimport it: DATOS-ZONAS-DOCKER.bat reimportar
-goto :fin
+if errorlevel 1 goto :motis_import
+echo MOTIS is already imported. To reimport it: ZONE-DATA-DOCKER.bat reimport
+goto :done
 
-:motis_entrada
+:motis_import
 if not exist "datos\motis" mkdir "datos\motis"
 if exist "datos\motis\amba.osm.pbf" goto :motis_gtfs
 if exist "amba.osm.pbf" (
@@ -153,7 +154,7 @@ rd /s /q datos\motis\gtfs
 docker compose up -d motis
 if errorlevel 1 goto :err_motis
 
-:fin
+:done
 echo.
 echo ==========================================
 echo Data load completed successfully.

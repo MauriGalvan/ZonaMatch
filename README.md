@@ -35,11 +35,11 @@ Ya las aplica el script del paso 3. Si preferís hacerlo a mano, desde la Consol
 
 5. Datos abiertos de las zonas (censo, seguridad y transporte)
 
-Con el mapa de OSM ya importado (paso 3), hacé doble clic en DATOS-ZONAS-DOCKER.bat. Necesita Python 3 (instala el paquete duckdb si falta). El script:
+Con el mapa de OSM ya importado (paso 3), hacé doble clic en ZONE-DATA-DOCKER.bat. Necesita Python 3 (instala el paquete duckdb si falta). El script:
 
 - descarga a la carpeta datos\ (no se sube al repositorio) el Censo 2022 de INDEC por radio censal para el AMBA (población, hogares, internet, computadora, NBI, hacinamiento, alquiler, cobertura de salud, educación) los delitos 2024 del Mapa del Delito de CABA y los GTFS de colectivos, trenes y subte (Buenos Aires Data, de los que se guarda solo un resumen de salidas por parada y franja horaria),
 - los carga en el schema geo y asigna cada radio censal y cada delito, por ubicación, a las zonas de OSM que lo contienen. Las comunas y los partidos suman lo de su superficie,
-- prepara el motor de ruteo MOTIS (servicio motis del docker-compose, puerto 18080; se cambia con la variable MOTIS_PORT), que calcula tiempos de viaje a pie, en bici, en auto y en transporte público con el mapa del AMBA y los mismos GTFS. Los importa una sola vez al volumen motis_data; para reimportarlo (por ejemplo con GTFS nuevos), ejecutá DATOS-ZONAS-DOCKER.bat reimportar.
+- prepara el motor de ruteo MOTIS (servicio motis del docker-compose, puerto 18080; se cambia con la variable MOTIS_PORT), que calcula tiempos de viaje a pie, en bici, en auto y en transporte público con el mapa del AMBA y los mismos GTFS. Los importa una sola vez al volumen motis_data; para reimportarlo (por ejemplo con GTFS nuevos), ejecutá ZONE-DATA-DOCKER.bat reimport.
 
 Tarda unos minutos y se puede volver a ejecutar. Los datos se consultan en GET /api/v1/zones/{slug}/indicators y GET /api/v1/zones/{slug}/transit. Fuera de CABA todavía no hay delitos georreferenciados.
 
@@ -49,7 +49,7 @@ Los GTFS públicos son de 2019 (colectivos y subte) y 2020 (trenes) y sus fechas
 
 La búsqueda de calles, alturas y lugares usa una instancia local de Nominatim con el recorte OSM del AMBA. No requiere un servicio de geocodificación externo. El servicio está en el perfil `nominatim`, así que los `docker compose up -d` de los pasos anteriores no lo arrancan antes de que el archivo del mapa esté preparado.
 
-Después de ejecutar `DATOS-ZONAS-DOCKER.bat`, verificá que exista `datos\motis\amba.osm.pbf`. Si no existe, revisá que la preparación de MOTIS del paso anterior haya terminado. Desde PowerShell, en la raíz del repositorio, ejecutá estos comandos para crear automáticamente la carpeta de Nominatim si hace falta y copiar el recorte:
+Después de ejecutar `ZONE-DATA-DOCKER.bat`, verificá que exista `datos\motis\amba.osm.pbf`. Si no existe, revisá que la preparación de MOTIS del paso anterior haya terminado. Desde PowerShell, en la raíz del repositorio, ejecutá estos comandos para crear automáticamente la carpeta de Nominatim si hace falta y copiar el recorte:
 
 ```powershell
 New-Item -ItemType Directory -Force .\datos\nominatim

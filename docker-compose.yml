@@ -23,7 +23,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        if [ ! -f /data/importacion-ok ]; then echo "MOTIS: routing data is missing; run DATOS-ZONAS-DOCKER.bat"; fi
+        if [ ! -f /data/importacion-ok ]; then echo "MOTIS: routing data is missing; run ZONE-DATA-DOCKER.bat"; fi
         until [ -f /data/importacion-ok ]; do sleep 15; done
         exec /motis server -d /data
 

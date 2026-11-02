@@ -70,7 +70,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
                 // Zone indicators are unavailable until the zone data import has been run.
-                _logger.LogWarning("Zone indicator tables are missing. Run DATOS-ZONAS-DOCKER.bat. ({Message})", ex.MessageText);
+                _logger.LogWarning("Zone indicator tables are missing. Run ZONE-DATA-DOCKER.bat. ({Message})", ex.MessageText);
                 return null;
             }
         }

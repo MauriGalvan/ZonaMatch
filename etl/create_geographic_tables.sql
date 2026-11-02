@@ -1,5 +1,5 @@
 -- Tables for open data used to enrich zone details (geo schema).
--- DATOS-ZONAS-DOCKER.bat creates them before copying CSV files from datos/ (etl/download_open_data.py).
+-- ZONE-DATA-DOCKER.bat creates them before copying CSV files from datos/ (etl/download_open_data.py).
 -- These external data tables are dropped and recreated on each load; they are not part of the application model.
 
 \set ON_ERROR_STOP on

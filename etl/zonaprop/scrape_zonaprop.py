@@ -286,7 +286,7 @@ def slugify(text):
 def read_zones(only):
     file = DATA_DIR / "zones.csv"
     if not file.exists():
-        sys.exit(f"Missing {file}: export it with etl/zonaprop/target_zones.sql (see MERCADO-ZONAS-DOCKER.bat).")
+        sys.exit(f"Missing {file}: export it with etl/zonaprop/target_zones.sql (see ZONE-MARKET-DOCKER.bat).")
     # zonaprop_slug: slug to use; partido: parent district for zones without one in geo.zonas, used for fallback.
     overrides = {}
     if OVERRIDES_FILE.exists():

@@ -3,14 +3,14 @@ setlocal
 
 REM Real estate market data by zone from Zonaprop listings: sale and rental listing counts by property type
 REM (apartments, houses, PH), average rent in pesos, and sale price per square meter in US dollars.
-REM Requires the database with calculated zones (DATOS-ZONAS-DOCKER.bat) and Python 3 (no extra packages).
+REM Requires the database with calculated zones (ZONE-DATA-DOCKER.bat) and Python 3 (no extra packages).
 REM
 REM Scraping is intentionally slow (one request every few seconds, a few hours for all zones). If Zonaprop blocks
 REM requests, the process stops; run it again to resume because each page is cached in datos\zonaprop\cache.
 REM Output: app.zone_market (read by the API) and a CSV copy at datos\zonaprop\market_by_zone.csv.
 REM
-REM Options (passed to the scraper): MERCADO-ZONAS-DOCKER.bat --pages 1      sample 30 listings per combination
-REM                                  MERCADO-ZONAS-DOCKER.bat --export-only  rebuild without downloading
+REM Options (passed to the scraper): ZONE-MARKET-DOCKER.bat --pages 1      sample 30 listings per combination
+REM                                  ZONE-MARKET-DOCKER.bat --export-only  rebuild without downloading
 
 set DB_USER=zonamatch
 set DB_NAME=zonamatch_docker
@@ -81,5 +81,5 @@ exit /b 1
 echo ERROR: could not copy CSV files into the database.
 exit /b 1
 :err_calc
-echo ERROR: calculation failed. Check that zones have been calculated (DATOS-ZONAS-DOCKER.bat).
+echo ERROR: calculation failed. Check that zones have been calculated (ZONE-DATA-DOCKER.bat).
 exit /b 1

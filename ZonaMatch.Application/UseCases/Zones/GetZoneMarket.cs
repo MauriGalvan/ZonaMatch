@@ -18,7 +18,7 @@ namespace ZonaMatch.Application.UseCases.Zones
             ZoneQueryPolicy.ValidateSlug(slug, "The zone slug is not valid.");
             var rows = await market.ListByZoneAsync(slug, cancellationToken);
 
-            // No listings nor estimate loaded for the zone (MERCADO-ZONAS-DOCKER.bat has not run for it)
+            // No listings nor estimate loaded for the zone (ZONE-MARKET-DOCKER.bat has not run for it)
             if (rows.Count == 0)
                 throw new NotFoundException("Todavía no hay datos del mercado inmobiliario para esta zona.");
 

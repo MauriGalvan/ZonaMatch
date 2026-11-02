@@ -42,7 +42,7 @@ if not exist "%DUMP_FILE%" (
     goto :ef
 )
 
-rem Check for a table from the dump (geo.escuelas), not just whether geo has tables: DATOS-ZONAS-DOCKER.bat also
+rem Check for a table from the dump (geo.escuelas), not just whether geo has tables: ZONE-DATA-DOCKER.bat also
 rem creates tables in geo, which previously caused the dump to be skipped if that script ran first.
 set HAS_DUMP=
 for /f "usebackq" %%i in (`%PSQL% -tAc "SELECT to_regclass('geo.escuelas') IS NOT NULL"`) do set HAS_DUMP=%%i

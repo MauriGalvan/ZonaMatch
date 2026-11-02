@@ -1,5 +1,5 @@
 -- Moves staged data into its final tables and calculates each zone's indicators (geo schema).
--- DATOS-ZONAS-DOCKER.bat runs this after copying the CSV files (etl/create_geographic_tables.sql).
+-- ZONE-DATA-DOCKER.bat runs this after copying the CSV files (etl/create_geographic_tables.sql).
 --
 -- Zones are OpenStreetMap administrative boundaries (osm schema), as in GET /api/v1/zones/{slug}.
 -- Safety data: geolocated incidents from the CABA Crime Map; in Buenos Aires province, SNIC crimes are distributed

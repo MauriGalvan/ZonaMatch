@@ -226,7 +226,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
-                _logger.LogWarning("Zone tables are missing. Run DATOS-ZONAS-DOCKER.bat. ({Message})", ex.MessageText);
+                _logger.LogWarning("Zone tables are missing. Run ZONE-DATA-DOCKER.bat. ({Message})", ex.MessageText);
                 return [];
             }
         }
@@ -250,7 +250,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
-                _logger.LogWarning("Zone scoring tables are missing. Run DATOS-ZONAS-DOCKER.bat. ({Message})", ex.MessageText);
+                _logger.LogWarning("Zone scoring tables are missing. Run ZONE-DATA-DOCKER.bat. ({Message})", ex.MessageText);
                 return [];
             }
         }

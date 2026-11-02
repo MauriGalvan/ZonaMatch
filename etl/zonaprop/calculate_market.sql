@@ -1,5 +1,5 @@
 -- Real estate market of each zone from the Zonaprop scrape (etl/zonaprop/scrape_zonaprop.py), written to
--- app.zone_market. Run by MERCADO-ZONAS-DOCKER.bat after loading datos/zonaprop/totals.csv and listings.csv into
+-- app.zone_market. Run by ZONE-MARKET-DOCKER.bat after loading datos/zonaprop/totals.csv and listings.csv into
 -- the load tables (create_load_tables.sql).
 --
 -- One row per zone, operation (sale, rent) and property type (apartment, house, ph, and "all" for every type):

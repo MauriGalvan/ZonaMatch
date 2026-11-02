@@ -16,7 +16,7 @@ recorded, they get their own factor: across AMBA communes and districts, the fiv
 about 17 % per point of households with unmet basic needs (R2 0.45). Each fraction takes that relation with its NBI,
 clipped to the range seen across districts, so a district's violence rate is lower where its poorest households live.
 
-Usage (from backend/ZonaMatch, see DATOS-ZONAS-DOCKER.bat):
+Usage (from backend/ZonaMatch, see ZONE-DATA-DOCKER.bat):
   python etl/crime/fit_crime_model.py datos/delitos_fracciones_entrada.csv datos/snic_departamentos.csv
       datos/delitos_fracciones.csv
 Requires numpy (pip install numpy).
