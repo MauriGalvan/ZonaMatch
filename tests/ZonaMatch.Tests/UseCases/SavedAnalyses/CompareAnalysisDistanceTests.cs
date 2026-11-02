@@ -26,19 +26,19 @@ public class CompareAnalysisDistanceTests
             }
         }).ToArray();
 
-        var repositorio = new Mock<IAnalysisRepository>();
-        repositorio.Setup(r => r.GetForUserAsync(userId, It.IsAny<CancellationToken>()))
+        var analysisRepository = new Mock<IAnalysisRepository>();
+        analysisRepository.Setup(repository => repository.GetForUserAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(analyses);
-        var perfiles = new Mock<IZoneProfilesRepository>();
-        perfiles.Setup(r => r.ListAsync(It.IsAny<CancellationToken>()))
+        var zoneProfilesRepository = new Mock<IZoneProfilesRepository>();
+        zoneProfilesRepository.Setup(repository => repository.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ZoneProfile[] { new() { Slug = "recoleta", Name = "Recoleta", Level = 9 } });
-        var ruteo = new Mock<IRoutingClient>();
-        ruteo.Setup(r => r.GetTravelTimeAsync(
+        var routingClient = new Mock<IRoutingClient>();
+        routingClient.Setup(client => client.GetTravelTimeAsync(
                 It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>(),
                 TravelMode.Car, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new TravelTime(25, false, 8.75));
 
-        var result = await new CompareAnalyses(repositorio.Object, perfiles.Object, ruteo.Object)
+        var result = await new CompareAnalyses(analysisRepository.Object, zoneProfilesRepository.Object, routingClient.Object)
             .ExecuteAsync(userId, new CompareAnalysesRequest { AnalysisIds = analyses.Select(analysis => analysis.Id).ToList() });
 
         Assert.Equal(2, result.Analyses.Count);

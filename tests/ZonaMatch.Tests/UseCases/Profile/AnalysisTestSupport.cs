@@ -21,16 +21,16 @@ internal sealed class FakeProfileRepository : IProfileRepository
     public List<Context> Profiles { get; } = [];
     public int SaveCount { get; private set; }
 
-    public Task<Context?> GetByUserAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Profiles.FirstOrDefault(profile => profile.UserId == usuarioId));
+    public Task<Context?> GetByUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Profiles.FirstOrDefault(profile => profile.UserId == userId));
 
     public Task<IReadOnlyList<Context>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> usuarioIds,
+        IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Context>>(
-            Profiles.Where(profile => usuarioIds.Contains(profile.UserId)).ToList());
+            Profiles.Where(profile => userIds.Contains(profile.UserId)).ToList());
 
-    public void Add(Context perfil) => Profiles.Add(perfil);
+    public void Add(Context profile) => Profiles.Add(profile);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -44,20 +44,20 @@ internal sealed class FakeAnalysisRepository : IAnalysisRepository
     public List<Analysis> Analyses { get; } = [];
     public int SaveCount { get; private set; }
 
-    public Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Analysis>>(
-            Analyses.Where(analysis => analysis.UserId == usuarioId).OrderByDescending(analysis => analysis.UpdatedAt).ToList());
+            Analyses.Where(analysis => analysis.UserId == userId).OrderByDescending(analysis => analysis.UpdatedAt).ToList());
 
-    public Task<Analysis?> GetAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Analyses.FirstOrDefault(analysis => analysis.Id == id && analysis.UserId == usuarioId));
+    public Task<Analysis?> GetAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Analyses.FirstOrDefault(analysis => analysis.Id == id && analysis.UserId == userId));
 
-    public Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid originalAnalysisId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Analysis>>(
-            Analyses.Where(analysis => analysis.OriginalAnalysisId == analisisOrigenId).OrderBy(analysis => analysis.CreatedAt).ToList());
+            Analyses.Where(analysis => analysis.OriginalAnalysisId == originalAnalysisId).OrderBy(analysis => analysis.CreatedAt).ToList());
 
-    public void Add(Analysis analisis) => Analyses.Add(analisis);
+    public void Add(Analysis analysis) => Analyses.Add(analysis);
 
-    public void Delete(Analysis analisis) => Analyses.Remove(analisis);
+    public void Delete(Analysis analysis) => Analyses.Remove(analysis);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {

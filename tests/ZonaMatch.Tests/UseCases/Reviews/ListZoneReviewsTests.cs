@@ -12,8 +12,8 @@ namespace ZonaMatch.Tests.UseCases.Reviews
 
         private readonly FakeReviewRepository _reviews = new();
         private readonly ListZoneReviews _useCase;
-        private readonly User _ana = new() { Id = Guid.NewGuid(), Email = "ana@example.com" };
-        private readonly Guid _luis = Guid.NewGuid();
+        private readonly User _firstUser = new() { Id = Guid.NewGuid(), Email = "ana@example.com" };
+        private readonly Guid _secondUserId = Guid.NewGuid();
 
         public ListZoneReviewsTests()
         {
@@ -23,7 +23,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         // With a safety score of 3, the overall score is (3 + 5 + 4 + 4 + 2) / 5 = 3.6.
         private Review Add(User author, int safety = 3, string zone = Zone)
         {
-            var resena = new Review
+            var review = new Review
             {
                 ZoneSlug = zone,
                 UserId = author.Id,
@@ -36,17 +36,17 @@ namespace ZonaMatch.Tests.UseCases.Reviews
                 Text = "Barrio tranquilo y bien conectado con el centro.",
                 CreatedAt = CurrentTime
             };
-            _reviews.Add(resena);
-            return resena;
+            _reviews.Add(review);
+            return review;
         }
 
         [Fact]
         public async Task List_SummarizesAverageScoresByAspect()
         {
-            Add(_ana, safety: 3);
-            Add(new User { Id = _luis, Email = "luis@example.com" }, safety: 4);
+            Add(_firstUser, safety: 3);
+            Add(new User { Id = _secondUserId, Email = "luis@example.com" }, safety: 4);
             Add(new User { Email = "mara@example.com" }, safety: 4);
-            Add(_ana, safety: 1, zone: "otra-zona");
+            Add(_firstUser, safety: 1, zone: "otra-zona");
 
             var result = await _useCase.ExecuteAsync(Zone, currentUserId: null);
 
@@ -71,18 +71,18 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         [Fact]
         public async Task List_WithCurrentUser_IndicatesOwnershipAndHelpfulVotes()
         {
-            var review = Add(_ana);
-            review.HelpfulVotes.Add(new ReviewHelpfulVote { ReviewId = review.Id, UserId = _luis, CreatedAt = CurrentTime });
+            var review = Add(_firstUser);
+            review.HelpfulVotes.Add(new ReviewHelpfulVote { ReviewId = review.Id, UserId = _secondUserId, CreatedAt = CurrentTime });
 
-            var forLuis = Assert.Single((await _useCase.ExecuteAsync(Zone, _luis)).Reviews);
-            var forAna = Assert.Single((await _useCase.ExecuteAsync(Zone, _ana.Id)).Reviews);
+            var forSecondUser = Assert.Single((await _useCase.ExecuteAsync(Zone, _secondUserId)).Reviews);
+            var forFirstUser = Assert.Single((await _useCase.ExecuteAsync(Zone, _firstUser.Id)).Reviews);
 
-            Assert.Equal(1, forLuis.HelpfulCount);
-            Assert.True(forLuis.MarkedHelpfulByMe);
-            Assert.False(forLuis.IsMine);
-            Assert.False(forAna.MarkedHelpfulByMe);
-            Assert.True(forAna.IsMine);
-            Assert.Equal("AN", forAna.Initials);
+            Assert.Equal(1, forSecondUser.HelpfulCount);
+            Assert.True(forSecondUser.MarkedHelpfulByMe);
+            Assert.False(forSecondUser.IsMine);
+            Assert.False(forFirstUser.MarkedHelpfulByMe);
+            Assert.True(forFirstUser.IsMine);
+            Assert.Equal("AN", forFirstUser.Initials);
         }
     }
 }
