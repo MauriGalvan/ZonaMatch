@@ -32,8 +32,8 @@ public sealed class GetZoneTransit(
             : await transitRepository.ListDeparturesAsync(slug, cancellationToken);
 
         var modes = stops
-            .OrderBy(stop => Array.IndexOf(ModeOrder, stop.Modo) is var order and >= 0 ? order : ModeOrder.Length)
-            .Select(stop => BuildMode(stop, departures.Where(departure => departure.Modo == stop.Modo).ToList()))
+            .OrderBy(stop => Array.IndexOf(ModeOrder, stop.Mode) is var order and >= 0 ? order : ModeOrder.Length)
+            .Select(stop => BuildMode(stop, departures.Where(departure => departure.Mode == stop.Mode).ToList()))
             .ToList();
 
         return new ZoneTransitResponse(slug, modes, BuildSources(modes));
@@ -47,32 +47,32 @@ public sealed class GetZoneTransit(
             .Select(timeWindow =>
             {
                 var windowDepartures = departures
-                    .Where(departure => departure.Franja == timeWindow.Code && departure.Salidas > 0)
+                    .Where(departure => departure.TimeWindow == timeWindow.Code && departure.DepartureCount > 0)
                     .ToList();
                 return new TransitTimeWindowResponse(
                     timeWindow.Code,
                     timeWindow.StartHour,
                     timeWindow.EndHour,
-                    windowDepartures.Select(departure => departure.Linea).Distinct().Count(),
-                    timeWindow.DeparturesPerHour(windowDepartures.Sum(departure => departure.Salidas)));
+                    windowDepartures.Select(departure => departure.Line).Distinct().Count(),
+                    timeWindow.DeparturesPerHour(windowDepartures.Sum(departure => departure.DepartureCount)));
             })
             .ToList();
 
         var lines = departures
-            .GroupBy(departure => departure.Linea)
+            .GroupBy(departure => departure.Line)
             .Select(line => new
             {
                 Name = line.Key,
-                Stops = line.Max(departure => departure.Paradas),
+                Stops = line.Max(departure => departure.StopCount),
                 MorningPeak = line
-                    .Where(departure => departure.Franja == TimeWindow.Morning.Code)
-                    .Sum(departure => departure.Salidas),
+                    .Where(departure => departure.TimeWindow == TimeWindow.Morning.Code)
+                    .Sum(departure => departure.DepartureCount),
                 TimeWindows = TimeWindow.All
                     .Select(timeWindow =>
                     {
                         var count = line
-                            .Where(departure => departure.Franja == timeWindow.Code)
-                            .Sum(departure => departure.Salidas);
+                            .Where(departure => departure.TimeWindow == timeWindow.Code)
+                            .Sum(departure => departure.DepartureCount);
                         return new TransitLineFrequencyResponse(
                             timeWindow.Code,
                             timeWindow.DeparturesPerHour(count),
@@ -85,7 +85,7 @@ public sealed class GetZoneTransit(
             .Select(line => new TransitLineResponse(line.Name, line.Stops, line.TimeWindows))
             .ToList();
 
-        return new TransitModeResponse(stops.Modo, stops.Paradas, stops.Lineas, timeWindows, lines);
+        return new TransitModeResponse(stops.Mode, stops.StopCount, stops.LineCount, timeWindows, lines);
     }
 
     private static IReadOnlyList<DataSourceResponse> BuildSources(IReadOnlyList<TransitModeResponse> modes)
@@ -98,12 +98,12 @@ public sealed class GetZoneTransit(
         };
 
         return modes
-            .Where(mode => sourcesByMode.ContainsKey(mode.Modo))
+            .Where(mode => sourcesByMode.ContainsKey(mode.Mode))
             .Select(mode => new DataSourceResponse(
                 "Transporte",
-                sourcesByMode[mode.Modo].Source,
+                sourcesByMode[mode.Mode].Source,
                 "Parada",
-                sourcesByMode[mode.Modo].Year))
+                sourcesByMode[mode.Mode].Year))
             .ToList();
     }
 }

@@ -7,22 +7,21 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    // Lee el resumen de transporte por zona (geo.zona_transporte_paradas y geo.zona_transporte_lineas), que arma
-    // etl/calcular_transporte.sql a partir de los GTFS. Solo lectura.
+    // Reads zone transit summaries populated from GTFS data by etl/calcular_transporte.sql.
     public class ZoneTransitRepository : IZoneTransitRepository
     {
         private const string Schema = ZonaMatchDbOptions.GeoSchema;
 
-        private static readonly string SqlParadas = $"""
-            SELECT p.modo AS "Modo", p.paradas AS "Paradas", p.lineas AS "Lineas"
+        private static readonly string StopsSql = $"""
+            SELECT p.modo AS "Mode", p.paradas AS "StopCount", p.lineas AS "LineCount"
             FROM {Schema}.zonas z
             JOIN {Schema}.zona_transporte_paradas p USING (osm_id)
             WHERE z.elegida AND z.slug = @slug
             """;
 
-        private static readonly string SqlSalidas = $"""
-            SELECT l.modo AS "Modo", l.linea AS "Linea", l.franja AS "Franja", l.salidas AS "Salidas",
-                   l.paradas AS "Paradas"
+        private static readonly string DeparturesSql = $"""
+            SELECT l.modo AS "Mode", l.linea AS "Line", l.franja AS "TimeWindow", l.salidas AS "DepartureCount",
+                   l.paradas AS "StopCount"
             FROM {Schema}.zonas z
             JOIN {Schema}.zona_transporte_lineas l USING (osm_id)
             WHERE z.elegida AND z.slug = @slug
@@ -38,10 +37,10 @@ namespace ZonaMatch.Infrastructure.Repositories
         }
 
         public Task<IReadOnlyList<ZoneTransitModeStops>> ListStopsAsync(string slug, CancellationToken cancellationToken = default) =>
-            ListAsync<ZoneTransitModeStops>(SqlParadas, slug, cancellationToken);
+            ListAsync<ZoneTransitModeStops>(StopsSql, slug, cancellationToken);
 
         public Task<IReadOnlyList<TransitLineDepartures>> ListDeparturesAsync(string slug, CancellationToken cancellationToken = default) =>
-            ListAsync<TransitLineDepartures>(SqlSalidas, slug, cancellationToken);
+            ListAsync<TransitLineDepartures>(DeparturesSql, slug, cancellationToken);
 
         private async Task<IReadOnlyList<T>> ListAsync<T>(string sql, string slug, CancellationToken cancellationToken)
         {
@@ -53,8 +52,8 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
-                // Todavia no se corrio DATOS-ZONAS-DOCKER.bat: la zona queda sin transporte
-                _logger.LogWarning("Faltan las tablas de transporte por zona ({Mensaje}). Correr DATOS-ZONAS-DOCKER.bat.", ex.MessageText);
+                // Transit tables may be missing when the zone data import has not been run.
+                _logger.LogWarning("Zone transit tables are missing. Run DATOS-ZONAS-DOCKER.bat. ({Message})", ex.MessageText);
                 return [];
             }
         }
