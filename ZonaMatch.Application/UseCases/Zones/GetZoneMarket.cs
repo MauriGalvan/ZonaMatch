@@ -1,9 +1,10 @@
 using ZonaMatch.Application.DTOs.ZoneMarket.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Policies;
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Application.UseCases.Zonas
+namespace ZonaMatch.Application.UseCases.Zones
 {
     // Real estate market of a zone: rent and sale, every type together and by type, how many listings, where the data
     // comes from, and the comuna or partido around it to compare.
@@ -14,6 +15,7 @@ namespace ZonaMatch.Application.UseCases.Zonas
 
         public async Task<ZoneMarketResponse> ExecuteAsync(string slug, CancellationToken cancellationToken = default)
         {
+            ZoneQueryPolicy.ValidateSlug(slug, "The zone slug is not valid.");
             var rows = await market.ListByZoneAsync(slug, cancellationToken);
 
             // No listings nor estimate loaded for the zone (MERCADO-ZONAS-DOCKER.bat has not run for it)

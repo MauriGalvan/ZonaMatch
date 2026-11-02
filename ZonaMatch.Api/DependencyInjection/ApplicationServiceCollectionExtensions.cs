@@ -23,7 +23,7 @@ using ZonaMatch.Application.UseCases.Routes;
 using ZonaMatch.Application.UseCases.SavedAnalyses;
 using ZonaMatch.Application.UseCases.SavedZones;
 using ZonaMatch.Application.UseCases.ZoneRecommendations;
-using ZonaMatch.Application.UseCases.Zonas;
+using ZonaMatch.Application.UseCases.Zones;
 
 namespace ZonaMatch.Api.DependencyInjection;
 
@@ -36,6 +36,13 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetZoneProfileRecommendations>();
         services.AddScoped<GetZoneMarket>();
         services.AddScoped<SearchPlaces>();
+        services.AddScoped<PointOfInterestResponseBuilder>();
+        services.AddScoped<SearchZones>();
+        services.AddScoped<GetZone>();
+        services.AddScoped<GetZonePointsOfInterest>();
+        services.AddScoped<GetZonePointsOfInterestSummary>();
+        services.AddScoped<GetZoneIndicators>();
+        services.AddScoped<GetZoneTransit>();
         services.AddScoped<IGeolocationService, GeolocationService>();
         services.AddScoped<IMapaService, MapaService>();
         services.AddScoped<IZonaService, ZonaService>();
@@ -101,8 +108,6 @@ public static class ApplicationServiceCollectionExtensions
 
         services.AddScoped<CalculateScores>();
         services.AddScoped<GetRoute>();
-        services.AddScoped<ObtenerIndicadoresZona>();
-        services.AddScoped<ObtenerTransporteZona>();
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(new FrontendLinks(configuration["Frontend:BaseUrl"] ?? "http://localhost:5173"));

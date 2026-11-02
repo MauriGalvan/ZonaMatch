@@ -1,0 +1,33 @@
+using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Policies;
+using ZonaMatch.Application.Services;
+using ZonaMatch.Domain.Common;
+
+namespace ZonaMatch.Application.UseCases.Zones;
+
+public sealed class GetZonePointsOfInterest(
+    IPuntoInteresRepository pointOfInterestRepository,
+    PointOfInterestResponseBuilder responseBuilder)
+{
+    public async Task<PuntosInteresCercanosDto> ExecuteAsync(
+        string slug,
+        string? categories,
+        CancellationToken cancellationToken = default)
+    {
+        ZoneQueryPolicy.ValidateSlug(slug);
+
+        if (!CategoriaPuntoInteres.TryParseLista(categories, out var categoryCodes, out var error))
+            throw new BadRequestException(error);
+
+        // One extra row indicates whether the result was truncated.
+        var points = await pointOfInterestRepository.GetEnZonaAsync(
+            slug,
+            categoryCodes,
+            PointOfInterestResponseBuilder.MaximumPoints + 1,
+            cancellationToken);
+
+        return responseBuilder.BuildPoints(points);
+    }
+}

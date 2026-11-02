@@ -1,9 +1,9 @@
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.Zonas;
+using ZonaMatch.Application.UseCases.Zones;
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Tests.UseCases.Zonas
+namespace ZonaMatch.Tests.UseCases.Zones
 {
     public class GetZoneMarketTests
     {
@@ -26,7 +26,7 @@ namespace ZonaMatch.Tests.UseCases.Zonas
         };
 
         [Fact]
-        public async Task ExecuteAsync_WhenZoneHasListings_SummarizesRentAndSaleByTypeAndComparesWithItsPartido()
+        public async Task ExecuteAsync_WhenZoneHasListings_SummarizesRentAndSaleByTypeAndComparesWithItsDistrict()
         {
             _market.Rows.AddRange([
                 Row("castelar", ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 861_000, 14_891, 240),
