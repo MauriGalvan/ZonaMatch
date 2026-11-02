@@ -8,19 +8,19 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    // Arma el perfil de todas las zonas elegidas de geo.zonas para el motor de puntaje: censo y delitos
-    // (geo.zona_indicadores), transporte (geo.zona_transporte_*), equipamiento de OSM y alquiler
-    // (app.zone_market). Contar el equipamiento de todas las zonas tarda unos segundos, asi que el resultado
-    // se guarda en ZoneProfilesCache: los datos solo cambian cuando se vuelve a correr el ETL.
+    // Builds profiles for every selected zone in geo.zonas for the scoring engine: census and crime data
+    // (geo.zona_indicadores), transit (geo.zona_transporte_*), OSM amenities, and housing market data
+    // (app.zone_market). Counting amenities across all zones takes a few seconds, so results are cached in
+    // ZoneProfilesCache. The data changes only when the ETL is run again.
     public class ZoneProfilesRepository : IZoneProfilesRepository
     {
         private const string Geo = ZonaMatchDbOptions.GeoSchema;
         private const string Osm = ZonaMatchDbOptions.OsmSchema;
         private const string App = ZonaMatchDbOptions.AppSchema;
 
-        // Mismas etiquetas que las categorias de PointOfInterestRepository (educacion, salud, espacios verdes).
-        // Los poligonos cuentan por un punto interior; la superficie verde es la de los parques dentro de la zona,
-        // en m2 reales (el area en 3857 se corrige por cos^2 de la latitud).
+        // Uses the same labels as PointOfInterestRepository (educacion, salud, espacios verdes).
+        // Polygons are counted by an interior point. Green area includes parks inside the zone in real square
+        // meters (the area in SRID 3857 is adjusted by cos^2 of the latitude).
         private static readonly string SqlPerfiles = $"""
             WITH zonas AS (
                 SELECT DISTINCT ON (z.slug) z.osm_id, z.slug, z.nombre, z.nivel, z.superficie_km2, z.geom,
@@ -90,9 +90,9 @@ namespace ZonaMatch.Infrastructure.Repositories
             JOIN verde v USING (osm_id)
             """;
 
-        // Alquiler y venta de cada zona (app.zone_market), por operacion y tipo de vivienda ("all" son todos juntos):
-        // alquiler y expensas en pesos, venta en dolares. Los partidos y comunas sin fila propia para una combinacion
-        // suman las zonas que contienen (promedio ponderado por propiedades publicadas).
+        // Rent and sale data for each zone (app.zone_market), by operation and property type ("all" combines all types):
+        // rent and expenses are in ARS; sale prices are in USD. Districts and communes without a row for a combination
+        // aggregate their contained zones using a weighted average based on published listings.
         private static readonly string SqlMercado = $"""
             WITH zonas AS (
                 SELECT DISTINCT ON (z.slug) z.slug, z.nivel, z.geom
@@ -224,7 +224,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
-                _logger.LogWarning("Faltan las tablas de zonas ({Mensaje}). Correr DATOS-ZONAS-DOCKER.bat.", ex.MessageText);
+                _logger.LogWarning("Zone tables are missing. Run DATOS-ZONAS-DOCKER.bat. ({Message})", ex.MessageText);
                 return [];
             }
         }
@@ -233,7 +233,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         {
             try
             {
-                // Recorre todo el AMBA: mas tiempo que el comando por defecto
+                // This query covers the entire AMBA and takes longer than the default command timeout.
                 _dbContext.Database.SetCommandTimeout(TimeSpan.FromMinutes(2));
 
                 var filas = await _dbContext.Database
@@ -248,12 +248,12 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
-                _logger.LogWarning("Faltan tablas para el puntaje de zonas ({Mensaje}). Correr DATOS-ZONAS-DOCKER.bat.", ex.MessageText);
+                _logger.LogWarning("Zone scoring tables are missing. Run DATOS-ZONAS-DOCKER.bat. ({Message})", ex.MessageText);
                 return [];
             }
         }
 
-        // Resultado sin clave de SqlPerfiles; los nombres coinciden con los alias de las columnas
+        // Keyless result type for the zone profile query; property names match the SQL aliases.
         private sealed class PerfilFila
         {
             public string Slug { get; set; } = string.Empty;
@@ -315,7 +315,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
         }
 
-        // Resultado sin clave de SqlMercado: operacion rent|sale y tipo de vivienda de app.zone_market
+        // Keyless result type for the market query: operation is rent|sale and property type comes from app.zone_market.
         private sealed class MercadoFila
         {
             public string Slug { get; set; } = string.Empty;

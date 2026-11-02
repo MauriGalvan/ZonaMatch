@@ -15,10 +15,10 @@ namespace ZonaMatch.Infrastructure.Repositories
         // admin_level is free text in OSM; the CASE keeps a bad value from breaking the cast
         public static string GetAdministrativeLevel(string alias) => $"CASE WHEN {alias}.admin_level ~ '^[0-9]+$' THEN {alias}.admin_level::int END";
 
-        // CTEs "partes" and "zona" (osm_id, name, nivel, way in 3857, geom in 4326, way_area) for the @slug parameter.
-        // The slug is looked up in geo.zonas (etl/calcular_zonas.sql), where each zone has a unique one: places that
-        // share a name get their partido added ("villa-sarmiento-moron"). osm2pgsql stores each part of a
-        // multipolygon as its own row with the same osm_id: parts are joined back.
+        // CTEs "partes" and "zona" (osm_id, name, nivel, way in SRID 3857, geom in SRID 4326, way_area) for @slug.
+        // The slug is looked up in geo.zonas (etl/calcular_zonas.sql), where every zone has a unique slug. When places
+        // share a name, the district is added ("villa-sarmiento-moron"). osm2pgsql stores each multipolygon part in
+        // a separate row with the same osm_id, so the parts are joined back together.
         public static readonly string ZoneBySlug = $"""
             partes AS (
                 SELECT t.osm_id, t.name, {GetAdministrativeLevel("t")} AS nivel, t.way, t.way_area

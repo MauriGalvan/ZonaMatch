@@ -19,7 +19,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         private static string GetAdministrativeLevel(string alias) => ZoneSql.GetAdministrativeLevel(alias);
 
         // The zone is chosen as in ZoneSql.ZoneBySlug.
-        // Jurisdicciones: the boundaries that contain the zone, most specific first. Only ones at least as
+        // Jurisdictions: the boundaries that contain the zone, most specific first. Only ones at least as
         // large count, and one that covers the same area as a wider one is skipped (the city "Buenos Aires", level 8,
         // repeats CABA).
         private static readonly string SqlPorSlug = $"""

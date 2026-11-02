@@ -40,7 +40,7 @@ public class EmailService : IEmailService
         email.To.Add(MailboxAddress.Parse(to));
         email.Subject = subject;
 
-        // Usamos formato Html para poder mandar links bonitos al frontend
+        // Use HTML so email links are rendered correctly in the frontend.
         var builder = new BodyBuilder { HtmlBody = body };
 
         // Brand layout: the logo travels inside the email (most clients block SVG and remote images)
@@ -56,7 +56,7 @@ public class EmailService : IEmailService
 
         using var smtp = new SmtpClient();
 
-        // Nos conectamos al servidor SMTP usando los datos del appsettings
+        // Connect to the SMTP server using the appsettings configuration.
         await smtp.ConnectAsync(
             _config["EmailSettings:Host"],
             int.Parse(_config["EmailSettings:Port"]!),

@@ -115,7 +115,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             way => $"ST_DWithin({way}, o.g, @radio * o.k)",
             "ST_DWithin(c.punto::geography, o.geog, @radio)");
 
-        // The zone of the @slug parameter (same choice as GET /Zonas/{slug}); distances are measured from its center.
+        // The zone of the @slug parameter (same choice as GET /api/v1/zones/{slug}); distances are measured from its center.
         // A polygon counts when the point that represents it falls inside the zone.
         private static readonly string PuntosEnZona = PuntosEn(
             $"""

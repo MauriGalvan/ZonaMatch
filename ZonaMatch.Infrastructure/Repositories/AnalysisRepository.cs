@@ -14,8 +14,8 @@ namespace ZonaMatch.Infrastructure.Repositories
             _context = context;
         }
 
-        // El analisis se lee siempre con sus zonas y su criterio completo (integrantes, lugares y
-        // criterios). Split query: varias colecciones en una sola consulta multiplicarian las filas.
+        // Always load an analysis with its zones and complete criteria (members, places, and
+        // preferences). Split queries avoid multiplying rows when loading several collections at once.
         private IQueryable<Analysis> ConDetalle =>
             _context.Analysis
                 .Include(a => a.Zonas)
@@ -44,7 +44,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         public void Delete(Analysis analisis)
         {
             _context.Analysis.Remove(analisis);
-            // La copia del criterio es solo de este analisis
+            // The criteria snapshot belongs only to this analysis.
             _context.Contextos.Remove(analisis.Context);
         }
 

@@ -6,7 +6,7 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    // app.zone_market through EF; the comuna or partido of a zone from geo.zonas (etl/calcular_zonas.sql).
+    // Reads app.zone_market through EF and resolves a zone's parent commune or district from geo.zonas (etl/calcular_zonas.sql).
     public class ZoneMarketRepository(ZonaMatchDbContext dbContext) : IZoneMarketRepository
     {
         private const string Geo = ZonaMatchDbOptions.GeoSchema;

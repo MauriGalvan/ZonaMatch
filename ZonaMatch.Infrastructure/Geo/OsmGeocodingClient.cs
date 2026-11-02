@@ -8,10 +8,10 @@ namespace ZonaMatch.Infrastructure.Geo
 {
     // Reverse geocoding against the local osm2pgsql import (schema "osm", default "pgsql" output, SRID 3857).
     // No external calls. Only covers the area that was imported (AMBA, see OSM-DATA-UPDATER-DOCKER.bat).
-    //   - lugar:     smallest named place (amenity/shop/tourism/leisure/office polygon or node) at the point,
+    //   - place:     smallest named place (amenity/shop/tourism/leisure/office polygon or node) at the point,
     //                or any building with a house number
-    //   - calle:     nearest named road
-    //   - localidad: smallest administrative/place polygon (suburb, town, barrio...) containing the point
+    //   - street:    nearest named road
+    //   - locality:  smallest administrative/place polygon (suburb, town, neighborhood...) containing the point
     // osm2pgsql's default style has no addr:street, so the street is the nearest road, not the tagged one.
     public class OsmGeocodingClient : IGeocodingClient
     {

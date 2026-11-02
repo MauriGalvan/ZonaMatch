@@ -101,7 +101,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
             });
 
-            // Criterion de busqueda: el perfil del usuario o la copia guardada con un analisis
+            // Search criteria: the user's profile or the snapshot saved with an analysis.
             modelBuilder.Entity<Context>(e =>
             {
                 e.ToTable("contextos", t =>
@@ -122,7 +122,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.TipoVivienda).HasMaxLength(20);
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
-                // Un solo perfil por usuario; copias de analisis puede tener todas las que quiera
+                // Each user has one profile and can have any number of analysis snapshots.
                 e.HasIndex(x => x.UsuarioId)
                     .IsUnique()
                     .HasFilter("tipo = 'perfil'")
@@ -145,7 +145,7 @@ namespace ZonaMatch.Infrastructure.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Analysis guardado: zonas comparadas + la copia del criterio con que se calculo
+            // Saved analysis: compared zones and the criteria snapshot used to calculate it.
             modelBuilder.Entity<Analysis>(e =>
             {
                 e.ToTable("analisis");
@@ -169,7 +169,7 @@ namespace ZonaMatch.Infrastructure.Data
                     .WithMany()
                     .HasForeignKey(x => x.ContextoId)
                     .OnDelete(DeleteBehavior.Cascade);
-                // Borrar un original borra sus versiones
+                // Deleting an original analysis also deletes its versions.
                 e.HasOne<Analysis>()
                     .WithMany()
                     .HasForeignKey(x => x.AnalisisOrigenId)
@@ -271,8 +271,8 @@ namespace ZonaMatch.Infrastructure.Data
                     .WithMany(c => c.Criterios)
                     .HasForeignKey(x => x.ContextoId)
                     .OnDelete(DeleteBehavior.Cascade);
-                // Un criterio borrado del catalogo no deberia existir, pero si pasa:
-                // la fila del analisis no se toca
+                // A criterion should not be deleted from the catalog, but if it is,
+                // the analysis row must remain unchanged.
                 e.HasOne(x => x.Criterion)
                     .WithMany()
                     .HasForeignKey(x => x.CriterioId)
@@ -319,8 +319,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.UpdatedAt).HasColumnType("timestamptz");
             });
 
-            // Comunidad de una zona (resenas, preguntas y aportes). Las zonas no son una tabla: se referencian
-            // por slug (ver GET /Zonas/{slug}).
+            // Zone community (reviews, questions, and contributions). Zones are not stored in an application table;
+            // they are referenced by slug (see GET /api/v1/zones/{slug}).
             modelBuilder.Entity<Review>(e =>
             {
                 e.ToTable("resenas", t =>
@@ -375,9 +375,9 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasKey(x => x.Id);
                 e.Property(x => x.ZonaSlug).HasMaxLength(200);
                 e.HasIndex(x => new { x.ZonaSlug, x.Estado });
-                // Las consultas de puntos de interes buscan las correcciones aprobadas por lugar
+                // Point-of-interest queries look up approved corrections by place.
                 e.HasIndex(x => new { x.PuntoInteresId, x.Estado });
-                // Enums como texto: legibles en la base y usables desde el SQL del mapa
+                // Store enums as text so they remain readable in the database and usable by map SQL queries.
                 e.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(20);
                 e.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
                 e.Property(x => x.Motivo).HasConversion<string>().HasMaxLength(20);
