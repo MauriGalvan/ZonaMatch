@@ -12,5 +12,7 @@ public sealed record ZoneRentResponse(
     int? SurfaceM2 = null,
     decimal? Estimated = null,
     int? Rooms = null,
-    // Rent plus expenses at every tenth of the listings (11 values)
-    decimal[]? Distribution = null);
+    // Rent plus expenses at evenly spaced shares of the listings (21 points; 11 in older data)
+    decimal[]? Distribution = null,
+    // Share of the listings (0 to 1) priced up to each point of Distribution, ties included; null spaces them evenly
+    decimal[]? DistributionShares = null);

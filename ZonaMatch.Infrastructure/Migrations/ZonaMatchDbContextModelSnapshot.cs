@@ -1425,6 +1425,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("numeric[]")
                         .HasColumnName("price_m2_deciles");
 
+                    b.PrimitiveCollection<decimal[]>("PriceM2Shares")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_m2_shares");
+
+                    b.PrimitiveCollection<decimal[]>("PriceShares")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_shares");
+
                     b.Property<int>("SampleSize")
                         .HasColumnType("integer")
                         .HasColumnName("sample_size");
@@ -1526,6 +1534,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.PrimitiveCollection<decimal[]>("PriceM2Deciles")
                         .HasColumnType("numeric[]")
                         .HasColumnName("price_m2_deciles");
+
+                    b.PrimitiveCollection<decimal[]>("PriceM2Shares")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_m2_shares");
+
+                    b.PrimitiveCollection<decimal[]>("PriceShares")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_shares");
 
                     b.Property<int>("SampleSize")
                         .HasColumnType("integer")

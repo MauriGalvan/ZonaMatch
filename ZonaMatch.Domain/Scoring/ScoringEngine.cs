@@ -286,8 +286,8 @@ namespace ZonaMatch.Domain.Scoring
             if (market.MonthlyRentDistribution(areaM2) is { } monthly)
             {
                 var areaText = areaM2 is > 0 && PriceDistribution.IsValid(market.RentPerM2Deciles) ? $" para {areaM2} m²" : string.Empty;
-                var range = $"Alquiler + expensas{housingTypeSuffix}{areaText}: de {FormatArgentinePesos(PriceDistribution.Minimum(monthly))} " +
-                            $"a {FormatArgentinePesos(PriceDistribution.Maximum(monthly))} por mes, precio medio {FormatArgentinePesos(PriceDistribution.Median(monthly))}";
+                var range = $"Alquiler + expensas{housingTypeSuffix}{areaText}: de {FormatArgentinePesos(monthly.Minimum)} " +
+                            $"a {FormatArgentinePesos(monthly.Maximum)} por mes, precio medio {FormatArgentinePesos(monthly.Median)}";
                 return CompareWithDistribution(RentLimit, monthly, maximumBudget, range, $"tu tope de {FormatArgentinePesos(maximumBudget)}");
             }
 
@@ -324,8 +324,8 @@ namespace ZonaMatch.Domain.Scoring
             if (market.SalePriceDistributionUsd(areaM2) is { } prices)
             {
                 var areaText = areaM2 is > 0 && PriceDistribution.IsValid(market.SalePerM2DecilesUsd) ? $" para {areaM2} m²" : string.Empty;
-                var range = $"Precio{housingTypeSuffix}{areaText}: de {FormatDollars(PriceDistribution.Minimum(prices))} " +
-                            $"a {FormatDollars(PriceDistribution.Maximum(prices))}, precio medio {FormatDollars(PriceDistribution.Median(prices))}";
+                var range = $"Precio{housingTypeSuffix}{areaText}: de {FormatDollars(prices.Minimum)} " +
+                            $"a {FormatDollars(prices.Maximum)}, precio medio {FormatDollars(prices.Median)}";
                 return CompareWithDistribution(PurchaseLimit, prices, maximumPriceUsd, range, $"tu tope de compra de {FormatDollars(maximumPriceUsd)}");
             }
 
@@ -343,9 +343,9 @@ namespace ZonaMatch.Domain.Scoring
         //   like any other limit.
         // This way the score does not jump when the limit moves.
         private static (LimitResult Limit, double Overage) CompareWithDistribution(
-            string type, decimal[] deciles, decimal maximum, string details, string limitDescription)
+            string type, PriceDistribution distribution, decimal maximum, string details, string limitDescription)
         {
-            var minimum = PriceDistribution.Minimum(deciles);
+            var minimum = distribution.Minimum;
             if (maximum < minimum)
             {
                 var shortfall = (double)(minimum / maximum - 1);
@@ -353,7 +353,7 @@ namespace ZonaMatch.Domain.Scoring
                     $"{details}: ninguna entra, la más barata supera {limitDescription} en un {(int)Math.Ceiling(shortfall * 100)} %"), MinorOverage + shortfall);
             }
 
-            var percentage = PriceDistribution.PercentageUpTo(deciles, maximum);
+            var percentage = distribution.PercentageUpTo(maximum);
             var text = percentage >= 100
                 ? $"{details}: todas entran en {limitDescription}"
                 : $"{details}: entra el {percentage} % de las publicaciones en {limitDescription}";

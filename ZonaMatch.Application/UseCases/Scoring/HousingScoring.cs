@@ -59,6 +59,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
         public static RentResponse? Rent(ZoneProfile zone, string? housingType, int? surfaceM2 = null, int? rooms = null)
         {
             var market = zone.GetMarket(housingType, rooms);
+            var distribution = market.MonthlyRentDistribution(surfaceM2);
             return market.AverageRent is { } average
                 ? new RentResponse(
                     average,
@@ -69,7 +70,8 @@ namespace ZonaMatch.Application.UseCases.Scoring
                     market.EstimatesRent(surfaceM2) ? surfaceM2 : null,
                     market.EstimatesRent(surfaceM2) ? market.RentForArea(surfaceM2) : null,
                     market.RentRooms,
-                    market.MonthlyRentDistribution(surfaceM2))
+                    distribution?.Prices,
+                    distribution?.Shares)
                 : null;
         }
 
@@ -78,6 +80,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
         public static SaleResponse? Sale(ZoneProfile zone, string? housingType, int? surfaceM2 = null, int? rooms = null)
         {
             var market = zone.GetMarket(housingType, rooms);
+            var distribution = market.SalePriceDistributionUsd(surfaceM2);
             return market.AverageSalePriceUsd is { } average
                 ? new SaleResponse(
                     average,
@@ -87,7 +90,8 @@ namespace ZonaMatch.Application.UseCases.Scoring
                     market.EstimatesSale(surfaceM2) ? surfaceM2 : null,
                     market.EstimatesSale(surfaceM2) ? market.SalePriceUsdForArea(surfaceM2) : null,
                     market.SaleRooms,
-                    market.SalePriceDistributionUsd(surfaceM2))
+                    distribution?.Prices,
+                    distribution?.Shares)
                 : null;
         }
     }

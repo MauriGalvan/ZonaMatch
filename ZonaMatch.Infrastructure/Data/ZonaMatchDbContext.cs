@@ -380,6 +380,8 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.Property(x => x.PriceDeciles).HasColumnType("numeric[]");
                 e.Property(x => x.PriceM2Deciles).HasColumnType("numeric[]");
+                e.Property(x => x.PriceShares).HasColumnType("numeric[]");
+                e.Property(x => x.PriceM2Shares).HasColumnType("numeric[]");
                 e.ToTable("zone_market", t =>
                 {
                     t.HasCheckConstraint("ck_zone_market_operation", "operation IN ('sale', 'rent')");
@@ -414,6 +416,8 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.Property(x => x.PriceDeciles).HasColumnType("numeric[]");
                 e.Property(x => x.PriceM2Deciles).HasColumnType("numeric[]");
+                e.Property(x => x.PriceShares).HasColumnType("numeric[]");
+                e.Property(x => x.PriceM2Shares).HasColumnType("numeric[]");
                 e.ToTable("zone_market_rooms", t =>
                 {
                     t.HasCheckConstraint("ck_zone_market_rooms_operation", "operation IN ('sale', 'rent')");

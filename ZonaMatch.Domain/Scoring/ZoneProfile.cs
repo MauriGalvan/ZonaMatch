@@ -56,6 +56,12 @@ namespace ZonaMatch.Domain.Scoring
         public decimal[]? SaleDecilesUsd { get; init; }
         public decimal[]? SalePerM2DecilesUsd { get; init; }
 
+        // Share of the listings priced up to each of those points (0 to 1), ties included.
+        public decimal[]? RentShares { get; init; }
+        public decimal[]? RentPerM2Shares { get; init; }
+        public decimal[]? SaleShares { get; init; }
+        public decimal[]? SalePerM2Shares { get; init; }
+
         // Separate apartment, house, and PH market data (keyed by HousingTypes); the fields above cover all types.
         public IReadOnlyDictionary<string, HousingMarket> MarketByPropertyType { get; init; } = new Dictionary<string, HousingMarket>();
 
@@ -72,7 +78,9 @@ namespace ZonaMatch.Domain.Scoring
                 return new HousingMarket(
                     AverageRent, AvailableRentalProperties, AverageExpenses, AverageSalePriceUsd, AvailablePropertiesForSale, RentPricePerM2, SalePricePerM2Usd,
                     RentDeciles: RentDeciles, RentPerM2Deciles: RentPerM2Deciles,
-                    SaleDecilesUsd: SaleDecilesUsd, SalePerM2DecilesUsd: SalePerM2DecilesUsd);
+                    SaleDecilesUsd: SaleDecilesUsd, SalePerM2DecilesUsd: SalePerM2DecilesUsd,
+                    RentShares: RentShares, RentPerM2Shares: RentPerM2Shares,
+                    SaleShares: SaleShares, SalePerM2Shares: SalePerM2Shares);
 
             var market = MarketByPropertyType.TryGetValue(type!, out var typeSpecificMarket) ? typeSpecificMarket : HousingMarket.NoData;
             return market with { AverageExpenses = HousingTypes.IncludesBuildingExpenses(type) ? market.AverageExpenses ?? AverageExpenses : 0 };
@@ -110,6 +118,10 @@ namespace ZonaMatch.Domain.Scoring
                 RentPerM2Deciles = rent ? sized.RentPerM2Deciles : general.RentPerM2Deciles,
                 SaleDecilesUsd = sale ? sized.SaleDecilesUsd : general.SaleDecilesUsd,
                 SalePerM2DecilesUsd = sale ? sized.SalePerM2DecilesUsd : general.SalePerM2DecilesUsd,
+                RentShares = rent ? sized.RentShares : general.RentShares,
+                RentPerM2Shares = rent ? sized.RentPerM2Shares : general.RentPerM2Shares,
+                SaleShares = sale ? sized.SaleShares : general.SaleShares,
+                SalePerM2Shares = sale ? sized.SalePerM2Shares : general.SalePerM2Shares,
             };
         }
 

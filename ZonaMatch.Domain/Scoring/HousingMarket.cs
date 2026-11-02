@@ -3,7 +3,8 @@ namespace ZonaMatch.Domain.Scoring
     // Real estate market data for a zone and housing type (Zonaprop): rent and building expenses in Argentine pesos,
     // sale prices in US dollars, and prices per square meter. Null values indicate unavailable data. RentRooms and
     // SaleRooms: the number of rooms the prices are for (1 to 5, 5 = 5 or more); null when they cover every size.
-    // The deciles are the price distribution (PriceDistribution): rent per month without expenses, sale in dollars.
+    // The deciles and shares are the price distribution (PriceDistribution): rent per month without expenses, sale in
+    // dollars.
     public sealed record HousingMarket(
         decimal? AverageRent,
         int? AvailablePropertiesForRent,
@@ -17,7 +18,11 @@ namespace ZonaMatch.Domain.Scoring
         decimal[]? RentDeciles = null,
         decimal[]? RentPerM2Deciles = null,
         decimal[]? SaleDecilesUsd = null,
-        decimal[]? SalePerM2DecilesUsd = null)
+        decimal[]? SalePerM2DecilesUsd = null,
+        decimal[]? RentShares = null,
+        decimal[]? RentPerM2Shares = null,
+        decimal[]? SaleShares = null,
+        decimal[]? SalePerM2Shares = null)
     {
         public static readonly HousingMarket NoData = new(null, null, null, null, null);
 
@@ -41,25 +46,23 @@ namespace ZonaMatch.Domain.Scoring
 
         // Distribution of what renting costs per month (rent plus building expenses), for the area when there is a
         // price per square meter; null without a distribution.
-        public decimal[]? MonthlyRentDistribution(int? areaM2)
+        public PriceDistribution? MonthlyRentDistribution(int? areaM2)
         {
             var expenses = AverageExpenses ?? 0;
-            if (areaM2 is > 0 && PriceDistribution.IsValid(RentPerM2Deciles))
-                return PriceDistribution.Scale(RentPerM2Deciles!, areaM2.Value, expenses);
+            if (areaM2 is > 0 && PriceDistribution.From(RentPerM2Deciles, RentPerM2Shares) is { } perM2)
+                return perM2.Scale(areaM2.Value, expenses);
 
-            return !EstimatesRent(areaM2) && PriceDistribution.IsValid(RentDeciles)
-                ? PriceDistribution.Scale(RentDeciles!, 1, expenses)
-                : null;
+            return !EstimatesRent(areaM2) ? PriceDistribution.From(RentDeciles, RentShares)?.Scale(1, expenses) : null;
         }
 
         // Distribution of the sale price in US dollars, for the area when there is a price per square meter; null
         // without a distribution.
-        public decimal[]? SalePriceDistributionUsd(int? areaM2)
+        public PriceDistribution? SalePriceDistributionUsd(int? areaM2)
         {
-            if (areaM2 is > 0 && PriceDistribution.IsValid(SalePerM2DecilesUsd))
-                return PriceDistribution.Scale(SalePerM2DecilesUsd!, areaM2.Value);
+            if (areaM2 is > 0 && PriceDistribution.From(SalePerM2DecilesUsd, SalePerM2Shares) is { } perM2)
+                return perM2.Scale(areaM2.Value);
 
-            return !EstimatesSale(areaM2) && PriceDistribution.IsValid(SaleDecilesUsd) ? SaleDecilesUsd : null;
+            return !EstimatesSale(areaM2) ? PriceDistribution.From(SaleDecilesUsd, SaleShares) : null;
         }
     }
 

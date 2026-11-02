@@ -291,11 +291,11 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                     place.IsEstimated)).ToArray() ?? [],
                 result.Rent is { } rent
                     ? new RentResponse(
-                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated, rent.Rooms, rent.Distribution)
+                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated, rent.Rooms, rent.Distribution, rent.DistributionShares)
                     : null,
                 result.Sale is { } sale
                     ? new SaleResponse(
-                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd)
+                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd, sale.Rooms, sale.Distribution, sale.DistributionShares)
                     : null);
 
         private static ComparedZoneResponse ToComparedZone(ScoredZoneResponse zone) =>
@@ -317,12 +317,12 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 zone.Rent is { } rent
                     ? new ComparedRentResponse(
                         rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost,
-                        rent.PricePerM2, rent.SurfaceM2, rent.Estimated, rent.Rooms, rent.Distribution)
+                        rent.PricePerM2, rent.SurfaceM2, rent.Estimated, rent.Rooms, rent.Distribution, rent.DistributionShares)
                     : null,
                 zone.Sale is { } sale
                     ? new ComparedSaleResponse(
                         sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd,
-                        sale.SurfaceM2, sale.EstimatedUsd, sale.Rooms, sale.Distribution)
+                        sale.SurfaceM2, sale.EstimatedUsd, sale.Rooms, sale.Distribution, sale.DistributionShares)
                     : null);
     }
 }

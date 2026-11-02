@@ -48,12 +48,16 @@ namespace ZonaMatch.Domain.Entities
 
         public decimal? MedianTotalM2 { get; set; }
 
-        // Price at every tenth of the trimmed sample, from the cheapest (index 0) to the most expensive (index 10):
-        // the range and the distribution of the listings. Rent in pesos per month without expenses, sale in dollars.
+        // Price at every 5 % of the listings (21 points; older runs stored 11, one every tenth), from the cheapest to the
+        // most expensive, without placeholder prices: the range and the distribution of the listings. Rent in pesos per month without expenses, sale in dollars.
         public decimal[]? PriceDeciles { get; set; }
 
         // The same per m2
         public decimal[]? PriceM2Deciles { get; set; }
+
+        // Share of the listings (0 to 1) priced up to each point of PriceDeciles and PriceM2Deciles, ties included
+        public decimal[]? PriceShares { get; set; }
+        public decimal[]? PriceM2Shares { get; set; }
 
         // ZoneMarketSource: zonaprop, zonaprop-inherited or zonaprop-sum
         public string Source { get; set; } = string.Empty;
