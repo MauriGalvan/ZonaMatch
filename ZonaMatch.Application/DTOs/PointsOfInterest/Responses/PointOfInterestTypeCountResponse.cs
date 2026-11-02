@@ -1,3 +1,3 @@
 namespace ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
 
-public sealed record PointOfInterestTypeCountResponse(string? Tipo, int Cantidad);
+public sealed record PointOfInterestTypeCountResponse(string? Type, int Count);

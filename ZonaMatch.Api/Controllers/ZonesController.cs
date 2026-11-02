@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
 using ZonaMatch.Application.DTOs.Transit.Responses;
 using ZonaMatch.Application.DTOs.ZoneIndicators.Responses;
 using ZonaMatch.Application.UseCases.Zones;
@@ -40,12 +41,14 @@ public sealed class ZonesController : ControllerBase
         return Content(zone, GeoJson);
     }
 
-    // GET /api/v1/zones/villa-luro/points-of-interest?categorias=transporte,salud
+    // GET /api/v1/zones/villa-luro/points-of-interest?categories=category-codes
     // Unknown zones return an empty list, matching the existing repository behavior.
     [HttpGet("{slug}/points-of-interest")]
-    public async Task<IActionResult> GetZonePointsOfInterest(
+    [ProducesResponseType(typeof(NearbyPointsOfInterestResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<NearbyPointsOfInterestResponse>> GetZonePointsOfInterest(
         [FromRoute] string slug,
-        [FromQuery(Name = "categorias")] string? categories,
+        [FromQuery] string? categories,
         [FromServices] GetZonePointsOfInterest getZonePointsOfInterest,
         CancellationToken cancellationToken)
     {
@@ -55,7 +58,9 @@ public sealed class ZonesController : ControllerBase
 
     // GET /api/v1/zones/villa-luro/points-of-interest/summary
     [HttpGet("{slug}/points-of-interest/summary")]
-    public async Task<IActionResult> GetZonePointsOfInterestSummary(
+    [ProducesResponseType(typeof(PointsOfInterestSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PointsOfInterestSummaryResponse>> GetZonePointsOfInterestSummary(
         [FromRoute] string slug,
         [FromServices] GetZonePointsOfInterestSummary getZonePointsOfInterestSummary,
         CancellationToken cancellationToken)

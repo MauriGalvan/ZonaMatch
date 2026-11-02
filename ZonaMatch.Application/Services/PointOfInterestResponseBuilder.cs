@@ -15,8 +15,8 @@ public sealed class PointOfInterestResponseBuilder
     // The extra row indicates whether the repository result was truncated.
     public NearbyPointsOfInterestResponse BuildPoints(IReadOnlyList<PointOfInterestResponse> points) =>
         points.Count > MaximumPoints
-            ? new NearbyPointsOfInterestResponse(points.Take(MaximumPoints).ToList(), Truncado: true)
-            : new NearbyPointsOfInterestResponse(points, Truncado: false);
+            ? new NearbyPointsOfInterestResponse(points.Take(MaximumPoints).ToList(), Truncated: true)
+            : new NearbyPointsOfInterestResponse(points, Truncated: false);
 
     public PointsOfInterestSummaryResponse BuildSummary(
         double? radiusMeters,
@@ -33,7 +33,7 @@ public sealed class PointOfInterestResponseBuilder
                     .Select(count => new PointOfInterestTypeCountResponse(count.Type, count.Count))
                     .ToList();
 
-                return new PointOfInterestCategorySummaryResponse(category, types.Sum(type => type.Cantidad), types);
+                return new PointOfInterestCategorySummaryResponse(category, types.Sum(type => type.Count), types);
             })
             .ToList();
 }
