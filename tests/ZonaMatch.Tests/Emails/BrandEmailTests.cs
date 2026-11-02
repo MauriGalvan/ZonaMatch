@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Application.Emails;
 
 namespace ZonaMatch.Tests.Emails;
@@ -5,35 +6,35 @@ namespace ZonaMatch.Tests.Emails;
 public class BrandEmailTests
 {
     [Fact]
-    public void Renders_the_logo_title_paragraphs_button_and_footnote()
+    public void Render_WhenAllContentIsProvided_IncludesLogoTitleParagraphsButtonAndFootnote()
     {
         var html = BrandEmail.Render(new BrandEmailContent(
             "Resumen", "¡Hola!", ["Primer párrafo", "Segundo"], new BrandEmailButton("Entrar", "https://zonamatch.ar/a?b=1&c=2"), "Nota"));
 
-        Assert.Contains($"cid:{BrandEmail.LogoContentId}", html);
-        Assert.Contains("¡Hola!", html);
-        Assert.Contains("Primer párrafo", html);
-        Assert.Contains("https://zonamatch.ar/a?b=1&amp;c=2", html);
-        Assert.Contains("Entrar", html);
-        Assert.Contains("Nota", html);
+        html.Should().Contain($"cid:{BrandEmail.LogoContentId}");
+        html.Should().Contain("¡Hola!");
+        html.Should().Contain("Primer párrafo");
+        html.Should().Contain("https://zonamatch.ar/a?b=1&amp;c=2");
+        html.Should().Contain("Entrar");
+        html.Should().Contain("Nota");
     }
 
     [Fact]
-    public void Encodes_the_title_and_the_preheader()
+    public void Render_WhenTitleAndPreheaderContainMarkup_EncodesTheirContent()
     {
         var html = BrandEmail.Render(new BrandEmailContent("<b>x</b>", "<script>alert(1)</script>", []));
 
-        Assert.DoesNotContain("<script>", html);
-        Assert.Contains("&lt;script&gt;", html);
-        Assert.Contains("&lt;b&gt;x&lt;/b&gt;", html);
+        html.Should().NotContain("<script>");
+        html.Should().Contain("&lt;script&gt;");
+        html.Should().Contain("&lt;b&gt;x&lt;/b&gt;");
     }
 
     [Fact]
-    public void Without_button_or_footnote_they_are_left_out()
+    public void Render_WhenButtonAndFootnoteAreMissing_OmitsTheirMarkup()
     {
         var html = BrandEmail.Render(new BrandEmailContent("Resumen", "Título", ["Texto"]));
 
-        Assert.DoesNotContain("<a href", html);
-        Assert.DoesNotContain("border-top", html);
+        html.Should().NotContain("<a href");
+        html.Should().NotContain("border-top");
     }
 }
