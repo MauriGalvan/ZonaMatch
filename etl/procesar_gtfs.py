@@ -1,13 +1,13 @@
 """
-Resume los GTFS de transporte publico del AMBA en salidas por parada, linea y franja horaria de un dia habil.
-No se carga el GTFS completo en la base: solo este resumen (datos/transporte_salidas.csv), que despues
-etl/calcular_transporte.sql asigna a cada zona.
+Summarizes AMBA public transit GTFS data into departures by stop, route, and time window for a weekday.
+The full GTFS feed is not loaded into the database. Only this summary (datos/transporte_salidas.csv) is
+created; etl/calcular_transporte.sql later assigns it to each zone.
 
-Feeds (Buenos Aires Data, descarga publica): colectivos (2019), trenes (2020) y subte. Son los ultimos
-publicados sin credenciales; los horarios pueden no estar al dia.
+Feeds (Buenos Aires Data, public downloads): buses (2019), trains (2020), and subway. These are the latest
+publicly available feeds without credentials; schedules may be outdated.
 
-Uso:  python etl/procesar_gtfs.py            (desde backend/ZonaMatch)
-Requiere: pip install duckdb
+Usage:     python etl/procesar_gtfs.py       (from backend/ZonaMatch)
+Requires:  pip install duckdb
 """
 
 import sys
@@ -18,21 +18,21 @@ from pathlib import Path
 
 import duckdb
 
-CARPETA_DATOS = Path(__file__).resolve().parent.parent / "datos"
-CARPETA_GTFS = CARPETA_DATOS / "gtfs"
+DATA_DIR = Path(__file__).resolve().parent.parent / "datos"
+GTFS_DIR = DATA_DIR / "gtfs"
 
 CDN = "https://cdn.buenosaires.gob.ar/datosabiertos/datasets/"
-AGENTE = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZonaMatch-ETL/1.0"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZonaMatch-ETL/1.0"
 
-# modo: (archivo, url, service_id de lunes a viernes)
+# Mode: (file name, URL, weekday service ID).
 FEEDS = {
     "colectivo": ("colectivos-gtfs.zip", CDN + "transporte-y-obras-publicas/colectivos-gtfs/colectivos-gtfs.zip", "3"),
     "tren": ("trenes-gtfs.zip", CDN + "trenes-gtfs/trenes-gtfs.zip", "1"),
     "subte": ("subte-gtfs-zip.zip", CDN + "sbase/subte-gtfs/subte-gtfs-zip.zip", "5"),
 }
 
-# Franjas horarias (hora de inicio inclusive, hora de fin exclusive)
-FRANJAS = [
+# Time windows (inclusive start hour, exclusive end hour).
+TIME_WINDOWS = [
     ("madrugada", 0, 6),
     ("manana", 6, 9),
     ("mediodia", 9, 16),
@@ -41,121 +41,127 @@ FRANJAS = [
 ]
 
 
-def descargar(archivo: str, url: str) -> Path:
-    destino = CARPETA_DATOS / archivo
-    if destino.exists():
-        return destino
-    print(f"  descargando {archivo}...")
-    pedido = urllib.request.Request(url, headers={"User-Agent": AGENTE})
-    with urllib.request.urlopen(pedido, timeout=900) as respuesta, open(destino, "wb") as salida:
-        while bloque := respuesta.read(1 << 20):
-            salida.write(bloque)
-    return destino
+def download(file_name: str, url: str) -> Path:
+    destination = DATA_DIR / file_name
+    if destination.exists():
+        return destination
+    print(f"  Downloading {file_name}...")
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(request, timeout=900) as response, open(destination, "wb") as output_file:
+        while chunk := response.read(1 << 20):
+            output_file.write(chunk)
+    return destination
 
 
-def extraer(modo: str, zip_path: Path) -> Path:
-    """Descomprime el feed en datos/gtfs/<modo>/. El de subte trae otro zip adentro."""
-    carpeta = CARPETA_GTFS / modo
-    if (carpeta / "stop_times.txt").exists():
-        return carpeta
-    carpeta.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(zip_path) as archivo:
-        archivo.extractall(carpeta)
-    for interno in list(carpeta.iterdir()):
-        if interno.is_file() and zipfile.is_zipfile(interno):
-            with zipfile.ZipFile(interno) as anidado:
-                anidado.extractall(carpeta)
-            interno.unlink()
-    return carpeta
+def extract_feed(mode: str, zip_path: Path) -> Path:
+    """Extract a feed into datos/gtfs/<mode>/. The subway feed contains a nested ZIP archive."""
+    directory = GTFS_DIR / mode
+    if (directory / "stop_times.txt").exists():
+        return directory
+    directory.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(zip_path) as archive:
+        archive.extractall(directory)
+    for nested_file in list(directory.iterdir()):
+        if nested_file.is_file() and zipfile.is_zipfile(nested_file):
+            with zipfile.ZipFile(nested_file) as nested_archive:
+                nested_archive.extractall(directory)
+            nested_file.unlink()
+    return directory
 
 
-def leer(conexion: duckdb.DuckDBPyConnection, carpeta: Path, nombre: str, tabla: str) -> bool:
-    archivo = carpeta / nombre
-    if not archivo.exists():
+def load_csv(connection: duckdb.DuckDBPyConnection, directory: Path, file_name: str, table_name: str) -> bool:
+    source_file = directory / file_name
+    if not source_file.exists():
         return False
-    conexion.sql(f"CREATE OR REPLACE TABLE {tabla} AS SELECT * FROM read_csv('{archivo.as_posix()}', header=true, all_varchar=true)")
+    connection.sql(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM read_csv('{source_file.as_posix()}', header=true, all_varchar=true)")
     return True
 
 
-def franja_sql(hora: str) -> str:
-    casos = " ".join(f"WHEN {hora} >= {inicio} AND {hora} < {fin} THEN '{nombre}'" for nombre, inicio, fin in FRANJAS)
-    # Los GTFS usan horas mayores a 24 para los viajes que siguen despues de medianoche
-    return f"CASE {casos.replace(hora, f'({hora} % 24)')} END"
+def time_window_sql(hour_expression: str) -> str:
+    case_expressions = " ".join(
+        f"WHEN {hour_expression} >= {start_hour} AND {hour_expression} < {end_hour} THEN '{window_name}'"
+        for window_name, start_hour, end_hour in TIME_WINDOWS
+    )
+    # GTFS uses hours above 24 for trips that continue after midnight.
+    return f"CASE {case_expressions.replace(hour_expression, f'({hour_expression} % 24)')} END"
 
 
-def salidas_por_parada(conexion: duckdb.DuckDBPyConnection, modo: str, carpeta: Path, servicio: str) -> None:
-    for nombre in ["stops", "routes", "trips", "stop_times"]:
-        leer(conexion, carpeta, f"{nombre}.txt", nombre)
-    con_frecuencias = leer(conexion, carpeta, "frequencies.txt", "frequencies")
+def build_stop_departures(connection: duckdb.DuckDBPyConnection, mode: str, directory: Path, service_id: str) -> None:
+    for table_name in ["stops", "routes", "trips", "stop_times"]:
+        load_csv(connection, directory, f"{table_name}.txt", table_name)
+    has_frequencies = load_csv(connection, directory, "frequencies.txt", "frequencies")
 
-    # Hora de salida en segundos desde la medianoche del dia de servicio
-    conexion.sql("""
-        CREATE OR REPLACE TABLE paradas_viaje AS
+    # Departure time in seconds from midnight on the service day.
+    connection.sql("""
+        CREATE OR REPLACE TABLE trip_stops AS
         SELECT st.trip_id, st.stop_id, t.route_id,
                split_part(st.departure_time, ':', 1)::int * 3600 + split_part(st.departure_time, ':', 2)::int * 60
-                 + split_part(st.departure_time, ':', 3)::int AS segundos,
-               st.stop_sequence::int AS orden
+                 + split_part(st.departure_time, ':', 3)::int AS departure_seconds,
+               st.stop_sequence::int AS stop_sequence
         FROM stop_times st
         JOIN trips t USING (trip_id)
-        WHERE t.service_id = $servicio AND st.departure_time IS NOT NULL AND st.departure_time <> ''
-    """, params={"servicio": servicio})
+        WHERE t.service_id = $service_id AND st.departure_time IS NOT NULL AND st.departure_time <> ''
+    """, params={"service_id": service_id})
 
-    if con_frecuencias:
-        # Viajes por frecuencia (subte): cada viaje de stop_times es un modelo que se repite cada headway_secs
-        # entre start_time y end_time; la salida en cada parada es la del modelo corrida por el desfase
-        conexion.sql("""
-            CREATE OR REPLACE TABLE salidas AS
-            WITH modelo AS (
-                SELECT p.*, p.segundos - min(p.segundos) OVER (PARTITION BY p.trip_id) AS desfase
-                FROM paradas_viaje p
+    if has_frequencies:
+        # Frequency-based trips (subway): each stop_times trip is a template repeated every headway_secs
+        # between start_time and end_time. Each stop departure is shifted by its offset from the template.
+        connection.sql("""
+            CREATE OR REPLACE TABLE departures AS
+            WITH schedule_template AS (
+                SELECT p.*, p.departure_seconds - min(p.departure_seconds) OVER (PARTITION BY p.trip_id) AS offset_seconds
+                FROM trip_stops p
             ),
-            ventanas AS (
+            frequency_windows AS (
                 SELECT trip_id,
-                       split_part(start_time, ':', 1)::int * 3600 + split_part(start_time, ':', 2)::int * 60 AS inicio,
-                       split_part(end_time, ':', 1)::int * 3600 + split_part(end_time, ':', 2)::int * 60 AS fin,
-                       headway_secs::int AS cada
+                       split_part(start_time, ':', 1)::int * 3600 + split_part(start_time, ':', 2)::int * 60 AS start_seconds,
+                       split_part(end_time, ':', 1)::int * 3600 + split_part(end_time, ':', 2)::int * 60 AS end_seconds,
+                       headway_secs::int AS headway_seconds
                 FROM frequencies
             )
-            SELECT m.stop_id, m.route_id, v.inicio + s.n * v.cada + m.desfase AS segundos
-            FROM modelo m
-            JOIN ventanas v USING (trip_id)
-            CROSS JOIN LATERAL (SELECT unnest(range(0, ((v.fin - v.inicio) / v.cada)::int + 1)) AS n) s
+            SELECT template.stop_id, template.route_id,
+                   windows.start_seconds + departures.iteration * windows.headway_seconds + template.offset_seconds AS departure_seconds
+            FROM schedule_template template
+            JOIN frequency_windows windows USING (trip_id)
+            CROSS JOIN LATERAL (
+                SELECT unnest(range(0, ((windows.end_seconds - windows.start_seconds) / windows.headway_seconds)::int + 1)) AS iteration
+            ) departures
         """)
     else:
-        conexion.sql("CREATE OR REPLACE TABLE salidas AS SELECT stop_id, route_id, segundos FROM paradas_viaje")
+        connection.sql("CREATE OR REPLACE TABLE departures AS SELECT stop_id, route_id, departure_seconds FROM trip_stops")
 
-    conexion.sql(f"""
-        INSERT INTO resumen
-        SELECT '{modo}' AS modo, s.stop_id AS parada_id, any_value(p.stop_name) AS parada,
+    connection.sql(f"""
+        INSERT INTO transit_summary
+        SELECT '{mode}' AS modo, d.stop_id AS parada_id, any_value(p.stop_name) AS parada,
                any_value(p.stop_lat)::double AS latitud, any_value(p.stop_lon)::double AS longitud,
                coalesce(nullif(any_value(r.route_short_name), ''), any_value(r.route_long_name)) AS linea,
-               {franja_sql('(s.segundos // 3600)')} AS franja,
+               {time_window_sql('(d.departure_seconds // 3600)')} AS franja,
                count(*) AS salidas
-        FROM salidas s
+        FROM departures d
         JOIN stops p USING (stop_id)
         JOIN routes r USING (route_id)
-        GROUP BY s.stop_id, s.route_id, franja
+        GROUP BY d.stop_id, d.route_id, franja
     """)
 
 
 def main() -> int:
-    CARPETA_DATOS.mkdir(exist_ok=True)
-    inicio = time.time()
-    conexion = duckdb.connect()
-    conexion.sql("""
-        CREATE TABLE resumen (modo text, parada_id text, parada text, latitud double, longitud double,
-                              linea text, franja text, salidas integer)
+    DATA_DIR.mkdir(exist_ok=True)
+    started_at = time.time()
+    connection = duckdb.connect()
+    connection.sql("""
+        CREATE TABLE transit_summary (modo text, parada_id text, parada text, latitud double, longitud double,
+                                     linea text, franja text, salidas integer)
     """)
 
-    for modo, (archivo, url, servicio) in FEEDS.items():
-        print(f"{modo}...")
-        carpeta = extraer(modo, descargar(archivo, url))
-        salidas_por_parada(conexion, modo, carpeta, servicio)
+    for mode, (file_name, url, service_id) in FEEDS.items():
+        print(f"Processing {mode}...")
+        directory = extract_feed(mode, download(file_name, url))
+        build_stop_departures(connection, mode, directory, service_id)
 
-    destino = CARPETA_DATOS / "transporte_salidas.csv"
-    conexion.sql(f"COPY (SELECT * FROM resumen WHERE franja IS NOT NULL) TO '{destino.as_posix()}' (HEADER)")
-    print(conexion.sql("SELECT modo, count(DISTINCT parada_id) paradas, count(DISTINCT linea) lineas, sum(salidas) salidas FROM resumen GROUP BY 1"))
-    print(f"Listo en {time.time() - inicio:.0f} s: {destino}")
+    destination = DATA_DIR / "transporte_salidas.csv"
+    connection.sql(f"COPY (SELECT * FROM transit_summary WHERE franja IS NOT NULL) TO '{destination.as_posix()}' (HEADER)")
+    print(connection.sql("SELECT modo, count(DISTINCT parada_id) AS stops, count(DISTINCT linea) AS routes, sum(salidas) AS departures FROM transit_summary GROUP BY 1"))
+    print(f"Completed in {time.time() - started_at:.0f} s: {destination}")
     return 0
 
 
