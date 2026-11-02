@@ -1,6 +1,6 @@
--- Frecuencias de transporte publico por zona y franja horaria de un dia habil (schema geo).
--- Lo corre DATOS-ZONAS-DOCKER.bat despues de copiar datos/transporte_salidas.csv (etl/procesar_gtfs.py) en
--- geo.carga_transporte_salidas. Necesita geo.zonas (etl/calcular_zonas.sql).
+-- Public transit frequencies by zone and time window on a weekday (geo schema).
+-- DATOS-ZONAS-DOCKER.bat runs this after loading datos/transporte_salidas.csv (etl/procesar_gtfs.py) into
+-- geo.carga_transporte_salidas. Requires geo.zonas (etl/calcular_zonas.sql).
 
 \set ON_ERROR_STOP on
 SET client_min_messages = warning;
@@ -9,8 +9,8 @@ BEGIN;
 
 DROP TABLE IF EXISTS geo.zona_transporte_lineas, geo.transporte_salidas;
 
--- Salidas de cada linea en cada parada. Colectivos: la linea es el numero ("110") y el ramal lo que sigue
--- ("110A"); trenes y subte ya vienen por linea.
+-- Departures for each route at each stop. For buses, the route is the number ("110") and the branch is the
+-- suffix ("110A"); train and subway feeds already provide route names.
 CREATE TABLE geo.transporte_salidas (
     modo       text NOT NULL,
     parada_id  text NOT NULL,
@@ -38,8 +38,8 @@ GROUP BY modo, parada_id, linea, franja;
 
 CREATE INDEX ON geo.transporte_salidas USING gist (geom);
 
--- Por zona, linea y franja: las salidas en la parada de la zona por donde pasan mas (el mismo colectivo
--- pasa por varias paradas de la zona y no se cuenta varias veces). Paradas: cuantas tiene la linea en la zona.
+-- By zone, route, and time window: departures at the busiest stop in the zone (the same bus can pass through
+-- several stops in a zone, so it is counted only once). Stop count: number of stops for the route in the zone.
 CREATE TABLE geo.zona_transporte_lineas (
     osm_id   bigint NOT NULL REFERENCES geo.zonas (osm_id),
     modo     text NOT NULL,
@@ -56,7 +56,7 @@ FROM geo.zonas z
 JOIN geo.transporte_salidas s ON ST_Contains(z.geom, s.geom)
 GROUP BY z.osm_id, s.modo, s.linea, s.franja;
 
--- Paradas de cada modo en la zona (sin importar la franja)
+-- Stops for each mode in the zone, regardless of time window.
 DROP TABLE IF EXISTS geo.zona_transporte_paradas;
 CREATE TABLE geo.zona_transporte_paradas (
     osm_id   bigint NOT NULL REFERENCES geo.zonas (osm_id),

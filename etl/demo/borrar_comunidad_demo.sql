@@ -1,4 +1,4 @@
--- Borra los datos de demo de la comunidad (etl/demo/comunidad_demo.sql). Borrar los usuarios de demo borra en
--- cascada sus resenas, votos, preguntas, respuestas, aportes y validaciones.
+-- Deletes demo data for zone community features (etl/demo/comunidad_demo.sql). Deleting demo users cascades to their
+-- reviews, votes, questions, answers, contributions, and validations.
 
 DELETE FROM app.usuarios WHERE email LIKE '%@demo.zonamatch.ar';

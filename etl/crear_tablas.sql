@@ -1,11 +1,11 @@
--- Tablas de los datos abiertos que completan el detalle de las zonas (schema geo).
--- Las crea DATOS-ZONAS-DOCKER.bat antes de copiar los CSV de datos/ (etl/descargar_datos.py).
--- Se borran y se vuelven a crear en cada carga: son datos externos, no del modelo de la aplicacion.
+-- Tables for open data used to enrich zone details (geo schema).
+-- DATOS-ZONAS-DOCKER.bat creates them before copying CSV files from datos/ (etl/descargar_datos.py).
+-- These external data tables are dropped and recreated on each load; they are not part of the application model.
 
 \set ON_ERROR_STOP on
 SET client_min_messages = warning;
 
--- Tablas de carga: reciben los CSV tal cual vienen
+-- Staging tables receive CSV data as provided by each source.
 DROP TABLE IF EXISTS geo.carga_censo_radios, geo.carga_censo_indicadores, geo.carga_delitos;
 
 CREATE TABLE geo.carga_censo_radios (
@@ -46,7 +46,7 @@ CREATE TABLE geo.carga_delitos (
 
 DROP TABLE IF EXISTS geo.carga_snic;
 
--- Delitos por partido y comuna del SNIC (etl/download_snic.py): ultimo anio, por grupo de delito
+-- SNIC crime data by district and CABA commune (etl/download_snic.py): latest year, grouped by crime type.
 CREATE TABLE geo.carga_snic (
     year            integer,
     department_id   text,
@@ -58,7 +58,7 @@ CREATE TABLE geo.carga_snic (
 
 DROP TABLE IF EXISTS geo.carga_delitos_fracciones;
 
--- Factor de cada fraccion censal para repartir los delitos de un partido (etl/crime/fit_crime_model.py)
+-- Factor for each census fraction to distribute a district's crimes (etl/crime/fit_crime_model.py).
 CREATE TABLE geo.carga_delitos_fracciones (
     fraction_id     text,
     factor          double precision,
@@ -67,7 +67,7 @@ CREATE TABLE geo.carga_delitos_fracciones (
 
 DROP TABLE IF EXISTS geo.carga_transporte_salidas;
 
--- Resumen de los GTFS (etl/procesar_gtfs.py): salidas por parada, linea y franja de un dia habil
+-- GTFS summary (etl/procesar_gtfs.py): weekday departures by stop, route, and time window.
 CREATE TABLE geo.carga_transporte_salidas (
     modo       text,
     parada_id  text,

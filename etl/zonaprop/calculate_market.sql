@@ -4,7 +4,7 @@
 --
 -- One row per zone, operation (sale, rent) and property type (apartment, house, ph, and "all" for every type):
 --   listings            active listings Zonaprop reports for the zone (scaled down when Zonaprop only knows the
---                       partido around it, see near_share)
+--                       district around it, see near_share)
 --   sample_size         listings used for the averages (newest first, up to 60 per combination)
 --   average_price       rent per month without expenses in ARS, or sale price in USD (other currencies converted
 --   median_price        at the usd_ars rate of the scrape)
@@ -15,8 +15,8 @@
 -- 10 listings.
 --
 -- source: 'zonaprop' measured for the zone; 'zonaprop-inherited' the zone has no Zonaprop location of its own and
--- takes the averages of the smallest measured zone around it (listings stays empty); 'zonaprop-sum' partidos and
--- comunas, adding up the zones they contain. Previous Zonaprop rows are replaced and estimated rents
+-- takes the averages of the smallest measured zone around it (listings stays empty); 'zonaprop-sum' districts and
+-- communes, adding up the zones they contain. Previous Zonaprop rows are replaced and estimated rents
 -- (source 'estimated') are overwritten where there is real data now.
 
 \set ON_ERROR_STOP on
@@ -48,7 +48,7 @@ WHERE price IS NULL
    OR (operation = 'sale' AND price NOT BETWEEN 5000 AND 20000000);
 
 -- Listings placed more than 2 km away from the zone belong to another one (or the location is wrong). Listings
--- inside it (300 m of tolerance for approximate addresses) measure how much of a partido total is the zone's.
+-- inside it (300 m of tolerance for approximate addresses) measure how much of a district total belongs to the zone.
 ALTER TABLE sample ADD COLUMN near boolean, ADD COLUMN inside boolean;
 UPDATE sample s
 SET near = ST_DWithin(z.geom::geography, s.point::geography, 2000),
@@ -56,8 +56,8 @@ SET near = ST_DWithin(z.geom::geography, s.point::geography, 2000),
 FROM geo.zonas z
 WHERE z.slug = s.zone_slug AND z.elegida AND s.point IS NOT NULL;
 
--- A zone with almost no geolocated listings near it matched another place with the same name: discard it. A partido
--- answer (Pilar, Tigre) has a good part of its listings near the localidad and is scaled down instead (near_share)
+-- A zone with almost no geolocated listings near it matched another place with the same name: discard it. A district
+-- result (Pilar, Tigre) has many listings near the locality and is scaled down instead (near_share).
 DROP TABLE IF EXISTS pg_temp.rejected;
 CREATE TEMP TABLE rejected AS
 SELECT zone_slug
@@ -66,10 +66,10 @@ WHERE near IS NOT NULL
 GROUP BY zone_slug
 HAVING count(*) >= 10 AND avg(near::int) < 0.2;
 
--- Zonaprop sometimes answers with the whole partido (Berazategui, Morón...): its total is scaled down by the share
+-- Zonaprop sometimes returns the whole district (Berazategui, Morón...): its total is scaled down by the share
 -- of the sample inside the zone (per combination when it has 10 geolocated listings, otherwise for the zone).
 -- A Zonaprop location shared by several zones (Villa Ballester for its Noreste and Noroeste) gives them its prices
--- but no listings of their own, so partidos do not count it twice.
+-- but no listings of their own, so districts do not count the same listings twice.
 DROP TABLE IF EXISTS pg_temp.near_share;
 CREATE TEMP TABLE near_share AS
 SELECT t.zone_slug,
@@ -185,7 +185,7 @@ JOIN market m ON m.osm_id = p.osm_id
 WHERE c.elegida AND c.nivel > 5
   AND NOT EXISTS (SELECT 1 FROM market x WHERE x.osm_id = c.osm_id);
 
--- 4. Partidos and comunas add up the outermost measured zones inside them (a measured zone inside another measured
+-- 4. Districts and communes add up the outermost measured zones inside them (a measured zone inside another measured
 -- zone is already counted by it)
 WITH measured AS (
     SELECT DISTINCT z.osm_id, z.superficie_km2, z.geom, ST_PointOnSurface(z.geom) AS point
@@ -196,7 +196,7 @@ WITH measured AS (
 members AS (
     SELECT p.osm_id AS parent_id, p.slug AS parent_slug, z.osm_id
     FROM geo.zonas p
-    -- <= because some barrios are a whole comuna (Palermo is Comuna 14)
+    -- <= because some neighborhoods are a whole commune (Palermo is Commune 14).
     JOIN measured z ON z.osm_id <> p.osm_id AND z.superficie_km2 <= p.superficie_km2 AND ST_Contains(p.geom, z.point)
     WHERE p.elegida AND p.nivel = 5
       AND NOT EXISTS (
@@ -219,8 +219,8 @@ FROM members b
 JOIN market m ON m.osm_id = b.osm_id
 GROUP BY b.parent_id, b.parent_slug, m.operation, m.property_type;
 
--- 4b. Zones still without data (not in Zonaprop and not inside a measured zone) take the averages of their partido
--- or comuna
+-- 4b. Zones still without data (not in Zonaprop and not inside a measured zone) take the averages of their district
+-- or commune.
 INSERT INTO market
 SELECT c.slug, c.osm_id, m.operation, m.property_type, NULL, m.sample_size, m.average_price, m.median_price,
        m.average_price_m2, m.median_price_m2, m.average_expenses_ars, 'zonaprop-inherited', p.slug, m.updated_at

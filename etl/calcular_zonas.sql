@@ -1,12 +1,11 @@
--- Pasa los datos de carga a sus tablas definitivas y calcula los indicadores de cada zona (schema geo).
--- Lo corre DATOS-ZONAS-DOCKER.bat despues de copiar los CSV (etl/crear_tablas.sql).
+-- Moves staged data into its final tables and calculates each zone's indicators (geo schema).
+-- DATOS-ZONAS-DOCKER.bat runs this after copying the CSV files (etl/crear_tablas.sql).
 --
--- Las zonas son los limites administrativos de OpenStreetMap (schema osm), igual que en GET /Zonas/{slug}.
--- Seguridad: en CABA, los hechos georreferenciados del Mapa del Delito; en provincia, los delitos del SNIC por
--- partido repartidos entre sus localidades segun su poblacion (solo hay dato por partido).
--- Cada radio censal y cada delito se asigna por ubicacion a todas las zonas que lo contienen: un barrio o
--- una localidad suma los suyos, y una comuna o un partido suma los de toda su superficie, que son los de
--- los barrios o localidades que lo componen.
+-- Zones are OpenStreetMap administrative boundaries (osm schema), as in GET /api/v1/zones/{slug}.
+-- Safety data: geolocated incidents from the CABA Crime Map; in Buenos Aires province, SNIC crimes are distributed
+-- across localities in each district by population (SNIC only reports district-level data).
+-- Each census tract and crime is assigned to every zone containing its location: a neighborhood or locality gets
+-- its own records, while a commune or district gets all records within its boundaries.
 
 \set ON_ERROR_STOP on
 SET client_min_messages = warning;
@@ -14,7 +13,7 @@ SET client_min_messages = warning;
 BEGIN;
 
 -- ---------------------------------------------------------------------------------------------------
--- Censo 2022 por radio
+-- 2022 census by tract.
 -- ---------------------------------------------------------------------------------------------------
 DROP TABLE IF EXISTS geo.censo_indicadores, geo.censo_radios CASCADE;
 
@@ -27,7 +26,7 @@ CREATE TABLE geo.censo_radios (
     poblacion  integer NOT NULL,
     viviendas  integer NOT NULL,
     geom       geometry(MultiPolygon, 4326) NOT NULL,
-    -- Punto que siempre cae dentro del radio: decide a que zona pertenece
+    -- A point guaranteed to fall inside the tract, used to determine which zone contains it.
     punto      geometry(Point, 4326) NOT NULL
 );
 
@@ -42,7 +41,7 @@ WHERE NOT ST_IsEmpty(g);
 
 CREATE INDEX ON geo.censo_radios USING gist (punto);
 
--- Formato largo: hogares o personas de cada categoria de cada variable, por radio
+-- Long format: household or person counts for each category and variable, by tract.
 CREATE TABLE geo.censo_indicadores (
     cod        text NOT NULL REFERENCES geo.censo_radios (cod),
     variable   text NOT NULL,
@@ -58,7 +57,7 @@ JOIN geo.censo_radios r USING (cod)
 GROUP BY 1, 2, 3;
 
 -- ---------------------------------------------------------------------------------------------------
--- Delitos de CABA (Mapa del Delito)
+-- CABA crime data (Crime Map).
 -- ---------------------------------------------------------------------------------------------------
 DROP TABLE IF EXISTS geo.delitos_caba;
 
@@ -87,12 +86,12 @@ ON CONFLICT (id_mapa) DO NOTHING;
 CREATE INDEX ON geo.delitos_caba USING gist (geom);
 
 -- ---------------------------------------------------------------------------------------------------
--- Zonas de OpenStreetMap
+-- OpenStreetMap zones.
 -- ---------------------------------------------------------------------------------------------------
--- Las tablas de transporte (etl/calcular_transporte.sql) tambien dependen de geo.zonas
+-- Transit tables (etl/calcular_transporte.sql) also depend on geo.zonas.
 DROP TABLE IF EXISTS geo.zona_transporte_lineas, geo.zona_transporte_paradas, geo.zona_indicadores, geo.zonas;
 
--- Misma regla que ZonaSql.Slug y SlugZona.Generar: minusculas, sin acentos, lo demas pasa a "-"
+-- Same rule as ZoneSql.Slug and SlugZona.Generate: lowercase, remove accents, and replace other characters with "-".
 CREATE OR REPLACE FUNCTION geo.slug_zona(nombre text) RETURNS text
 LANGUAGE sql IMMUTABLE AS $$
     SELECT trim(both '-' from regexp_replace(
@@ -100,8 +99,8 @@ LANGUAGE sql IMMUTABLE AS $$
         '[^a-z0-9]+', '-', 'g'))
 $$;
 
--- Niveles 4 (CABA) a 10 (barrios). osm2pgsql guarda cada parte de un multipoligono como una fila con el
--- mismo osm_id: se vuelven a unir.
+-- Levels 4 (CABA) through 10 (neighborhoods). osm2pgsql stores each part of a multipolygon as a row with the
+-- same osm_id, so the parts are merged again.
 CREATE TABLE geo.zonas (
     osm_id          bigint PRIMARY KEY,
     nombre          text NOT NULL,
@@ -109,8 +108,8 @@ CREATE TABLE geo.zonas (
     nivel           integer NOT NULL,
     superficie_km2  double precision NOT NULL,
     geom            geometry(MultiPolygon, 4326) NOT NULL,
-    -- La que devuelve GET /Zonas/{slug} cuando hay nombres repetidos: el nivel mas especifico y, si
-    -- empatan, la mas grande (misma regla que ZonaSql.ZonaPorSlug)
+    -- For duplicate names, choose the result returned by GET /api/v1/zones/{slug}: the most specific level and, if
+    -- tied, the largest zone (same rule as ZoneSql.ZoneBySlug).
     elegida         boolean NOT NULL DEFAULT false
 );
 
@@ -135,10 +134,10 @@ FROM (
 ) e
 WHERE z.osm_id = e.osm_id;
 
--- Distintos lugares con el mismo nombre (Villa Sarmiento de Moron y la de Lanus) darian el mismo slug y solo uno
--- quedaria visible. Los demas reciben el slug con su partido o comuna (villa-sarmiento-moron), como arma Zonaprop
--- los suyos; la zona elegida conserva el suyo, asi no cambian los enlaces ni los analisis guardados. Si es la misma
--- zona en dos niveles (una contiene a la otra), sigue oculta.
+-- Different places with the same name (Villa Sarmiento in Morón and Lanús) would get the same slug, leaving only
+-- one visible. The others get a slug with their district or commune (villa-sarmiento-moron), as Zonaprop does;
+-- the selected zone keeps its existing slug so links and saved analyses do not change. If two levels refer to the
+-- same area (one contains the other), the less specific one remains hidden.
 WITH repetidas AS (
     SELECT n.osm_id, n.slug, n.geom
     FROM geo.zonas n
@@ -160,7 +159,7 @@ renombradas AS (
     FROM repetidas r
 ),
 unicas AS (
-    -- Por si dos quedan iguales (mismo nombre y partido) o chocan con otra zona: se agrega el id de OSM
+    -- If two slugs still match (same name and district) or collide with another zone, append the OSM ID.
     SELECT n.osm_id,
            CASE WHEN count(*) OVER (PARTITION BY n.slug) > 1
                      OR EXISTS (SELECT 1 FROM geo.zonas o WHERE o.slug = n.slug)
@@ -175,8 +174,8 @@ CREATE INDEX ON geo.zonas USING gist (geom);
 CREATE UNIQUE INDEX ON geo.zonas (slug) WHERE elegida;
 
 -- ---------------------------------------------------------------------------------------------------
--- Indicadores por zona: conteos crudos. Los porcentajes y las tasas se calculan en la aplicacion
--- (IndicadoresZona), asi la regla de cada indicador vive en el dominio y no en el SQL.
+-- Raw indicator counts by zone. Percentages and rates are calculated by the application so each indicator's rule
+-- remains in the domain layer instead of SQL.
 -- ---------------------------------------------------------------------------------------------------
 CREATE TABLE geo.zona_indicadores (
     osm_id                       bigint PRIMARY KEY REFERENCES geo.zonas (osm_id),
@@ -197,8 +196,8 @@ CREATE TABLE geo.zona_indicadores (
     hogares_nbi                  integer NOT NULL,
     hogares_hacinamiento         integer NOT NULL,
     hogares_alquilan             integer NOT NULL,
-    -- Seguridad del anio delitos_periodo. CABA: Mapa del Delito (delitos_fuente 'mapa-delito'); provincia:
-    -- SNIC del partido repartido por poblacion ('snic'), con los partidos de origen en delitos_ambito
+    -- Safety data for delitos_periodo. CABA: Crime Map (delitos_fuente 'mapa-delito'); province: population-weighted
+    -- SNIC district totals ('snic'), with source districts recorded in delitos_ambito.
     delitos_anio                 integer,
     delitos_robos                integer,
     delitos_hurtos               integer,
@@ -209,15 +208,15 @@ CREATE TABLE geo.zona_indicadores (
     delitos_fuente               text,
     delitos_periodo              integer,
     delitos_ambito               text,
-    -- Delitos en la escala del SNIC de CABA, comparables entre CABA y provincia: los usa el puntaje. En CABA son
-    -- los del Mapa del Delito por el cociente SNIC / Mapa del Delito de toda la ciudad (asi se conserva la
-    -- diferencia entre barrios); en provincia, los del SNIC corregidos con la encuesta de victimizacion. En las dos,
-    -- combinados con los homicidios de 5 anios del partido o la comuna para corregir cuanto se denuncia en cada uno
+    -- Crimes scaled to SNIC's CABA rates so CABA and province can be compared; scoring uses these values. In CABA,
+    -- Crime Map values are scaled by the ratio of citywide SNIC to Crime Map totals (preserving neighborhood
+    -- differences). In the province, SNIC values are adjusted using the victimization survey. Both are combined
+    -- with five-year homicide rates by district or commune to correct for differences in reporting.
     delitos_comparables          integer,
-    -- Provincia: factor con el que etl/crime/spread_crimes.sql repartio los delitos del partido entre sus
-    -- localidades (1 = la tasa del partido); null en CABA y hasta que corre ese paso
+    -- Province: factor used by etl/crime/spread_crimes.sql to distribute district crimes across its localities
+    -- (1 = the district rate); null in CABA and until that step has run.
     delitos_reparto              double precision,
-    -- Factor con el que ese paso repartio los homicidios del partido o la comuna segun el NBI de la zona
+    -- Factor used by that step to distribute district or commune homicides based on zone NBI.
     delitos_reparto_homicidios   double precision
 );
 
@@ -232,10 +231,10 @@ censo AS (
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '1') AS p_0_14,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '2') AS p_15_64,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '3') AS p_65,
-           -- Obra social, prepaga o PAMI (1) o plan estatal (2)
+           -- Employer health plan, private insurance, or PAMI (1), or state health plan (2).
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_P19' AND i.categoria IN ('1', '2')) AS p_cobertura,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_P19') AS p_dato_cobertura,
-           -- Universitario completo o posgrado (9 a 11); "Ignorado" (99) queda afuera del total
+           -- Completed university or postgraduate education (9 to 11); "Unknown" (99) is excluded from the total.
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_MNI' AND i.categoria IN ('9', '10', '11')) AS p_universitario,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_MNI' AND i.categoria <> '99') AS p_dato_educacion,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24A') AS hogares,
@@ -243,7 +242,7 @@ censo AS (
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24B' AND i.categoria = '1') AS h_celular,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24C' AND i.categoria = '1') AS h_computadora,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_NBI_TOT' AND i.categoria = '1') AS h_nbi,
-           -- Mas de 2 personas por cuarto (INDEC: 2,00 a 3,00 y mas de 3,00)
+           -- More than 2 people per room (INDEC: 2.00 to 3.00 and above 3.00).
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H20CP' AND i.categoria IN ('5', '6')) AS h_hacinamiento,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H22' AND i.categoria = '2') AS h_alquilan
     FROM asignacion a
@@ -255,7 +254,7 @@ totales AS (
     FROM asignacion
     GROUP BY osm_id
 ),
--- Zonas dentro de CABA (nivel 4): son las que tienen delitos con ubicacion
+-- Zones within CABA (level 4): these have geolocated crime data.
 zonas_caba AS (
     SELECT z.osm_id, z.geom
     FROM geo.zonas z
@@ -274,8 +273,8 @@ delitos_mapa AS (
     LEFT JOIN geo.delitos_caba d ON ST_Contains(z.geom, d.geom)
     GROUP BY z.osm_id
 ),
--- SNIC por radio: la tasa de su partido (o comuna) por su poblacion. Los codigos de departamento del censo y del
--- SNIC coinciden en provincia; en CABA el censo numera las comunas de a 7 (007 es la Comuna 1, 014 la 2...)
+-- SNIC rate by tract: its district (or commune) rate per population. Census and SNIC department codes match in the
+-- province; in CABA, census commune numbers advance by 7 (007 is Commune 1, 014 is Commune 2, and so on).
 snic_radio AS (
     SELECT r.cod, r.poblacion, r.prov = '02' AS en_caba, s.department_name, s.year, s.crime_group,
            r.poblacion * s.rate_per_100k / 100000.0 AS hechos
@@ -284,14 +283,14 @@ snic_radio AS (
                                                              THEN lpad((r.depto::int / 7)::text, 3, '0')
                                                              ELSE r.depto END
 ),
--- Los delitos registrados no se comparan bien entre CABA y provincia: en provincia se denuncia menos y en CABA
--- los delitos que sufren quienes entran a trabajar se dividen solo por los residentes. Con los registros, CABA
--- tiene 2,7 veces mas robos por habitante; segun la Encuesta Nacional de Victimizacion, que mide los delitos
--- sufridos se hayan denunciado o no, la provincia tiene un 32 % mas. Cada grupo de provincia se multiplica por el
--- factor que lleva la relacion provincia / CABA de los registros a la de la encuesta.
--- Fuente: INDEC, Encuesta Nacional de Victimizacion 2017, Cuadro 1 (prevalencia en personas de 18 anios y mas,
--- anio 2016; "Buenos Aires" es toda la provincia). Las lesiones no tienen prevalencia propia: usan la del robo con
--- violencia. Los homicidios se registran casi siempre y no se corrigen.
+-- Recorded crimes are not directly comparable between CABA and the province: fewer crimes are reported in the
+-- province, while CABA crimes affecting commuters are divided only by the resident population. Recorded data show
+-- 2.7 times more robberies per resident in CABA; the National Victimization Survey, which measures crimes whether
+-- reported or not, shows 32% more in the province. Each provincial crime group is multiplied by a factor that
+-- adjusts the recorded province/CABA ratio to the survey ratio.
+-- Source: INDEC, 2017 National Victimization Survey, Table 1 (prevalence among people aged 18 and older,
+-- 2016; "Buenos Aires" refers to the entire province). Injuries have no separate prevalence estimate and use the
+-- violent robbery rate. Homicides are almost always recorded and are not adjusted.
 encuesta (crime_group, caba, provincia) AS (
     VALUES ('thefts', 11.9, 7.4), ('robberies', 5.9, 7.8), ('injuries', 5.9, 7.8), ('threats', 3.6, 4.6)
 ),
@@ -325,7 +324,7 @@ delitos_snic AS (
     LEFT JOIN calibracion c USING (crime_group)
     GROUP BY a.osm_id
 ),
--- Partidos de cada zona, del que mas poblacion le aporta al que menos (casi siempre uno solo)
+-- Districts contributing population to each zone, ordered from largest to smallest (usually one district).
 ambitos AS (
     SELECT osm_id, string_agg(department_name, ', ' ORDER BY poblacion DESC) AS ambito
     FROM (
@@ -336,7 +335,7 @@ ambitos AS (
     ) p
     GROUP BY osm_id
 ),
--- Cociente para llevar el Mapa del Delito de CABA a la escala del SNIC
+-- Ratio used to scale the CABA Crime Map to SNIC figures.
 escala_caba AS (
     SELECT s.total::numeric / nullif(m.total, 0) AS factor
     FROM geo.zonas caba
@@ -359,12 +358,11 @@ delitos_base AS (
     LEFT JOIN ambitos b USING (osm_id)
     WHERE s.osm_id NOT IN (SELECT osm_id FROM delitos_mapa)
 ),
--- Dentro de cada region tambien se denuncia distinto: Moron registra mas robos y hurtos por habitante que Moreno
--- pero tiene la mitad de homicidios, y en CABA pasa lo mismo entre las comunas del norte y del sur. Los
--- homicidios se registran casi siempre: el valor final es la media geometrica de los delitos estimados y de los
--- homicidios de 2021-2025 (SNIC, por partido o comuna), llevados a la escala de los delitos de su region para que el
--- nivel de CABA y de la provincia siga siendo el de la encuesta. Las diferencias entre barrios de una misma comuna
--- (Mapa del Delito) se conservan.
+-- Reporting also varies within each region: Morón records more robberies and thefts per resident than Moreno but
+-- half as many homicides; the same pattern appears between northern and southern CABA communes. Homicides are
+-- almost always recorded, so the final value is the geometric mean of estimated crimes and 2021-2025 homicides
+-- (SNIC, by district or commune), scaled to regional crime figures so CABA and province remain aligned with the
+-- survey. Differences between neighborhoods in the same commune (Crime Map) are preserved.
 escala_homicidios AS (
     SELECT d.fuente, sum(d.estimados) / nullif(sum(d.homicidios_5a), 0) AS factor
     FROM delitos_base d
@@ -388,10 +386,10 @@ SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
        coalesce(c.hogares, 0), coalesce(c.h_internet, 0), coalesce(c.h_celular, 0),
        coalesce(c.h_computadora, 0), coalesce(c.h_nbi, 0), coalesce(c.h_hacinamiento, 0),
        coalesce(c.h_alquilan, 0),
-       -- Dentro de CABA una zona sin delitos registrados tiene 0; sin dato del SNIC queda null
+       -- In CABA, a zone with no recorded crimes has 0; without SNIC data, the value is null.
        d.total, d.robos, d.hurtos, d.lesiones, d.homicidios, d.amenazas, d.viales,
-       -- Con muy pocos habitantes (clubes, countries chicos) una tasa por habitante no dice nada: el puntaje la
-       -- toma como dato faltante
+       -- Per-resident rates are not meaningful for places with very few residents (clubs, small gated communities);
+       -- scoring treats these values as missing.
        d.fuente, d.periodo, d.ambito, CASE WHEN t.poblacion >= 500 THEN d.comparables END, NULL, NULL
 FROM totales t
 JOIN censo c USING (osm_id)

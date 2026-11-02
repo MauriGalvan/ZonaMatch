@@ -1,22 +1,21 @@
--- Spreads crimes inside each partido (and homicides inside each CABA comuna) with the factors of each census
--- fraction (etl/crime/fit_crime_model.py, loaded in geo.carga_delitos_fracciones). Run by DATOS-ZONAS-DOCKER.bat
--- right after calcular_zonas.sql, which gives every localidad the rates of its partido and every CABA barrio the
--- homicides of its comuna.
+-- Distributes crimes within each district (and homicides within each CABA commune) using census fraction factors
+-- from etl/crime/fit_crime_model.py, loaded into geo.carga_delitos_fracciones. DATOS-ZONAS-DOCKER.bat runs this
+-- immediately after calcular_zonas.sql, which assigns district crime rates to localities and commune homicides
+-- to CABA neighborhoods.
 --
--- Two factors per zone, each the mean of its radios divided by the population-weighted mean of its partido or comuna,
--- so totals do not change, only how they are shared:
---   delitos_reparto            activity model (where crimes are reported): province only, CABA already has the
---                              Mapa del Delito by location. Registered crimes are multiplied by it.
---   delitos_reparto_homicidios NBI (where violence falls): province and CABA. Homicides of the province zones are
---                              multiplied by it.
--- delitos_comparables is the geometric mean of estimated crimes and homicides, so it takes the square root of each.
+-- Two factors per zone, each the mean across its census tracts divided by the population-weighted mean for its
+-- district or commune. This preserves totals and only changes how they are distributed:
+--   delitos_reparto            activity model (where crimes are reported): province only; CABA already has
+--                              geolocated Crime Map data. Recorded crimes are multiplied by this factor.
+--   delitos_reparto_homicidios NBI (where violence occurs): province and CABA. Homicides are multiplied by this factor.
+-- delitos_comparables is the geometric mean of estimated crimes and homicides, so it uses the square root of each.
 
 \set ON_ERROR_STOP on
 BEGIN;
 
 WITH radios AS (
     SELECT r.prov, r.poblacion, r.punto,
-           -- Partido, or comuna in CABA (the census numbers comunas by 7)
+           -- District, or commune in CABA (the census numbers communes by 7).
            CASE WHEN r.prov = '02' THEN (r.depto::int / 7)::text ELSE r.depto END AS ambito,
            coalesce(f.factor, 1) AS factor, coalesce(f.homicide_factor, 1) AS homicidios
     FROM geo.censo_radios r
@@ -49,7 +48,7 @@ SET delitos_anio = CASE WHEN i.delitos_fuente = 'snic' THEN round(i.delitos_anio
     delitos_reparto = CASE WHEN i.delitos_fuente = 'snic' THEN z.factor END,
     delitos_reparto_homicidios = z.homicidios
 FROM zonas z
--- Only once per calcular_zonas.sql run: a second run would multiply again
+-- Run only once after each calcular_zonas.sql execution; running it again would apply the factor twice.
 WHERE i.osm_id = z.osm_id AND i.delitos_fuente IS NOT NULL AND i.delitos_reparto_homicidios IS NULL;
 
 DROP TABLE geo.carga_delitos_fracciones;

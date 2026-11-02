@@ -1,10 +1,10 @@
--- Census fractions of the AMBA with what etl/crime/fit_crime_model.py uses to spread the crimes of a partido over
--- its localidades: census indicators, density, shops (OSM) and public transport departures (GTFS), plus the crimes
--- of the Mapa del Delito for the CABA fractions, where the model is fitted.
+-- AMBA census fractions with the features used by etl/crime/fit_crime_model.py to distribute district crimes
+-- across localities: census indicators, density, shops (OSM), public transit departures (GTFS), and Crime Map
+-- data for CABA fractions, where the model is fitted.
 -- Run by DATOS-ZONAS-DOCKER.bat after calcular_zonas.sql and calcular_transporte.sql:
 --   psql --csv < etl\crime\fraction_features.sql > datos\delitos_fracciones_entrada.csv
 WITH fr AS (
-    -- comuna: the CABA comuna (the census numbers them by 7); null in the province
+    -- Commune: CABA commune (the census numbers them by 7); null in the province.
     SELECT r.prov || r.depto || r.fracc AS fid, r.prov,
            CASE WHEN r.prov = '02' THEN r.depto::int / 7 END AS comuna,
            sum(r.poblacion) AS pob, ST_Union(r.geom) AS geom
@@ -33,7 +33,7 @@ del AS (
 ),
 tiendas AS (
     SELECT f.fid, count(p.*) AS comercios
-    -- Shops and the amenities that bring people (bars, banks...), counted as in the zone detail
+    -- Shops and other places that attract people (bars, banks, etc.), counted as in zone details.
     FROM fr f LEFT JOIN osm.planet_osm_point p
       ON (p.shop IS NOT NULL OR p.amenity IN ('restaurant', 'bar', 'cafe', 'fast_food', 'bank', 'pharmacy'))
      AND ST_Contains(f.geom, ST_Transform(p.way, 4326))

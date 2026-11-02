@@ -1,4 +1,4 @@
--- Real estate market per zone (app.zone_market) as CSV, with the zone name and level. MERCADO-ZONAS-DOCKER.bat writes
+-- Real estate market data per zone (app.zone_market) as CSV, with the zone name and level. MERCADO-ZONAS-DOCKER.bat writes
 -- it to datos\zonaprop\market_by_zone.csv. See calculate_market.sql for the meaning of each column.
 SELECT m.zone_slug, z.nombre AS zone_name, z.nivel AS level, m.operation, m.property_type, m.listings,
        m.sample_size, m.average_price, m.median_price, m.currency, m.average_price_m2, m.median_price_m2,
