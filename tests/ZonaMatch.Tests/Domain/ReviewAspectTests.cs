@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Tests.Domain
@@ -5,19 +6,19 @@ namespace ZonaMatch.Tests.Domain
     public class ReviewAspectTests
     {
         [Fact]
-        public void TryNormalize_NormalizesCaseDuplicatesAndOrder()
+        public void TryNormalize_WhenTopicsHaveDifferentCaseDuplicatesAndOrder_NormalizesTopics()
         {
             var isValid = ReviewAspect.TryNormalize([" Transporte", "seguridad", "transporte", ""], out var topics, out _);
 
-            Assert.True(isValid);
-            Assert.Equal([ReviewAspect.Safety, ReviewAspect.PublicTransport], topics);
+            isValid.Should().BeTrue();
+            topics.Should().Equal(ReviewAspect.Safety, ReviewAspect.PublicTransport);
         }
 
         [Fact]
         public void TryNormalize_WhenNoTopicsAreProvided_ReturnsSuccess()
         {
-            Assert.True(ReviewAspect.TryNormalize(null, out var topics, out _));
-            Assert.Empty(topics);
+            ReviewAspect.TryNormalize(null, out var topics, out _).Should().BeTrue();
+            topics.Should().BeEmpty();
         }
 
         [Fact]
@@ -25,9 +26,9 @@ namespace ZonaMatch.Tests.Domain
         {
             var isValid = ReviewAspect.TryNormalize(["seguridad", "ruido"], out var topics, out var error);
 
-            Assert.False(isValid);
-            Assert.Empty(topics);
-            Assert.Contains("ruido", error);
+            isValid.Should().BeFalse();
+            topics.Should().BeEmpty();
+            error.Should().Contain("ruido");
         }
     }
 }

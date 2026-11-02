@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Tests.Domain
@@ -5,37 +6,37 @@ namespace ZonaMatch.Tests.Domain
     public class TimeWindowTests
     {
         [Fact]
-        public void All_CoversTheDayWithoutGaps()
+        public void All_WhenRead_CoversTheDayWithoutGaps()
         {
             var windows = TimeWindow.All;
 
-            Assert.Equal(0, windows[0].StartHour);
-            Assert.Equal(24, windows[^1].EndHour);
+            windows[0].StartHour.Should().Be(0);
+            windows[^1].EndHour.Should().Be(24);
             for (var index = 1; index < windows.Count; index++)
-                Assert.Equal(windows[index - 1].EndHour, windows[index].StartHour);
+                windows[index].StartHour.Should().Be(windows[index - 1].EndHour);
         }
 
         [Fact]
-        public void FrequencyMethods_ReturnExpectedValues()
+        public void DeparturesPerHour_WhenTripsExist_ReturnsExpectedFrequency()
         {
             var morning = TimeWindow.Morning; // Three hours.
 
-            Assert.Equal(11.7, morning.DeparturesPerHour(35));
-            Assert.Equal(5, morning.MinutesBetweenDepartures(35));
+            morning.DeparturesPerHour(35).Should().Be(11.7);
+            morning.MinutesBetweenDepartures(35).Should().Be(5);
         }
 
         [Fact]
-        public void FrequencyMethods_WhenThereAreNoDepartures_ReturnNoFrequency()
+        public void DeparturesPerHour_WhenThereAreNoDepartures_ReturnsZeroAndNoInterval()
         {
-            Assert.Equal(0, TimeWindow.Evening.DeparturesPerHour(0));
-            Assert.Null(TimeWindow.Evening.MinutesBetweenDepartures(0));
+            TimeWindow.Evening.DeparturesPerHour(0).Should().Be(0);
+            TimeWindow.Evening.MinutesBetweenDepartures(0).Should().BeNull();
         }
 
         [Fact]
-        public void FromCode_ReturnsMatchingWindow()
+        public void FromCode_WhenCodeIsKnownOrUnknown_ReturnsWindowOrNull()
         {
-            Assert.Same(TimeWindow.Afternoon, TimeWindow.FromCode("tarde"));
-            Assert.Null(TimeWindow.FromCode("siesta"));
+            TimeWindow.FromCode("tarde").Should().BeSameAs(TimeWindow.Afternoon);
+            TimeWindow.FromCode("siesta").Should().BeNull();
         }
     }
 }
