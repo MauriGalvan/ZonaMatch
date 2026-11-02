@@ -73,4 +73,22 @@ http://localhost:8080/search?format=jsonv2&addressdetails=1&q=Gutenberg%20666%2C
 
 La API, ejecutada desde Visual Studio en la computadora, consulta `http://localhost:8080/`. Mantené el servicio de Nominatim activo mientras usás la búsqueda de direcciones en la SPA. Si la API se ejecuta dentro de Docker, configurá `Nominatim:BaseUrl` como `http://nominatim:8080/`.
 
+7. Mercado inmobiliario de las zonas (Zonaprop)
+
+Con las zonas calculadas (paso 5) y las migraciones aplicadas, hacé doble clic en ZONE-MARKET-DOCKER.bat. Necesita Python 3 (sin paquetes extra). El script:
+
+- lee todas las publicaciones de departamentos, casas y PH en venta y en alquiler de cada zona del AMBA. Zonaprop muestra solo las primeras 9 páginas de cada búsqueda (270 avisos), así que las búsquedas más grandes se parten por franjas de precio hasta que cada una entra entera. La Ciudad completa no se lee: se calcula sumando sus barrios,
+- calcula por zona, operación, tipo y cantidad de ambientes: cantidad de avisos, precios promedio y por m², expensas, superficie típica, qué parte es apta crédito, de dueño directo o acepta mascotas, y el rango de precios (21 puntos, uno cada 5 % de los avisos, con el porcentaje real de avisos hasta cada precio; sin precios basura como $ 9.999.999). Lo guarda en app.zone_market y app.zone_market_rooms, que es lo que lee la API,
+- exporta datos\zonaprop\market_by_zone.csv y los slugs del enlace "Ver propiedades" (datos\zonaprop\zonaprop-slugs.json). Si la SPA está al lado del back (..\..\frontend\ZonaMatchSPA), los copia a src\features\zone-detail\data\; si está en otro lado, ejecutá `set FRONT_DIR=ruta\de\ZonaMatchSPA` antes del script. El archivo copiado hay que commitearlo en el repo del front.
+
+La lectura es lenta a propósito (un pedido cada 3 o 4 segundos): unas 15 horas para todas las zonas. Avanza zona por zona y muestra `[zonas listas/total]`; en las zonas grandes puede pasar casi una hora sin que avance el contador. Si Zonaprop bloquea, espera y reintenta; si sigue bloqueando, se corta. Se puede cortar con Ctrl+C: volver a ejecutar el script retoma donde quedó, porque cada página se guarda en datos\zonaprop\cache\AAAA-MM-DD (la fecha en que empezó la corrida; una corrida se sigue completando durante 7 días).
+
+Para recalcular sin volver a descargar, con la caché de una corrida (no está en el repositorio; se puede copiar de otra computadora para no repetir las 15 horas):
+
+```powershell
+.\ZONE-MARKET-DOCKER.bat --export-only --run 2026-11-01
+```
+
+Tarda unos 5 minutos. Para leer solo algunas zonas: `ZONE-MARKET-DOCKER.bat --only palermo,adrogue`.
+
 Esquemas de la base: app (modelo de la aplicación, EF Core), geo (datos GIS externos), osm (importación cruda de OpenStreetMap). PostGIS vive en public.
