@@ -19,7 +19,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Commune> Communes => Set<Commune>();
         public DbSet<CensusTract> CensusTracts => Set<CensusTract>();
         public DbSet<MunicipalityAlias> MunicipalityAliases => Set<MunicipalityAlias>();
-        public DbSet<User> Usuarios => Set<User>();
+        public DbSet<User> Users => Set<User>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<ReviewHelpfulVote> ReviewHelpfulVotes => Set<ReviewHelpfulVote>();
         public DbSet<Question> Questions => Set<Question>();
@@ -30,7 +30,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
         public DbSet<Context> Contexts => Set<Context>();
-        public DbSet<Analysis> Analysis => Set<Analysis>();
+        public DbSet<Analysis> Analyses => Set<Analysis>();
         public DbSet<AnalysisZone> AnalysisZones => Set<AnalysisZone>();
         public DbSet<Person> People => Set<Person>();
         public DbSet<ContextPlace> ContextPlaces => Set<ContextPlace>();

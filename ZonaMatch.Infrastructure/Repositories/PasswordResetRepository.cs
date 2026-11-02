@@ -36,7 +36,7 @@ public sealed class PasswordResetRepository(ZonaMatchDbContext dbContext) : IPas
             if (claimed == 0)
                 return false;
 
-            await dbContext.Usuarios
+            await dbContext.Users
                 .Where(user => user.Id == token.UserId)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.PasswordHash, passwordHash), ct);
             await dbContext.PasswordResetTokens

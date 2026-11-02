@@ -17,7 +17,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         // Always load an analysis with its zones and complete criteria (members, places, and
         // preferences). Split queries avoid multiplying rows when loading several collections at once.
         private IQueryable<Analysis> WithDetails =>
-            _context.Analysis
+            _context.Analyses
                 .Include(a => a.Zones)
                 .Include(a => a.Context).ThenInclude(c => c.People)
                 .Include(a => a.Context).ThenInclude(c => c.Places)
@@ -39,11 +39,11 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .OrderBy(a => a.CreatedAt)
                 .ToListAsync(cancellationToken);
 
-        public void Add(Analysis analysis) => _context.Analysis.Add(analysis);
+        public void Add(Analysis analysis) => _context.Analyses.Add(analysis);
 
         public void Delete(Analysis analysis)
         {
-            _context.Analysis.Remove(analysis);
+            _context.Analyses.Remove(analysis);
             // The criteria snapshot belongs only to this analysis.
             _context.Contexts.Remove(analysis.Context);
         }
