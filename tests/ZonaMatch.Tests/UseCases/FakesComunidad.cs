@@ -1,4 +1,5 @@
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Zones.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 
@@ -26,7 +27,7 @@ namespace ZonaMatch.Tests.UseCases
         public Task<string?> GetBySlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<ZonaResumenDto>> SearchAsync(string fragmento, int limite, CancellationToken cancellationToken = default) =>
+        public Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(string fragmento, int limite, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 

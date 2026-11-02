@@ -3,6 +3,7 @@ using ZonaMatch.Application.DTOs.Scoring.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.DTOs.Scoring.Responses;
+using ZonaMatch.Application.DTOs.Zones.Responses;
 using ZonaMatch.Application.UseCases.Scoring;
 using ZonaMatch.Domain.Scoring;
 
@@ -158,8 +159,8 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             public Task<bool> ContainsPointAsync(string slug, double latitude, double longitude, CancellationToken cancellationToken = default) =>
                 Task.FromResult(ContainsStartingPoint);
 
-            public Task<IReadOnlyList<ZonaResumenDto>> SearchAsync(string fragmento, int limite, CancellationToken cancellationToken = default) =>
-                Task.FromResult<IReadOnlyList<ZonaResumenDto>>([]);
+            public Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(string fragmento, int limite, CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<ZoneSearchResultResponse>>([]);
         }
       
         [Theory]

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Zones.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Infrastructure.Data;
 
@@ -151,7 +151,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             return filas.SingleOrDefault();
         }
 
-        public async Task<IReadOnlyList<ZonaResumenDto>> SearchAsync(
+        public async Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(
             string fragmento, int limite, CancellationToken cancellationToken = default)
         {
             var filas = await _dbContext.Database
@@ -161,11 +161,11 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
 
             return filas
-                .Select(f => new ZonaResumenDto(
+                .Select(f => new ZoneSearchResultResponse(
                     f.Slug,
                     f.Nombre,
                     f.NivelAdministrativo,
-                    f.JurisdiccionNombres.Zip(f.JurisdiccionNiveles, (nombre, nivel) => new JurisdiccionDto(nombre, nivel)).ToList(),
+                    f.JurisdiccionNombres.Zip(f.JurisdiccionNiveles, (nombre, nivel) => new JurisdictionResponse(nombre, nivel)).ToList(),
                     f.SuperficieKm2))
                 .ToList();
         }

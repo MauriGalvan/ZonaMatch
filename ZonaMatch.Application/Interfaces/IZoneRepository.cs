@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Zones.Responses;
 
 namespace ZonaMatch.Application.Interfaces
 {
@@ -14,7 +14,7 @@ namespace ZonaMatch.Application.Interfaces
         Task<bool> ContainsPointAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default);
 
         // Zones whose slug contains "fragmento" (a slug itself, e.g. "villa-l"); names that start with it come first
-        Task<IReadOnlyList<ZonaResumenDto>> SearchAsync(
+        Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(
             string fragmento, int limite, CancellationToken cancellationToken = default);
     }
 }

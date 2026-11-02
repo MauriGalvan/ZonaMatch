@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Zones.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Policies;
@@ -8,7 +8,7 @@ namespace ZonaMatch.Application.UseCases.Zones;
 
 public sealed class SearchZones(IZoneRepository zoneRepository)
 {
-    public async Task<IReadOnlyList<ZonaResumenDto>> ExecuteAsync(
+    public async Task<IReadOnlyList<ZoneSearchResultResponse>> ExecuteAsync(
         string? search,
         int limit,
         CancellationToken cancellationToken = default)
