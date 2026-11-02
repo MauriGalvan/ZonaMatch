@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Questions.Requests;
+using ZonaMatch.Application.DTOs.Questions.Responses;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -7,83 +8,83 @@ using ZonaMatch.Application.Models;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
 
-namespace ZonaMatch.Application.UseCases.Preguntas
+namespace ZonaMatch.Application.UseCases.Questions
 {
-    public class ResponderPregunta
+    public sealed class AnswerQuestion
     {
-        private readonly IPreguntaRepository _preguntas;
+        private readonly IPreguntaRepository _questions;
         private readonly INotificationRepository _notifications;
         private readonly IEmailService _emailService;
-        private readonly ILogger<ResponderPregunta> _logger;
-        private readonly TimeProvider _reloj;
+        private readonly ILogger<AnswerQuestion> _logger;
+        private readonly TimeProvider _clock;
         private readonly FrontendLinks _links;
 
-        public ResponderPregunta(
-            IPreguntaRepository preguntas,
+        public AnswerQuestion(
+            IPreguntaRepository questions,
             INotificationRepository notifications,
             IEmailService emailService,
-            ILogger<ResponderPregunta> logger,
-            TimeProvider reloj,
+            ILogger<AnswerQuestion> logger,
+            TimeProvider clock,
             FrontendLinks links)
         {
-            _preguntas = preguntas;
+            _questions = questions;
             _notifications = notifications;
             _emailService = emailService;
             _logger = logger;
-            _reloj = reloj;
+            _clock = clock;
             _links = links;
         }
 
-        public async Task<RespuestaDto> EjecutarAsync(
-            string zonaSlug, Guid preguntaId, AuthenticatedUserContext currentUser, CrearRespuestaDto solicitud, CancellationToken cancellationToken = default)
+        public async Task<AnswerResponse> ExecuteAsync(
+            string zoneSlug, Guid questionId, AuthenticatedUserContext currentUser, CreateAnswerRequest request, CancellationToken cancellationToken = default)
         {
-            var pregunta = await _preguntas.GetByIdAsync(zonaSlug, preguntaId, cancellationToken)
+            var question = await _questions.GetByIdAsync(zoneSlug, questionId, cancellationToken)
                 ?? throw new NotFoundException("Question not found.");
 
-            var respuesta = new Respuesta
+            var answer = new Respuesta
             {
-                PreguntaId = preguntaId,
+                PreguntaId = questionId,
                 UsuarioId = currentUser.Id,
-                Texto = solicitud.Texto.Trim(),
-                FechaCreacion = _reloj.GetUtcNow()
+                Texto = request.Text.Trim(),
+                FechaCreacion = _clock.GetUtcNow()
             };
 
-            _preguntas.Agregar(respuesta);
+            _questions.Agregar(answer);
 
-            var shouldNotifyAuthor = pregunta.UsuarioId != currentUser.Id;
+            var shouldNotifyAuthor = question.UsuarioId != currentUser.Id;
             if (shouldNotifyAuthor)
             {
                 _notifications.AddRange([
                     new UserNotification
                     {
-                        UserId = pregunta.UsuarioId,
+                        UserId = question.UsuarioId,
                         Type = NotificationType.CommunityReply,
                         Title = "Respondieron tu pregunta",
-                        Message = $"Alguien respondió una pregunta que publicaste en {zonaSlug}.",
-                        Link = $"/zonas/{Uri.EscapeDataString(zonaSlug)}?tab=comunidad",
-                        CreatedAt = respuesta.FechaCreacion
+                        Message = $"Alguien respondió una pregunta que publicaste en {zoneSlug}.",
+                        Link = $"/zonas/{Uri.EscapeDataString(zoneSlug)}?tab=comunidad",
+                        CreatedAt = answer.FechaCreacion
                     }
                 ]);
             }
 
-            await _preguntas.GuardarCambiosAsync(cancellationToken);
+            await _questions.GuardarCambiosAsync(cancellationToken);
 
-            if (shouldNotifyAuthor && !string.IsNullOrWhiteSpace(pregunta.Usuario?.Email))
+            if (shouldNotifyAuthor && !string.IsNullOrWhiteSpace(question.Usuario?.Email))
             {
                 try
                 {
                     await _emailService.SendEmailAsync(
-                        pregunta.Usuario.Email,
+                        question.Usuario.Email,
                         "Nueva respuesta a tu pregunta en ZonaMatch",
                         BrandEmail.Render(new BrandEmailContent(
                             Preheader: "Alguien respondió una pregunta que publicaste.",
                             Title: "Respondieron tu pregunta",
                             Paragraphs:
                             [
-                                $"Alguien respondió una pregunta que publicaste en la zona <strong>{BrandEmail.Encode(zonaSlug)}</strong>.",
+                                $"Alguien respondió una pregunta que publicaste en la zona <strong>{BrandEmail.Encode(zoneSlug)}</strong>.",
                                 "Entrá a Comunidad, en esa zona, para leer la respuesta y seguir la conversación.",
                             ],
-                            Button: new BrandEmailButton("Ver la respuesta", _links.To($"/zonas/{Uri.EscapeDataString(zonaSlug)}?tab=comunidad")),
+                            Button: new BrandEmailButton("Ver la respuesta", _links.To($"/zonas/{Uri.EscapeDataString(zoneSlug)}?tab=comunidad")),
                             Footnote: "Te avisamos porque sos quien hizo la pregunta.")),
                         cancellationToken);
                 }
@@ -93,11 +94,11 @@ namespace ZonaMatch.Application.UseCases.Preguntas
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogWarning(exception, "Could not email the author of community question {QuestionId}.", pregunta.Id);
+                    _logger.LogWarning(exception, "Could not email the author of community question {QuestionId}.", question.Id);
                 }
             }
 
-            return RespuestaMapeo.ADto(respuesta, currentUser.Email, currentUser.Id);
+            return QuestionMapper.ToResponse(answer, currentUser.Email, currentUser.Id);
         }
     }
 }
