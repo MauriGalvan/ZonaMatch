@@ -24,12 +24,12 @@ namespace ZonaMatch.Infrastructure.Repositories
         // repeats CABA).
         private static readonly string SqlPorSlug = $"""
             WITH {ZoneSql.ZoneBySlug},
-            centro AS (
+            zone_center AS (
                 SELECT {ZoneSql.GetCenter("z.geom")} AS punto
                 FROM zona z
             ),
-            contenedores AS (
-                SELECT j.osm_id, j.name, {GetAdministrativeLevel("j")} AS nivel, j.way_area
+            containing_boundaries AS (
+                SELECT j.osm_id, j.name, {GetAdministrativeLevel("j")} AS administrative_level, j.way_area
                 FROM {Schema}.planet_osm_polygon j, zona z
                 WHERE j.boundary = 'administrative' AND j.name IS NOT NULL
                   AND {GetAdministrativeLevel("j")} BETWEEN 4 AND z.nivel - 1
@@ -38,28 +38,29 @@ namespace ZonaMatch.Infrastructure.Repositories
                   -- one of the same size counts (Commune 14 is exactly Palermo)
                   AND j.way_area >= 0.99 * z.way_area
             ),
-            jurisdicciones AS (
-                SELECT j.name, j.nivel
-                FROM contenedores j
+            jurisdictions AS (
+                SELECT j.name, j.administrative_level
+                FROM containing_boundaries j
                 WHERE NOT EXISTS (
-                    SELECT 1 FROM contenedores w
-                    WHERE w.nivel < j.nivel AND abs(w.way_area - j.way_area) < 0.01 * w.way_area)
+                    SELECT 1 FROM containing_boundaries w
+                    WHERE w.administrative_level < j.administrative_level
+                      AND abs(w.way_area - j.way_area) < 0.01 * w.way_area)
             )
             SELECT json_build_object(
                 'type', 'Feature',
                 'id', CASE WHEN z.osm_id < 0 THEN 'r' || -z.osm_id ELSE 'w' || z.osm_id END,
                 'properties', json_build_object(
                     'slug', @slug,
-                    'nombre', z.name,
-                    'nivelAdministrativo', z.nivel,
-                    'jurisdicciones', (
-                        SELECT COALESCE(json_agg(json_build_object('nombre', j.name, 'nivelAdministrativo', j.nivel)
-                                                 ORDER BY j.nivel DESC), '[]'::json)
-                        FROM jurisdicciones j),
-                    'superficieKm2', round((ST_Area(z.geom::geography) / 1e6)::numeric, 2),
-                    'centro', json_build_object('latitud', ST_Y(c.punto), 'longitud', ST_X(c.punto))),
+                    'name', z.name,
+                    'administrativeLevel', z.nivel,
+                    'jurisdictions', (
+                        SELECT COALESCE(json_agg(json_build_object('name', j.name, 'administrativeLevel', j.administrative_level)
+                                                 ORDER BY j.administrative_level DESC), '[]'::json)
+                        FROM jurisdictions j),
+                    'areaKm2', round((ST_Area(z.geom::geography) / 1e6)::numeric, 2),
+                    'center', json_build_object('latitude', ST_Y(c.punto), 'longitude', ST_X(c.punto))),
                 'geometry', ST_AsGeoJSON(ST_SimplifyPreserveTopology(z.geom, @simplificationTolerance), {GeoJsonCoordinatePrecision})::json)::text AS "Value"
-            FROM zona z, centro c
+            FROM zona z, zone_center c
             """;
 
         // Search the same selected zones as SqlPorSlug so each result opens its own zone. Places that share a name
