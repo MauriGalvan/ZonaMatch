@@ -60,13 +60,13 @@ public sealed class SaveGroupAnalysis
             cancellationToken);
 
         var profile = await _profiles.GetByUserAsync(currentUserId, cancellationToken);
-        var context = profile?.CopiarParaAnalisis(now) ?? new Context
+        var context = profile?.CopyForAnalysis(now) ?? new Context
         {
-            UsuarioId = currentUserId,
-            Tipo = ContextType.Analysis,
-            Personas = 1,
-            FechaCreacion = now,
-            FechaActualizacion = now,
+            UserId = currentUserId,
+            Type = ContextType.Analysis,
+            PeopleCount = 1,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
         var zones = await AnalysisMapping.BuildZonesAsync(request.Zones, _zones, cancellationToken);
 

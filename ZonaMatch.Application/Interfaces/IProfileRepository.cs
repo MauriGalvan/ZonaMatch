@@ -6,12 +6,12 @@ namespace ZonaMatch.Application.Interfaces
     public interface IProfileRepository
     {
         // Includes details and change tracking; null when the profile has not been created.
-        Task<Context?> GetByUserAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+        Task<Context?> GetByUserAsync(Guid userId, CancellationToken cancellationToken = default);
 
         // Perfiles existentes de varios usuarios, con sus preferencias y restricciones.
-        Task<IReadOnlyList<Context>> GetByUserIdsAsync(IReadOnlyCollection<Guid> usuarioIds, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<Context>> GetByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default);
 
-        void Add(Context perfil);
+        void Add(Context profile);
 
         Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }

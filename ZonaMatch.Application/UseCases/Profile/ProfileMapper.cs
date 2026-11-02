@@ -11,5 +11,5 @@ internal static class ProfileMapper
             AnalysisCriteriaBuilder.ToContextResponse(profile),
             AnalysisCriteriaBuilder.ToCriteriaDictionary(profile),
             AnalysisCriteriaBuilder.ToPointsResponse(profile),
-            profile.FechaActualizacion);
+            profile.UpdatedAt);
 }

@@ -19,9 +19,9 @@ namespace ZonaMatch.Infrastructure.Repositories
         private IQueryable<Analysis> WithDetails =>
             _context.Analysis
                 .Include(a => a.Zones)
-                .Include(a => a.Context).ThenInclude(c => c.Integrantes)
-                .Include(a => a.Context).ThenInclude(c => c.Puntos)
-                .Include(a => a.Context).ThenInclude(c => c.Criterios)
+                .Include(a => a.Context).ThenInclude(c => c.People)
+                .Include(a => a.Context).ThenInclude(c => c.Places)
+                .Include(a => a.Context).ThenInclude(c => c.Criteria)
                 .AsSplitQuery();
 
         public async Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
@@ -45,7 +45,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         {
             _context.Analysis.Remove(analysis);
             // The criteria snapshot belongs only to this analysis.
-            _context.Contextos.Remove(analysis.Context);
+            _context.Contexts.Remove(analysis.Context);
         }
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>

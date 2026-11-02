@@ -88,13 +88,13 @@ namespace ZonaMatch.Infrastructure.Geo
                 new[] { fila.Nombre, calleYAltura, fila.Localidad }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
             return new GeocodedAddress(
-                Nombre: fila.Nombre,
-                Calle: fila.Calle,
-                Altura: fila.Altura,
-                Localidad: fila.Localidad,
-                Provincia: null,
-                CodigoPostal: null,
-                DireccionCompleta: completa.Length > 0 ? completa : null);
+                Name: fila.Nombre,
+                Street: fila.Calle,
+                StreetNumber: fila.Altura,
+                Locality: fila.Localidad,
+                Province: null,
+                PostalCode: null,
+                FullAddress: completa.Length > 0 ? completa : null);
         }
 
         // Keyless result of the query above; property names match the column aliases.

@@ -33,7 +33,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             {
                 UserId = userId,
                 Name = RecalculatedName(original.Name, now),
-                Context = source.Context.CopiarParaAnalisis(now),
+                Context = source.Context.CopyForAnalysis(now),
                 OriginalAnalysisId = original.Id,
                 CreatedAt = now,
                 UpdatedAt = now,

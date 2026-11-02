@@ -43,7 +43,7 @@ public sealed class ReverseGeocode(
             Locality: geocodedAddress?.Locality,
             District: district?.Name,
             Commune: commune?.Name,
-            Province: district?.Provincia ?? geocodedAddress?.Province,
+            Province: district?.Province ?? geocodedAddress?.Province,
             PostalCode: geocodedAddress?.PostalCode,
             FullAddress: geocodedAddress?.FullAddress);
     }

@@ -4,91 +4,91 @@ namespace ZonaMatch.Domain.Entities
     // rental or purchase limits. ContextType defines two types:
     // - perfil: the user's base criteria, one per user and shared by all their analyses.
     // - analisis: a snapshot used to calculate a saved analysis; profile edits do not change it.
-    // Details are normalized across personas, puntos_interes, and contexto_criterios.
+    // Details are normalized across the personas, puntos_interes, and contexto_criterios tables.
     public class Context
     {
         // UUIDv7: unique and time-ordered, so the primary key index stays compact
         public Guid Id { get; set; } = Guid.CreateVersion7();
 
-        public Guid UsuarioId { get; set; }
+        public Guid UserId { get; set; }
 
         // Existing type codes: perfil | analisis (ContextType).
-        public string Tipo { get; set; } = ContextType.Perfil;
+        public string Type { get; set; } = ContextType.Profile;
 
         // Number of people in the household (1..8); age ranges are stored in Person records.
-        public int Personas { get; set; }
+        public int PeopleCount { get; set; }
 
-        // Selected pet codes (perro, gato, otras, ninguna), stored as a text array like Review.Temas.
-        public string[]? Mascotas { get; set; }
+        // Selected pet codes (perro, gato, otras, ninguna), stored as a text array.
+        public string[]? Pets { get; set; }
 
-        // Movilidad habitual: a-pie, transporte-publico, vehiculo, bici.
+        // Common mobility options: a-pie, transporte-publico, vehiculo, bici.
         // Like pets, a simple list of user-selected mobility options without a catalog.
-        public string[]? Movilidad { get; set; }
+        public string[]? Mobility { get; set; }
 
         // User-entered monthly budget, stored verbatim (for example, "800000"); null if omitted.
         // Includes rent and expenses for renters, and expenses only for buyers.
-        public string? AlquilerMaximo { get; set; }
+        public string? MaximumRent { get; set; }
 
         // Existing operation codes: alquiler | compra (Scoring.HousingOperations).
-        public string Operacion { get; set; } = "alquiler";
+        public string Operation { get; set; } = "alquiler";
 
         // Maximum purchase price in US dollars; used only when buying.
-        public decimal? CompraMaximaUsd { get; set; }
+        public decimal? MaximumPurchasePriceUsd { get; set; }
 
         // apartment | house | ph (Scoring.HousingTypes); null means any type is acceptable.
-        public string? TipoVivienda { get; set; }
+        public string? HousingType { get; set; }
 
         // Desired area in square meters; prices are estimated per square meter. Null uses zone averages.
-        public int? SuperficieM2 { get; set; }
+        public int? AreaM2 { get; set; }
 
-        public DateTimeOffset FechaCreacion { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
 
-        public DateTimeOffset FechaActualizacion { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
 
         // app.personas rows: one per household member, including their age range.
-        public ICollection<Person> Integrantes { get; set; } = new List<Person>();
+        public ICollection<Person> People { get; set; } = new List<Person>();
 
         // app.puntos_interes rows: places the user visits.
-        public ICollection<ContextPlace> Puntos { get; set; } = new List<ContextPlace>();
+        public ICollection<ContextPlace> Places { get; set; } = new List<ContextPlace>();
 
         // app.contexto_criterios rows: selected criteria and their priorities (baja|media|alta).
-        public ICollection<ContextCriterion> Criterios { get; set; } = new List<ContextCriterion>();
+        public ICollection<ContextCriterion> Criteria { get; set; } = new List<ContextCriterion>();
 
         // Create a full snapshot for a saved analysis so it remains unchanged if the profile changes.
-        public Context CopiarParaAnalisis(DateTimeOffset ahora) => new()
+        public Context CopyForAnalysis(DateTimeOffset timestamp) => new()
         {
-            UsuarioId = UsuarioId,
-            Tipo = ContextType.Analysis,
-            Personas = Personas,
-            Mascotas = Mascotas?.ToArray(),
-            Movilidad = Movilidad?.ToArray(),
-            AlquilerMaximo = AlquilerMaximo,
-            Operacion = Operacion,
-            CompraMaximaUsd = CompraMaximaUsd,
-            TipoVivienda = TipoVivienda,
-            SuperficieM2 = SuperficieM2,
-            FechaCreacion = ahora,
-            FechaActualizacion = ahora,
-            Integrantes = Integrantes
-                .Select(p => new Person { Orden = p.Orden, Nombre = p.Nombre, Edad = p.Edad })
+            UserId = UserId,
+            Type = ContextType.Analysis,
+            PeopleCount = PeopleCount,
+            Pets = Pets?.ToArray(),
+            Mobility = Mobility?.ToArray(),
+            MaximumRent = MaximumRent,
+            Operation = Operation,
+            MaximumPurchasePriceUsd = MaximumPurchasePriceUsd,
+            HousingType = HousingType,
+            AreaM2 = AreaM2,
+            CreatedAt = timestamp,
+            UpdatedAt = timestamp,
+            People = People
+                .Select(person => new Person { Order = person.Order, Name = person.Name, AgeRange = person.AgeRange })
                 .ToList(),
-            Puntos = Puntos
-                .Select(p => new ContextPlace
+            Places = Places
+                .Select(place => new ContextPlace
                 {
-                    Orden = p.Orden,
-                    Nombre = p.Nombre,
-                    Direccion = p.Direccion,
-                    Latitude = p.Latitude,
-                    Longitude = p.Longitude,
-                    Tipo = p.Tipo,
-                    QuienVa = p.QuienVa,
-                    Frecuencia = p.Frecuencia,
-                    Prioridad = p.Prioridad,
-                    TiempoMax = p.TiempoMax,
+                    Order = place.Order,
+                    Name = place.Name,
+                    Address = place.Address,
+                    Latitude = place.Latitude,
+                    Longitude = place.Longitude,
+                    Type = place.Type,
+                    WhoGoes = place.WhoGoes,
+                    Frequency = place.Frequency,
+                    Priority = place.Priority,
+                    MaximumTravelTime = place.MaximumTravelTime,
                 })
                 .ToList(),
-            Criterios = Criterios
-                .Select(c => new ContextCriterion { CriterioId = c.CriterioId, Prioridad = c.Prioridad })
+            Criteria = Criteria
+                .Select(criterion => new ContextCriterion { CriterionId = criterion.CriterionId, Priority = criterion.Priority })
                 .ToList(),
         };
     }
@@ -96,7 +96,7 @@ namespace ZonaMatch.Domain.Entities
     // Values used by Context.Type.
     public static class ContextType
     {
-        public const string Perfil = "perfil";
+        public const string Profile = "perfil";
         public const string Analysis = "analisis";
     }
 }

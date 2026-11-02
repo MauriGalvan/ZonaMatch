@@ -33,13 +33,17 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid?>("OriginalAnalysisId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("analisis_origen_id");
-
                     b.Property<Guid>("ContextId")
                         .HasColumnType("uuid")
                         .HasColumnName("contexto_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<string>("GroupScoresJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("puntajes_en_grupo_json");
 
                     b.Property<bool>("IsFavorite")
                         .ValueGeneratedOnAdd()
@@ -47,31 +51,27 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("es_favorito");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_actualizacion");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_creacion");
-
-                    b.Property<DateTimeOffset?>("ResultGeneratedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_resultado");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("nombre");
 
-                    b.Property<string>("GroupScoresJson")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("puntajes_en_grupo_json");
+                    b.Property<Guid?>("OriginalAnalysisId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("analisis_origen_id");
+
+                    b.Property<DateTimeOffset?>("ResultGeneratedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_resultado");
 
                     b.Property<string>("ResultJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("resultado_json");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_actualizacion");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -79,10 +79,10 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OriginalAnalysisId");
-
                     b.HasIndex("ContextId")
                         .IsUnique();
+
+                    b.HasIndex("OriginalAnalysisId");
 
                     b.HasIndex("UserId");
 
@@ -134,7 +134,347 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("analisis_zonas", "app");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Answer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("FechaCreacion")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<Guid>("PreguntaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pregunta_id");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("texto");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PreguntaId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("respuestas", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.CensusTract", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Commune")
+                        .HasColumnType("text")
+                        .HasColumnName("commune");
+
+                    b.Property<string>("Depto")
+                        .HasColumnType("text")
+                        .HasColumnName("depto");
+
+                    b.Property<string>("Fraccion")
+                        .HasColumnType("text")
+                        .HasColumnName("fraccion");
+
+                    b.Property<Geometry>("Geometria")
+                        .IsRequired()
+                        .HasColumnType("geometry(MultiPolygon,4326)")
+                        .HasColumnName("geom");
+
+                    b.Property<string>("NroRadio")
+                        .HasColumnType("text")
+                        .HasColumnName("radio");
+
+                    b.Property<string>("Origen")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("origen");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("radios", "geo", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Commune", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<string>("CabaId")
+                        .HasColumnType("text")
+                        .HasColumnName("caba_id");
+
+                    b.Property<string>("CensoCodigo")
+                        .HasColumnType("text")
+                        .HasColumnName("censo_codigo");
+
+                    b.Property<Geometry>("Geometria")
+                        .IsRequired()
+                        .HasColumnType("geometry(MultiPolygon,4326)")
+                        .HasColumnName("geom");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("Provincia")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("provincia");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("comunas", "geo", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.CommunityPoi", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("category");
+
+                    b.Property<bool>("IsNew")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_new");
+
+                    b.Property<Guid?>("LastContributionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_contribution_id");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geometry(Point,4326)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("name");
+
+                    b.Property<bool>("Removed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("removed");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("ZoneSlug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("zone_slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastContributionId");
+
+                    b.HasIndex("Location");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Location"), "gist");
+
+                    b.ToTable("community_pois", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Context", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("AreaM2")
+                        .HasColumnType("integer")
+                        .HasColumnName("superficie_m2");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<string>("HousingType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo_vivienda");
+
+                    b.Property<decimal?>("MaximumPurchasePriceUsd")
+                        .HasColumnType("numeric(12,0)")
+                        .HasColumnName("compra_maxima_usd");
+
+                    b.Property<string>("MaximumRent")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("alquiler_maximo");
+
+                    b.PrimitiveCollection<string[]>("Mobility")
+                        .HasColumnType("text[]")
+                        .HasColumnName("movilidad");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("alquiler")
+                        .HasColumnName("operacion");
+
+                    b.Property<int>("PeopleCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("personas");
+
+                    b.PrimitiveCollection<string[]>("Pets")
+                        .HasColumnType("text[]")
+                        .HasColumnName("mascotas");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("tipo");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_actualizacion");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_contextos_perfil_usuario")
+                        .HasFilter("tipo = 'perfil'");
+
+                    b.ToTable("contextos", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
+
+                            t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
+
+                            t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
+
+                            t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
+                        });
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ContextCriterion", b =>
+                {
+                    b.Property<Guid>("ContextId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contexto_id");
+
+                    b.Property<string>("CriterionId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("criterio_id");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("prioridad");
+
+                    b.HasKey("ContextId", "CriterionId");
+
+                    b.HasIndex("CriterionId");
+
+                    b.ToTable("contexto_criterios", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_contexto_criterios_prioridad", "prioridad IN ('baja', 'media', 'alta')");
+                        });
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ContextPlace", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("direccion");
+
+                    b.Property<Guid>("ContextId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contexto_id");
+
+                    b.Property<string>("Frequency")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("frecuencia");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("MaximumTravelTime")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("tiempo_max");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("nombre");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer")
+                        .HasColumnName("orden");
+
+                    b.Property<string>("Priority")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("prioridad");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("tipo");
+
+                    b.Property<string>("WhoGoes")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("quien_va");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContextId", "Order");
+
+                    b.ToTable("puntos_interes", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Contribution", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -236,7 +576,7 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("aportes", "app");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.AporteValidacion", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ContributionVote", b =>
                 {
                     b.Property<Guid>("AporteId")
                         .HasColumnType("uuid")
@@ -261,207 +601,7 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("aportes_validaciones", "app");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.CommunityPoi", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Category")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("category");
-
-                    b.Property<bool>("IsNew")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_new");
-
-                    b.Property<Guid?>("LastContributionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("last_contribution_id");
-
-                    b.Property<Point>("Location")
-                        .HasColumnType("geometry(Point,4326)")
-                        .HasColumnName("location");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("name");
-
-                    b.Property<bool>("Removed")
-                        .HasColumnType("boolean")
-                        .HasColumnName("removed");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("ZoneSlug")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("zone_slug");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LastContributionId");
-
-                    b.HasIndex("Location");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Location"), "gist");
-
-                    b.ToTable("community_pois", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Comuna", b =>
-                {
-                    b.Property<string>("Key")
-                        .HasColumnType("text")
-                        .HasColumnName("key");
-
-                    b.Property<string>("CabaId")
-                        .HasColumnType("text")
-                        .HasColumnName("caba_id");
-
-                    b.Property<string>("CensoCodigo")
-                        .HasColumnType("text")
-                        .HasColumnName("censo_codigo");
-
-                    b.Property<Geometry>("Geometria")
-                        .IsRequired()
-                        .HasColumnType("geometry(MultiPolygon,4326)")
-                        .HasColumnName("geom");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("nombre");
-
-                    b.Property<string>("Provincia")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("provincia");
-
-                    b.HasKey("Key");
-
-                    b.ToTable("comunas", "geo", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Contexto", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("AlquilerMaximo")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("alquiler_maximo");
-
-                    b.Property<decimal?>("CompraMaximaUsd")
-                        .HasColumnType("numeric(12,0)")
-                        .HasColumnName("compra_maxima_usd");
-
-                    b.Property<DateTimeOffset>("FechaActualizacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_actualizacion");
-
-                    b.Property<DateTimeOffset>("FechaCreacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_creacion");
-
-                    b.PrimitiveCollection<string[]>("Mascotas")
-                        .HasColumnType("text[]")
-                        .HasColumnName("mascotas");
-
-                    b.PrimitiveCollection<string[]>("Movilidad")
-                        .HasColumnType("text[]")
-                        .HasColumnName("movilidad");
-
-                    b.Property<string>("Operacion")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasDefaultValue("alquiler")
-                        .HasColumnName("operacion");
-
-                    b.Property<int>("Personas")
-                        .HasColumnType("integer")
-                        .HasColumnName("personas");
-
-                    b.Property<int?>("SuperficieM2")
-                        .HasColumnType("integer")
-                        .HasColumnName("superficie_m2");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("tipo");
-
-                    b.Property<string>("TipoVivienda")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("tipo_vivienda");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_contextos_perfil_usuario")
-                        .HasFilter("tipo = 'perfil'");
-
-                    b.ToTable("contextos", "app", t =>
-                        {
-                            t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
-
-                            t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
-
-                            t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
-
-                            t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
-                        });
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.ContextoCriterio", b =>
-                {
-                    b.Property<Guid>("ContextoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("contexto_id");
-
-                    b.Property<string>("CriterioId")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("criterio_id");
-
-                    b.Property<string>("Prioridad")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("prioridad");
-
-                    b.HasKey("ContextoId", "CriterioId");
-
-                    b.HasIndex("CriterioId");
-
-                    b.ToTable("contexto_criterios", "app", t =>
-                        {
-                            t.HasCheckConstraint("ck_contexto_criterios_prioridad", "prioridad IN ('baja', 'media', 'alta')");
-                        });
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Criterio", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Criterion", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(40)
@@ -501,7 +641,396 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("criterios", "app");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Escuela", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.District", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<string>("CensoCodigo")
+                        .HasColumnType("text")
+                        .HasColumnName("censo_codigo");
+
+                    b.Property<Geometry>("Geometria")
+                        .IsRequired()
+                        .HasColumnType("geometry(MultiPolygon,4326)")
+                        .HasColumnName("geom");
+
+                    b.Property<int?>("MunicipioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("municipio_id");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("Provincia")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("provincia");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("partidos", "geo", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Group", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("InviteToken")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invite_token");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Groups", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.GroupInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("Token")
+                        .HasColumnType("uuid")
+                        .HasColumnName("token");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.ToTable("GroupInvitations", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipalityAlias", b =>
+                {
+                    b.Property<string>("MunicipioNombre")
+                        .HasColumnType("text")
+                        .HasColumnName("municipio_nombre");
+
+                    b.Property<string>("PartidoKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("partido_key");
+
+                    b.HasKey("MunicipioNombre");
+
+                    b.HasIndex("PartidoKey");
+
+                    b.ToTable("municipio_alias", "geo", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Participant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("role");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Participant", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("used_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("password_reset_tokens", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Person", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AgeRange")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("edad");
+
+                    b.Property<Guid>("ContextId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contexto_id");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nombre");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer")
+                        .HasColumnName("orden");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContextId", "Order");
+
+                    b.ToTable("personas", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Question", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("FechaCreacion")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("texto");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<string>("ZonaSlug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("zona_slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("ZonaSlug");
+
+                    b.ToTable("preguntas", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("AniosEnZona")
+                        .HasColumnType("integer")
+                        .HasColumnName("anios_en_zona");
+
+                    b.Property<DateTimeOffset>("FechaActualizacion")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_actualizacion");
+
+                    b.Property<DateTimeOffset>("FechaCreacion")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<int>("PuntajeComercios")
+                        .HasColumnType("integer")
+                        .HasColumnName("puntaje_comercios");
+
+                    b.Property<int>("PuntajeConectividad")
+                        .HasColumnType("integer")
+                        .HasColumnName("puntaje_conectividad");
+
+                    b.Property<int>("PuntajeEspaciosVerdes")
+                        .HasColumnType("integer")
+                        .HasColumnName("puntaje_espacios_verdes");
+
+                    b.Property<int>("PuntajeSeguridad")
+                        .HasColumnType("integer")
+                        .HasColumnName("puntaje_seguridad");
+
+                    b.Property<int>("PuntajeTransporte")
+                        .HasColumnType("integer")
+                        .HasColumnName("puntaje_transporte");
+
+                    b.PrimitiveCollection<List<string>>("Temas")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("temas");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("texto");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<bool>("Verificada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("verificada");
+
+                    b.Property<string>("ZonaSlug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("zona_slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("ZonaSlug", "UsuarioId")
+                        .IsUnique();
+
+                    b.ToTable("resenas", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_resenas_puntajes", "puntaje_seguridad BETWEEN 1 AND 5 AND puntaje_transporte BETWEEN 1 AND 5 AND puntaje_conectividad BETWEEN 1 AND 5 AND puntaje_comercios BETWEEN 1 AND 5 AND puntaje_espacios_verdes BETWEEN 1 AND 5");
+                        });
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ReviewHelpfulVote", b =>
+                {
+                    b.Property<Guid>("ResenaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resena_id");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha");
+
+                    b.HasKey("ResenaId", "UsuarioId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("resenas_votos_util", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.SavedZone", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("ZoneSlug")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("zone_slug");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset>("SavedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("saved_at");
+
+                    b.Property<string>("Subtitle")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("subtitle");
+
+                    b.HasKey("UserId", "ZoneSlug");
+
+                    b.ToTable("saved_zones", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.School", b =>
                 {
                     b.Property<string>("ClaveNatural")
                         .HasColumnType("text")
@@ -721,533 +1250,43 @@ namespace ZonaMatch.Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Group", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid>("InviteToken")
-                        .HasColumnType("uuid")
-                        .HasColumnName("invite_token");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Groups", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.GroupInvitation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
                         .HasColumnName("email");
 
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
-
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("group_id");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("status");
-
-                    b.Property<Guid>("Token")
-                        .HasColumnType("uuid")
-                        .HasColumnName("token");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GroupId");
-
-                    b.ToTable("GroupInvitations", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipioAlias", b =>
-                {
-                    b.Property<string>("MunicipioNombre")
-                        .HasColumnType("text")
-                        .HasColumnName("municipio_nombre");
-
-                    b.Property<string>("PartidoKey")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("partido_key");
-
-                    b.HasKey("MunicipioNombre");
-
-                    b.HasIndex("PartidoKey");
-
-                    b.ToTable("municipio_alias", "geo", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Participant", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("group_id");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("role");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GroupId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Participant", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Partido", b =>
-                {
-                    b.Property<string>("Key")
-                        .HasColumnType("text")
-                        .HasColumnName("key");
-
-                    b.Property<string>("CensoCodigo")
-                        .HasColumnType("text")
-                        .HasColumnName("censo_codigo");
-
-                    b.Property<Geometry>("Geometria")
-                        .IsRequired()
-                        .HasColumnType("geometry(MultiPolygon,4326)")
-                        .HasColumnName("geom");
-
-                    b.Property<int?>("MunicipioId")
-                        .HasColumnType("integer")
-                        .HasColumnName("municipio_id");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("nombre");
-
-                    b.Property<string>("Provincia")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("provincia");
-
-                    b.HasKey("Key");
-
-                    b.ToTable("partidos", "geo", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.PasswordResetToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("expires_at");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("token_hash");
-
-                    b.Property<DateTimeOffset?>("UsedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("used_at");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId", "CreatedAt");
-
-                    b.ToTable("password_reset_tokens", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Persona", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("ContextoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("contexto_id");
-
-                    b.Property<string>("Edad")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("edad");
-
-                    b.Property<string>("Nombre")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("nombre");
-
-                    b.Property<int>("Orden")
-                        .HasColumnType("integer")
-                        .HasColumnName("orden");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ContextoId", "Orden");
-
-                    b.ToTable("personas", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Pregunta", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("FechaCreacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_creacion");
-
-                    b.Property<string>("Texto")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("texto");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
-
-                    b.Property<string>("ZonaSlug")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("zona_slug");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.HasIndex("ZonaSlug");
-
-                    b.ToTable("preguntas", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.PuntoDeInteres", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("ContextoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("contexto_id");
-
-                    b.Property<string>("Direccion")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("direccion");
-
-                    b.Property<string>("Frecuencia")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("frecuencia");
-
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("latitude");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("longitude");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("nombre");
-
-                    b.Property<int>("Orden")
-                        .HasColumnType("integer")
-                        .HasColumnName("orden");
-
-                    b.Property<string>("Prioridad")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("prioridad");
-
-                    b.Property<string>("QuienVa")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("quien_va");
-
-                    b.Property<string>("TiempoMax")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("tiempo_max");
-
-                    b.Property<string>("Tipo")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("tipo");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ContextoId", "Orden");
-
-                    b.ToTable("puntos_interes", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Radio", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Comuna")
-                        .HasColumnType("text")
-                        .HasColumnName("comuna");
-
-                    b.Property<string>("Depto")
-                        .HasColumnType("text")
-                        .HasColumnName("depto");
-
-                    b.Property<string>("Fraccion")
-                        .HasColumnType("text")
-                        .HasColumnName("fraccion");
-
-                    b.Property<Geometry>("Geometria")
-                        .IsRequired()
-                        .HasColumnType("geometry(MultiPolygon,4326)")
-                        .HasColumnName("geom");
-
-                    b.Property<string>("NroRadio")
-                        .HasColumnType("text")
-                        .HasColumnName("radio");
-
-                    b.Property<string>("Origen")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("origen");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("radios", "geo", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Resena", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int?>("AniosEnZona")
-                        .HasColumnType("integer")
-                        .HasColumnName("anios_en_zona");
-
-                    b.Property<DateTimeOffset>("FechaActualizacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_actualizacion");
-
-                    b.Property<DateTimeOffset>("FechaCreacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_creacion");
-
-                    b.Property<int>("PuntajeComercios")
-                        .HasColumnType("integer")
-                        .HasColumnName("puntaje_comercios");
-
-                    b.Property<int>("PuntajeConectividad")
-                        .HasColumnType("integer")
-                        .HasColumnName("puntaje_conectividad");
-
-                    b.Property<int>("PuntajeEspaciosVerdes")
-                        .HasColumnType("integer")
-                        .HasColumnName("puntaje_espacios_verdes");
-
-                    b.Property<int>("PuntajeSeguridad")
-                        .HasColumnType("integer")
-                        .HasColumnName("puntaje_seguridad");
-
-                    b.Property<int>("PuntajeTransporte")
-                        .HasColumnType("integer")
-                        .HasColumnName("puntaje_transporte");
-
-                    b.PrimitiveCollection<List<string>>("Temas")
-                        .IsRequired()
-                        .HasColumnType("text[]")
-                        .HasColumnName("temas");
-
-                    b.Property<string>("Texto")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("texto");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
-
-                    b.Property<bool>("Verificada")
+                    b.Property<bool>("EsAdministrador")
                         .HasColumnType("boolean")
-                        .HasColumnName("verificada");
-
-                    b.Property<string>("ZonaSlug")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("zona_slug");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.HasIndex("ZonaSlug", "UsuarioId")
-                        .IsUnique();
-
-                    b.ToTable("resenas", "app", t =>
-                        {
-                            t.HasCheckConstraint("ck_resenas_puntajes", "puntaje_seguridad BETWEEN 1 AND 5 AND puntaje_transporte BETWEEN 1 AND 5 AND puntaje_conectividad BETWEEN 1 AND 5 AND puntaje_comercios BETWEEN 1 AND 5 AND puntaje_espacios_verdes BETWEEN 1 AND 5");
-                        });
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.ResenaVotoUtil", b =>
-                {
-                    b.Property<Guid>("ResenaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("resena_id");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
-
-                    b.Property<DateTimeOffset>("Fecha")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha");
-
-                    b.HasKey("ResenaId", "UsuarioId");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.ToTable("resenas_votos_util", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Respuesta", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("es_administrador");
 
                     b.Property<DateTimeOffset>("FechaCreacion")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_creacion");
 
-                    b.Property<Guid>("PreguntaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("pregunta_id");
+                    b.Property<DateOnly>("FechaNacimiento")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_nacimiento");
 
-                    b.Property<string>("Texto")
+                    b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("texto");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("password_hash");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PreguntaId");
+                    b.HasIndex("Email")
+                        .IsUnique();
 
-                    b.HasIndex("UsuarioId");
-
-                    b.ToTable("respuestas", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.SavedZone", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.Property<string>("ZoneSlug")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("zone_slug");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
-                        .HasColumnName("name");
-
-                    b.Property<DateTimeOffset>("SavedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("saved_at");
-
-                    b.Property<string>("Subtitle")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("subtitle");
-
-                    b.HasKey("UserId", "ZoneSlug");
-
-                    b.ToTable("saved_zones", "app");
+                    b.ToTable("usuarios", "app");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.UserNotification", b =>
@@ -1298,45 +1337,6 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.HasIndex("UserId", "ReadAt", "CreatedAt");
 
                     b.ToTable("notifications", "app");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Usuario", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(254)
-                        .HasColumnType("character varying(254)")
-                        .HasColumnName("email");
-
-                    b.Property<bool>("EsAdministrador")
-                        .HasColumnType("boolean")
-                        .HasColumnName("es_administrador");
-
-                    b.Property<DateTimeOffset>("FechaCreacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_creacion");
-
-                    b.Property<DateOnly>("FechaNacimiento")
-                        .HasColumnType("date")
-                        .HasColumnName("fecha_nacimiento");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("password_hash");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.ToTable("usuarios", "app");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.ZoneMarket", b =>
@@ -1423,16 +1423,16 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Analysis", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Analysis", null)
-                        .WithMany()
-                        .HasForeignKey("OriginalAnalysisId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("ZonaMatch.Domain.Entities.Context", "Context")
                         .WithMany()
                         .HasForeignKey("ContextId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("ZonaMatch.Domain.Entities.Analysis", null)
+                        .WithMany()
+                        .HasForeignKey("OriginalAnalysisId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
@@ -1452,71 +1452,99 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Answer", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("ResueltoPorId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                    b.HasOne("ZonaMatch.Domain.Entities.Question", null)
+                        .WithMany("Respuestas")
+                        .HasForeignKey("PreguntaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", "Usuario")
+                    b.HasOne("ZonaMatch.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.AporteValidacion", b =>
-                {
-                    b.HasOne("ZonaMatch.Domain.Entities.Aporte", null)
-                        .WithMany("Validaciones")
-                        .HasForeignKey("AporteId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.CommunityPoi", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Aporte", null)
+                    b.HasOne("ZonaMatch.Domain.Entities.Contribution", null)
                         .WithMany()
                         .HasForeignKey("LastContributionId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Contexto", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Context", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.ContextoCriterio", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ContextCriterion", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Contexto", "Contexto")
-                        .WithMany("Criterios")
-                        .HasForeignKey("ContextoId")
+                    b.HasOne("ZonaMatch.Domain.Entities.Context", "Context")
+                        .WithMany("Criteria")
+                        .HasForeignKey("ContextId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ZonaMatch.Domain.Entities.Criterio", "Criterio")
+                    b.HasOne("ZonaMatch.Domain.Entities.Criterion", "Criterion")
                         .WithMany()
-                        .HasForeignKey("CriterioId")
+                        .HasForeignKey("CriterionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Contexto");
+                    b.Navigation("Context");
 
-                    b.Navigation("Criterio");
+                    b.Navigation("Criterion");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ContextPlace", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Context", "Context")
+                        .WithMany("Places")
+                        .HasForeignKey("ContextId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Context");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Contribution", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ResueltoPorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ZonaMatch.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ContributionVote", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.Contribution", null)
+                        .WithMany("Validaciones")
+                        .HasForeignKey("AporteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.GroupInvitation", b =>
@@ -1530,15 +1558,15 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Navigation("Group");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipioAlias", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipalityAlias", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Partido", "Partido")
+                    b.HasOne("ZonaMatch.Domain.Entities.District", "District")
                         .WithMany("Aliases")
                         .HasForeignKey("PartidoKey")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Partido");
+                    b.Navigation("District");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Participant", b =>
@@ -1549,7 +1577,7 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", "User")
+                    b.HasOne("ZonaMatch.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1562,92 +1590,64 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.PasswordResetToken", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Persona", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Person", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Contexto", "Contexto")
-                        .WithMany("Integrantes")
-                        .HasForeignKey("ContextoId")
+                    b.HasOne("ZonaMatch.Domain.Entities.Context", "Context")
+                        .WithMany("People")
+                        .HasForeignKey("ContextId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Contexto");
+                    b.Navigation("Context");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Pregunta", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Question", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", "Usuario")
+                    b.HasOne("ZonaMatch.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Usuario");
+                    b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.PuntoDeInteres", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Contexto", "Contexto")
-                        .WithMany("Puntos")
-                        .HasForeignKey("ContextoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Contexto");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Resena", b =>
-                {
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", "Usuario")
+                    b.HasOne("ZonaMatch.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Usuario");
+                    b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.ResenaVotoUtil", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ReviewHelpfulVote", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Resena", null)
+                    b.HasOne("ZonaMatch.Domain.Entities.Review", null)
                         .WithMany("VotosUtil")
                         .HasForeignKey("ResenaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Respuesta", b =>
-                {
-                    b.HasOne("ZonaMatch.Domain.Entities.Pregunta", null)
-                        .WithMany("Respuestas")
-                        .HasForeignKey("PreguntaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.SavedZone", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1656,7 +1656,7 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.UserNotification", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1668,18 +1668,23 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Navigation("Zones");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Context", b =>
+                {
+                    b.Navigation("Criteria");
+
+                    b.Navigation("People");
+
+                    b.Navigation("Places");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Contribution", b =>
                 {
                     b.Navigation("Validaciones");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Contexto", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.District", b =>
                 {
-                    b.Navigation("Criterios");
-
-                    b.Navigation("Integrantes");
-
-                    b.Navigation("Puntos");
+                    b.Navigation("Aliases");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Group", b =>
@@ -1689,17 +1694,12 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Navigation("Participants");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Partido", b =>
-                {
-                    b.Navigation("Aliases");
-                });
-
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Pregunta", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Question", b =>
                 {
                     b.Navigation("Respuestas");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Resena", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>
                 {
                     b.Navigation("VotosUtil");
                 });

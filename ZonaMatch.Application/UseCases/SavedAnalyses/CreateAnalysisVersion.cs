@@ -46,10 +46,10 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
             var context = new Context
             {
-                UsuarioId = userId,
-                Tipo = ContextType.Analysis,
-                FechaCreacion = now,
-                FechaActualizacion = now,
+                UserId = userId,
+                Type = ContextType.Analysis,
+                CreatedAt = now,
+                UpdatedAt = now,
             };
             AnalysisCriteriaBuilder.Apply(context, request.Criterion, criteriaCatalog);
 

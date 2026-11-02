@@ -68,24 +68,24 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                         Longitude = zone.OriginLongitude!.Value,
                     })
                     .ToList(),
-                Criteria = context.Criterios.ToDictionary(c => c.CriterioId, c => (string?)c.Prioridad),
-                Places = context.Puntos
-                    .OrderBy(point => point.Orden)
+                Criteria = context.Criteria.ToDictionary(criterion => criterion.CriterionId, criterion => (string?)criterion.Priority),
+                Places = context.Places
+                    .OrderBy(place => place.Order)
                     .Select(point => new PlaceScoreRequest
                     {
-                        Name = point.Nombre,
+                        Name = point.Name,
                         Latitude = point.Latitude,
                         Longitude = point.Longitude,
-                        Priority = point.Prioridad,
-                        MaximumTravelTime = point.TiempoMax,
+                        Priority = point.Priority,
+                        MaximumTravelTime = point.MaximumTravelTime,
                     })
                     .ToList(),
-                MaximumRent = context.AlquilerMaximo,
-                Operation = context.Operacion,
-                MaximumPurchasePriceUsd = context.CompraMaximaUsd,
-                HousingType = context.TipoVivienda,
-                AreaM2 = context.SuperficieM2,
-                Mobility = (context.Movilidad ?? []).ToList(),
+                MaximumRent = context.MaximumRent,
+                Operation = context.Operation,
+                MaximumPurchasePriceUsd = context.MaximumPurchasePriceUsd,
+                HousingType = context.HousingType,
+                AreaM2 = context.AreaM2,
+                Mobility = (context.Mobility ?? []).ToList(),
             };
 
             ScoresResponse result;

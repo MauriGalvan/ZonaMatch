@@ -16,32 +16,32 @@ namespace ZonaMatch.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<Context?> GetByUserAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
-            await _context.Contextos
-                .Include(c => c.Integrantes)
-                .Include(c => c.Puntos)
-                .Include(c => c.Criterios)
+        public async Task<Context?> GetByUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            await _context.Contexts
+                .Include(c => c.People)
+                .Include(c => c.Places)
+                .Include(c => c.Criteria)
                 .AsSplitQuery()
-                .FirstOrDefaultAsync(c => c.UsuarioId == usuarioId && c.Tipo == ContextType.Perfil, cancellationToken);
+                .FirstOrDefaultAsync(c => c.UserId == userId && c.Type == ContextType.Profile, cancellationToken);
 
         public async Task<IReadOnlyList<Context>> GetByUserIdsAsync(
-            IReadOnlyCollection<Guid> usuarioIds,
+            IReadOnlyCollection<Guid> userIds,
             CancellationToken cancellationToken = default)
         {
-            if (usuarioIds.Count == 0)
+            if (userIds.Count == 0)
                 return [];
 
-            return await _context.Contextos
+            return await _context.Contexts
                 .AsNoTracking()
-                .Where(c => usuarioIds.Contains(c.UsuarioId) && c.Tipo == ContextType.Perfil)
-                .Include(c => c.Integrantes)
-                .Include(c => c.Puntos)
-                .Include(c => c.Criterios)
+                .Where(c => userIds.Contains(c.UserId) && c.Type == ContextType.Profile)
+                .Include(c => c.People)
+                .Include(c => c.Places)
+                .Include(c => c.Criteria)
                 .AsSplitQuery()
                 .ToListAsync(cancellationToken);
         }
 
-        public void Add(Context perfil) => _context.Contextos.Add(perfil);
+        public void Add(Context profile) => _context.Contexts.Add(profile);
 
         public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {

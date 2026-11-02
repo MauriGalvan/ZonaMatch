@@ -28,12 +28,12 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<CommunityPoi> CommunityPois => Set<CommunityPoi>();
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
-        public DbSet<Context> Contextos => Set<Context>();
+        public DbSet<Context> Contexts => Set<Context>();
         public DbSet<Analysis> Analysis => Set<Analysis>();
         public DbSet<AnalysisZone> AnalysisZones => Set<AnalysisZone>();
-        public DbSet<Person> Personas => Set<Person>();
-        public DbSet<ContextPlace> PuntosInteres => Set<ContextPlace>();
-        public DbSet<ContextCriterion> ContextoCriterios => Set<ContextCriterion>();
+        public DbSet<Person> People => Set<Person>();
+        public DbSet<ContextPlace> ContextPlaces => Set<ContextPlace>();
+        public DbSet<ContextCriterion> ContextCriteria => Set<ContextCriterion>();
         public DbSet<Criterion> Criterios => Set<Criterion>();
         public DbSet<ZoneMarket> ZoneMarkets => Set<ZoneMarket>();
         public DbSet<SavedZone> SavedZones => Set<SavedZone>();
@@ -112,36 +112,38 @@ namespace ZonaMatch.Infrastructure.Data
                     t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
                 });
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Tipo).HasMaxLength(10).IsRequired();
-                e.Property(x => x.Personas).IsRequired();
-                e.Property(x => x.Mascotas).HasColumnType("text[]");
-                e.Property(x => x.Movilidad).HasColumnType("text[]");
-                e.Property(x => x.AlquilerMaximo).HasMaxLength(30);
-                e.Property(x => x.Operacion).HasMaxLength(10).IsRequired().HasDefaultValue("alquiler");
-                e.Property(x => x.CompraMaximaUsd).HasColumnType("numeric(12,0)");
-                e.Property(x => x.TipoVivienda).HasMaxLength(20);
-                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
-                e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
+                e.Property(x => x.Type).HasColumnName("tipo").HasMaxLength(10).IsRequired();
+                e.Property(x => x.PeopleCount).HasColumnName("personas").IsRequired();
+                e.Property(x => x.Pets).HasColumnName("mascotas").HasColumnType("text[]");
+                e.Property(x => x.Mobility).HasColumnName("movilidad").HasColumnType("text[]");
+                e.Property(x => x.MaximumRent).HasColumnName("alquiler_maximo").HasMaxLength(30);
+                e.Property(x => x.Operation).HasColumnName("operacion").HasMaxLength(10).IsRequired().HasDefaultValue("alquiler");
+                e.Property(x => x.MaximumPurchasePriceUsd).HasColumnName("compra_maxima_usd").HasColumnType("numeric(12,0)");
+                e.Property(x => x.HousingType).HasColumnName("tipo_vivienda").HasMaxLength(20);
+                e.Property(x => x.AreaM2).HasColumnName("superficie_m2");
+                e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
+                e.Property(x => x.UpdatedAt).HasColumnName("fecha_actualizacion").HasColumnType("timestamptz");
+                e.Property(x => x.UserId).HasColumnName("usuario_id");
                 // Each user has one profile and can have any number of analysis snapshots.
-                e.HasIndex(x => x.UsuarioId)
+                e.HasIndex(x => x.UserId)
                     .IsUnique()
                     .HasFilter("tipo = 'perfil'")
                     .HasDatabaseName("ux_contextos_perfil_usuario");
                 e.HasOne<User>()
                     .WithMany()
-                    .HasForeignKey(x => x.UsuarioId)
+                    .HasForeignKey(x => x.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
-                e.HasMany(x => x.Integrantes)
+                e.HasMany(x => x.People)
                     .WithOne(p => p.Context)
-                    .HasForeignKey(p => p.ContextoId)
+                    .HasForeignKey(p => p.ContextId)
                     .OnDelete(DeleteBehavior.Cascade);
-                e.HasMany(x => x.Puntos)
+                e.HasMany(x => x.Places)
                     .WithOne(p => p.Context)
-                    .HasForeignKey(p => p.ContextoId)
+                    .HasForeignKey(p => p.ContextId)
                     .OnDelete(DeleteBehavior.Cascade);
-                e.HasMany(x => x.Criterios)
+                e.HasMany(x => x.Criteria)
                     .WithOne()
-                    .HasForeignKey(x => x.ContextoId)
+                    .HasForeignKey(x => x.ContextId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -239,13 +241,14 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("personas");
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Orden);
-                e.Property(x => x.Nombre).HasMaxLength(50);
-                e.Property(x => x.Edad).HasMaxLength(40);
-                e.HasIndex(x => new { x.ContextoId, x.Orden });
+                e.Property(x => x.Order).HasColumnName("orden");
+                e.Property(x => x.Name).HasColumnName("nombre").HasMaxLength(50);
+                e.Property(x => x.AgeRange).HasColumnName("edad").HasMaxLength(40);
+                e.Property(x => x.ContextId).HasColumnName("contexto_id");
+                e.HasIndex(x => new { x.ContextId, x.Order });
                 e.HasOne(x => x.Context)
-                    .WithMany(c => c.Integrantes)
-                    .HasForeignKey(x => x.ContextoId)
+                    .WithMany(c => c.People)
+                    .HasForeignKey(x => x.ContextId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -253,18 +256,19 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("puntos_interes");
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Orden);
-                e.Property(x => x.Nombre).HasMaxLength(100).IsRequired();
-                e.Property(x => x.Direccion).HasMaxLength(200);
-                e.Property(x => x.Tipo).HasMaxLength(30);
-                e.Property(x => x.QuienVa).HasMaxLength(50);
-                e.Property(x => x.Frecuencia).HasMaxLength(20);
-                e.Property(x => x.Prioridad).HasMaxLength(20);
-                e.Property(x => x.TiempoMax).HasMaxLength(10);
-                e.HasIndex(x => new { x.ContextoId, x.Orden });
+                e.Property(x => x.Order).HasColumnName("orden");
+                e.Property(x => x.Name).HasColumnName("nombre").HasMaxLength(100).IsRequired();
+                e.Property(x => x.Address).HasColumnName("direccion").HasMaxLength(200);
+                e.Property(x => x.Type).HasColumnName("tipo").HasMaxLength(30);
+                e.Property(x => x.WhoGoes).HasColumnName("quien_va").HasMaxLength(50);
+                e.Property(x => x.Frequency).HasColumnName("frecuencia").HasMaxLength(20);
+                e.Property(x => x.Priority).HasColumnName("prioridad").HasMaxLength(20);
+                e.Property(x => x.MaximumTravelTime).HasColumnName("tiempo_max").HasMaxLength(10);
+                e.Property(x => x.ContextId).HasColumnName("contexto_id");
+                e.HasIndex(x => new { x.ContextId, x.Order });
                 e.HasOne(x => x.Context)
-                    .WithMany(c => c.Puntos)
-                    .HasForeignKey(x => x.ContextoId)
+                    .WithMany(c => c.Places)
+                    .HasForeignKey(x => x.ContextId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -272,18 +276,19 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("contexto_criterios", t =>
                     t.HasCheckConstraint("ck_contexto_criterios_prioridad", "prioridad IN ('baja', 'media', 'alta')"));
-                e.HasKey(x => new { x.ContextoId, x.CriterioId });
-                e.Property(x => x.CriterioId).HasMaxLength(40);
-                e.Property(x => x.Prioridad).HasMaxLength(10).IsRequired();
+                e.HasKey(x => new { x.ContextId, x.CriterionId });
+                e.Property(x => x.ContextId).HasColumnName("contexto_id");
+                e.Property(x => x.CriterionId).HasColumnName("criterio_id").HasMaxLength(40);
+                e.Property(x => x.Priority).HasColumnName("prioridad").HasMaxLength(10).IsRequired();
                 e.HasOne(x => x.Context)
-                    .WithMany(c => c.Criterios)
-                    .HasForeignKey(x => x.ContextoId)
+                    .WithMany(c => c.Criteria)
+                    .HasForeignKey(x => x.ContextId)
                     .OnDelete(DeleteBehavior.Cascade);
                 // A criterion should not be deleted from the catalog, but if it is,
                 // the analysis row must remain unchanged.
                 e.HasOne(x => x.Criterion)
                     .WithMany()
-                    .HasForeignKey(x => x.CriterioId)
+                    .HasForeignKey(x => x.CriterionId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 

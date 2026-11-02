@@ -101,11 +101,11 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                         analysis.Id,
                         analysis.Name,
                         saved.TravelMode,
-                        saved.Zonas.Select(ToComparedZone).ToArray());
+                        saved.Zones.Select(ToComparedZone).ToArray());
 
                 var context = analysis.Context;
                 var request = BuildRequest(context);
-                var mode = TravelModes.FromMobility(context.Movilidad ?? []);
+                var mode = TravelModes.FromMobility(context.Mobility ?? []);
                 var analysisZones = analysis.Zones
                     .OrderBy(zone => zone.Order)
                     .Select(zone => zonesBySlug[zone.ZoneSlug])
@@ -113,9 +113,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 var travelTimes = await MeasureTripsAsync(analysisZones, request.Lugares, mode, routeLimit, cancellationToken);
                 var rankedZones = analysisZones
                     .Select(zone => ToDto(motor!.Calcular(zone, request, travelTimes[zone.Slug]), request))
-                    .OrderByDescending(zone => zone.Puntaje.HasValue)
-                    .ThenByDescending(zone => zone.Puntaje)
-                    .ThenBy(zone => zone.Nombre, StringComparer.CurrentCulture)
+                    .OrderByDescending(zone => zone.Score.HasValue)
+                    .ThenByDescending(zone => zone.Score)
+                    .ThenBy(zone => zone.Name, StringComparer.CurrentCulture)
                     .ToArray();
 
                 return new ComparedAnalysisResponse(
@@ -217,24 +217,24 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
         private static ScoringRequest BuildRequest(Context context)
         {
-            var criteria = context.Criterios
-                .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterioId)
-                                    && criterion.Prioridad is "baja" or "media" or "alta")
-                .ToDictionary(criterion => criterion.CriterioId, criterion => criterion.Prioridad, StringComparer.Ordinal);
+            var criteria = context.Criteria
+                .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterionId)
+                                    && criterion.Priority is "baja" or "media" or "alta")
+                .ToDictionary(criterion => criterion.CriterionId, criterion => criterion.Priority, StringComparer.Ordinal);
 
-            var places = context.Puntos
-                .OrderBy(point => point.Orden)
+            var places = context.Places
+                .OrderBy(point => point.Order)
                 .Select(point => new UserPlace(
-                    point.Nombre,
+                    point.Name,
                     point.Latitude,
                     point.Longitude,
-                    point.Prioridad,
-                    ParseMinutes(point.TiempoMax)))
+                    point.Priority,
+                    ParseMinutes(point.MaximumTravelTime)))
                 .ToArray();
 
             return new ScoringRequest(
-                criteria, places, ParseRent(context.AlquilerMaximo), context.Operacion, context.CompraMaximaUsd, context.TipoVivienda,
-                context.SuperficieM2);
+                criteria, places, ParseRent(context.MaximumRent), context.Operation, context.MaximumPurchasePriceUsd, context.HousingType,
+                context.AreaM2);
         }
 
         private static int ParseMinutes(string? value)

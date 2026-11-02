@@ -84,14 +84,14 @@ namespace ZonaMatch.Infrastructure.Geo
             var calle = Texto(address, "road") ?? Texto(address, "pedestrian") ?? Texto(address, "footway");
 
             return new GeocodedAddress(
-                Nombre: Texto(raiz, "name") ?? Texto(nombres, "name"),
-                Calle: calle,
-                Altura: Texto(address, "house_number"),
-                Localidad: Texto(address, "suburb") ?? Texto(address, "city_district") ?? Texto(address, "town")
+                Name: Texto(raiz, "name") ?? Texto(nombres, "name"),
+                Street: calle,
+                StreetNumber: Texto(address, "house_number"),
+                Locality: Texto(address, "suburb") ?? Texto(address, "city_district") ?? Texto(address, "town")
                            ?? Texto(address, "village") ?? Texto(address, "city") ?? Texto(address, "neighbourhood"),
-                Provincia: Texto(address, "state"),
-                CodigoPostal: Texto(address, "postcode"),
-                DireccionCompleta: Texto(raiz, "display_name"));
+                Province: Texto(address, "state"),
+                PostalCode: Texto(address, "postcode"),
+                FullAddress: Texto(raiz, "display_name"));
         }
 
         private static string? Texto(JsonElement elemento, string propiedad) =>

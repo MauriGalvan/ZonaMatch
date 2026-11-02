@@ -41,7 +41,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             {
                 UserId = userId,
                 Name = request.Name.Trim(),
-                Context = profile.CopiarParaAnalisis(now),
+                Context = profile.CopyForAnalysis(now),
                 CreatedAt = now,
                 UpdatedAt = now,
                 Zones = zones,

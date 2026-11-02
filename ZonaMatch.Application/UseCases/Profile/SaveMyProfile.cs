@@ -28,11 +28,11 @@ public sealed class SaveMyProfile
         var profile = await _profiles.GetByUserAsync(userId, cancellationToken);
         var isNewProfile = profile is null;
 
-        profile ??= new Context { UsuarioId = userId, Tipo = ContextType.Perfil, FechaCreacion = now };
+        profile ??= new Context { UserId = userId, Type = ContextType.Profile, CreatedAt = now };
 
         // Validate the full request before adding the profile so invalid input cannot leave partial data.
         AnalysisCriteriaBuilder.Apply(profile, request, catalog);
-        profile.FechaActualizacion = now;
+        profile.UpdatedAt = now;
 
         if (isNewProfile)
             _profiles.Add(profile);

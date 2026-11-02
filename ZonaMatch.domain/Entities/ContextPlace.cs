@@ -6,30 +6,30 @@ namespace ZonaMatch.Domain.Entities
     {
         public Guid Id { get; set; }
 
-        public Guid ContextoId { get; set; }
+        public Guid ContextId { get; set; }
 
         public Context? Context { get; set; }
 
         // Order in which the user added places to the wizard map.
-        public int Orden { get; set; }
+        public int Order { get; set; }
 
-        public string Nombre { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
-        public string? Direccion { get; set; }
+        public string? Address { get; set; }
 
         // Coordinates selected on the map; null if the place was not geocoded.
         public double? Latitude { get; set; }
 
         public double? Longitude { get; set; }
 
-        public string? Tipo { get; set; }
+        public string? Type { get; set; }
 
-        public string? QuienVa { get; set; }
+        public string? WhoGoes { get; set; }
 
-        public string? Frecuencia { get; set; }
+        public string? Frequency { get; set; }
 
-        public string? Prioridad { get; set; }
+        public string? Priority { get; set; }
 
-        public string? TiempoMax { get; set; }
+        public string? MaximumTravelTime { get; set; }
     }
 }

@@ -69,7 +69,7 @@ public sealed partial class CalculateGroupScore
         var profiles = await _profiles.GetByUserIdsAsync(
             group.Participants.Select(participant => participant.UserId).Distinct().ToArray(),
             cancellationToken);
-        var profilesByUserId = profiles.ToDictionary(profile => profile.UsuarioId);
+        var profilesByUserId = profiles.ToDictionary(profile => profile.UserId);
         var motor = new ScoringEngine(universe);
         using var routeLimit = new SemaphoreSlim(ConcurrentTrips);
 
@@ -87,8 +87,8 @@ public sealed partial class CalculateGroupScore
                         TipoVivienda = propertyType,
                         SuperficieM2 = surface,
                     },
-                    TravelModes.FromMobility(profile.Movilidad ?? []),
-                    profile.Puntos.OrderBy(point => point.Orden).ToArray());
+                    TravelModes.FromMobility(profile.Mobility ?? []),
+                    profile.Places.OrderBy(point => point.Order).ToArray());
             })
             .ToArray();
 
@@ -166,19 +166,19 @@ public sealed partial class CalculateGroupScore
 
         var groupPoints = group.Participants
             .Where(participant => profilesByUserId.ContainsKey(participant.UserId))
-            .SelectMany(participant => profilesByUserId[participant.UserId].Puntos
-                .OrderBy(point => point.Orden)
+            .SelectMany(participant => profilesByUserId[participant.UserId].Places
+                .OrderBy(point => point.Order)
                 .Select(point => new GroupPointOfInterestResponse(
                     point.Id,
                     participant.Id,
                     participant.User.Email,
-                    point.Nombre,
-                    point.Direccion,
+                    point.Name,
+                    point.Address,
                     point.Latitude,
                     point.Longitude,
-                    point.Tipo,
-                    point.Prioridad,
-                    point.TiempoMax)))
+                    point.Type,
+                    point.Priority,
+                    point.MaximumTravelTime)))
             .ToArray();
 
         return new GroupRankingResponse(
@@ -197,12 +197,12 @@ public sealed partial class CalculateGroupScore
     private static GroupProfileRecommendationsResponse BuildProfileRecommendations(IReadOnlyList<Context> profiles)
     {
         var ageRanges = profiles
-            .SelectMany(profile => profile.Integrantes)
-            .Select(person => NormalizeRecommendationAgeRange(person.Edad))
+            .SelectMany(profile => profile.People)
+            .Select(person => NormalizeRecommendationAgeRange(person.AgeRange))
             .Where(ageRange => ageRange is not null)
             .ToHashSet(StringComparer.Ordinal);
 
-        var hasPets = profiles.Any(profile => profile.Mascotas?.Any(pet =>
+        var hasPets = profiles.Any(profile => profile.Pets?.Any(pet =>
             !string.IsNullOrWhiteSpace(pet) && !string.Equals(pet.Trim(), "ninguna", StringComparison.OrdinalIgnoreCase)) == true);
         var hasVehicle = profiles.Any(profile => HasMobility(profile, "vehiculo") || HasMobility(profile, "auto"));
         var hasBicycle = profiles.Any(profile => HasMobility(profile, "bici"));
@@ -235,7 +235,7 @@ public sealed partial class CalculateGroupScore
     }
 
     private static bool HasMobility(Context profile, string mobility) =>
-        profile.Movilidad?.Any(value => string.Equals(value.Trim(), mobility, StringComparison.OrdinalIgnoreCase)) == true;
+        profile.Mobility?.Any(value => string.Equals(value.Trim(), mobility, StringComparison.OrdinalIgnoreCase)) == true;
 
     private static IReadOnlyDictionary<Guid, decimal> ValidateWeights(
         IReadOnlyList<ParticipantWeightRequest> requestedWeights,
@@ -298,19 +298,19 @@ public sealed partial class CalculateGroupScore
 
     private static ScoringRequest BuildRequest(Context profile, decimal? sharedRentLimit)
     {
-        var criteria = profile.Criterios
-            .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterioId)
-                                && criterion.Prioridad is "baja" or "media" or "alta")
-            .ToDictionary(criterion => criterion.CriterioId, criterion => criterion.Prioridad, StringComparer.Ordinal);
+        var criteria = profile.Criteria
+            .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterionId)
+                                && criterion.Priority is "baja" or "media" or "alta")
+            .ToDictionary(criterion => criterion.CriterionId, criterion => criterion.Priority, StringComparer.Ordinal);
 
-        var places = profile.Puntos
-            .OrderBy(point => point.Orden)
+        var places = profile.Places
+            .OrderBy(point => point.Order)
             .Select(point => new UserPlace(
-                point.Nombre,
+                point.Name,
                 point.Latitude,
                 point.Longitude,
-                point.Prioridad,
-                ParseMinutes(point.TiempoMax)))
+                point.Priority,
+                ParseMinutes(point.MaximumTravelTime)))
             .ToArray();
 
         return new ScoringRequest(criteria, places, sharedRentLimit is > 0 ? sharedRentLimit : null);
@@ -329,16 +329,16 @@ public sealed partial class CalculateGroupScore
         IReadOnlyList<TravelTime?> times) => member.Points
         .Select((point, index) =>
         {
-            var maximumMinutes = ParseMinutes(point.TiempoMax);
+            var maximumMinutes = ParseMinutes(point.MaximumTravelTime);
             var time = index < times.Count ? times[index] : null;
             return new ParticipantTripResponse(
                 point.Id,
                 member.Participant.Id,
                 member.Participant.User.Email,
-                point.Nombre,
-                point.Direccion,
-                point.Tipo,
-                point.Prioridad,
+                point.Name,
+                point.Address,
+                point.Type,
+                point.Priority,
                 TravelModes.ToCode(member.Mode),
                 time?.Minutos,
                 maximumMinutes,

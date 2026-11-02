@@ -27,18 +27,18 @@ public static class AnalysisCriteriaBuilder
             request.Points.Operation, request.Points.PurchaseLimitUsd, request.Points.PropertyType);
         var areaM2 = HousingScoring.ValidateSurface(request.Points.AreaM2);
 
-        context.Personas = request.Context.PeopleCount;
-        context.Mascotas = request.Context.Pets.Distinct(StringComparer.Ordinal).ToArray();
-        context.Movilidad = request.Context.Mobility.Distinct(StringComparer.Ordinal).ToArray();
-        context.AlquilerMaximo = request.Points.RentLimit;
-        context.Operacion = operation;
-        context.CompraMaximaUsd = purchaseLimit;
-        context.TipoVivienda = propertyType;
-        context.SuperficieM2 = areaM2;
+        context.PeopleCount = request.Context.PeopleCount;
+        context.Pets = request.Context.Pets.Distinct(StringComparer.Ordinal).ToArray();
+        context.Mobility = request.Context.Mobility.Distinct(StringComparer.Ordinal).ToArray();
+        context.MaximumRent = request.Points.RentLimit;
+        context.Operation = operation;
+        context.MaximumPurchasePriceUsd = purchaseLimit;
+        context.HousingType = propertyType;
+        context.AreaM2 = areaM2;
 
-        Replace(context.Integrantes, householdMembers);
-        Replace(context.Criterios, criteria);
-        Replace(context.Puntos, places);
+        Replace(context.People, householdMembers);
+        Replace(context.Criteria, criteria);
+        Replace(context.Places, places);
     }
 
     private static List<Person> BuildHouseholdMembers(AnalysisContextRequest? request)
@@ -73,11 +73,11 @@ public static class AnalysisCriteriaBuilder
         return Enumerable.Range(1, request.PeopleCount)
             .Select(order => new Person
             {
-                Orden = order,
-                Nombre = request.PersonNames.Count == 0
+                Order = order,
+                Name = request.PersonNames.Count == 0
                     ? $"Persona {order}"
                     : request.PersonNames[order - 1]!.Trim(),
-                Edad = order <= request.AgeRanges.Count ? request.AgeRanges[order - 1] : null,
+                AgeRange = order <= request.AgeRanges.Count ? request.AgeRanges[order - 1] : null,
             })
             .ToList();
     }
@@ -102,7 +102,7 @@ public static class AnalysisCriteriaBuilder
             if (priority is null || !ValidPriorities.Contains(priority))
                 throw new BadRequestException($"Prioridad inválida para el criterio {id}.");
 
-            rows.Add(new ContextCriterion { CriterioId = id, Prioridad = priority });
+            rows.Add(new ContextCriterion { CriterionId = id, Priority = priority });
         }
 
         return rows;
@@ -133,16 +133,16 @@ public static class AnalysisCriteriaBuilder
 
             places.Add(new ContextPlace
             {
-                Orden = index + 1,
-                Nombre = name,
-                Direccion = place.Address,
+                Order = index + 1,
+                Name = name,
+                Address = place.Address,
                 Latitude = place.Latitude,
                 Longitude = place.Longitude,
-                Tipo = place.Type,
-                QuienVa = place.WhoGoes,
-                Frecuencia = place.Frequency,
-                Prioridad = place.Priority,
-                TiempoMax = place.MaximumTravelTime,
+                Type = place.Type,
+                WhoGoes = place.WhoGoes,
+                Frequency = place.Frequency,
+                Priority = place.Priority,
+                MaximumTravelTime = place.MaximumTravelTime,
             });
         }
 
@@ -158,29 +158,29 @@ public static class AnalysisCriteriaBuilder
 
     public static AnalysisContextResponse ToContextResponse(Context context) =>
         new(
-            context.Personas,
-            context.Integrantes
-                .OrderBy(person => person.Orden)
-                .Select(person => string.IsNullOrWhiteSpace(person.Nombre) ? $"Persona {person.Orden}" : person.Nombre.Trim())
+            context.PeopleCount,
+            context.People
+                .OrderBy(person => person.Order)
+                .Select(person => string.IsNullOrWhiteSpace(person.Name) ? $"Persona {person.Order}" : person.Name.Trim())
                 .ToList(),
-            context.Integrantes.OrderBy(person => person.Orden).Select(person => person.Edad).ToList(),
-            context.Movilidad?.ToList() ?? [],
-            context.Mascotas?.ToList() ?? []);
+            context.People.OrderBy(person => person.Order).Select(person => person.AgeRange).ToList(),
+            context.Mobility?.ToList() ?? [],
+            context.Pets?.ToList() ?? []);
 
     public static Dictionary<string, string> ToCriteriaDictionary(Context context) =>
-        context.Criterios.ToDictionary(criterion => criterion.CriterioId, criterion => criterion.Prioridad, StringComparer.Ordinal);
+        context.Criteria.ToDictionary(criterion => criterion.CriterionId, criterion => criterion.Priority, StringComparer.Ordinal);
 
     public static AnalysisPointsResponse ToPointsResponse(Context context) =>
         new(
-            context.AlquilerMaximo,
-            context.Puntos
-                .OrderBy(place => place.Orden)
+            context.MaximumRent,
+            context.Places
+                .OrderBy(place => place.Order)
                 .Select(place => new AnalysisPlaceResponse(
-                    place.Id, place.Nombre, place.Direccion, place.Latitude, place.Longitude,
-                    place.Tipo, place.QuienVa, place.Frecuencia, place.Prioridad, place.TiempoMax, place.Orden))
+                    place.Id, place.Name, place.Address, place.Latitude, place.Longitude,
+                    place.Type, place.WhoGoes, place.Frequency, place.Priority, place.MaximumTravelTime, place.Order))
                 .ToList(),
-            context.Operacion,
-            context.CompraMaximaUsd,
-            context.TipoVivienda,
-            context.SuperficieM2);
+            context.Operation,
+            context.MaximumPurchasePriceUsd,
+            context.HousingType,
+            context.AreaM2);
 }
