@@ -17,8 +17,8 @@ namespace ZonaMatch.Infrastructure.Repositories
     {
         private const string Schema = ZonaMatchDbOptions.OsmSchema;
 
-        // First matching rule wins (e.g. a pharmacy is "comercios", not "salud")
-        private const string Clasificacion = $"""
+        // First matching rule wins (for example, a pharmacy is classified as shopping rather than healthcare).
+        private const string ClassificationSql = $"""
             CASE
                 WHEN railway IN ('station', 'halt', 'tram_stop', 'subway_entrance')
                      OR public_transport = 'station'
@@ -37,7 +37,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             """;
 
         // Value of the tag that classified the point, same priority as above
-        private const string Tipo = """
+        private const string TypeSql = """
             CASE
                 WHEN railway IN ('station', 'halt', 'tram_stop', 'subway_entrance') THEN railway
                 WHEN highway = 'bus_stop' THEN highway
@@ -48,122 +48,124 @@ namespace ZonaMatch.Infrastructure.Repositories
             END
             """;
 
-        private const string Columnas = "name, amenity, shop, leisure, tourism, railway, public_transport, highway, operator";
+        private const string OsmTagColumns = "name, amenity, shop, leisure, tourism, railway, public_transport, highway, operator";
 
         private const string App = ZonaMatchDbOptions.AppSchema;
 
-        // Classified points inside an area, with their distance to a reference point. Shared by the list and the
-        // summary, for a radius and for a zone. "origen" defines the CTE "o" (prefilter geometry g in 3857 and the
-        // reference geography geog); candidates pass the index-friendly "prefiltro" and then the exact "dentro"
-        // (on the 4326 point c.punto). Ends with the "en_area" CTE.
+        // Classified points inside an area and their distance from a reference point. Shared by the list and summary
+        // queries for a radius or zone. The origin CTE provides a 3857 filter geometry and a geography reference;
+        // candidates pass the index-friendly bounding filter and then the exact filter on the 4326 point location.
+        // The final CTE contains points that meet the selected area and category.
         // The approved community contributions, persisted in app.community_pois, are applied over OSM: the points
         // added by users ("a" + contribution id) join the candidates, and the changes to an OSM point replace its
         // name, category or location, or hide it if it closed.
-        private static string PuntosEn(string origen, Func<string, string> prefiltro, string dentro) => $"""
-            WITH {origen},
-            candidatos AS (
-                SELECT 'n' || t.osm_id AS id, {Columnas}, t.way AS punto
-                FROM {Schema}.planet_osm_point t, o
-                WHERE {prefiltro("t.way")}
+        private static string BuildPointsInAreaSql(string originCte, Func<string, string> boundingFilter, string exactFilter) => $"""
+            WITH {originCte},
+            candidates AS (
+                SELECT 'n' || osm_point.osm_id AS id, {OsmTagColumns}, osm_point.way AS location
+                FROM {Schema}.planet_osm_point osm_point, origin
+                WHERE {boundingFilter("osm_point.way")}
                 UNION ALL
-                SELECT CASE WHEN t.osm_id < 0 THEN 'r' || -t.osm_id ELSE 'w' || t.osm_id END, {Columnas},
-                       ST_PointOnSurface(t.way)
-                FROM {Schema}.planet_osm_polygon t, o
-                WHERE {prefiltro("t.way")}
+                SELECT CASE WHEN osm_polygon.osm_id < 0 THEN 'r' || -osm_polygon.osm_id ELSE 'w' || osm_polygon.osm_id END, {OsmTagColumns},
+                       ST_PointOnSurface(osm_polygon.way)
+                FROM {Schema}.planet_osm_polygon osm_polygon, origin
+                WHERE {boundingFilter("osm_polygon.way")}
             ),
-            clasificados AS (
-                SELECT id, name, operator, {Clasificacion} AS categoria, {Tipo} AS tipo, ST_Transform(punto, 4326) AS punto,
-                       'osm' AS fuente
-                FROM candidatos
+            classified_points AS (
+                SELECT id, name, operator, {ClassificationSql} AS category, {TypeSql} AS point_type,
+                       ST_Transform(location, 4326) AS location, 'osm' AS data_source
+                FROM candidates
                 WHERE name IS NOT NULL OR highway = 'bus_stop' OR railway = 'subway_entrance'
                 UNION ALL
-                SELECT p.id, p.name, NULL, p.category, NULL, p.location, 'vecinos'
-                FROM {App}.community_pois p
-                WHERE p.is_new AND NOT p.removed
+                SELECT community_point.id, community_point.name, NULL, community_point.category, NULL,
+                       community_point.location, 'vecinos'
+                FROM {App}.community_pois community_point
+                WHERE community_point.is_new AND NOT community_point.removed
             ),
-            corregidos AS (
-                SELECT c.id,
-                       COALESCE(p.name, c.name) AS name,
-                       c.operator,
-                       COALESCE(p.category, c.categoria) AS categoria,
+            corrected_points AS (
+                SELECT classified.id,
+                       COALESCE(community.name, classified.name) AS name,
+                       classified.operator,
+                       COALESCE(community.category, classified.category) AS category,
                        -- the OSM type no longer describes a place moved to another category
-                       CASE WHEN p.category IS NULL OR p.is_new THEN c.tipo END AS tipo,
-                       COALESCE(p.location, c.punto) AS punto,
-                       c.fuente
-                FROM clasificados c
-                LEFT JOIN {App}.community_pois p ON p.id = c.id
-                WHERE p.removed IS NOT TRUE
+                       CASE WHEN community.category IS NULL OR community.is_new THEN classified.point_type END AS point_type,
+                       COALESCE(community.location, classified.location) AS location,
+                       classified.data_source
+                FROM classified_points classified
+                LEFT JOIN {App}.community_pois community ON community.id = classified.id
+                WHERE community.removed IS NOT TRUE
             ),
-            en_area AS (
-                SELECT c.*, ST_Distance(c.punto::geography, o.geog) AS distancia
-                FROM corregidos c, o
-                WHERE c.categoria IS NOT NULL
-                  AND {dentro}
+            points_in_area AS (
+                SELECT poi.*, ST_Distance(poi.location::geography, origin.geography) AS distance_meters
+                FROM corrected_points poi, origin
+                WHERE poi.category IS NOT NULL
+                  AND {exactFilter}
             )
             """;
 
         // Web Mercator meters are stretched by 1/cos(lat): the radius is scaled by k for the ST_DWithin prefilter,
         // then the exact distance is measured on the geography
-        private static readonly string PuntosEnRadio = PuntosEn(
+        private static readonly string PointsWithinRadiusSql = BuildPointsInAreaSql(
             """
-            o AS (
-                SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@lon, @lat), 4326), 3857) AS g,
-                       ST_SetSRID(ST_MakePoint(@lon, @lat), 4326)::geography AS geog,
-                       1 / cos(radians(@lat)) AS k
+            origin AS (
+                SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@longitude, @latitude), 4326), 3857) AS geometry_3857,
+                       ST_SetSRID(ST_MakePoint(@longitude, @latitude), 4326)::geography AS geography,
+                       1 / cos(radians(@latitude)) AS latitude_scale
             )
             """,
-            way => $"ST_DWithin({way}, o.g, @radio * o.k)",
-            "ST_DWithin(c.punto::geography, o.geog, @radio)");
+            geometry => $"ST_DWithin({geometry}, origin.geometry_3857, @radius_meters * origin.latitude_scale)",
+            "ST_DWithin(poi.location::geography, origin.geography, @radius_meters)");
 
         // The zone of the @slug parameter (same choice as GET /api/v1/zones/{slug}); distances are measured from its center.
         // A polygon counts when the point that represents it falls inside the zone.
-        private static readonly string PuntosEnZona = PuntosEn(
+        private static readonly string PointsWithinZoneSql = BuildPointsInAreaSql(
             $"""
             {ZoneSql.ZoneBySlug},
-            o AS (
-                SELECT z.way AS g, z.geom, ({ZoneSql.GetCenter("z.geom")})::geography AS geog
-                FROM zona z
+            origin AS (
+                SELECT zone.way AS geometry_3857, zone.geom AS geometry_4326,
+                       ({ZoneSql.GetCenter("zone.geom")})::geography AS geography
+                FROM selected_zone zone
             )
             """,
-            way => $"ST_Intersects({way}, o.g)",
-            "ST_Intersects(c.punto, o.geom)");
+            geometry => $"ST_Intersects({geometry}, origin.geometry_3857)",
+            "ST_Intersects(poi.location, origin.geometry_4326)");
 
-        private static string Cercanos(string puntos) => $"""
-            {puntos}
+        private static string BuildNearbyPointsSql(string pointsQuery) => $"""
+            {pointsQuery}
             SELECT id AS "Id",
-                   name AS "Nombre",
-                   categoria AS "Categoria",
-                   tipo AS "Tipo",
-                   operator AS "Operador",
-                   ST_Y(punto) AS "Latitud",
-                   ST_X(punto) AS "Longitud",
-                   distancia AS "DistanciaMetros",
-                   fuente AS "Fuente"
-            FROM en_area
-            WHERE categoria = ANY(@categorias)
-            ORDER BY distancia
-            LIMIT @limite
+                   name AS "Name",
+                   category AS "Category",
+                   point_type AS "Type",
+                   operator AS "Operator",
+                   ST_Y(location) AS "Latitude",
+                   ST_X(location) AS "Longitude",
+                   distance_meters AS "DistanceMeters",
+                   data_source AS "Source"
+            FROM points_in_area
+            WHERE category = ANY(@categories)
+            ORDER BY distance_meters
+            LIMIT @limit
             """;
 
-        private static string Resumen(string puntos) => $"""
-            {puntos}
-            SELECT categoria AS "Categoria", tipo AS "Tipo", count(*)::int AS "Cantidad"
-            FROM en_area
-            GROUP BY categoria, tipo
+        private static string BuildPointSummarySql(string pointsQuery) => $"""
+            {pointsQuery}
+            SELECT category AS "Category", point_type AS "Type", count(*)::int AS "Count"
+            FROM points_in_area
+            GROUP BY category, point_type
             """;
 
-        private static readonly string SqlCercanos = Cercanos(PuntosEnRadio);
-        private static readonly string SqlResumen = Resumen(PuntosEnRadio);
-        private static readonly string SqlEnZona = Cercanos(PuntosEnZona);
-        private static readonly string SqlResumenZona = Resumen(PuntosEnZona);
+        private static readonly string NearbyPointsSql = BuildNearbyPointsSql(PointsWithinRadiusSql);
+        private static readonly string PointSummarySql = BuildPointSummarySql(PointsWithinRadiusSql);
+        private static readonly string PointsInZoneSql = BuildNearbyPointsSql(PointsWithinZoneSql);
+        private static readonly string PointsInZoneSummarySql = BuildPointSummarySql(PointsWithinZoneSql);
 
-        private static readonly string SqlProfileRecommendations = $"""
+        private static readonly string ProfileRecommendationsSql = $"""
             WITH {ZoneSql.ZoneBySlug},
             zone_area AS (
                 SELECT z.way AS geometry_3857, z.geom AS geometry_4326,
                        -- Distances from the point chosen on the map, or from the zone center without one
                        COALESCE(ST_SetSRID(ST_MakePoint(@longitude, @latitude), 4326), {ZoneSql.GetCenter("z.geom")})::geography AS center
-                FROM zona z
+                FROM selected_zone z
             ),
             raw_candidates AS (
                 SELECT 'n' || t.osm_id AS id, t.name, t.amenity, t.shop, t.way AS location_3857
@@ -255,32 +257,32 @@ namespace ZonaMatch.Infrastructure.Repositories
         }
 
         public Task<IReadOnlyList<PointOfInterestResponse>> GetNearbyAsync(
-            double latitud, double longitud, double radioMetros, IReadOnlyCollection<string> categorias, int limite,
+            double latitude, double longitude, double radiusMeters, IReadOnlyCollection<string> categories, int limit,
             CancellationToken cancellationToken = default) =>
-            ListAsync(SqlCercanos, cancellationToken,
-                new NpgsqlParameter("lat", latitud),
-                new NpgsqlParameter("lon", longitud),
-                new NpgsqlParameter("radio", radioMetros),
-                new NpgsqlParameter("categorias", categorias.ToArray()),
-                new NpgsqlParameter("limite", limite));
+            ListAsync(NearbyPointsSql, cancellationToken,
+                new NpgsqlParameter("latitude", latitude),
+                new NpgsqlParameter("longitude", longitude),
+                new NpgsqlParameter("radius_meters", radiusMeters),
+                new NpgsqlParameter("categories", categories.ToArray()),
+                new NpgsqlParameter("limit", limit));
 
         public Task<IReadOnlyList<PointOfInterestCount>> CountByTypeAsync(
-            double latitud, double longitud, double radioMetros, CancellationToken cancellationToken = default) =>
-            CountAsync(SqlResumen, cancellationToken,
-                new NpgsqlParameter("lat", latitud),
-                new NpgsqlParameter("lon", longitud),
-                new NpgsqlParameter("radio", radioMetros));
+            double latitude, double longitude, double radiusMeters, CancellationToken cancellationToken = default) =>
+            CountAsync(PointSummarySql, cancellationToken,
+                new NpgsqlParameter("latitude", latitude),
+                new NpgsqlParameter("longitude", longitude),
+                new NpgsqlParameter("radius_meters", radiusMeters));
 
         public Task<IReadOnlyList<PointOfInterestResponse>> GetInZoneAsync(
-            string slug, IReadOnlyCollection<string> categorias, int limite, CancellationToken cancellationToken = default) =>
-            ListAsync(SqlEnZona, cancellationToken,
+            string slug, IReadOnlyCollection<string> categories, int limit, CancellationToken cancellationToken = default) =>
+            ListAsync(PointsInZoneSql, cancellationToken,
                 new NpgsqlParameter("slug", slug),
-                new NpgsqlParameter("categorias", categorias.ToArray()),
-                new NpgsqlParameter("limite", limite));
+                new NpgsqlParameter("categories", categories.ToArray()),
+                new NpgsqlParameter("limit", limit));
 
         public Task<IReadOnlyList<PointOfInterestCount>> CountByTypeInZoneAsync(
             string slug, CancellationToken cancellationToken = default) =>
-            CountAsync(SqlResumenZona, cancellationToken, new NpgsqlParameter("slug", slug));
+            CountAsync(PointsInZoneSummarySql, cancellationToken, new NpgsqlParameter("slug", slug));
 
         public async Task<IReadOnlyList<ProfileRecommendationCandidate>> GetProfileRecommendationsInZoneAsync(
             string slug,
@@ -291,7 +293,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         {
             return await _dbContext.Database
                 .SqlQueryRaw<ProfileRecommendationCandidate>(
-                    SqlProfileRecommendations,
+                    ProfileRecommendationsSql,
                     new NpgsqlParameter("slug", slug),
                     new NpgsqlParameter("categories", categories.ToArray()),
                     new NpgsqlParameter("limit", limitPerCategory),
@@ -301,47 +303,47 @@ namespace ZonaMatch.Infrastructure.Repositories
         }
 
         private async Task<IReadOnlyList<PointOfInterestResponse>> ListAsync(
-            string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
+            string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parameters)
         {
-            var filas = await _dbContext.Database
-                .SqlQueryRaw<PuntoInteresFila>(sql, parametros)
+            var rows = await _dbContext.Database
+                .SqlQueryRaw<PointOfInterestRow>(sql, parameters)
                 .ToListAsync(cancellationToken);
 
-            return filas
-                .Select(f => new PointOfInterestResponse(
-                    f.Id, f.Nombre, f.Categoria, f.Tipo, f.Operador, f.Latitud, f.Longitud, f.DistanciaMetros, f.Fuente))
+            return rows
+                .Select(row => new PointOfInterestResponse(
+                    row.Id, row.Name, row.Category, row.Type, row.Operator, row.Latitude, row.Longitude, row.DistanceMeters, row.Source))
                 .ToList();
         }
 
         private async Task<IReadOnlyList<PointOfInterestCount>> CountAsync(
-            string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
+            string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parameters)
         {
-            var filas = await _dbContext.Database
-                .SqlQueryRaw<CantidadFila>(sql, parametros)
+            var rows = await _dbContext.Database
+                .SqlQueryRaw<PointOfInterestCountRow>(sql, parameters)
                 .ToListAsync(cancellationToken);
 
-            return filas.Select(f => new PointOfInterestCount(f.Categoria, f.Tipo, f.Cantidad)).ToList();
+            return rows.Select(row => new PointOfInterestCount(row.Category, row.Type, row.Count)).ToList();
         }
 
         // Keyless results of the queries above; property names match the column aliases
-        private sealed class CantidadFila
+        private sealed class PointOfInterestCountRow
         {
-            public string Categoria { get; set; } = string.Empty;
-            public string? Tipo { get; set; }
-            public int Cantidad { get; set; }
+            public string Category { get; set; } = string.Empty;
+            public string? Type { get; set; }
+            public int Count { get; set; }
         }
 
-        private sealed class PuntoInteresFila
+        private sealed class PointOfInterestRow
         {
             public string Id { get; set; } = string.Empty;
-            public string? Nombre { get; set; }
-            public string Categoria { get; set; } = string.Empty;
-            public string? Tipo { get; set; }
-            public string? Operador { get; set; }
-            public double Latitud { get; set; }
-            public double Longitud { get; set; }
-            public double DistanciaMetros { get; set; }
-            public string Fuente { get; set; } = string.Empty;
+            public string? Name { get; set; }
+            public string Category { get; set; } = string.Empty;
+            public string? Type { get; set; }
+            public string? Operator { get; set; }
+            public double Latitude { get; set; }
+            public double Longitude { get; set; }
+            public double DistanceMeters { get; set; }
+            public string Source { get; set; } = string.Empty;
         }
     }
 }
