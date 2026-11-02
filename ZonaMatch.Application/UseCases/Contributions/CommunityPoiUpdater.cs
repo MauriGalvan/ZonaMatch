@@ -1,11 +1,11 @@
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Application.UseCases.Aportes
+namespace ZonaMatch.Application.UseCases.Contributions
 {
     // Persists an approved contribution as a point of interest: a new point is added, a correction changes the
     // name, category or location of the place, or removes it if it closed. Shared by the community vote
-    // (ValidarAporte) and the administrator (ResolveContribution). The caller saves the changes.
+    // (ValidateContribution) and the administrator (ResolveContribution). The caller saves the changes.
     public class CommunityPoiUpdater
     {
         private readonly ICommunityPoiRepository _pois;

@@ -1,9 +1,9 @@
 using NetTopologySuite.Geometries;
 using ZonaMatch.Application.Exceptions;
-using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.Contributions;
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Tests.UseCases.Aportes
+namespace ZonaMatch.Tests.UseCases.Contributions
 {
     public class ResolveContributionTests
     {
@@ -42,7 +42,7 @@ namespace ZonaMatch.Tests.UseCases.Aportes
 
             var result = await _useCase.ExecuteAsync(Zone, contribution.Id, _administrator, approve: true);
 
-            Assert.Equal(EstadoAporte.Aprobado, result.Estado);
+            Assert.Equal(EstadoAporte.Aprobado, result.Status);
             Assert.Equal(_administrator, contribution.ResueltoPorId);
             Assert.Equal(Now, contribution.FechaResolucion);
             Assert.Equal(1, _contributions.Guardados);
@@ -58,7 +58,7 @@ namespace ZonaMatch.Tests.UseCases.Aportes
 
             var result = await _useCase.ExecuteAsync(Zone, contribution.Id, _administrator, approve: false);
 
-            Assert.Equal(EstadoAporte.Rechazado, result.Estado);
+            Assert.Equal(EstadoAporte.Rechazado, result.Status);
             Assert.Empty(_pois.Pois);
         }
 

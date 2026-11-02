@@ -1,9 +1,9 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Contributions.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Application.UseCases.Aportes
+namespace ZonaMatch.Application.UseCases.Contributions
 {
     // A site administrator approves or rejects a pending contribution without waiting for the votes.
     // An approved one is persisted as a point of interest right away. The API checks the administrator role.
@@ -20,7 +20,7 @@ namespace ZonaMatch.Application.UseCases.Aportes
             _clock = clock;
         }
 
-        public async Task<AporteDto> ExecuteAsync(
+        public async Task<ContributionResponse> ExecuteAsync(
             string zoneSlug, Guid contributionId, Guid administratorId, bool approve, CancellationToken cancellationToken = default)
         {
             var contribution = await _contributions.ObtenerAsync(zoneSlug, contributionId, cancellationToken)
@@ -34,7 +34,7 @@ namespace ZonaMatch.Application.UseCases.Aportes
             await _poiUpdater.ApplyAsync(contribution, now, cancellationToken);
             await _contributions.GuardarCambiosAsync(cancellationToken);
 
-            return AporteMapeo.ADto(contribution, contribution.Usuario?.Email, administratorId);
+            return ContributionMapper.ToResponse(contribution, contribution.Usuario?.Email, administratorId);
         }
     }
 }

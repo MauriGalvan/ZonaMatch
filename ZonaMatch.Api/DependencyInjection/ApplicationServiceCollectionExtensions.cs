@@ -4,7 +4,7 @@ using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
-using ZonaMatch.Application.UseCases.Aportes;
+using ZonaMatch.Application.UseCases.Contributions;
 using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.UseCases.Contact;
 using ZonaMatch.Application.UseCases.Criterios;
@@ -73,11 +73,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ListarPreguntas>();
         services.AddScoped<CrearPregunta>();
         services.AddScoped<ResponderPregunta>();
-        services.AddScoped<ResumirAportes>();
-        services.AddScoped<ListarAportesPendientes>();
-        services.AddScoped<CrearPuntoNuevo>();
-        services.AddScoped<CrearCorreccion>();
-        services.AddScoped<ValidarAporte>();
+        services.AddScoped<GetContributionSummary>();
+        services.AddScoped<ListPendingContributions>();
+        services.AddScoped<CreatePointContribution>();
+        services.AddScoped<CreateContributionCorrection>();
+        services.AddScoped<ValidateContribution>();
         services.AddScoped<CommunityPoiUpdater>();
         services.AddScoped<ResolveContribution>();
 
