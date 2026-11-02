@@ -11,7 +11,7 @@ namespace ZonaMatch.Tests.Infrastructure;
 public class MotisRoutingClientTests
 {
     [Fact]
-    public async Task Usa_tiempo_y_distancia_del_mismo_itinerario()
+    public async Task UsesTimeAndDistanceFromTheSameItinerary()
     {
         const string json = """
             {
@@ -20,14 +20,14 @@ public class MotisRoutingClientTests
             }
             """;
 
-        var (viaje, _) = await ConsultarAsync(json);
+        var (travelTime, _) = await QueryAsync(json);
 
-        Assert.Equal(10, viaje!.Minutes);
-        Assert.Equal(3.5, viaje.DistanceKm!.Value, 3);
+        Assert.Equal(10, travelTime!.Minutes);
+        Assert.Equal(3.5, travelTime.DistanceKm!.Value, 3);
     }
 
     [Fact]
-    public async Task Suma_caminatas_y_geometria_del_transporte()
+    public async Task AddsWalkingSegmentsAndTransitGeometry()
     {
         const string json = """
             {
@@ -43,48 +43,48 @@ public class MotisRoutingClientTests
             }
             """;
 
-        var (viaje, _) = await ConsultarAsync(json, TravelMode.PublicTransit);
+        var (travelTime, _) = await QueryAsync(json, TravelMode.PublicTransit);
 
-        Assert.Equal(30, viaje!.Minutes);
-        Assert.InRange(viaje.DistanceKm!.Value, 111.69, 111.70);
+        Assert.Equal(30, travelTime!.Minutes);
+        Assert.InRange(travelTime.DistanceKm!.Value, 111.69, 111.70);
     }
 
     [Theory]
     [InlineData("{}")]
     [InlineData("{\"distance\": -1}")]
     [InlineData("{\"legGeometry\": {\"points\": \"_\", \"precision\": 7}}")]
-    public async Task No_devuelve_total_parcial_si_un_tramo_no_se_puede_medir(string tramo)
+    public async Task DoesNotReturnPartialDistanceWhenALegCannotBeMeasured(string legJson)
     {
         var json = $$"""
-            {"itineraries": [{"duration": 1800, "legs": [{"distance": 300}, {{tramo}}]}]}
+            {"itineraries": [{"duration": 1800, "legs": [{"distance": 300}, {{legJson}}]}]}
             """;
 
-        var (viaje, _) = await ConsultarAsync(json);
+        var (travelTime, _) = await QueryAsync(json);
 
-        Assert.Equal(30, viaje!.Minutes);
-        Assert.Null(viaje.DistanceKm);
+        Assert.Equal(30, travelTime!.Minutes);
+        Assert.Null(travelTime.DistanceKm);
     }
 
     [Theory]
     [InlineData("{\"itineraries\":[],\"direct\":[]}")]
     [InlineData("{\"direct\":[{\"legs\":[{\"distance\":1000}]}]}")]
-    public async Task Sin_itinerario_con_duracion_no_hay_tiempo_ni_distancia(string json)
+    public async Task ReturnsNoTimeOrDistanceWhenNoItineraryHasDuration(string json)
     {
-        var (viaje, _) = await ConsultarAsync(json);
+        var (travelTime, _) = await QueryAsync(json);
 
-        Assert.NotNull(viaje);
-        Assert.Null(viaje.Minutes);
-        Assert.Null(viaje.DistanceKm);
+        Assert.NotNull(travelTime);
+        Assert.Null(travelTime.Minutes);
+        Assert.Null(travelTime.DistanceKm);
     }
 
     [Fact]
-    public async Task Acepta_un_recorrido_de_cero_metros()
+    public async Task AcceptsAZeroMeterRoute()
     {
-        var (viaje, _) = await ConsultarAsync(
+        var (travelTime, _) = await QueryAsync(
             """{"direct":[{"duration":0,"legs":[{"distance":0}]}]}""");
 
-        Assert.Equal(0, viaje!.Minutes);
-        Assert.Equal(0.0, viaje.DistanceKm!.Value);
+        Assert.Equal(0, travelTime!.Minutes);
+        Assert.Equal(0.0, travelTime.DistanceKm!.Value);
     }
 
     [Theory]
@@ -92,12 +92,12 @@ public class MotisRoutingClientTests
     [InlineData(TravelMode.Bicycle, "directModes=BIKE")]
     [InlineData(TravelMode.Walking, "directModes=WALK")]
     [InlineData(TravelMode.PublicTransit, "transitModes=TRANSIT")]
-    public async Task Consulta_el_medio_de_transporte_elegido(TravelMode modo, string parametro)
+    public async Task RequestsTheSelectedTravelMode(TravelMode mode, string parameter)
     {
-        var (_, query) = await ConsultarAsync(
-            """{"direct":[{"duration":600,"legs":[{"distance":1000}]}]}""", modo);
+        var (_, query) = await QueryAsync(
+            """{"direct":[{"duration":600,"legs":[{"distance":1000}]}]}""", mode);
 
-        Assert.Contains(parametro, query);
+        Assert.Contains(parameter, query);
         Assert.Contains("detailedLegs=true", query);
         Assert.Contains("detailedTransfers=true", query);
         Assert.Contains("useRoutedTransfers=true", query);
@@ -107,25 +107,25 @@ public class MotisRoutingClientTests
     [InlineData("{\"error\":\"sin servicio\"}")]
     [InlineData("{\"error\":{\"message\":\"sin servicio\"}}")]
     [InlineData("JSON invalido")]
-    public async Task Respuesta_invalida_o_error_permite_usar_la_estimacion_existente(string json)
+    public async Task InvalidResponseOrErrorAllowsTheExistingEstimateToBeUsed(string json)
     {
-        var (viaje, _) = await ConsultarAsync(json);
+        var (travelTime, _) = await QueryAsync(json);
 
-        Assert.Null(viaje);
+        Assert.Null(travelTime);
     }
 
-    private static async Task<(TravelTime? Viaje, string Query)> ConsultarAsync(
-        string json, TravelMode modo = TravelMode.Car)
+    private static async Task<(TravelTime? TravelTime, string Query)> QueryAsync(
+        string json, TravelMode mode = TravelMode.Car)
     {
         using var handler = new JsonHandler(json);
         using var http = new HttpClient(handler) { BaseAddress = new Uri("http://motis.test/") };
         using var cache = new MemoryCache(new MemoryCacheOptions());
-        var cliente = new MotisRoutingClient(
+        var client = new MotisRoutingClient(
             http, cache, TimeProvider.System, new ConfigurationBuilder().Build(),
             NullLogger<MotisRoutingClient>.Instance);
 
-        var viaje = await cliente.GetTravelTimeAsync(-34.6, -58.4, -34.5, -58.3, modo);
-        return (viaje, handler.Query);
+        var travelTime = await client.GetTravelTimeAsync(-34.6, -58.4, -34.5, -58.3, mode);
+        return (travelTime, handler.Query);
     }
 
     private sealed class JsonHandler(string json) : HttpMessageHandler
