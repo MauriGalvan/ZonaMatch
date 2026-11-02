@@ -13,6 +13,7 @@ using ZonaMatch.Application.UseCases.GuestReports;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
 using ZonaMatch.Application.UseCases.Groups;
+using ZonaMatch.Application.UseCases.Map;
 using ZonaMatch.Application.UseCases.Notifications;
 using ZonaMatch.Application.UseCases.PasswordResets;
 using ZonaMatch.Application.UseCases.Profile;
@@ -37,15 +38,23 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetZoneMarket>();
         services.AddScoped<SearchPlaces>();
         services.AddScoped<PointOfInterestResponseBuilder>();
+        services.AddScoped<LocationBoundaryLookup>();
+        services.AddScoped<GetLocationSummary>();
+        services.AddScoped<GetNearbySchools>();
+        services.AddScoped<GetNearestSchools>();
+        services.AddScoped<GetNearbyPointsOfInterest>();
+        services.AddScoped<GetPointsOfInterestSummary>();
+        services.AddScoped<GetDistrictByLocation>();
+        services.AddScoped<GetCommuneByLocation>();
+        services.AddScoped<ReverseGeocode>();
         services.AddScoped<SearchZones>();
         services.AddScoped<GetZone>();
         services.AddScoped<GetZonePointsOfInterest>();
         services.AddScoped<GetZonePointsOfInterestSummary>();
-        services.AddScoped<GetZoneIndicators>();
-        services.AddScoped<GetZoneTransit>();
-        services.AddScoped<IGeolocationService, GeolocationService>();
-        services.AddScoped<IMapaService, MapaService>();
-        services.AddScoped<IZonaService, ZonaService>();
+        services.AddScoped<GetMapDistricts>();
+        services.AddScoped<GetMapCommunes>();
+        services.AddScoped<GetMapCensusTracts>();
+        services.AddScoped<GetMapSchools>();
 
         services.AddScoped<CreateGroup>();
         services.AddScoped<GetGroupDetails>();
@@ -108,6 +117,8 @@ public static class ApplicationServiceCollectionExtensions
 
         services.AddScoped<CalculateScores>();
         services.AddScoped<GetRoute>();
+        services.AddScoped<GetZoneIndicators>();
+        services.AddScoped<GetZoneTransit>();
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(new FrontendLinks(configuration["Frontend:BaseUrl"] ?? "http://localhost:5173"));
