@@ -55,6 +55,19 @@ public class SendGuestReportTests
     }
 
     [Fact]
+    public async Task Rejects_a_pdf_that_exceeds_the_maximum_size()
+    {
+        var oversizedPdf = new byte[SendGuestReport.MaxReportBytes + 1];
+        Encoding.ASCII.GetBytes("%PDF-1.7").CopyTo(oversizedPdf, 0);
+
+        var error = await Assert.ThrowsAsync<BadRequestException>(
+            () => _useCase.ExecuteAsync(Request(), oversizedPdf, "http://localhost:5173"));
+
+        Assert.Equal("El informe no es un PDF válido.", error.Message);
+        Assert.Empty(_email.Sent);
+    }
+
+    [Fact]
     public async Task A_bot_that_fills_the_hidden_field_gets_no_email()
     {
         await _useCase.ExecuteAsync(Request(website: "https://spam.example"), Pdf, "http://localhost:5173");
@@ -83,6 +96,22 @@ public class SendGuestReportTests
         _email.Failure = null;
         for (var i = 0; i < SendGuestReport.MaxEmailsPerRecipientPerDay; i++)
             await _useCase.ExecuteAsync(Request(), Pdf, "http://localhost:5173");
+        Assert.Equal(SendGuestReport.MaxEmailsPerRecipientPerDay, _email.Sent.Count);
+    }
+
+    [Fact]
+    public async Task A_canceled_email_is_propagated_and_does_not_count()
+    {
+        _email.Failure = new OperationCanceledException("Email send canceled.");
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => _useCase.ExecuteAsync(Request(), Pdf, "http://localhost:5173"));
+        Assert.Empty(_email.Sent);
+
+        _email.Failure = null;
+        for (var i = 0; i < SendGuestReport.MaxEmailsPerRecipientPerDay; i++)
+            await _useCase.ExecuteAsync(Request(), Pdf, "http://localhost:5173");
+
         Assert.Equal(SendGuestReport.MaxEmailsPerRecipientPerDay, _email.Sent.Count);
     }
 
