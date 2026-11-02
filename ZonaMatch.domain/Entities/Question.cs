@@ -5,16 +5,16 @@ namespace ZonaMatch.Domain.Entities
     {
         public Guid Id { get; set; } = Guid.CreateVersion7();
 
-        public string ZonaSlug { get; set; } = string.Empty;
+        public string ZoneSlug { get; set; } = string.Empty;
 
-        public Guid UsuarioId { get; set; }
+        public Guid UserId { get; set; }
         public User? User { get; set; }
 
-        public string Texto { get; set; } = string.Empty;
+        public string Text { get; set; } = string.Empty;
 
-        public DateTimeOffset FechaCreacion { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
 
-        public List<Answer> Respuestas { get; set; } = [];
+        public List<Answer> Answers { get; set; } = [];
     }
 
     // An answer to a question (app.respuestas table).
@@ -22,13 +22,13 @@ namespace ZonaMatch.Domain.Entities
     {
         public Guid Id { get; set; } = Guid.CreateVersion7();
 
-        public Guid PreguntaId { get; set; }
+        public Guid QuestionId { get; set; }
 
-        public Guid UsuarioId { get; set; }
+        public Guid UserId { get; set; }
         public User? User { get; set; }
 
-        public string Texto { get; set; } = string.Empty;
+        public string Text { get; set; } = string.Empty;
 
-        public DateTimeOffset FechaCreacion { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
     }
 }

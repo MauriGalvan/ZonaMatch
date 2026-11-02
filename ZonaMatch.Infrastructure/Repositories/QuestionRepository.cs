@@ -14,27 +14,27 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<Question>> ListByZoneAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
-            await _dbContext.Preguntas
+        public async Task<IReadOnlyList<Question>> ListByZoneAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
+            await _dbContext.Questions
                 .AsNoTracking()
                 .AsSplitQuery()
                 .Include(p => p.User)
-                .Include(p => p.Respuestas).ThenInclude(r => r.User)
-                .Where(p => p.ZonaSlug == zonaSlug)
-                .OrderByDescending(p => p.FechaCreacion)
+                .Include(question => question.Answers).ThenInclude(answer => answer.User)
+                .Where(question => question.ZoneSlug == zoneSlug)
+                .OrderByDescending(question => question.CreatedAt)
                 .ToListAsync(cancellationToken);
 
-        public Task<bool> ExistsAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
-            _dbContext.Preguntas.AnyAsync(p => p.ZonaSlug == zonaSlug && p.Id == id, cancellationToken);
+        public Task<bool> ExistsAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
+            _dbContext.Questions.AnyAsync(question => question.ZoneSlug == zoneSlug && question.Id == id, cancellationToken);
 
-        public Task<Question?> GetByIdAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
-            _dbContext.Preguntas
+        public Task<Question?> GetByIdAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
+            _dbContext.Questions
                 .Include(question => question.User)
-                .FirstOrDefaultAsync(question => question.ZonaSlug == zonaSlug && question.Id == id, cancellationToken);
+                .FirstOrDefaultAsync(question => question.ZoneSlug == zoneSlug && question.Id == id, cancellationToken);
 
-        public void Add(Question pregunta) => _dbContext.Preguntas.Add(pregunta);
+        public void Add(Question question) => _dbContext.Questions.Add(question);
 
-        public void Add(Answer respuesta) => _dbContext.Respuestas.Add(respuesta);
+        public void Add(Answer answer) => _dbContext.Answers.Add(answer);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
             _dbContext.SaveChangesAsync(cancellationToken);

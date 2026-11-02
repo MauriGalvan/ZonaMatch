@@ -21,8 +21,8 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<User> Usuarios => Set<User>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<ReviewHelpfulVote> ReviewHelpfulVotes => Set<ReviewHelpfulVote>();
-        public DbSet<Question> Preguntas => Set<Question>();
-        public DbSet<Answer> Respuestas => Set<Answer>();
+        public DbSet<Question> Questions => Set<Question>();
+        public DbSet<Answer> Answers => Set<Answer>();
         public DbSet<Contribution> Aportes => Set<Contribution>();
         public DbSet<ContributionVote> AportesValidaciones => Set<ContributionVote>();
         public DbSet<CommunityPoi> CommunityPois => Set<CommunityPoi>();
@@ -390,21 +390,24 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("preguntas");
                 e.HasKey(x => x.Id);
-                e.Property(x => x.ZonaSlug).HasMaxLength(200);
-                e.HasIndex(x => x.ZonaSlug);
-                e.Property(x => x.Texto).HasMaxLength(TextLimits.QuestionText);
-                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
-                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
-                e.HasMany(x => x.Respuestas).WithOne().HasForeignKey(x => x.PreguntaId).OnDelete(DeleteBehavior.Cascade);
+                e.Property(x => x.ZoneSlug).HasColumnName("zona_slug").HasMaxLength(200);
+                e.HasIndex(x => x.ZoneSlug);
+                e.Property(x => x.UserId).HasColumnName("usuario_id");
+                e.Property(x => x.Text).HasColumnName("texto").HasMaxLength(TextLimits.QuestionText);
+                e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasMany(x => x.Answers).WithOne().HasForeignKey(x => x.QuestionId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Answer>(e =>
             {
                 e.ToTable("respuestas");
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Texto).HasMaxLength(TextLimits.AnswerText);
-                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
-                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+                e.Property(x => x.QuestionId).HasColumnName("pregunta_id");
+                e.Property(x => x.UserId).HasColumnName("usuario_id");
+                e.Property(x => x.Text).HasColumnName("texto").HasMaxLength(TextLimits.AnswerText);
+                e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Contribution>(e =>

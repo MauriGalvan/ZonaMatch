@@ -22,12 +22,12 @@ namespace ZonaMatch.Application.UseCases.Questions
             return questions
                 .Select(question => new QuestionResponse(
                     question.Id,
-                    question.Texto,
+                    question.Text,
                     AuthorInitials.GetInitials(question.User?.Email),
-                    question.FechaCreacion,
-                    question.UsuarioId == currentUserId,
-                    question.Respuestas
-                        .OrderBy(answer => answer.FechaCreacion)
+                    question.CreatedAt,
+                    question.UserId == currentUserId,
+                    question.Answers
+                        .OrderBy(answer => answer.CreatedAt)
                         .Select(answer => QuestionMapper.ToResponse(answer, answer.User?.Email, currentUserId))
                         .ToList()))
                 .ToList();

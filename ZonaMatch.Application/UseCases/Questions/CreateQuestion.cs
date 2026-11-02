@@ -37,10 +37,10 @@ namespace ZonaMatch.Application.UseCases.Questions
 
             var question = new Question
             {
-                ZonaSlug = zoneSlug,
-                UsuarioId = currentUser.Id,
-                Texto = request.Text.Trim(),
-                FechaCreacion = _clock.GetUtcNow()
+                ZoneSlug = zoneSlug,
+                UserId = currentUser.Id,
+                Text = request.Text.Trim(),
+                CreatedAt = _clock.GetUtcNow()
             };
 
             _questions.Add(question);
@@ -53,12 +53,12 @@ namespace ZonaMatch.Application.UseCases.Questions
                 Title = "Nueva pregunta en una zona guardada",
                 Message = $"Publicaron una nueva pregunta en {savedZone.Name}.",
                 Link = $"/zonas/{Uri.EscapeDataString(zoneSlug)}?tab=comunidad",
-                CreatedAt = question.FechaCreacion
+                CreatedAt = question.CreatedAt
             }));
 
             await _questions.SaveChangesAsync(cancellationToken);
 
-            return new QuestionResponse(question.Id, question.Texto, AuthorInitials.GetInitials(currentUser.Email), question.FechaCreacion, IsMine: true, []);
+            return new QuestionResponse(question.Id, question.Text, AuthorInitials.GetInitials(currentUser.Email), question.CreatedAt, IsMine: true, []);
         }
     }
 }

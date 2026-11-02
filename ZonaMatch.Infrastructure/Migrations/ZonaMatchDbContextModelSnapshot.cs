@@ -141,29 +141,29 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<DateTimeOffset>("FechaCreacion")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_creacion");
 
-                    b.Property<Guid>("PreguntaId")
+                    b.Property<Guid>("QuestionId")
                         .HasColumnType("uuid")
                         .HasColumnName("pregunta_id");
 
-                    b.Property<string>("Texto")
+                    b.Property<string>("Text")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("texto");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("usuario_id");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PreguntaId");
+                    b.HasIndex("QuestionId");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("respuestas", "app");
                 });
@@ -871,21 +871,21 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<DateTimeOffset>("FechaCreacion")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_creacion");
 
-                    b.Property<string>("Texto")
+                    b.Property<string>("Text")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
                         .HasColumnName("texto");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("usuario_id");
 
-                    b.Property<string>("ZonaSlug")
+                    b.Property<string>("ZoneSlug")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -893,9 +893,9 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UserId");
 
-                    b.HasIndex("ZonaSlug");
+                    b.HasIndex("ZoneSlug");
 
                     b.ToTable("preguntas", "app");
                 });
@@ -1455,14 +1455,14 @@ namespace ZonaMatch.Infrastructure.Migrations
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Answer", b =>
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.Question", null)
-                        .WithMany("Respuestas")
-                        .HasForeignKey("PreguntaId")
+                        .WithMany("Answers")
+                        .HasForeignKey("QuestionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("ZonaMatch.Domain.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1612,7 +1612,7 @@ namespace ZonaMatch.Infrastructure.Migrations
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1696,7 +1696,7 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Question", b =>
                 {
-                    b.Navigation("Respuestas");
+                    b.Navigation("Answers");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>

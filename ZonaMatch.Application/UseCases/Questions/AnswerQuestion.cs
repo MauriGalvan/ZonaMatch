@@ -43,26 +43,26 @@ namespace ZonaMatch.Application.UseCases.Questions
 
             var answer = new Answer
             {
-                PreguntaId = questionId,
-                UsuarioId = currentUser.Id,
-                Texto = request.Text.Trim(),
-                FechaCreacion = _clock.GetUtcNow()
+                QuestionId = questionId,
+                UserId = currentUser.Id,
+                Text = request.Text.Trim(),
+                CreatedAt = _clock.GetUtcNow()
             };
 
             _questions.Add(answer);
 
-            var shouldNotifyAuthor = question.UsuarioId != currentUser.Id;
+            var shouldNotifyAuthor = question.UserId != currentUser.Id;
             if (shouldNotifyAuthor)
             {
                 _notifications.AddRange([
                     new UserNotification
                     {
-                        UserId = question.UsuarioId,
+                        UserId = question.UserId,
                         Type = NotificationType.CommunityReply,
                         Title = "Respondieron tu pregunta",
                         Message = $"Alguien respondió una pregunta que publicaste en {zoneSlug}.",
                         Link = $"/zonas/{Uri.EscapeDataString(zoneSlug)}?tab=comunidad",
-                        CreatedAt = answer.FechaCreacion
+                        CreatedAt = answer.CreatedAt
                     }
                 ]);
             }
