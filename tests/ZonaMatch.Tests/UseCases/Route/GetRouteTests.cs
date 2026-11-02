@@ -119,6 +119,21 @@ namespace ZonaMatch.Tests.UseCases.Route
             await Assert.ThrowsAsync<BadRequestException>(() => new GetRoute(_planner).ExecuteAsync(request));
         }
 
+        [Theory]
+        [InlineData(90.01, -58.5)]
+        [InlineData(-34.6, 180.01)]
+        public async Task ExecuteAsync_WhenOriginCoordinatesAreOutOfRange_ThrowsBadRequestException(
+            double latitude, double longitude)
+        {
+            var request = Request();
+            request.FromLatitude = latitude;
+            request.FromLongitude = longitude;
+
+            await Assert.ThrowsAsync<BadRequestException>(() => new GetRoute(_planner).ExecuteAsync(request));
+
+            Assert.Null(_planner.RequestedMode);
+        }
+
         [Fact]
         public async Task ExecuteAsync_WhenThereIsNoTrip_ThrowsNotFoundException()
         {

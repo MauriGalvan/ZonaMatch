@@ -1,3 +1,4 @@
+using FluentAssertions;
 using System.Text.Json;
 using ZonaMatch.Application.DTOs.Scoring.Responses;
 
@@ -17,8 +18,8 @@ public class PlaceTravelTimeResponseTests
         var field = document.RootElement.GetProperty("distanceKm");
 
         if (distanceKm is { } km)
-            Assert.Equal(km, field.GetDouble());
+            field.GetDouble().Should().Be(km);
         else
-            Assert.Equal(JsonValueKind.Null, field.ValueKind);
+            field.ValueKind.Should().Be(JsonValueKind.Null);
     }
 }

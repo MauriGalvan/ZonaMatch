@@ -47,6 +47,45 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
         }
 
         [Fact]
+        public async Task Create_WhenNoZonesAreProvided_ThrowsBadRequestWithoutSaving()
+        {
+            await WithProfile();
+            var request = new CreateAnalysisRequest { Name = "No zones", Zones = [] };
+
+            await Assert.ThrowsAsync<BadRequestException>(() => Create.ExecuteAsync(UserId, request));
+
+            Assert.Empty(_analyses.Analyses);
+        }
+
+        [Fact]
+        public async Task Create_WhenMoreThanOneZoneIsInitial_ThrowsBadRequestWithoutSaving()
+        {
+            await WithProfile();
+            var request = AnalysisRequest("Multiple initial zones",
+                TestRequests.AnalysisZone(isInitial: true),
+                TestRequests.AnalysisZone("another-zone", isInitial: true));
+
+            await Assert.ThrowsAsync<BadRequestException>(() => Create.ExecuteAsync(UserId, request));
+
+            Assert.Empty(_analyses.Analyses);
+        }
+
+        [Fact]
+        public async Task Create_WhenResultCalculatorReturnsNull_SavesAnalysisWithoutResultSnapshot()
+        {
+            await WithProfile();
+            _results.ReturnsNull = true;
+
+            var response = await Create.ExecuteAsync(UserId, AnalysisRequest());
+
+            var savedAnalysis = Assert.Single(_analyses.Analyses);
+            Assert.Null(response.Result);
+            Assert.Null(response.CalculatedAt);
+            Assert.Null(savedAnalysis.ResultJson);
+            Assert.Null(savedAnalysis.ResultGeneratedAt);
+        }
+
+        [Fact]
         public async Task Recalculate_WhenAnalysisIsSaved_CreatesAVersionWithTodaysResultAndKeepsTheOriginal()
         {
             await WithProfile();
@@ -68,6 +107,57 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
         public async Task Recalculate_WhenAnalysisDoesNotExist_ThrowsNotFoundException()
         {
             await Assert.ThrowsAsync<NotFoundException>(() => Recalculate.ExecuteAsync(Guid.NewGuid(), UserId));
+        }
+
+        [Fact]
+        public async Task Recalculate_WhenAnalysisIsAGroupAnalysis_ThrowsBadRequestWithoutSaving()
+        {
+            var groupAnalysis = new Analysis
+            {
+                UserId = UserId,
+                Name = "Group ranking",
+                GroupScoresJson = "{}",
+                Context = new Context { UserId = UserId, Type = ContextType.Analysis },
+                Zones = [new AnalysisZone { ZoneSlug = FakeZoneRepository.ZoneSlug, Name = "Villa Luro", Order = 1 }]
+            };
+            _analyses.Add(groupAnalysis);
+
+            await Assert.ThrowsAsync<BadRequestException>(() => Recalculate.ExecuteAsync(groupAnalysis.Id, UserId));
+
+            Assert.Single(_analyses.Analyses);
+            Assert.Equal(0, _analyses.SaveCount);
+        }
+
+        [Fact]
+        public async Task Recalculate_WhenSourceIsAVersion_AttachesNewVersionToTheOriginalAnalysis()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest("Cerca del trabajo"));
+            var sourceVersion = await CreateVersion.ExecuteAsync(original.Id, UserId, new()
+            {
+                Criterion = TestRequests.AnalysisCriteria()
+            });
+
+            var recalculated = await Recalculate.ExecuteAsync(sourceVersion.Id, UserId);
+
+            Assert.Equal(original.Id, recalculated.OriginAnalysisId);
+            Assert.Equal("Cerca del trabajo · datos al 14/10", recalculated.Name);
+        }
+
+        [Fact]
+        public async Task Recalculate_WhenResultCalculatorReturnsNull_SavesVersionWithoutResultSnapshot()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
+            _results.ReturnsNull = true;
+
+            var response = await Recalculate.ExecuteAsync(original.Id, UserId);
+
+            var savedVersion = Assert.Single(_analyses.Analyses.Where(analysis => analysis.OriginalAnalysisId == original.Id));
+            Assert.Null(response.Result);
+            Assert.Null(response.CalculatedAt);
+            Assert.Null(savedVersion.ResultJson);
+            Assert.Null(savedVersion.ResultGeneratedAt);
         }
 
         private static AnalysisZoneRequest ZoneWithOrigin(double latitude) =>
@@ -112,6 +202,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
         private sealed class FakeResultCalculator : IAnalysisResultCalculator
         {
             public int? Score { get; set; } = 50;
+            public bool ReturnsNull { get; set; }
 
             // Analyses received, to check what the calculation used
             public List<Analysis> Calculations { get; } = [];
@@ -119,6 +210,9 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
             public Task<ScoresResponse?> CalculateAsync(Analysis analysis, CancellationToken cancellationToken = default)
             {
                 Calculations.Add(analysis);
+                if (ReturnsNull)
+                    return Task.FromResult<ScoresResponse?>(null);
+
                 return Task.FromResult<ScoresResponse?>(new ScoresResponse(
                     "transporte-publico",
                     analysis.Zones.Select(zone => new ScoredZoneResponse(zone.ZoneSlug, zone.Name, Score, [], [], [], null)).ToList(),
@@ -195,6 +289,123 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
         }
 
         [Fact]
+        public async Task CreateVersion_WhenResultCalculatorReturnsNull_SavesVersionWithoutResultSnapshot()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
+            _results.ReturnsNull = true;
+
+            var version = await CreateVersion.ExecuteAsync(original.Id, UserId, new()
+            {
+                Criterion = TestRequests.AnalysisCriteria()
+            });
+
+            var savedVersion = Assert.Single(_analyses.Analyses.Where(analysis => analysis.OriginalAnalysisId == original.Id));
+            Assert.Null(version.Result);
+            Assert.Null(version.CalculatedAt);
+            Assert.Null(savedVersion.ResultJson);
+            Assert.Null(savedVersion.ResultGeneratedAt);
+        }
+
+        [Fact]
+        public async Task CreateVersion_WhenExplicitZonesAreProvided_UsesThemWithoutChangingTheOriginal()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest("Original"));
+            var requestedZone = TestRequests.AnalysisZone(isInitial: false);
+
+            var version = await CreateVersion.ExecuteAsync(original.Id, UserId, new()
+            {
+                Name = "Version with selected zones",
+                Criterion = TestRequests.AnalysisCriteria(),
+                Zones = [requestedZone]
+            });
+
+            var versionZone = Assert.Single(version.Zones);
+            Assert.Equal(requestedZone.Slug, versionZone.Slug);
+            Assert.Equal(requestedZone.Name, versionZone.Name);
+            Assert.False(versionZone.IsInitial);
+            Assert.Equal(original.Id, version.OriginAnalysisId);
+            Assert.True(Assert.Single(_analyses.Analyses.Single(analysis => analysis.Id == original.Id).Zones).IsInitial);
+        }
+
+        [Fact]
+        public async Task CreateVersion_WhenExplicitZoneDoesNotExist_ThrowsNotFoundWithoutSavingVersion()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
+            var analysisCountBeforeVersion = _analyses.Analyses.Count;
+            var saveCountBeforeVersion = _analyses.SaveCount;
+
+            await Assert.ThrowsAsync<NotFoundException>(() => CreateVersion.ExecuteAsync(original.Id, UserId, new()
+            {
+                Criterion = TestRequests.AnalysisCriteria(),
+                Zones = [TestRequests.AnalysisZone("no-existe")]
+            }));
+
+            Assert.Equal(analysisCountBeforeVersion, _analyses.Analyses.Count);
+            Assert.Equal(saveCountBeforeVersion, _analyses.SaveCount);
+        }
+
+        [Fact]
+        public async Task CreateVersion_WhenExplicitZonesContainDuplicates_ThrowsBadRequestWithoutSavingVersion()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
+            var analysisCountBeforeVersion = _analyses.Analyses.Count;
+            var saveCountBeforeVersion = _analyses.SaveCount;
+
+            await Assert.ThrowsAsync<BadRequestException>(() => CreateVersion.ExecuteAsync(original.Id, UserId, new()
+            {
+                Criterion = TestRequests.AnalysisCriteria(),
+                Zones = [TestRequests.AnalysisZone(), TestRequests.AnalysisZone()]
+            }));
+
+            Assert.Equal(analysisCountBeforeVersion, _analyses.Analyses.Count);
+            Assert.Equal(saveCountBeforeVersion, _analyses.SaveCount);
+        }
+
+        [Fact]
+        public async Task CreateVersion_WhenExplicitZonesHaveMultipleInitialZones_ThrowsBadRequestWithoutSavingVersion()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
+            var analysisCountBeforeVersion = _analyses.Analyses.Count;
+            var saveCountBeforeVersion = _analyses.SaveCount;
+
+            await Assert.ThrowsAsync<BadRequestException>(() => CreateVersion.ExecuteAsync(original.Id, UserId, new()
+            {
+                Criterion = TestRequests.AnalysisCriteria(),
+                Zones =
+                [
+                    TestRequests.AnalysisZone(isInitial: true),
+                    TestRequests.AnalysisZone("another-zone", isInitial: true)
+                ]
+            }));
+
+            Assert.Equal(analysisCountBeforeVersion, _analyses.Analyses.Count);
+            Assert.Equal(saveCountBeforeVersion, _analyses.SaveCount);
+        }
+
+        [Fact]
+        public async Task CreateVersion_WhenExplicitZoneOriginIsOutsideTheZone_ThrowsBadRequestWithoutSavingVersion()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
+            var analysisCountBeforeVersion = _analyses.Analyses.Count;
+            var saveCountBeforeVersion = _analyses.SaveCount;
+
+            await Assert.ThrowsAsync<BadRequestException>(() => CreateVersion.ExecuteAsync(original.Id, UserId, new()
+            {
+                Criterion = TestRequests.AnalysisCriteria(),
+                Zones = [ZoneWithOrigin(10)]
+            }));
+
+            Assert.Equal(analysisCountBeforeVersion, _analyses.Analyses.Count);
+            Assert.Equal(saveCountBeforeVersion, _analyses.SaveCount);
+        }
+
+        [Fact]
         public async Task CreateVersion_FromAnotherVersion_StillAttachesToTheOriginal()
         {
             await WithProfile();
@@ -234,6 +445,14 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
         }
 
         [Fact]
+        public async Task List_WhenUserHasNoSavedAnalyses_ReturnsAnEmptyList()
+        {
+            var analyses = await new ListMyAnalyses(_analyses).ExecuteAsync(UserId);
+
+            Assert.Empty(analyses);
+        }
+
+        [Fact]
         public async Task Delete_OriginalAnalysis_AlsoDeletesItsVersions()
         {
             await WithProfile();
@@ -244,6 +463,33 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
             await new DeleteAnalysis(_analyses).ExecuteAsync(original.Id, UserId);
 
             Assert.Equal(other.Id, Assert.Single(_analyses.Analyses).Id);
+        }
+
+        [Fact]
+        public async Task Delete_Version_LeavesTheOriginalAndOtherVersions()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
+            var firstVersion = await CreateVersion.ExecuteAsync(
+                original.Id, UserId, new() { Criterion = TestRequests.AnalysisCriteria() });
+            var secondVersion = await CreateVersion.ExecuteAsync(
+                firstVersion.Id, UserId, new() { Criterion = TestRequests.AnalysisCriteria() });
+
+            await new DeleteAnalysis(_analyses).ExecuteAsync(firstVersion.Id, UserId);
+
+            Assert.Equal(
+                new[] { original.Id, secondVersion.Id },
+                _analyses.Analyses.Select(analysis => analysis.Id));
+        }
+
+        [Fact]
+        public async Task Delete_WhenAnalysisDoesNotExist_ThrowsNotFoundWithoutSaving()
+        {
+            await Assert.ThrowsAsync<NotFoundException>(
+                () => new DeleteAnalysis(_analyses).ExecuteAsync(Guid.NewGuid(), UserId));
+
+            Assert.Empty(_analyses.Analyses);
+            Assert.Equal(0, _analyses.SaveCount);
         }
 
         [Fact]
@@ -260,6 +506,16 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
         }
 
         [Fact]
+        public async Task Rename_WhenAnalysisDoesNotExist_ThrowsNotFoundWithoutSaving()
+        {
+            await Assert.ThrowsAsync<NotFoundException>(() => new RenameAnalysis(_analyses, _clock)
+                .ExecuteAsync(Guid.NewGuid(), UserId, new RenameAnalysisRequest { Name = "New name" }));
+
+            Assert.Empty(_analyses.Analyses);
+            Assert.Equal(0, _analyses.SaveCount);
+        }
+
+        [Fact]
         public async Task Favorite_IsSavedWithoutChangingTheUpdateTime()
         {
             await WithProfile();
@@ -272,6 +528,20 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
             Assert.True(saved.IsFavorite);
             Assert.Equal(original.UpdatedAt, saved.UpdatedAt);
             await Assert.ThrowsAsync<NotFoundException>(() => useCase.ExecuteAsync(original.Id, Guid.NewGuid(), true));
+        }
+
+        [Fact]
+        public async Task Favorite_WhenValueIsAlreadySet_DoesNotSaveAgain()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest("Favorito"));
+            var useCase = new SetAnalysisFavorite(_analyses);
+            await useCase.ExecuteAsync(original.Id, UserId, true);
+            var saveCountAfterFirstChange = _analyses.SaveCount;
+
+            await useCase.ExecuteAsync(original.Id, UserId, true);
+
+            Assert.Equal(saveCountAfterFirstChange, _analyses.SaveCount);
         }
 
         [Fact]
