@@ -21,20 +21,19 @@ public class RevokeInviteLink
         var group = await _groupRepository.GetByIdAsync(groupId, cancellationToken);
         if (group == null) throw new NotFoundException("El grupo no existe.");
 
-        // Validar que el que revoca es el Propietario
+        // Verify that the user revoking the link owns the group.
         bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && p.Role == GroupRole.Owner);
         if (!isOwner)
         {
             throw new ForbiddenException("Solo el propietario puede revocar el enlace de invitación.");
         }
 
-        // La magia está acá: simplemente generamos un nuevo Guid. 
-        // El link viejo ya no encontrará nada en la base de datos.
+        // Generate a new UUID to revoke the old link; its token will no longer match the group.
         group.InviteToken = Guid.NewGuid();
 
         await _groupRepository.UpdateAsync(group, cancellationToken);
 
-        // Devolvemos el nuevo token para que el frontend lo actualice en pantalla
+        // Return the new token so the frontend can update the displayed link.
         return group.InviteToken;
     }
 }

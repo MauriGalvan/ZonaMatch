@@ -355,7 +355,7 @@ class Scraper:
             except Blocked as error:
                 if attempt == len(waits):
                     raise
-                print(f"    Zonaprop no respondio ({error}); esperando {waits[attempt] // 60} min...", flush=True)
+                print(f"    Zonaprop did not respond ({error}); waiting {waits[attempt] // 60} min...", flush=True)
                 time.sleep(waits[attempt])
         self.requests += 1
         page = parse_page(html)
@@ -463,7 +463,7 @@ def slugify(text):
 def read_zones(only):
     file = DATA_DIR / "zones.csv"
     if not file.exists():
-        sys.exit(f"Falta {file}: exportarlo con etl/zonaprop/target_zones.sql (ver MERCADO-ZONAS-DOCKER.bat).")
+        sys.exit(f"Missing {file}: export it with etl/zonaprop/target_zones.sql (see ZONE-MARKET-DOCKER.bat).")
     # zonaprop_slug: the slug to use; partido: for zones without a partido in geo.zonas, to build the fallback
     overrides = {}
     if OVERRIDES_FILE.exists():
@@ -502,7 +502,7 @@ def usd_rate(override):
         with urllib.request.urlopen(request, timeout=30) as response:
             return float(json.loads(response.read())["venta"])
     except (urllib.error.URLError, TimeoutError, KeyError, ValueError) as error:
-        sys.exit(f"No se pudo obtener la cotizacion del dolar ({error}); pasarla con --usd-ars.")
+        sys.exit(f"Could not retrieve the exchange rate ({error}); provide it with --usd-ars.")
 
 
 def room_group(rooms):
@@ -586,8 +586,8 @@ def export(zones, cache_dir, usd_ars):
     write_csv("listings.csv", LISTINGS_HEADER, listing_rows)
     write_csv("unmatched.csv", ["zone_slug", "name", "parent_name", "zonaprop_answer"], unmatched_rows)
     matched = len({row[0] for row in totals_rows})
-    print(f"Exportado ({cache_dir.name}): {matched} zonas con datos, {len(listing_rows)} avisos, "
-          f"{len(unmatched_rows)} zonas sin equivalente en Zonaprop (unmatched.csv). Dolar: {usd_ars}.")
+    print(f"Exported ({cache_dir.name}): {matched} zones with data, {len(listing_rows)} listings, "
+          f"{len(unmatched_rows)} zones without a Zonaprop match (unmatched.csv). USD/ARS: {usd_ars}.")
 
 
 def write_csv(name, header, rows):
@@ -598,35 +598,35 @@ def write_csv(name, header, rows):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Scraper de publicaciones de Zonaprop por zona")
-    parser.add_argument("--delay", type=float, default=3.5, help="segundos promedio entre pedidos")
+    parser = argparse.ArgumentParser(description="Scrape Zonaprop listings by zone")
+    parser.add_argument("--delay", type=float, default=3.5, help="average delay between requests, in seconds")
     parser.add_argument("--max-age-days", type=float, default=7,
-                        help="dias que se sigue completando la misma corrida antes de empezar una nueva")
-    parser.add_argument("--run", default="", help="carpeta de la corrida en datos/zonaprop/cache (AAAA-MM-DD)")
-    parser.add_argument("--only", default="", help="slugs separados por coma")
-    parser.add_argument("--usd-ars", type=float, help="pesos por dolar (por defecto, el MEP del dia)")
-    parser.add_argument("--export-only", action="store_true", help="solo reconstruir los CSV desde la cache")
+                        help="days a run keeps being completed before a new one starts")
+    parser.add_argument("--run", default="", help="run folder in datos/zonaprop/cache (YYYY-MM-DD)")
+    parser.add_argument("--only", default="", help="comma-separated zone slugs")
+    parser.add_argument("--usd-ars", type=float, help="pesos per US dollar (defaults to today's MEP rate)")
+    parser.add_argument("--export-only", action="store_true", help="rebuild CSV files from the cache only")
     args = parser.parse_args()
 
     only = {slug.strip() for slug in args.only.split(",") if slug.strip()}
     zones = read_zones(only)
     cache_dir = run_folder(DATA_DIR / "cache", args.run, timedelta(days=args.max_age_days))
-    print(f"Corrida: {cache_dir}", flush=True)
+    print(f"Run: {cache_dir}", flush=True)
     if not args.export_only:
         scraper = Scraper(cache_dir, args.delay)
         started = time.time()
         try:
             for index, zone in enumerate(zones, 1):
                 matched, location = scraper.scrape_zone(zone)
-                status = f"ok ({location})" if matched else f"sin equivalente ({location or 'otra ubicacion'})"
+                status = f"ok ({location})" if matched else f"no match ({location or 'another location'})"
                 minutes = (time.time() - started) / 60
-                print(f"[{index}/{len(zones)}] {zone['slug']}: {status} - {scraper.requests} pedidos, "
+                print(f"[{index}/{len(zones)}] {zone['slug']}: {status} - {scraper.requests} requests, "
                       f"{minutes:.0f} min", flush=True)
         except Blocked as error:
-            print(f"Zonaprop sigue bloqueando ({error}). Se corta aca; volver a ejecutar mas tarde para retomar.")
+            print(f"Zonaprop keeps blocking ({error}). Stopping here; run it again later to resume.")
             sys.exit(2)
         except KeyboardInterrupt:
-            print("Interrumpido; volver a ejecutar para retomar.")
+            print("Interrupted; run it again to resume.")
             sys.exit(130)
     export(zones, cache_dir, usd_rate(args.usd_ars))
 

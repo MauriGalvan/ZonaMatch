@@ -5,25 +5,25 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Infrastructure.Geo
 {
     // Trip plans from MOTIS (the "motis" container of docker-compose, GET /api/v1/plan), with every leg and its
-    // geometry. Like MotisRuteoClient, it asks for a weekday of the loaded reference week at 8 in the morning and
+    // geometry. Like MotisRoutingClient, it asks for a weekday of the loaded reference week at 8 in the morning and
     // keeps each plan in memory for a day. Of the itineraries MOTIS offers, the best one is kept: the fastest, with
     // every transfer counted as TransferPenaltySeconds more and every public transport leg shorter than five blocks as
     // ShortRidePenaltySeconds more, so a bus for three blocks or an unnecessary transfer does not win by a minute.
     public class MotisRoutePlanner(HttpClient http, IMemoryCache cache, IConfiguration configuration) : IRoutePlanner
     {
-        // Tuesday, March 3, 2026, 8:00 in Buenos Aires (UTC-3), as in MotisRuteoClient
+        // Tuesday, March 3, 2026, 8:00 in Buenos Aires (UTC-3), as in MotisRoutingClient
         private const string DefaultReferenceTime = "2026-03-03T11:00:00Z";
 
         private static readonly TimeSpan PlanLifetime = TimeSpan.FromDays(1);
 
         private const int TransferPenaltySeconds = 300;
 
-        // A ride of five blocks or less (ModosViaje.DistanciaACaminarKm) is better walked
+        // A ride of five blocks or less (TravelModes.WalkingDistanceThresholdKm) is better walked
         private const int ShortRidePenaltySeconds = 600;
 
         // Longest direct walk or bike ride searched (seconds)
@@ -32,7 +32,7 @@ namespace ZonaMatch.Infrastructure.Geo
         private readonly string _referenceTime = configuration["Motis:FechaReferencia"] ?? DefaultReferenceTime;
 
         public async Task<RoutePlan?> PlanAsync(
-            double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, ModoViaje mode,
+            double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, TravelMode mode,
             CancellationToken cancellationToken = default)
         {
             var key = string.Create(CultureInfo.InvariantCulture,
@@ -68,11 +68,11 @@ namespace ZonaMatch.Infrastructure.Geo
         }
 
         // Public transport with walks; the other modes, only the direct trip
-        private static string Modes(ModoViaje mode) => mode switch
+        private static string Modes(TravelMode mode) => mode switch
         {
-            ModoViaje.Auto => "transitModes=&directModes=CAR",
-            ModoViaje.Bici => $"transitModes=&directModes=BIKE&maxDirectTime={MaxDirectSeconds}",
-            ModoViaje.APie => $"transitModes=&directModes=WALK&maxDirectTime={MaxDirectSeconds}",
+            TravelMode.Car => "transitModes=&directModes=CAR",
+            TravelMode.Bicycle => $"transitModes=&directModes=BIKE&maxDirectTime={MaxDirectSeconds}",
+            TravelMode.Walking => $"transitModes=&directModes=WALK&maxDirectTime={MaxDirectSeconds}",
             _ => "transitModes=TRANSIT&directModes=WALK",
         };
 
@@ -97,10 +97,10 @@ namespace ZonaMatch.Infrastructure.Geo
 
         // A public transport leg shorter than five blocks along its path
         private static bool IsShortRide(RouteLeg leg) =>
-            !WalkingModes.Contains(leg.Mode) && leg.Path.Count > 1 && PathKm(leg.Path) <= ModosViaje.DistanciaACaminarKm;
+            !WalkingModes.Contains(leg.Mode) && leg.Path.Count > 1 && PathKm(leg.Path) <= TravelModes.WalkingDistanceThresholdKm;
 
         private static double PathKm(IReadOnlyList<RoutePoint> path) =>
-            path.Zip(path.Skip(1), (a, b) => ModosViaje.DistanciaKm(a.Latitude, a.Longitude, b.Latitude, b.Longitude)).Sum();
+            path.Zip(path.Skip(1), (a, b) => TravelModes.DistanceKm(a.Latitude, a.Longitude, b.Latitude, b.Longitude)).Sum();
 
         // MOTIS names the ends of the trip START and END
         private static string? PlaceName(string? name) => name is null or "START" or "END" ? null : name;

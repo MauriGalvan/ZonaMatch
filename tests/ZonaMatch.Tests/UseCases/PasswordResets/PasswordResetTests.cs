@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Logging.Abstractions;
-using ZonaMatch.Application.DTOs.PasswordResets.Requests;
+﻿using Microsoft.Extensions.Logging.Abstractions;
+using ZonaMatch.Application.DTOs.PasswordReset.Requests;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -11,7 +11,7 @@ namespace ZonaMatch.Tests.UseCases.PasswordResets;
 public class PasswordResetTests
 {
     private readonly Clock _clock = new(new DateTimeOffset(2026, 10, 26, 15, 0, 0, TimeSpan.Zero));
-    private readonly Usuario _user = new() { Email = "ana@example.com", PasswordHash = "hash:vieja" };
+    private readonly User _user = new() { Email = "ana@example.com", PasswordHash = "hash:vieja" };
     private readonly FakeUsers _users = new();
     private readonly FakeResets _resets;
     private readonly FakeEmail _email = new();
@@ -128,10 +128,10 @@ public class PasswordResetTests
 
     private sealed class FakeUsers : IUserRepository
     {
-        public List<Usuario> All { get; } = [];
+        public List<User> All { get; } = [];
         public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(All.Any(u => u.Email == email));
-        public Task<Usuario?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(All.FirstOrDefault(u => u.Email == email));
-        public Task AddAsync(Usuario user, CancellationToken cancellationToken = default) { All.Add(user); return Task.CompletedTask; }
+        public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(All.FirstOrDefault(u => u.Email == email));
+        public Task AddAsync(User user, CancellationToken cancellationToken = default) { All.Add(user); return Task.CompletedTask; }
     }
 
     private sealed class FakeResets(FakeUsers users) : IPasswordResetRepository

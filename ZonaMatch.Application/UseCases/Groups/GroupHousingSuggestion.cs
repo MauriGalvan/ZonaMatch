@@ -1,6 +1,6 @@
 using System.Globalization;
 using ZonaMatch.Domain.Entities;
-using ZonaMatch.Domain.Puntaje;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Groups;
 
@@ -12,25 +12,25 @@ namespace ZonaMatch.Application.UseCases.Groups;
 public sealed record GroupHousingSuggestion(
     string Operation, decimal MonthlyBudget, decimal? MaxPurchaseUsd, string? PropertyType, int? SurfaceM2 = null, int? Rooms = null)
 {
-    public static GroupHousingSuggestion From(IReadOnlyList<Contexto> profiles)
+    public static GroupHousingSuggestion From(IReadOnlyList<Context> profiles)
     {
-        var operation = profiles.Count > 0 && profiles.All(profile => profile.Operacion == Operaciones.Compra)
-            ? Operaciones.Compra
-            : Operaciones.Alquiler;
+        var operation = profiles.Count > 0 && profiles.All(profile => profile.Operation == HousingOperations.Purchase)
+            ? HousingOperations.Purchase
+            : HousingOperations.Rent;
         var sameSearch = profiles
-            .Where(profile => (profile.Operacion == Operaciones.Compra) == (operation == Operaciones.Compra))
+            .Where(profile => (profile.Operation == HousingOperations.Purchase) == (operation == HousingOperations.Purchase))
             .ToArray();
 
-        var monthly = sameSearch.Select(profile => ParseAmount(profile.AlquilerMaximo) ?? 0).Sum();
-        var purchase = operation == Operaciones.Compra ? sameSearch.Sum(profile => profile.CompraMaximaUsd ?? 0) : 0;
+        var monthly = sameSearch.Select(profile => ParseAmount(profile.MaximumRent) ?? 0).Sum();
+        var purchase = operation == HousingOperations.Purchase ? sameSearch.Sum(profile => profile.MaximumPurchasePriceUsd ?? 0) : 0;
         var types = profiles
-            .Select(profile => profile.TipoVivienda)
+            .Select(profile => profile.HousingType)
             .OfType<string>()
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        var surface = profiles.Max(profile => profile.SuperficieM2);
-        var rooms = profiles.Max(profile => profile.Ambientes);
+        var surface = profiles.Max(profile => profile.AreaM2);
+        var rooms = profiles.Max(profile => profile.Rooms);
 
         return new GroupHousingSuggestion(
             operation, monthly, purchase > 0 ? purchase : null, types.Length == 1 ? types[0] : null, surface, rooms);

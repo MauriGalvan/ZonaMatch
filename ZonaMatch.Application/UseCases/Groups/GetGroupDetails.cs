@@ -1,5 +1,5 @@
-using System.Globalization;
-using ZonaMatch.Application.DTOs.Group;
+﻿using System.Globalization;
+using ZonaMatch.Application.DTOs.Group.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
@@ -10,13 +10,13 @@ namespace ZonaMatch.Application.UseCases.Groups;
 public sealed class GetGroupDetails
 {
     private readonly IGroupRepository _groups;
-    private readonly IPerfilRepository _profiles;
-    private readonly ICriterioRepository _criteria;
+    private readonly IProfileRepository _profiles;
+    private readonly ICriterionRepository _criteria;
 
     public GetGroupDetails(
         IGroupRepository groups,
-        IPerfilRepository profiles,
-        ICriterioRepository criteria)
+        IProfileRepository profiles,
+        ICriterionRepository criteria)
     {
         _groups = groups;
         _profiles = profiles;
@@ -38,12 +38,12 @@ public sealed class GetGroupDetails
             .Select(participant => participant.UserId)
             .Distinct()
             .ToArray();
-        var profiles = await _profiles.ObtenerDeUsuariosAsync(participantUserIds, cancellationToken);
-        var profilesByUserId = profiles.ToDictionary(profile => profile.UsuarioId);
-        var catalog = await _criteria.ListarAsync(cancellationToken);
+        var profiles = await _profiles.GetByUserIdsAsync(participantUserIds, cancellationToken);
+        var profilesByUserId = profiles.ToDictionary(profile => profile.UserId);
+        var catalog = await _criteria.ListAsync(cancellationToken);
         var criteria = catalog
-            .Where(criterion => criterion.Activo)
-            .Select(criterion => new GroupCriterionResponse(criterion.Id, criterion.Nombre))
+            .Where(criterion => criterion.IsActive)
+            .Select(criterion => new GroupCriterionResponse(criterion.Id, criterion.Name))
             .ToArray();
 
         var participants = group.Participants
@@ -52,9 +52,9 @@ public sealed class GetGroupDetails
             .Select(participant =>
             {
                 profilesByUserId.TryGetValue(participant.UserId, out var profile);
-                var preferences = profile?.Criterios.ToDictionary(
-                    criterion => criterion.CriterioId,
-                    criterion => (string?)FormatPriority(criterion.Prioridad),
+                var preferences = profile?.Criteria.ToDictionary(
+                    criterion => criterion.CriterionId,
+                    criterion => (string?)FormatPriority(criterion.Priority),
                     StringComparer.Ordinal)
                     ?? new Dictionary<string, string?>(StringComparer.Ordinal);
                 var restrictionCount = CountRestrictions(profile);
@@ -68,20 +68,20 @@ public sealed class GetGroupDetails
                     participant.Role == GroupRole.Owner ? "Organizador" : "Invitado",
                     new GroupParticipantStatsResponse(
                         preferences.Count,
-                        profile?.Puntos.Count ?? 0,
+                        profile?.Places.Count ?? 0,
                         restrictionCount),
                     preferences,
-                    profile?.Puntos
-                        .OrderBy(point => point.Orden)
+                    profile?.Places
+                        .OrderBy(point => point.Order)
                         .Select(point => new GroupParticipantPointResponse(
                             point.Id,
-                            point.Nombre,
-                            point.Direccion,
+                            point.Name,
+                            point.Address,
                             point.Latitude,
                             point.Longitude,
-                            point.Tipo,
-                            point.Prioridad,
-                            point.TiempoMax))
+                            point.Type,
+                            point.Priority,
+                            point.MaximumTravelTime))
                         .ToArray() ?? []);
             })
             .ToArray();
@@ -96,9 +96,9 @@ public sealed class GetGroupDetails
     }
 
     private static GroupRestrictionsResponse BuildRestrictions(
-        IReadOnlyList<Contexto> profiles,
+        IReadOnlyList<Context> profiles,
         IReadOnlyList<GroupParticipantResponse> participants,
-        IReadOnlyDictionary<Guid, Contexto> profilesByUserId)
+        IReadOnlyDictionary<Guid, Context> profilesByUserId)
     {
         var housing = GroupHousingSuggestion.From(profiles);
         return new GroupRestrictionsResponse(
@@ -112,23 +112,23 @@ public sealed class GetGroupDetails
             housing.Rooms);
     }
 
-    private static int CountRestrictions(Contexto? profile)
+    private static int CountRestrictions(Context? profile)
     {
         if (profile is null)
             return 0;
 
-        var rentLimit = string.IsNullOrWhiteSpace(profile.AlquilerMaximo) ? 0 : 1;
-        var purchaseLimit = profile.CompraMaximaUsd is > 0 ? 1 : 0;
-        var mobility = profile.Movilidad is { Length: > 0 } ? 1 : 0;
-        var pets = profile.Mascotas is { Length: > 0 } ? 1 : 0;
-        var travelTimeLimits = profile.Puntos.Count(point => !string.IsNullOrWhiteSpace(point.TiempoMax));
+        var rentLimit = string.IsNullOrWhiteSpace(profile.MaximumRent) ? 0 : 1;
+        var purchaseLimit = profile.MaximumPurchasePriceUsd is > 0 ? 1 : 0;
+        var mobility = profile.Mobility is { Length: > 0 } ? 1 : 0;
+        var pets = profile.Pets is { Length: > 0 } ? 1 : 0;
+        var travelTimeLimits = profile.Places.Count(point => !string.IsNullOrWhiteSpace(point.MaximumTravelTime));
         return rentLimit + purchaseLimit + mobility + pets + travelTimeLimits;
     }
 
-    private static string GetTravelTimesText(IReadOnlyList<Contexto> profiles)
+    private static string GetTravelTimesText(IReadOnlyList<Context> profiles)
     {
         var hasTravelTimeLimits = profiles.Any(profile =>
-            profile.Puntos.Any(point => !string.IsNullOrWhiteSpace(point.TiempoMax)));
+            profile.Places.Any(point => !string.IsNullOrWhiteSpace(point.MaximumTravelTime)));
 
         return hasTravelTimeLimits
             ? "Cada uno mantiene sus tiempos máximos"
@@ -137,14 +137,14 @@ public sealed class GetGroupDetails
 
     private static string GetPoiText(
         IReadOnlyList<GroupParticipantResponse> participants,
-        IReadOnlyDictionary<Guid, Contexto> profilesByUserId)
+        IReadOnlyDictionary<Guid, Context> profilesByUserId)
     {
         var summaries = participants
             .Select(participant => new
             {
                 participant.UserId,
                 participant.Name,
-                Count = profilesByUserId.TryGetValue(participant.UserId, out var profile) ? profile.Puntos.Count : 0,
+                Count = profilesByUserId.TryGetValue(participant.UserId, out var profile) ? profile.Places.Count : 0,
             })
             .Where(summary => summary.Count > 0)
             .ToArray();

@@ -39,6 +39,7 @@ namespace ZonaMatch.Api.ExceptionHandling
                 ForbiddenException => (StatusCodes.Status403Forbidden, exception.Message),
                 NotFoundException => (StatusCodes.Status404NotFound, exception.Message),
                 BadRequestException => (StatusCodes.Status400BadRequest, exception.Message),
+                BadGatewayException => (StatusCodes.Status502BadGateway, exception.Message),
                 // External services are unavailable, such as the email provider.
                 ServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, exception.Message),
                 // Database unreachable, connection refused, timeouts...
@@ -46,8 +47,11 @@ namespace ZonaMatch.Api.ExceptionHandling
                 _ => (StatusCodes.Status500InternalServerError, "Ocurrio un error inesperado.")
             };
 
+            // Do not log the external exception: reverse-geocoding requests can contain the user's coordinates.
+            if (exception is BadGatewayException)
+                _logger.LogWarning("External service unavailable on {Method} {Path}", httpContext.Request.Method, httpContext.Request.Path);
             // Expected business errors are not worth an Error log entry
-            if (status >= StatusCodes.Status500InternalServerError)
+            else if (status >= StatusCodes.Status500InternalServerError)
                 _logger.LogError(exception, "Unhandled exception on {Method} {Path}", httpContext.Request.Method, httpContext.Request.Path);
             else
                 _logger.LogInformation("Request rejected ({Status}): {Message}", status, exception.Message);
@@ -63,7 +67,9 @@ namespace ZonaMatch.Api.ExceptionHandling
                     Status = status,
                     Title = title,
                     // Internal details only while developing: never leak them in production
-                    Detail = _environment.IsDevelopment() && status >= StatusCodes.Status500InternalServerError
+                    Detail = _environment.IsDevelopment()
+                        && status >= StatusCodes.Status500InternalServerError
+                        && exception is not BadGatewayException
                         ? exception.ToString()
                         : null
                 }

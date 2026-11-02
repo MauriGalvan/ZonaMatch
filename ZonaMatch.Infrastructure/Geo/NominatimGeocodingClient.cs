@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
-using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models.Geolocation;
 
 namespace ZonaMatch.Infrastructure.Geo
 {
@@ -10,12 +10,12 @@ namespace ZonaMatch.Infrastructure.Geo
     // identifying User-Agent (set where the HttpClient is registered), max 1 request/second, cache results.
     public class NominatimGeocodingClient : IGeocodingClient
     {
-        private static readonly TimeSpan IntervaloMinimo = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan CacheDuracion = TimeSpan.FromHours(24);
+        private static readonly TimeSpan MinimumRequestInterval = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(24);
 
         // Shared by every instance (the typed HttpClient is transient) to honor the 1 req/s limit globally
-        private static readonly SemaphoreSlim Turno = new(1, 1);
-        private static DateTimeOffset _ultimaLlamada = DateTimeOffset.MinValue;
+        private static readonly SemaphoreSlim RequestLock = new(1, 1);
+        private static DateTimeOffset _lastRequestAt = DateTimeOffset.MinValue;
 
         private readonly HttpClient _http;
         private readonly IMemoryCache _cache;
@@ -26,80 +26,80 @@ namespace ZonaMatch.Infrastructure.Geo
             _cache = cache;
         }
 
-        public async Task<DireccionGeocodificadaDto?> ReversaAsync(
-            double latitud, double longitud, CancellationToken cancellationToken = default)
+        public async Task<GeocodedAddress?> ReverseAsync(
+            double latitude, double longitude, CancellationToken cancellationToken = default)
         {
             // ~11 m precision: re-clicking the same spot is served from cache
-            var cacheKey = string.Create(CultureInfo.InvariantCulture, $"nominatim:{latitud:F4}:{longitud:F4}");
+            var cacheKey = string.Create(CultureInfo.InvariantCulture, $"nominatim:{latitude:F4}:{longitude:F4}");
 
-            if (_cache.TryGetValue(cacheKey, out DireccionGeocodificadaDto? cached))
-                return cached;
+            if (_cache.TryGetValue(cacheKey, out GeocodedAddress? cachedAddress))
+                return cachedAddress;
 
-            var resultado = await ConsultarAsync(latitud, longitud, cancellationToken);
-            _cache.Set(cacheKey, resultado, CacheDuracion);
-            return resultado;
+            var address = await QueryAsync(latitude, longitude, cancellationToken);
+            _cache.Set(cacheKey, address, CacheDuration);
+            return address;
         }
 
-        private async Task<DireccionGeocodificadaDto?> ConsultarAsync(double latitud, double longitud, CancellationToken ct)
+        private async Task<GeocodedAddress?> QueryAsync(double latitude, double longitude, CancellationToken cancellationToken)
         {
             var url = string.Create(CultureInfo.InvariantCulture,
-                $"reverse?format=jsonv2&addressdetails=1&namedetails=1&zoom=18&accept-language=es&lat={latitud}&lon={longitud}");
+                $"reverse?format=jsonv2&addressdetails=1&namedetails=1&zoom=18&accept-language=es&lat={latitude}&lon={longitude}");
 
-            await Turno.WaitAsync(ct);
+            await RequestLock.WaitAsync(cancellationToken);
             try
             {
-                var espera = _ultimaLlamada + IntervaloMinimo - DateTimeOffset.UtcNow;
-                if (espera > TimeSpan.Zero)
-                    await Task.Delay(espera, ct);
+                var waitDuration = _lastRequestAt + MinimumRequestInterval - DateTimeOffset.UtcNow;
+                if (waitDuration > TimeSpan.Zero)
+                    await Task.Delay(waitDuration, cancellationToken);
 
                 try
                 {
-                    using var response = await _http.GetAsync(url, ct);
+                    using var response = await _http.GetAsync(url, cancellationToken);
                     response.EnsureSuccessStatusCode();
 
-                    await using var stream = await response.Content.ReadAsStreamAsync(ct);
-                    using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-                    return Mapear(doc.RootElement);
+                    await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+                    return MapAddress(document.RootElement);
                 }
                 finally
                 {
-                    _ultimaLlamada = DateTimeOffset.UtcNow;
+                    _lastRequestAt = DateTimeOffset.UtcNow;
                 }
             }
             finally
             {
-                Turno.Release();
+                RequestLock.Release();
             }
         }
 
-        private static DireccionGeocodificadaDto? Mapear(JsonElement raiz)
+        private static GeocodedAddress? MapAddress(JsonElement root)
         {
             // Nominatim answers 200 with {"error": "Unable to geocode"} when there is nothing near the point
-            if (raiz.ValueKind != JsonValueKind.Object || raiz.TryGetProperty("error", out _))
+            if (root.ValueKind != JsonValueKind.Object || root.TryGetProperty("error", out _))
                 return null;
 
-            raiz.TryGetProperty("address", out var address);
-            raiz.TryGetProperty("namedetails", out var nombres);
+            root.TryGetProperty("address", out var address);
+            root.TryGetProperty("namedetails", out var nameDetails);
 
-            var calle = Texto(address, "road") ?? Texto(address, "pedestrian") ?? Texto(address, "footway");
+            var street = GetStringProperty(address, "road") ?? GetStringProperty(address, "pedestrian") ?? GetStringProperty(address, "footway");
 
-            return new DireccionGeocodificadaDto(
-                Nombre: Texto(raiz, "name") ?? Texto(nombres, "name"),
-                Calle: calle,
-                Altura: Texto(address, "house_number"),
-                Localidad: Texto(address, "suburb") ?? Texto(address, "city_district") ?? Texto(address, "town")
-                           ?? Texto(address, "village") ?? Texto(address, "city") ?? Texto(address, "neighbourhood"),
-                Provincia: Texto(address, "state"),
-                CodigoPostal: Texto(address, "postcode"),
-                DireccionCompleta: Texto(raiz, "display_name"));
+            return new GeocodedAddress(
+                Name: GetStringProperty(root, "name") ?? GetStringProperty(nameDetails, "name"),
+                Street: street,
+                StreetNumber: GetStringProperty(address, "house_number"),
+                Locality: GetStringProperty(address, "suburb") ?? GetStringProperty(address, "city_district") ?? GetStringProperty(address, "town")
+                           ?? GetStringProperty(address, "village") ?? GetStringProperty(address, "city") ?? GetStringProperty(address, "neighbourhood"),
+                Province: GetStringProperty(address, "state"),
+                PostalCode: GetStringProperty(address, "postcode"),
+                FullAddress: GetStringProperty(root, "display_name"));
         }
 
-        private static string? Texto(JsonElement elemento, string propiedad) =>
-            elemento.ValueKind == JsonValueKind.Object
-            && elemento.TryGetProperty(propiedad, out var valor)
-            && valor.ValueKind == JsonValueKind.String
-            && !string.IsNullOrWhiteSpace(valor.GetString())
-                ? valor.GetString()
+        private static string? GetStringProperty(JsonElement element, string propertyName) =>
+            element.ValueKind == JsonValueKind.Object
+            && element.TryGetProperty(propertyName, out var propertyValue)
+            && propertyValue.ValueKind == JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(propertyValue.GetString())
+                ? propertyValue.GetString()
                 : null;
     }
 }

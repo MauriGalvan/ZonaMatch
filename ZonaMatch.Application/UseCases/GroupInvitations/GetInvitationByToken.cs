@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using ZonaMatch.Application.DTOs.GroupInvitation;
+using ZonaMatch.Application.DTOs.GroupInvitation.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 namespace ZonaMatch.Application.UseCases.GroupInvitations;
@@ -27,7 +27,7 @@ public class GetInvitationByToken
         return new InvitationDetailsResponse
         {
             GroupId = invitation.GroupId,
-            // Esto no da error porque en el Repositorio usamos el .Include(i => i.Group)
+            // The repository includes the related group with Include(i => i.Group).
             GroupName = invitation.Group.Name,
             Status = invitation.Status.ToString(),
             ExpiresAt = invitation.ExpiresAt

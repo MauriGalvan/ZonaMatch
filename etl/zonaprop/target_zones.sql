@@ -1,9 +1,9 @@
--- Zones the Zonaprop scraper looks up: every chosen zone below partido/comuna level (CABA barrios, PBA localidades
--- and their barrios), with the partido or "CABA" that Zonaprop shows next to the location name.
+-- Zones looked up by the Zonaprop scraper: each chosen zone below district/commune level (CABA neighborhoods,
+-- Buenos Aires province localities and their neighborhoods), with the district or "CABA" shown by Zonaprop.
 -- CABA barrios go first so a partial run already covers the city.
--- PBA barrios inside a localidad are left out: Zonaprop rarely knows them and, when it does, the sample is tiny.
--- calculate_market.sql gives them the averages of their localidad (source 'zonaprop-inherited').
--- Used by MERCADO-ZONAS-DOCKER.bat: psql --csv < target_zones.sql > datos\zonaprop\zones.csv
+-- Buenos Aires province neighborhoods inside a locality are omitted: Zonaprop rarely lists them, and the sample
+-- is tiny when it does. calculate_market.sql assigns them their locality's averages (source 'zonaprop-inherited').
+-- Used by ZONE-MARKET-DOCKER.bat: psql --csv < target_zones.sql > datos\zonaprop\zones.csv
 SELECT z.slug,
        z.nombre AS name,
        z.nivel AS level,

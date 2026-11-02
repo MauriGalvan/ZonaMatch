@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.Notifications.Responses;
+﻿using ZonaMatch.Application.DTOs.Notification.Responses;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.Notifications

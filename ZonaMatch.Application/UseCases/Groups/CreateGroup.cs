@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
-using ZonaMatch.Application.DTOs.Group;
+using ZonaMatch.Application.DTOs.Group.Requests;
+using ZonaMatch.Application.DTOs.Group.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
@@ -20,7 +20,7 @@ public class CreateGroup
 
     public async Task<GroupResponse> ExecuteAsync(CreateGroupRequest request, Guid userId, CancellationToken cancellationToken)
     {
-        var nuevoGrupo = new Group
+        var newGroup = new Group
         {
             Name = request.Name,
             CreatedAt = DateTime.UtcNow,
@@ -35,13 +35,13 @@ public class CreateGroup
                 }
         };
 
-        await _groupRepository.AddAsync(nuevoGrupo, cancellationToken);
+        await _groupRepository.AddAsync(newGroup, cancellationToken);
 
         return new GroupResponse
         {
-            Id = nuevoGrupo.Id,
-            Name = nuevoGrupo.Name,
-            CreatedAt = nuevoGrupo.CreatedAt
+            Id = newGroup.Id,
+            Name = newGroup.Name,
+            CreatedAt = newGroup.CreatedAt
         };
     }
 }

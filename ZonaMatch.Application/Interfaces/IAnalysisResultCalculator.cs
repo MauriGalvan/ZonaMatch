@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Scoring.Responses;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.Interfaces
@@ -7,6 +7,6 @@ namespace ZonaMatch.Application.Interfaces
     public interface IAnalysisResultCalculator
     {
         // Null when the zones cannot be scored (no data loaded for them): the analysis is saved without a result.
-        Task<PuntajesDto?> CalculateAsync(Analisis analysis, CancellationToken cancellationToken = default);
+        Task<ScoresResponse?> CalculateAsync(Analysis analysis, CancellationToken cancellationToken = default);
     }
 }
