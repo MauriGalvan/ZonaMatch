@@ -1,8 +1,8 @@
 namespace ZonaMatch.Application.DTOs.ZoneIndicators.Responses;
 
 public sealed record ZoneConditionsResponse(
-    double? PorcentajeHogaresNbi,
-    double? PorcentajeHogaresHacinamiento,
-    double? PorcentajeHogaresAlquilan,
-    double? PorcentajeCoberturaSalud,
-    double? PorcentajeUniversitario);
+    double? HouseholdsWithUnmetBasicNeedsPercentage,
+    double? OvercrowdedHouseholdsPercentage,
+    double? RentingHouseholdsPercentage,
+    double? HealthCoveragePercentage,
+    double? UniversityEducationPercentage);

@@ -2,9 +2,9 @@ namespace ZonaMatch.Application.DTOs.ZoneIndicators.Responses;
 
 public sealed record ZonePopulationResponse(
     int Total,
-    double? DensidadHabitantesKm2,
-    int Hogares,
-    int Viviendas,
-    double? PorcentajeMenores15,
-    double? Porcentaje15a64,
-    double? Porcentaje65yMas);
+    double? PopulationDensityPerKm2,
+    int Households,
+    int Dwellings,
+    double? Under15Percentage,
+    double? Age15To64Percentage,
+    double? Over65Percentage);

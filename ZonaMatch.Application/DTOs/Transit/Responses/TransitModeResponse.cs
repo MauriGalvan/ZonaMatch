@@ -1,10 +1,10 @@
 namespace ZonaMatch.Application.DTOs.Transit.Responses;
 
-// Mode values are colectivo, tren, or subte.
+// Mode values use the existing transit mode codes.
 public sealed record TransitModeResponse(
-    string Modo,
-    int Paradas,
-    int CantidadLineas,
-    IReadOnlyList<TransitTimeWindowResponse> Franjas,
+    string Mode,
+    int Stops,
+    int LineCount,
+    IReadOnlyList<TransitTimeWindowResponse> TimeWindows,
     // Lines with the most service during the morning peak come first.
-    IReadOnlyList<TransitLineResponse> Lineas);
+    IReadOnlyList<TransitLineResponse> Lines);
