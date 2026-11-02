@@ -19,12 +19,12 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
         private readonly FakeProfileRepository _profiles = new();
         private readonly FakeAnalysisRepository _analyses = new();
         private readonly FakeCriterionRepository _criteria = new();
-        private readonly FakeZoneRepository _zonas = new();
+        private readonly FakeZoneRepository _zones = new();
         private readonly FixedTimeProvider _clock = new(CurrentTime);
         private readonly FakeResultCalculator _results = new();
 
-        private CreateAnalysis Create => new(_analyses, _profiles, _zonas, _clock, _results);
-        private CreateAnalysisVersion CreateVersion => new(_analyses, _criteria, _zonas, _clock, _results);
+        private CreateAnalysis Create => new(_analyses, _profiles, _zones, _clock, _results);
+        private CreateAnalysisVersion CreateVersion => new(_analyses, _criteria, _zones, _clock, _results);
         private RecalculateAnalysis Recalculate => new(_analyses, _results, _clock);
 
         private async Task WithProfile(string criterion = "seguridad", string priority = "alta") =>
@@ -70,7 +70,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
             await Assert.ThrowsAsync<NotFoundException>(() => Recalculate.ExecuteAsync(Guid.NewGuid(), UserId));
         }
 
-        private static AnalysisZoneRequest ZonaConOrigen(double latitude) =>
+        private static AnalysisZoneRequest ZoneWithOrigin(double latitude) =>
             new()
             {
                 Slug = FakeZoneRepository.ZoneSlug, Name = "Villa Luro, CABA", IsInitial = true,
@@ -82,7 +82,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
         {
             await WithProfile();
 
-            var dto = await Create.ExecuteAsync(UserId, AnalysisRequest("Con punto", ZonaConOrigen(-34.63)));
+            var dto = await Create.ExecuteAsync(UserId, AnalysisRequest("Con punto", ZoneWithOrigin(-34.63)));
 
             Assert.Equal(new AnalysisZoneOriginResponse(-34.63, -58.5), Assert.Single(dto.Zones).Origin);
             var calculated = Assert.Single(Assert.Single(_results.Calculations).Zones);
@@ -94,7 +94,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
         {
             await WithProfile();
 
-            await Assert.ThrowsAsync<BadRequestException>(() => Create.ExecuteAsync(UserId, AnalysisRequest("Afuera", ZonaConOrigen(10))));
+            await Assert.ThrowsAsync<BadRequestException>(() => Create.ExecuteAsync(UserId, AnalysisRequest("Afuera", ZoneWithOrigin(10))));
             Assert.Empty(_analyses.Analyses);
         }
 
@@ -102,7 +102,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
         public async Task Recalculate_KeepsTheStartingPointsOfTheZones()
         {
             await WithProfile();
-            var original = await Create.ExecuteAsync(UserId, AnalysisRequest("Con punto", ZonaConOrigen(-34.63)));
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest("Con punto", ZoneWithOrigin(-34.63)));
 
             var recalculated = await Recalculate.ExecuteAsync(original.Id, UserId);
 

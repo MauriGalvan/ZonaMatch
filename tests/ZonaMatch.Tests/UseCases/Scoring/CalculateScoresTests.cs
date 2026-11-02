@@ -151,7 +151,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         {
             public bool ContainsStartingPoint { get; set; } = true;
 
-            public Task<string?> GetBySlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default) =>
+            public Task<string?> GetBySlugAsync(string slug, double tolerance, CancellationToken cancellationToken = default) =>
                 Task.FromResult<string?>(null);
 
             public Task<bool> ExistsAsync(string slug, CancellationToken cancellationToken = default) => Task.FromResult(true);
@@ -159,7 +159,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             public Task<bool> ContainsPointAsync(string slug, double latitude, double longitude, CancellationToken cancellationToken = default) =>
                 Task.FromResult(ContainsStartingPoint);
 
-            public Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(string fragmento, int limite, CancellationToken cancellationToken = default) =>
+            public Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(string searchFragment, int resultLimit, CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZoneSearchResultResponse>>([]);
         }
       
