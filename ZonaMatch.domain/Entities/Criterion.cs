@@ -9,17 +9,17 @@ namespace ZonaMatch.Domain.Entities
         // Slug used as a foreign key in contexto_criterios and as an API key ("seguridad", "movilidad", ...).
         public string Id { get; set; } = string.Empty;
 
-        public string Nombre { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
-        public string Descripcion { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
 
-        // Clase de icono de PrimeIcons, ej: "pi pi-shield"
-        public string Icono { get; set; } = string.Empty;
+        // PrimeIcons CSS class, for example: "pi pi-shield".
+        public string IconCssClass { get; set; } = string.Empty;
 
         // Display order in the wizard.
-        public int Orden { get; set; }
+        public int Order { get; set; }
 
         // Hide a criterion from the wizard without deleting existing analyses that use it.
-        public bool Activo { get; set; } = true;
+        public bool IsActive { get; set; } = true;
     }
 }

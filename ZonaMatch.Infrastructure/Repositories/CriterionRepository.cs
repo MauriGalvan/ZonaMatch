@@ -16,8 +16,8 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         public async Task<IReadOnlyList<Criterion>> ListAsync(CancellationToken cancellationToken = default)
         {
-            return await _context.Criterios
-                .OrderBy(c => c.Orden)
+            return await _context.Criteria
+                .OrderBy(criterion => criterion.Order)
                 .ToListAsync(cancellationToken);
         }
     }

@@ -96,7 +96,7 @@ public static class AnalysisCriteriaBuilder
             if (!criteriaById.TryGetValue(id, out var criterion))
                 throw new BadRequestException($"Criterio desconocido: {id}.");
 
-            if (!criterion.Activo)
+            if (!criterion.IsActive)
                 throw new BadRequestException($"Criterio no disponible: {id}.");
 
             if (priority is null || !ValidPriorities.Contains(priority))

@@ -34,7 +34,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Person> People => Set<Person>();
         public DbSet<ContextPlace> ContextPlaces => Set<ContextPlace>();
         public DbSet<ContextCriterion> ContextCriteria => Set<ContextCriterion>();
-        public DbSet<Criterion> Criterios => Set<Criterion>();
+        public DbSet<Criterion> Criteria => Set<Criterion>();
         public DbSet<ZoneMarket> ZoneMarkets => Set<ZoneMarket>();
         public DbSet<SavedZone> SavedZones => Set<SavedZone>();
         public DbSet<UserNotification> Notifications => Set<UserNotification>();
@@ -298,12 +298,12 @@ namespace ZonaMatch.Infrastructure.Data
                 e.ToTable("criterios");
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Id).HasMaxLength(40);
-                e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
-                e.Property(x => x.Descripcion).HasMaxLength(200).IsRequired();
-                e.Property(x => x.Icono).HasMaxLength(40).IsRequired();
-                e.Property(x => x.Orden);
-                e.Property(x => x.Activo);
-                e.HasIndex(x => x.Orden);
+                e.Property(x => x.Name).HasColumnName("nombre").HasMaxLength(50).IsRequired();
+                e.Property(x => x.Description).HasColumnName("descripcion").HasMaxLength(200).IsRequired();
+                e.Property(x => x.IconCssClass).HasColumnName("icono").HasMaxLength(40).IsRequired();
+                e.Property(x => x.Order).HasColumnName("orden");
+                e.Property(x => x.IsActive).HasColumnName("activo");
+                e.HasIndex(x => x.Order);
             });
 
             // Real estate market per zone, operation and property type, loaded by the ETL (etl/zonaprop/)

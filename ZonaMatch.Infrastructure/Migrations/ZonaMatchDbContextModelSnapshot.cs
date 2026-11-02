@@ -608,35 +608,35 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("id");
 
-                    b.Property<bool>("Activo")
-                        .HasColumnType("boolean")
-                        .HasColumnName("activo");
-
-                    b.Property<string>("Descripcion")
+                    b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("descripcion");
 
-                    b.Property<string>("Icono")
+                    b.Property<string>("IconCssClass")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
                         .HasColumnName("icono");
 
-                    b.Property<string>("Nombre")
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("activo");
+
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("nombre");
 
-                    b.Property<int>("Orden")
+                    b.Property<int>("Order")
                         .HasColumnType("integer")
                         .HasColumnName("orden");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Orden");
+                    b.HasIndex("Order");
 
                     b.ToTable("criterios", "app");
                 });

@@ -18,9 +18,9 @@ public sealed class ListCriteria
         var criteria = await _criteria.ListAsync(cancellationToken);
 
         return criteria
-            .Where(criterion => criterion.Activo)
+            .Where(criterion => criterion.IsActive)
             .Select(criterion => new CriterionResponse(
-                criterion.Id, criterion.Nombre, criterion.Descripcion, criterion.Icono, criterion.Orden))
+                criterion.Id, criterion.Name, criterion.Description, criterion.IconCssClass, criterion.Order))
             .ToList();
     }
 }

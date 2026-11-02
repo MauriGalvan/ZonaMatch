@@ -42,8 +42,8 @@ public sealed class GetGroupDetails
         var profilesByUserId = profiles.ToDictionary(profile => profile.UserId);
         var catalog = await _criteria.ListAsync(cancellationToken);
         var criteria = catalog
-            .Where(criterion => criterion.Activo)
-            .Select(criterion => new GroupCriterionResponse(criterion.Id, criterion.Nombre))
+            .Where(criterion => criterion.IsActive)
+            .Select(criterion => new GroupCriterionResponse(criterion.Id, criterion.Name))
             .ToArray();
 
         var participants = group.Participants
