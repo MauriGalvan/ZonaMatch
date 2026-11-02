@@ -1,6 +1,6 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using ZonaMatch.Application.DTOs.Zones.Responses;
+using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Infrastructure.Data;
 

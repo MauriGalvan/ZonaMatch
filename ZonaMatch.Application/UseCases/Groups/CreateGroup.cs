@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using ZonaMatch.Application.DTOs.Groups.Requests;
-using ZonaMatch.Application.DTOs.Groups.Responses;
+using ZonaMatch.Application.DTOs.Group.Requests;
+using ZonaMatch.Application.DTOs.Group.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;

@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.Questions.Requests;
+﻿using ZonaMatch.Application.DTOs.Question.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Questions;

@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs.Geolocation.Requests;
 using ZonaMatch.Application.DTOs.Geolocation.Responses;
-using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
+using ZonaMatch.Application.DTOs.PointOfInterest.Responses;
 using ZonaMatch.Application.UseCases.Geolocation;
 
 namespace ZonaMatch.Api.Controllers;

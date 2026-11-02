@@ -1,5 +1,5 @@
-using System.Text;
-using ZonaMatch.Application.DTOs.GuestReports.Requests;
+﻿using System.Text;
+using ZonaMatch.Application.DTOs.GuestReport.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.GuestReports;

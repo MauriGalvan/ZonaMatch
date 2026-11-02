@@ -1,5 +1,5 @@
-using ZonaMatch.Application.DTOs;
-using ZonaMatch.Application.DTOs.Zones.Responses;
+﻿using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 

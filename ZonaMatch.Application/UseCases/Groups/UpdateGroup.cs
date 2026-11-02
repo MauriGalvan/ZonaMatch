@@ -1,5 +1,5 @@
 ﻿using System;
-using ZonaMatch.Application.DTOs.Groups.Requests;
+using ZonaMatch.Application.DTOs.Group.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Enums;

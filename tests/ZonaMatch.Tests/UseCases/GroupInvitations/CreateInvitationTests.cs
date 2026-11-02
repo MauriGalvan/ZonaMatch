@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using ZonaMatch.Application.DTOs.GroupInvitations.Requests;
+using ZonaMatch.Application.DTOs.GroupInvitation.Requests;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Domain.Entities;

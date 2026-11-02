@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.Reviews.Responses;
+﻿using ZonaMatch.Application.DTOs.Review.Responses;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.Reviews

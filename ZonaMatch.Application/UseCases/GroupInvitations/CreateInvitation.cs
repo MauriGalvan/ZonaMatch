@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using ZonaMatch.Application.DTOs.GroupInvitations.Requests;
+using ZonaMatch.Application.DTOs.GroupInvitation.Requests;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;

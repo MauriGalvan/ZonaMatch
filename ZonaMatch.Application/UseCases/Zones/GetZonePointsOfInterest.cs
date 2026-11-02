@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
+﻿using ZonaMatch.Application.DTOs.PointOfInterest.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Policies;

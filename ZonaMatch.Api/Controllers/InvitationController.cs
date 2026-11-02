@@ -2,9 +2,9 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using ZonaMatch.Application.DTOs.GroupInvitations.Requests;
-using ZonaMatch.Application.DTOs.GroupInvitations.Responses;
-using ZonaMatch.Application.DTOs.GroupLinks.Responses;
+using ZonaMatch.Application.DTOs.GroupInvitation.Requests;
+using ZonaMatch.Application.DTOs.GroupInvitation.Responses;
+using ZonaMatch.Application.DTOs.GroupLink.Responses;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
 

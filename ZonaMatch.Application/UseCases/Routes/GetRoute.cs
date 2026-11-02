@@ -1,5 +1,5 @@
-using ZonaMatch.Application.DTOs.Routes.Requests;
-using ZonaMatch.Application.DTOs.Routes.Responses;
+﻿using ZonaMatch.Application.DTOs.Route.Requests;
+using ZonaMatch.Application.DTOs.Route.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Scoring;

@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.Criteria.Responses;
+﻿using ZonaMatch.Application.DTOs.Criterion.Responses;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.Criteria;

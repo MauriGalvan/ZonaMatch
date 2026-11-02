@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Api.Authentication;
-using ZonaMatch.Application.DTOs.Reviews.Requests;
-using ZonaMatch.Application.DTOs.Reviews.Responses;
+using ZonaMatch.Application.DTOs.Review.Requests;
+using ZonaMatch.Application.DTOs.Review.Responses;
 using ZonaMatch.Application.UseCases.Reviews;
 
 namespace ZonaMatch.Api.Controllers;

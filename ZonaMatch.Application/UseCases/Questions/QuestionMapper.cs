@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.Questions.Responses;
+﻿using ZonaMatch.Application.DTOs.Question.Responses;
 using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Entities;
 

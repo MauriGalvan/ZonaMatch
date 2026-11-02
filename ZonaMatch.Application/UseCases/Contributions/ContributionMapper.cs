@@ -1,5 +1,5 @@
-using NetTopologySuite.Geometries;
-using ZonaMatch.Application.DTOs.Contributions.Responses;
+﻿using NetTopologySuite.Geometries;
+using ZonaMatch.Application.DTOs.Contribution.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Common;

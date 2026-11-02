@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
-using ZonaMatch.Application.DTOs.ZoneRecommendations.Requests;
-using ZonaMatch.Application.DTOs.ZoneRecommendations.Responses;
+﻿using Microsoft.AspNetCore.Mvc;
+using ZonaMatch.Application.DTOs.ZoneRecommendation.Requests;
+using ZonaMatch.Application.DTOs.ZoneRecommendation.Responses;
 using ZonaMatch.Application.UseCases.ZoneRecommendations;
 using ZonaMatch.Domain.Common;
 

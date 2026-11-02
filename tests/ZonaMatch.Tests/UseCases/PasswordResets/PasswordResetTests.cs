@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Logging.Abstractions;
-using ZonaMatch.Application.DTOs.PasswordResets.Requests;
+﻿using Microsoft.Extensions.Logging.Abstractions;
+using ZonaMatch.Application.DTOs.PasswordReset.Requests;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;

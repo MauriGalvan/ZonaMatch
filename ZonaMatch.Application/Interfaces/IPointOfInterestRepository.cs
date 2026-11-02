@@ -1,5 +1,5 @@
-using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
-using ZonaMatch.Application.DTOs.ZoneRecommendations;
+﻿using ZonaMatch.Application.DTOs.PointOfInterest.Responses;
+using ZonaMatch.Application.DTOs.ZoneRecommendation;
 using ZonaMatch.Application.Models.PointsOfInterest;
 
 namespace ZonaMatch.Application.Interfaces

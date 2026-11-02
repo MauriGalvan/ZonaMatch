@@ -1,10 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Analysis.Responses;
-using ZonaMatch.Application.DTOs.Groups.Requests;
-using ZonaMatch.Application.DTOs.Groups.Responses;
+using ZonaMatch.Application.DTOs.Group.Requests;
+using ZonaMatch.Application.DTOs.Group.Responses;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 using ZonaMatch.Application.UseCases.Groups;

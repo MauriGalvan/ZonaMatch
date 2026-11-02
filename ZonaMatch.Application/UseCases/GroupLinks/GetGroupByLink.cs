@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using ZonaMatch.Application.DTOs.GroupLinks.Responses;
+using ZonaMatch.Application.DTOs.GroupLink.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 

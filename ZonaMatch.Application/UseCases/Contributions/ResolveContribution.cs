@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.Contributions.Responses;
+﻿using ZonaMatch.Application.DTOs.Contribution.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;

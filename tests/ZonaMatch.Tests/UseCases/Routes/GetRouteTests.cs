@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.Routes.Requests;
+﻿using ZonaMatch.Application.DTOs.Route.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Routes;

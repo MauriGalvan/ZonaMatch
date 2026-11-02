@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.Reviews.Responses;
+﻿using ZonaMatch.Application.DTOs.Review.Responses;
 using ZonaMatch.Application.UseCases.Reviews;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;

@@ -1,5 +1,5 @@
-using ZonaMatch.Application.Exceptions;
-using ZonaMatch.Application.DTOs.Contributions.Requests;
+﻿using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.DTOs.Contribution.Requests;
 using ZonaMatch.Application.UseCases.Contributions;
 using ZonaMatch.Domain.Entities;
 

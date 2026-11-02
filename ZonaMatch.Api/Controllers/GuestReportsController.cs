@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using ZonaMatch.Application.DTOs.GuestReports.Requests;
+using ZonaMatch.Application.DTOs.GuestReport.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.GuestReports;
 

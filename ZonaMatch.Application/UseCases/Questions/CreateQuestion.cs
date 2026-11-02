@@ -1,5 +1,5 @@
-using ZonaMatch.Application.DTOs.Questions.Requests;
-using ZonaMatch.Application.DTOs.Questions.Responses;
+﻿using ZonaMatch.Application.DTOs.Question.Requests;
+using ZonaMatch.Application.DTOs.Question.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Community;

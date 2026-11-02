@@ -1,6 +1,6 @@
-using Microsoft.Extensions.Logging;
-using ZonaMatch.Application.DTOs.Questions.Requests;
-using ZonaMatch.Application.DTOs.Questions.Responses;
+﻿using Microsoft.Extensions.Logging;
+using ZonaMatch.Application.DTOs.Question.Requests;
+using ZonaMatch.Application.DTOs.Question.Responses;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;

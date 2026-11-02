@@ -1,6 +1,6 @@
-using ZonaMatch.Application.DTOs.ZoneRecommendations;
-using ZonaMatch.Application.DTOs.ZoneRecommendations.Requests;
-using ZonaMatch.Application.DTOs.ZoneRecommendations.Responses;
+﻿using ZonaMatch.Application.DTOs.ZoneRecommendation;
+using ZonaMatch.Application.DTOs.ZoneRecommendation.Requests;
+using ZonaMatch.Application.DTOs.ZoneRecommendation.Responses;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.ZoneRecommendations;

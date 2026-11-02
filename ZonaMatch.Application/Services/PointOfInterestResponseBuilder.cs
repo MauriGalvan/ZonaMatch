@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
+﻿using ZonaMatch.Application.DTOs.PointOfInterest.Responses;
 using ZonaMatch.Application.Models.PointsOfInterest;
 using ZonaMatch.Domain.Common;
 

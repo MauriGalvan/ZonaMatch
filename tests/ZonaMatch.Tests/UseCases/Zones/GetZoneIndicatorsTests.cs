@@ -1,7 +1,7 @@
-using ZonaMatch.Application.Exceptions;
+﻿using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Zones;
-using ZonaMatch.Application.DTOs.ZoneIndicators.Responses;
+using ZonaMatch.Application.DTOs.ZoneIndicator.Responses;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Tests.UseCases.Zones

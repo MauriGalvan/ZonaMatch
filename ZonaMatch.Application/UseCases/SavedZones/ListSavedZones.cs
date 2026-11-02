@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.SavedZones.Responses;
+﻿using ZonaMatch.Application.DTOs.SavedZone.Responses;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.SavedZones

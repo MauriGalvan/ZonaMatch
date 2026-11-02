@@ -1,5 +1,5 @@
-using System.Globalization;
-using ZonaMatch.Application.DTOs.Groups.Responses;
+﻿using System.Globalization;
+using ZonaMatch.Application.DTOs.Group.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;

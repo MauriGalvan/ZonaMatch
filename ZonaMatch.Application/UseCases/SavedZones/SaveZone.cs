@@ -1,5 +1,5 @@
-using ZonaMatch.Application.DTOs.SavedZones.Requests;
-using ZonaMatch.Application.DTOs.SavedZones.Responses;
+﻿using ZonaMatch.Application.DTOs.SavedZone.Requests;
+using ZonaMatch.Application.DTOs.SavedZone.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;

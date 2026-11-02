@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs.Reviews.Requests;
+﻿using ZonaMatch.Application.DTOs.Review.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Reviews;

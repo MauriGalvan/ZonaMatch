@@ -1,9 +1,9 @@
-using ZonaMatch.Application.DTOs;
+﻿using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Scoring.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.DTOs.Scoring.Responses;
-using ZonaMatch.Application.DTOs.Zones.Responses;
+using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.UseCases.Scoring;
 using ZonaMatch.Domain.Scoring;
 

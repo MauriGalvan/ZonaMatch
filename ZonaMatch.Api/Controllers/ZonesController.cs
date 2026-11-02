@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs;
-using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
+using ZonaMatch.Application.DTOs.PointOfInterest.Responses;
 using ZonaMatch.Application.DTOs.Transit.Responses;
-using ZonaMatch.Application.DTOs.Zones.Responses;
-using ZonaMatch.Application.DTOs.ZoneIndicators.Responses;
+using ZonaMatch.Application.DTOs.Zone.Responses;
+using ZonaMatch.Application.DTOs.ZoneIndicator.Responses;
 using ZonaMatch.Application.UseCases.Zones;
 
 namespace ZonaMatch.Api.Controllers;

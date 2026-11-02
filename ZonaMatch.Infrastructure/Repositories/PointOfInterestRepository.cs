@@ -1,8 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using NpgsqlTypes;
-using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
-using ZonaMatch.Application.DTOs.ZoneRecommendations;
+using ZonaMatch.Application.DTOs.PointOfInterest.Responses;
+using ZonaMatch.Application.DTOs.ZoneRecommendation;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models.PointsOfInterest;
 using ZonaMatch.Domain.Common;
