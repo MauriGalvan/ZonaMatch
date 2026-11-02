@@ -194,23 +194,23 @@ namespace ZonaMatch.Api.Controllers
                     analysis.Id,
                     analysis.Name,
                     analysis.TravelMode,
-                    analysis.Zones.Select(zone => new PuntajeZonaDto(
+                    analysis.Zones.Select(zone => new LegacyScoredZoneResponse(
                         zone.Slug,
                         zone.Name,
                         zone.Score,
-                        zone.Components.Select(component => new ComponentePuntajeDto(
+                        zone.Components.Select(component => new LegacyScoreComponentResponse(
                             component.Criterion, component.Priority, component.Score, component.Details)).ToArray(),
-                        zone.Limits.Select(limit => new LimitePuntajeDto(
+                        zone.Limits.Select(limit => new LegacyScoreLimitResponse(
                             limit.Type, limit.IsMet, limit.Details)).ToArray(),
-                        zone.Places.Select(place => new TiempoLugarDto(
+                        zone.Places.Select(place => new LegacyPlaceTravelTimeResponse(
                             place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm)).ToArray(),
                         zone.Rent is { } rent
-                            ? new AlquilerZonaDto(
+                            ? new LegacyRentResponse(
                                 rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost,
                                 rent.PricePerM2, rent.SurfaceM2, rent.Estimated)
                             : null,
                         zone.Sale is { } sale
-                            ? new CompraZonaDto(
+                            ? new LegacySaleResponse(
                                 sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd,
                                 sale.SurfaceM2, sale.EstimatedUsd)
                             : null)).ToArray(),

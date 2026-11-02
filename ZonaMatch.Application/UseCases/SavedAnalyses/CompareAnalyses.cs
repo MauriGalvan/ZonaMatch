@@ -2,11 +2,13 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
+using ZonaMatch.Application.DTOs.Scoring.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.Puntajes;
+using ZonaMatch.Application.UseCases.Scoring;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Scoring;
+using ScoreLimitResponse = ZonaMatch.Application.DTOs.Scoring.Responses.ScoreLimitResponse;
 
 namespace ZonaMatch.Application.UseCases.SavedAnalyses
 {
@@ -239,7 +241,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             var match = Regex.Match(value ?? string.Empty, @"\d+");
             return match.Success && int.TryParse(match.Value, out var minutes) && minutes > 0
                 ? minutes
-                : CalcularPuntajes.TiempoMaximoPorDefecto;
+                : CalculateScores.DefaultMaximumTravelTime;
         }
 
         private static decimal? ParseRent(string? value)
@@ -248,78 +250,78 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             return decimal.TryParse(digits, out var amount) && amount > 0 ? amount : null;
         }
 
-        private static PuntajeZonaDto ToDto(ZoneScoreResult result, ScoringRequest request) =>
+        private static ScoredZoneResponse ToDto(ZoneScoreResult result, ScoringRequest request) =>
             new(
                 result.Zona.Slug,
                 result.Zona.Nombre,
                 result.Puntaje,
                 result.Componentes
-                    .Select(component => new ComponentePuntajeDto(
+                    .Select(component => new ScoreComponentResponse(
                         component.Criterio, component.Prioridad, component.Puntaje, component.Detalle))
                     .ToArray(),
                 result.Limites
-                    .Select(limit => new LimitePuntajeDto(limit.Tipo, limit.Cumple, limit.Detalle))
+                    .Select(limit => new ScoreLimitResponse(limit.Tipo, limit.Cumple, limit.Detalle))
                     .ToArray(),
                 result.Lugares
-                    .Select(place => new TiempoLugarDto(
+                    .Select(place => new PlaceTravelTimeResponse(
                         place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm))
                     .ToArray(),
-                Vivienda.Alquiler(result.Zona, request.TipoVivienda, request.SuperficieM2),
-                Vivienda.Compra(result.Zona, request.TipoVivienda, request.SuperficieM2));
+                HousingScoring.Rent(result.Zona, request.TipoVivienda, request.SuperficieM2),
+                HousingScoring.Sale(result.Zona, request.TipoVivienda, request.SuperficieM2));
 
-        private static PuntajeZonaDto ToDto(RankedZoneResponse result) =>
+        private static ScoredZoneResponse ToDto(RankedZoneResponse result) =>
             new(
                 result.Slug,
                 result.Name,
                 result.Score,
-                result.Components?.Select(component => new ComponentePuntajeDto(
+                result.Components?.Select(component => new ScoreComponentResponse(
                     component.Criterion,
                     "ponderado",
                     component.Score,
                     component.Details)).ToArray() ?? [],
-                result.Limits?.Select(limit => new LimitePuntajeDto(
+                result.Limits?.Select(limit => new ScoreLimitResponse(
                     limit.Type,
                     limit.IsMet,
                     limit.Details)).ToArray() ?? [],
-                result.Places?.Select(place => new TiempoLugarDto(
+                result.Places?.Select(place => new PlaceTravelTimeResponse(
                     $"{place.ParticipantName}: {place.Name}",
                     place.Minutes,
                     place.MaximumMinutes,
                     place.IsEstimated)).ToArray() ?? [],
                 result.Rent is { } rent
-                    ? new AlquilerZonaDto(
+                    ? new RentResponse(
                         rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated)
                     : null,
                 result.Sale is { } sale
-                    ? new CompraZonaDto(
+                    ? new SaleResponse(
                         sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd)
                     : null);
 
-        private static ComparedZoneResponse ToComparedZone(PuntajeZonaDto zone) =>
+        private static ComparedZoneResponse ToComparedZone(ScoredZoneResponse zone) =>
             new(
                 zone.Slug,
-                zone.Nombre,
-                zone.Puntaje,
-                zone.Componentes
+                zone.Name,
+                zone.Score,
+                zone.Components
                     .Select(component => new ComparedScoreComponentResponse(
-                        component.Criterio, component.Prioridad, component.Puntaje, component.Detalle))
+                        component.Criterion, component.Priority, component.Score, component.Details))
                     .ToArray(),
-                zone.Limites
-                    .Select(limit => new ComparedScoreLimitResponse(limit.Tipo, limit.Cumple, limit.Detalle))
+                zone.Limits
+                    .Select(limit => new ComparedScoreLimitResponse(limit.Type, limit.IsMet, limit.Details))
                     .ToArray(),
-                zone.Lugares
+                zone.Places
                     .Select(place => new ComparedPlaceTravelTimeResponse(
-                        place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm))
+                        place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm))
                     .ToArray(),
-                zone.Alquiler is { } rent
+                zone.Rent is { } rent
                     ? new ComparedRentResponse(
-                        rent.Promedio, rent.PropiedadesDisponibles, rent.Expensas, rent.CostoMensual,
-                        rent.PrecioM2, rent.SuperficieM2, rent.Estimado)
+                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost,
+                        rent.PricePerM2, rent.SurfaceM2, rent.Estimated)
                     : null,
-                zone.Compra is { } sale
+                zone.Sale is { } sale
                     ? new ComparedSaleResponse(
-                        sale.PromedioUsd, sale.PropiedadesDisponibles, sale.Expensas, sale.PrecioM2Usd,
-                        sale.SuperficieM2, sale.EstimadoUsd)
+                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd,
+                        sale.SurfaceM2, sale.EstimatedUsd)
                     : null);
     }
 }

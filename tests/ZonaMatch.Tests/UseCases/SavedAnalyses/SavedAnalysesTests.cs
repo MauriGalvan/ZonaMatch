@@ -1,6 +1,7 @@
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.DTOs.Analysis.Responses;
+using ZonaMatch.Application.DTOs.Scoring.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.SavedAnalyses;
@@ -115,12 +116,12 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
             // Analyses received, to check what the calculation used
             public List<Analisis> Calculations { get; } = [];
 
-            public Task<PuntajesDto?> CalculateAsync(Analisis analysis, CancellationToken cancellationToken = default)
+            public Task<ScoresResponse?> CalculateAsync(Analisis analysis, CancellationToken cancellationToken = default)
             {
                 Calculations.Add(analysis);
-                return Task.FromResult<PuntajesDto?>(new PuntajesDto(
+                return Task.FromResult<ScoresResponse?>(new ScoresResponse(
                     "transporte-publico",
-                    analysis.Zonas.Select(zone => new PuntajeZonaDto(zone.ZonaSlug, zone.Nombre, Score, [], [], [], null)).ToList(),
+                    analysis.Zonas.Select(zone => new ScoredZoneResponse(zone.ZonaSlug, zone.Nombre, Score, [], [], [], null)).ToList(),
                     []));
             }
         }

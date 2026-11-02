@@ -1,7 +1,7 @@
 using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.Exceptions;
-using ZonaMatch.Application.UseCases.Puntajes;
+using ZonaMatch.Application.UseCases.Scoring;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.Services;
@@ -23,9 +23,9 @@ public static class AnalysisCriteriaBuilder
         var householdMembers = BuildHouseholdMembers(request.Context);
         var criteria = BuildCriteria(request.Criteria, catalog);
         var places = BuildPlaces(request.Points);
-        var (operation, purchaseLimit, propertyType) = Vivienda.Validar(
+        var (operation, purchaseLimit, propertyType) = HousingScoring.Validate(
             request.Points.Operation, request.Points.PurchaseLimitUsd, request.Points.PropertyType);
-        var areaM2 = Vivienda.ValidarSuperficie(request.Points.AreaM2);
+        var areaM2 = HousingScoring.ValidateSurface(request.Points.AreaM2);
 
         context.Personas = request.Context.PeopleCount;
         context.Mascotas = request.Context.Pets.Distinct(StringComparer.Ordinal).ToArray();
@@ -113,13 +113,13 @@ public static class AnalysisCriteriaBuilder
         if (request is null)
             throw new BadRequestException("Los puntos son obligatorios.");
 
-        if (request.Places.Count > LimitesLugares.ConCuenta)
-            throw new BadRequestException(LimitesLugares.MensajeConCuenta);
+        if (request.Places.Count > ScoringPlaceLimits.AuthenticatedUser)
+            throw new BadRequestException(ScoringPlaceLimits.AuthenticatedUserMessage);
 
         if (request.RentLimit?.Length > 30)
             throw new BadRequestException("El alquiler máximo no puede superar 30 caracteres.");
 
-        LimitesObligatorios.Validar(
+        MandatoryScoringLimits.Validate(
             request.RentLimit, request.Operation, request.PurchaseLimitUsd, request.Places.Select(place => place.MaximumTravelTime));
 
         var places = new List<PuntoDeInteres>(request.Places.Count);

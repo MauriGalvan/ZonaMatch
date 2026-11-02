@@ -41,16 +41,16 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> CalcularPuntajeEnGrupo(
+        public async Task<IActionResult> CalculateGroupScoreAsync(
             [FromRoute] Guid groupId,
             [FromBody] CalculateGroupScoreRequest request,
-            [FromServices] CalcularPuntajeEnGrupo calcularPuntajeEnGrupo,
+            [FromServices] CalculateGroupScore calculateGroupScore,
             CancellationToken cancellationToken)
         {
             if (User.GetAuthenticatedUserId() is not { } userId)
                 return Unauthorized();
 
-            var response = await calcularPuntajeEnGrupo.EjecutarAsync(groupId, userId, request, cancellationToken);
+            var response = await calculateGroupScore.ExecuteAsync(groupId, userId, request, cancellationToken);
             return Ok(response);
         }
 

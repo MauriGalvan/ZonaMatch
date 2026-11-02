@@ -1,5 +1,5 @@
-using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
+using ZonaMatch.Application.DTOs.Scoring.Responses;
 
 namespace ZonaMatch.Application.DTOs.Analysis.Responses;
 
@@ -16,7 +16,7 @@ public sealed record AnalysisResponse(
     GroupRankingResponse? GroupScores,
     IReadOnlyList<AnalysisResponse> Versions,
     // Result saved with a personal analysis and when it was calculated; null when it is scored live
-    PuntajesDto? Result = null,
+    ScoresResponse? Result = null,
     DateTimeOffset? CalculatedAt = null,
     // Starred in "Mis análisis"
     bool IsFavorite = false);

@@ -17,7 +17,7 @@ using ZonaMatch.Application.UseCases.Notifications;
 using ZonaMatch.Application.UseCases.PasswordResets;
 using ZonaMatch.Application.UseCases.Profile;
 using ZonaMatch.Application.UseCases.Questions;
-using ZonaMatch.Application.UseCases.Puntajes;
+using ZonaMatch.Application.UseCases.Scoring;
 using ZonaMatch.Application.UseCases.Reviews;
 using ZonaMatch.Application.UseCases.Routes;
 using ZonaMatch.Application.UseCases.SavedAnalyses;
@@ -42,7 +42,7 @@ public static class ApplicationServiceCollectionExtensions
 
         services.AddScoped<CreateGroup>();
         services.AddScoped<GetGroupDetails>();
-        services.AddScoped<CalcularPuntajeEnGrupo>();
+        services.AddScoped<CalculateGroupScore>();
         services.AddScoped<GuardarAnalisisEnGrupo>();
         services.AddScoped<GetGroups>();
         services.AddScoped<DeleteGroup>();
@@ -99,7 +99,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SaveZone>();
         services.AddScoped<RemoveSavedZone>();
 
-        services.AddScoped<CalcularPuntajes>();
+        services.AddScoped<CalculateScores>();
         services.AddScoped<GetRoute>();
         services.AddScoped<ObtenerIndicadoresZona>();
         services.AddScoped<ObtenerTransporteZona>();

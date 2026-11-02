@@ -13,14 +13,14 @@ public sealed class GuardarAnalisisEnGrupo
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    private readonly CalcularPuntajeEnGrupo _calculateRanking;
+    private readonly CalculateGroupScore _calculateRanking;
     private readonly IAnalisisRepository _analyses;
     private readonly IPerfilRepository _profiles;
     private readonly IZonaRepository _zones;
     private readonly TimeProvider _clock;
 
     public GuardarAnalisisEnGrupo(
-        CalcularPuntajeEnGrupo calculateRanking,
+        CalculateGroupScore calculateRanking,
         IAnalisisRepository analyses,
         IPerfilRepository profiles,
         IZonaRepository zones,
@@ -44,7 +44,7 @@ public sealed class GuardarAnalisisEnGrupo
             throw new BadRequestException("El nombre es obligatorio.");
 
         var now = _clock.GetUtcNow();
-        var ranked = await _calculateRanking.EjecutarAsync(
+        var ranked = await _calculateRanking.ExecuteAsync(
             groupId,
             currentUserId,
             new CalculateGroupScoreRequest

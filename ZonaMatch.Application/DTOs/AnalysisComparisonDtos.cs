@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 
 namespace ZonaMatch.Application.DTOs
@@ -78,6 +79,6 @@ namespace ZonaMatch.Application.DTOs
         Guid Id,
         [property: JsonPropertyName("nombre")] string Name,
         [property: JsonPropertyName("modoViaje")] string TravelMode,
-        [property: JsonPropertyName("zonas")] IReadOnlyList<PuntajeZonaDto> Zones,
+        [property: JsonPropertyName("zonas")] IReadOnlyList<LegacyScoredZoneResponse> Zones,
         [property: JsonPropertyName("puntajesEnGrupo")] GroupRankingResponse? GroupScores = null);
 }

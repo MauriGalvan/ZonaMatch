@@ -4,7 +4,7 @@ using ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.Puntajes;
+using ZonaMatch.Application.UseCases.Scoring;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Scoring;
 
@@ -13,11 +13,11 @@ namespace ZonaMatch.Application.UseCases.Groups;
 /// <summary>
 /// Scores zones containing group members' places and their contiguous neighbors, then combines the results using the configured weights.
 /// </summary>
-public sealed partial class CalcularPuntajeEnGrupo
+public sealed partial class CalculateGroupScore
 {
-    private const int ViajesEnParalelo = 6;
-    private const int RecomendadasDevueltas = 4;
-    private const int ZonasTopAutomatico = 5;
+    private const int ConcurrentTrips = 6;
+    private const int RecommendationsReturned = 4;
+    private const int AutomaticTopZones = 5;
     private static readonly string[] RecommendationAgeRangeOrder = ["0-2", "3-5", "6-11", "12-17"];
 
     private readonly IGroupRepository _groups;
@@ -25,7 +25,7 @@ public sealed partial class CalcularPuntajeEnGrupo
     private readonly IPerfilesZonaRepository _zoneProfiles;
     private readonly IRuteoClient _routing;
 
-    public CalcularPuntajeEnGrupo(
+    public CalculateGroupScore(
         IGroupRepository groups,
         IPerfilRepository profiles,
         IPerfilesZonaRepository zoneProfiles,
@@ -37,7 +37,7 @@ public sealed partial class CalcularPuntajeEnGrupo
         _routing = routing;
     }
 
-    public async Task<GroupRankingResponse> EjecutarAsync(
+    public async Task<GroupRankingResponse> ExecuteAsync(
         Guid groupId,
         Guid currentUserId,
         CalculateGroupScoreRequest request,
@@ -49,9 +49,9 @@ public sealed partial class CalcularPuntajeEnGrupo
         if (!group.Participants.Any(participant => participant.UserId == currentUserId))
             throw new ForbiddenException("No pertenecés a este grupo.");
 
-        var (operation, maximumPurchase, propertyType) = Vivienda.Validar(
+        var (operation, maximumPurchase, propertyType) = HousingScoring.Validate(
             request.Operation, request.MaximumPurchaseUsd, request.PropertyType);
-        var surface = Vivienda.ValidarSuperficie(request.SurfaceM2);
+        var surface = HousingScoring.ValidateSurface(request.SurfaceM2);
         var participantIds = group.Participants.Select(participant => participant.Id).ToHashSet();
         var weights = ValidateWeights(request.ParticipantWeights, participantIds);
         var slugs = (request.AddedZones ?? [])
@@ -71,7 +71,7 @@ public sealed partial class CalcularPuntajeEnGrupo
             cancellationToken);
         var profilesByUserId = profiles.ToDictionary(profile => profile.UsuarioId);
         var motor = new ScoringEngine(universe);
-        using var routeLimit = new SemaphoreSlim(ViajesEnParalelo);
+        using var routeLimit = new SemaphoreSlim(ConcurrentTrips);
 
         var members = group.Participants
             .Where(participant => profilesByUserId.ContainsKey(participant.UserId))
@@ -144,7 +144,7 @@ public sealed partial class CalcularPuntajeEnGrupo
             .ToArray();
 
         var rankedZones = rankedCandidates
-            .Take(ZonasTopAutomatico)
+            .Take(AutomaticTopZones)
             .Concat(addedZones.Select(zone => rankedCandidates.Single(result => result.Slug == zone.Slug)))
             .DistinctBy(zone => zone.Slug, StringComparer.Ordinal)
             .OrderByDescending(zone => zone.Score.HasValue)
@@ -161,7 +161,7 @@ public sealed partial class CalcularPuntajeEnGrupo
         var includedSlugs = rankedZones.Select(zone => zone.Slug).ToHashSet(StringComparer.Ordinal);
         var nearby = rankedCandidates
             .Where(zone => !includedSlugs.Contains(zone.Slug) && zone.Score is not null)
-            .Take(RecomendadasDevueltas)
+            .Take(RecommendationsReturned)
             .ToArray();
 
         var groupPoints = group.Participants
@@ -445,15 +445,15 @@ public sealed partial class CalcularPuntajeEnGrupo
             .Where(member => member.Zones.ContainsKey(zone.Slug))
             .SelectMany(member => member.Zones[zone.Slug].Places)
             .ToArray();
-        var rent = Vivienda.Alquiler(zone, propertyType, surface) is { } zoneRent
+        var rent = HousingScoring.Rent(zone, propertyType, surface) is { } zoneRent
             ? new ZoneRentResponse(
-                zoneRent.Promedio, zoneRent.PropiedadesDisponibles, zoneRent.Expensas, zoneRent.CostoMensual,
-                zoneRent.PrecioM2, zoneRent.SuperficieM2, zoneRent.Estimado)
+                zoneRent.Average, zoneRent.AvailableProperties, zoneRent.Expenses, zoneRent.MonthlyCost,
+                zoneRent.PricePerM2, zoneRent.SurfaceM2, zoneRent.Estimated)
             : null;
-        var sale = Vivienda.Compra(zone, propertyType, surface) is { } zoneSale
+        var sale = HousingScoring.Sale(zone, propertyType, surface) is { } zoneSale
             ? new ZoneSaleResponse(
-                zoneSale.PromedioUsd, zoneSale.PropiedadesDisponibles, zoneSale.Expensas,
-                zoneSale.PrecioM2Usd, zoneSale.SuperficieM2, zoneSale.EstimadoUsd)
+                zoneSale.AverageUsd, zoneSale.AvailableProperties, zoneSale.Expenses,
+                zoneSale.PricePerM2Usd, zoneSale.SurfaceM2, zoneSale.EstimatedUsd)
             : null;
 
         return new RankedZoneResponse(zone.Slug, zone.Nombre, groupScore, breakdown, componentGroups, limits, places, rent, sale);
