@@ -20,7 +20,7 @@ public sealed class GuestReportsController : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> Send(
+    public async Task<IActionResult> SendAsync(
         [FromForm] SendGuestReportRequest request,
         IFormFile? report,
         [FromServices] SendGuestReport sendGuestReport,

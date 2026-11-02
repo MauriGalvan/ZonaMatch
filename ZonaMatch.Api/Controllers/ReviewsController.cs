@@ -16,7 +16,7 @@ public sealed class ReviewsController : ControllerBase
     // With a token, each review indicates whether it is yours and whether you marked it helpful.
     [HttpGet]
     [ProducesResponseType<ZoneReviewListResponse>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> List(
+    public async Task<IActionResult> ListAsync(
         string slug,
         [FromServices] ListZoneReviews listZoneReviews,
         CancellationToken cancellationToken) =>
@@ -32,7 +32,7 @@ public sealed class ReviewsController : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> SaveMine(
+    public async Task<IActionResult> SaveMineAsync(
         string slug,
         [FromBody] SaveReviewRequest request,
         [FromServices] SaveMyReview saveMyReview,
@@ -50,7 +50,7 @@ public sealed class ReviewsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteMine(
+    public async Task<IActionResult> DeleteMineAsync(
         string slug,
         [FromServices] DeleteMyReview deleteMyReview,
         CancellationToken cancellationToken)
@@ -69,7 +69,7 @@ public sealed class ReviewsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public Task<IActionResult> MarkHelpful(
+    public Task<IActionResult> MarkHelpfulAsync(
         string slug,
         Guid id,
         [FromServices] SetReviewHelpful setReviewHelpful,
@@ -81,7 +81,7 @@ public sealed class ReviewsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public Task<IActionResult> UnmarkHelpful(
+    public Task<IActionResult> UnmarkHelpfulAsync(
         string slug,
         Guid id,
         [FromServices] SetReviewHelpful setReviewHelpful,

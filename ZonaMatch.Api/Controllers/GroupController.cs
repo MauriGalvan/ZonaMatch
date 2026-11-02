@@ -22,7 +22,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetGroupDetails(
+        public async Task<IActionResult> GetGroupDetailsAsync(
             [FromRoute] Guid groupId,
             [FromServices] GetGroupDetails getGroupDetails,
             CancellationToken cancellationToken)
@@ -61,7 +61,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> SaveGroupAnalysis(
+        public async Task<IActionResult> SaveGroupAnalysisAsync(
             [FromRoute] Guid groupId,
             [FromBody] SaveGroupAnalysisRequest request,
             [FromServices] SaveGroupAnalysis saveGroupAnalysis,
@@ -81,7 +81,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> CreateGroup(
+        public async Task<IActionResult> CreateGroupAsync(
             [FromBody] CreateGroupRequest request,
             [FromServices] CreateGroup createGroup,
             CancellationToken cancellationToken)
@@ -98,7 +98,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<GroupListResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> GetGroups(
+        public async Task<IActionResult> GetGroupsAsync(
             [FromServices] GetGroups getGroups,
             CancellationToken cancellationToken)
         {
@@ -117,7 +117,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> UpdateGroup(
+        public async Task<IActionResult> UpdateGroupAsync(
             [FromRoute] Guid groupId,
             [FromBody] UpdateGroupRequest request,
             [FromServices] UpdateGroup updateGroup,
@@ -137,7 +137,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> DeleteGroup(
+        public async Task<IActionResult> DeleteGroupAsync(
             [FromRoute] Guid groupId,
             [FromServices] DeleteGroup deleteGroup,
             CancellationToken cancellationToken)
@@ -157,7 +157,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-        public async Task<IActionResult> RemoveParticipant(
+        public async Task<IActionResult> RemoveParticipantAsync(
             Guid groupId,
             Guid userIdToRemove,
             [FromServices] RemoveParticipant removeParticipant,

@@ -142,7 +142,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> SetFavorite(
+        public async Task<IActionResult> SetFavoriteAsync(
             [FromRoute] Guid id,
             [FromBody] SetAnalysisFavoriteRequest request,
             [FromServices] SetAnalysisFavorite useCase,

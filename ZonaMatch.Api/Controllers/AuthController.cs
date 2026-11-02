@@ -20,7 +20,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> Register(
+        public async Task<IActionResult> RegisterAsync(
             [FromServices] RegisterUser registerUser,
             [FromBody] RegisterRequest request,
             CancellationToken cancellationToken)
@@ -39,7 +39,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> Login(
+        public async Task<IActionResult> LoginAsync(
             [FromServices] LoginUser loginUser,
             [FromBody] LoginRequest request,
             CancellationToken cancellationToken)

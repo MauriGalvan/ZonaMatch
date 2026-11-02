@@ -16,7 +16,7 @@ public sealed class QuestionsController : ControllerBase
     // Newest question first; answers within each question are oldest first.
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<QuestionResponse>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> List(
+    public async Task<IActionResult> ListAsync(
         string slug,
         [FromServices] ListZoneQuestions listZoneQuestions,
         CancellationToken cancellationToken) =>
@@ -29,7 +29,7 @@ public sealed class QuestionsController : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Create(
+    public async Task<IActionResult> CreateAsync(
         string slug,
         [FromBody] CreateQuestionRequest request,
         [FromServices] CreateQuestion createQuestion,
@@ -49,7 +49,7 @@ public sealed class QuestionsController : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Answer(
+    public async Task<IActionResult> AnswerAsync(
         string slug,
         Guid id,
         [FromBody] CreateAnswerRequest request,

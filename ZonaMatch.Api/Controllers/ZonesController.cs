@@ -34,7 +34,7 @@ public sealed class ZonesController : ControllerBase
     // Returns a GeoJSON Feature with the zone geometry and its administrative properties.
     [HttpGet("{slug}")]
     [ResponseCache(Duration = 3600)]
-    public async Task<IActionResult> GetZone(
+    public async Task<IActionResult> GetZoneAsync(
         [FromRoute] string slug,
         [FromQuery] double? tolerance,
         [FromServices] GetZone getZone,
@@ -77,7 +77,7 @@ public sealed class ZonesController : ControllerBase
     [ResponseCache(Duration = 3600)]
     [ProducesResponseType<ZoneIndicatorsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetZoneIndicators(
+    public async Task<IActionResult> GetZoneIndicatorsAsync(
         [FromRoute] string slug,
         [FromServices] GetZoneIndicators getZoneIndicators,
         CancellationToken cancellationToken)
@@ -90,7 +90,7 @@ public sealed class ZonesController : ControllerBase
     [ResponseCache(Duration = 3600)]
     [ProducesResponseType<ZoneTransitResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetZoneTransit(
+    public async Task<IActionResult> GetZoneTransitAsync(
         [FromRoute] string slug,
         [FromServices] GetZoneTransit getZoneTransit,
         CancellationToken cancellationToken)

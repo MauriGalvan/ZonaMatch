@@ -30,7 +30,7 @@ public class InvitationsController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CreateEmailInvitation(
+    public async Task<IActionResult> CreateEmailInvitationAsync(
         [FromBody] CreateInvitationRequest request,
         [FromServices] CreateInvitation createInvitation,
         [FromServices] IConfiguration configuration,
@@ -60,7 +60,7 @@ public class InvitationsController : ControllerBase
     [HttpGet("email/{token:guid}")]
     [ProducesResponseType(typeof(InvitationDetailsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetEmailInvitationDetails(
+    public async Task<IActionResult> GetEmailInvitationDetailsAsync(
         [FromRoute] Guid token,
         [FromServices] GetInvitationByToken getInvitation,
         CancellationToken cancellationToken)
@@ -76,7 +76,7 @@ public class InvitationsController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> AcceptEmailInvitation(
+    public async Task<IActionResult> AcceptEmailInvitationAsync(
         [FromRoute] Guid token,
         [FromServices] AcceptInvitation acceptInvitation,
         CancellationToken cancellationToken)
@@ -95,7 +95,7 @@ public class InvitationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCurrentGroupInviteLink(
+    public async Task<IActionResult> GetCurrentGroupInviteLinkAsync(
         [FromRoute] Guid groupId,
         [FromServices] GetGroupInviteLink getGroupInviteLink,
         CancellationToken cancellationToken)
@@ -107,7 +107,7 @@ public class InvitationsController : ControllerBase
     [HttpGet("~/api/v1/group-invitation-links/{token:guid}")]
     [ProducesResponseType(typeof(GroupLinkDetailsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetLinkInvitationDetails(
+    public async Task<IActionResult> GetLinkInvitationDetailsAsync(
         [FromRoute] Guid token,
         [FromServices] GetGroupByLink getGroupByLink,
         CancellationToken cancellationToken)
@@ -122,7 +122,7 @@ public class InvitationsController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> JoinByLink(
+    public async Task<IActionResult> JoinByLinkAsync(
         [FromRoute] Guid token,
         [FromServices] JoinGroupByLink joinGroupByLink,
         CancellationToken cancellationToken)
@@ -137,7 +137,7 @@ public class InvitationsController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RevokeLink(
+    public async Task<IActionResult> RevokeLinkAsync(
         [FromRoute] Guid groupId,
         [FromServices] RevokeInviteLink revokeInviteLink,
         CancellationToken cancellationToken)

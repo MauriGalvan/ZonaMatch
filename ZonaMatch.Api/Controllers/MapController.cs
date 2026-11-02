@@ -14,7 +14,7 @@ public sealed class MapController : ControllerBase
     // GET /api/v1/map/districts?tolerance=0.0005
     [HttpGet("districts")]
     [ResponseCache(Duration = 3600)]
-    public async Task<IActionResult> GetDistricts(
+    public async Task<IActionResult> GetDistrictsAsync(
         [FromQuery] double? tolerance,
         [FromServices] GetMapDistricts getMapDistricts)
     {
@@ -25,7 +25,7 @@ public sealed class MapController : ControllerBase
     // GET /api/v1/map/communes?tolerance=0.0005
     [HttpGet("communes")]
     [ResponseCache(Duration = 3600)]
-    public async Task<IActionResult> GetCommunes(
+    public async Task<IActionResult> GetCommunesAsync(
         [FromQuery] double? tolerance,
         [FromServices] GetMapCommunes getMapCommunes)
     {
@@ -35,7 +35,7 @@ public sealed class MapController : ControllerBase
 
     // GET /api/v1/map/census-tracts?minLon=-58.5&minLat=-34.7&maxLon=-58.4&maxLat=-34.6
     [HttpGet("census-tracts")]
-    public async Task<IActionResult> GetCensusTracts(
+    public async Task<IActionResult> GetCensusTractsAsync(
         [FromQuery] double minLon,
         [FromQuery] double minLat,
         [FromQuery] double maxLon,
@@ -50,7 +50,7 @@ public sealed class MapController : ControllerBase
 
     // GET /api/v1/map/schools?minLon=&minLat=&maxLon=&maxLat=&level=&sector=
     [HttpGet("schools")]
-    public async Task<IActionResult> GetSchools(
+    public async Task<IActionResult> GetSchoolsAsync(
         [FromQuery] double minLon,
         [FromQuery] double minLat,
         [FromQuery] double maxLon,
