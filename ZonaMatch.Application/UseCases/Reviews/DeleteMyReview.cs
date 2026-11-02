@@ -1,0 +1,24 @@
+using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.Interfaces;
+
+namespace ZonaMatch.Application.UseCases.Reviews
+{
+    public class DeleteMyReview
+    {
+        private readonly IResenaRepository _reviews;
+
+        public DeleteMyReview(IResenaRepository reviews)
+        {
+            _reviews = reviews;
+        }
+
+        public async Task ExecuteAsync(string zoneSlug, Guid userId, CancellationToken cancellationToken = default)
+        {
+            var review = await _reviews.ObtenerDeUsuarioAsync(zoneSlug, userId, cancellationToken)
+                ?? throw new NotFoundException("No escribiste una reseña de esta zona.");
+
+            _reviews.Eliminar(review);
+            await _reviews.GuardarCambiosAsync(cancellationToken);
+        }
+    }
+}

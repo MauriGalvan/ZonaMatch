@@ -18,7 +18,7 @@ using ZonaMatch.Application.UseCases.PasswordResets;
 using ZonaMatch.Application.UseCases.Perfil;
 using ZonaMatch.Application.UseCases.Preguntas;
 using ZonaMatch.Application.UseCases.Puntajes;
-using ZonaMatch.Application.UseCases.Resenas;
+using ZonaMatch.Application.UseCases.Reviews;
 using ZonaMatch.Application.UseCases.Routes;
 using ZonaMatch.Application.UseCases.SavedAnalyses;
 using ZonaMatch.Application.UseCases.SavedZones;
@@ -66,10 +66,10 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<LoginUser>();
         services.AddScoped<RegisterUser>();
 
-        services.AddScoped<ListarResenas>();
-        services.AddScoped<GuardarMiResena>();
-        services.AddScoped<EliminarMiResena>();
-        services.AddScoped<MarcarResenaUtil>();
+        services.AddScoped<ListZoneReviews>();
+        services.AddScoped<SaveMyReview>();
+        services.AddScoped<DeleteMyReview>();
+        services.AddScoped<SetReviewHelpful>();
         services.AddScoped<ListarPreguntas>();
         services.AddScoped<CrearPregunta>();
         services.AddScoped<ResponderPregunta>();
