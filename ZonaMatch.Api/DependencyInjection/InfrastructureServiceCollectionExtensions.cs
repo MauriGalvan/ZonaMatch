@@ -20,30 +20,30 @@ public static class InfrastructureServiceCollectionExtensions
             options.UseZonaMatchNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-        services.AddScoped<IEscuelaRepository, EscuelaRepository>();
-        services.AddScoped<IPartidoRepository, PartidoRepository>();
-        services.AddScoped<IComunaRepository, ComunaRepository>();
-        services.AddScoped<IMapaRepository, MapaRepository>();
-        services.AddScoped<IPuntoInteresRepository, PuntoInteresRepository>();
-        services.AddScoped<IZonaRepository, ZonaRepository>();
-        services.AddScoped<IIndicadoresZonaRepository, IndicadoresZonaRepository>();
+        services.AddScoped<ISchoolRepository, SchoolRepository>();
+        services.AddScoped<IDistrictRepository, DistrictRepository>();
+        services.AddScoped<ICommuneRepository, CommuneRepository>();
+        services.AddScoped<IMapRepository, MapRepository>();
+        services.AddScoped<IPointOfInterestRepository, PointOfInterestRepository>();
+        services.AddScoped<IZoneRepository, ZoneRepository>();
+        services.AddScoped<IZoneIndicatorsRepository, ZoneIndicatorsRepository>();
         services.AddScoped<IZoneMarketRepository, ZoneMarketRepository>();
-        services.AddScoped<ITransporteZonaRepository, TransporteZonaRepository>();
+        services.AddScoped<IZoneTransitRepository, ZoneTransitRepository>();
 
         services.AddScoped<IGroupRepository, GroupRepository>();
         services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
-        services.AddScoped<IAnalisisRepository, AnalisisRepository>();
+        services.AddScoped<IAnalysisRepository, AnalysisRepository>();
         services.AddScoped<ISavedZoneRepository, SavedZoneRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
-        services.AddScoped<ICriterioRepository, CriterioRepository>();
-        services.AddScoped<IResenaRepository, ResenaRepository>();
-        services.AddScoped<IPreguntaRepository, PreguntaRepository>();
-        services.AddScoped<IAporteRepository, AporteRepository>();
+        services.AddScoped<ICriterionRepository, CriterionRepository>();
+        services.AddScoped<IReviewRepository, ReviewRepository>();
+        services.AddScoped<IQuestionRepository, QuestionRepository>();
+        services.AddScoped<IContributionRepository, ContributionRepository>();
         services.AddScoped<ICommunityPoiRepository, CommunityPoiRepository>();
-        services.AddScoped<IPerfilRepository, PerfilRepository>();
-        services.AddScoped<IPerfilesZonaRepository, PerfilesZonaRepository>();
+        services.AddScoped<IProfileRepository, ProfileRepository>();
+        services.AddScoped<IZoneProfilesRepository, ZoneProfilesRepository>();
 
         if (string.Equals(configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
         {
@@ -70,7 +70,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddMemoryCache();
         services.AddSingleton<PerfilesZonaCache>();
-        services.AddHttpClient<IRuteoClient, MotisRuteoClient>(client =>
+        services.AddHttpClient<IRoutingClient, MotisRoutingClient>(client =>
         {
             client.BaseAddress = new Uri(configuration["Motis:Url"] ?? "http://localhost:18080/");
             client.Timeout = TimeSpan.FromSeconds(8);

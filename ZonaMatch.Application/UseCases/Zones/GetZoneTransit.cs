@@ -9,8 +9,8 @@ namespace ZonaMatch.Application.UseCases.Zones;
 
 // Public transport stops, routes, and frequencies by time window for a zone.
 public sealed class GetZoneTransit(
-    ITransporteZonaRepository transitRepository,
-    IZonaRepository zoneRepository)
+    IZoneTransitRepository transitRepository,
+    IZoneRepository zoneRepository)
 {
     // Display order for transport modes.
     private static readonly string[] ModeOrder = ["subte", "tren", "colectivo"];

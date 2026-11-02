@@ -9,11 +9,11 @@ namespace ZonaMatch.Application.UseCases.Profile;
 // Creates the user's profile during onboarding or replaces it. Saved analyses keep their own criteria snapshot.
 public sealed class SaveMyProfile
 {
-    private readonly IPerfilRepository _profiles;
-    private readonly ICriterioRepository _criteria;
+    private readonly IProfileRepository _profiles;
+    private readonly ICriterionRepository _criteria;
     private readonly TimeProvider _clock;
 
-    public SaveMyProfile(IPerfilRepository profiles, ICriterioRepository criteria, TimeProvider clock)
+    public SaveMyProfile(IProfileRepository profiles, ICriterionRepository criteria, TimeProvider clock)
     {
         _profiles = profiles;
         _criteria = criteria;

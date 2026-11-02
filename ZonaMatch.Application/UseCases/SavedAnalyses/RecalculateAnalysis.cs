@@ -9,7 +9,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
     // Recalculates a saved analysis with today's data (rents, safety, transport, scoring rules) as a new version: same
     // criteria and zones as the analysis it starts from, the profile untouched, and the earlier result kept, so both
     // can be compared.
-    public class RecalculateAnalysis(IAnalisisRepository analyses, IAnalysisResultCalculator calculator, TimeProvider clock)
+    public class RecalculateAnalysis(IAnalysisRepository analyses, IAnalysisResultCalculator calculator, TimeProvider clock)
     {
         private const int NameLength = 50;
 

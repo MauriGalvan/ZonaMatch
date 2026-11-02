@@ -13,7 +13,7 @@ namespace ZonaMatch.Tests.UseCases
     }
 
     // Una sola zona, "villa-luro", que contiene todo punto con latitud menor a 0
-    internal sealed class FakeZonaRepository : IZonaRepository
+    internal sealed class FakeZonaRepository : IZoneRepository
     {
         public const string Zona = "villa-luro";
 
@@ -30,7 +30,7 @@ namespace ZonaMatch.Tests.UseCases
             throw new NotSupportedException();
     }
 
-    internal sealed class FakeAporteRepository : IAporteRepository
+    internal sealed class FakeAporteRepository : IContributionRepository
     {
         public List<Contribution> Aportes { get; } = [];
         public int Guardados { get; private set; }
@@ -66,7 +66,7 @@ namespace ZonaMatch.Tests.UseCases
         public void Add(CommunityPoi poi) => Pois.Add(poi);
     }
 
-    internal sealed class FakeResenaRepository : IResenaRepository
+    internal sealed class FakeResenaRepository : IReviewRepository
     {
         public List<Review> Resenas { get; } = [];
         public int Guardados { get; private set; }
@@ -92,7 +92,7 @@ namespace ZonaMatch.Tests.UseCases
         }
     }
 
-    internal sealed class FakePreguntaRepository : IPreguntaRepository
+    internal sealed class FakePreguntaRepository : IQuestionRepository
     {
         public List<Question> Preguntas { get; } = [];
 

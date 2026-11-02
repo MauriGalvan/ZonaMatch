@@ -6,9 +6,9 @@ namespace ZonaMatch.Application.UseCases.Criteria;
 // Lists active criteria in display order for the detailed and guest analysis wizards.
 public sealed class ListCriteria
 {
-    private readonly ICriterioRepository _criteria;
+    private readonly ICriterionRepository _criteria;
 
-    public ListCriteria(ICriterioRepository criteria)
+    public ListCriteria(ICriterionRepository criteria)
     {
         _criteria = criteria;
     }

@@ -7,9 +7,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses;
 // analysis, so the update date stays as it was.
 public sealed class SetAnalysisFavorite
 {
-    private readonly IAnalisisRepository _analyses;
+    private readonly IAnalysisRepository _analyses;
 
-    public SetAnalysisFavorite(IAnalisisRepository analyses)
+    public SetAnalysisFavorite(IAnalysisRepository analyses)
     {
         _analyses = analyses;
     }

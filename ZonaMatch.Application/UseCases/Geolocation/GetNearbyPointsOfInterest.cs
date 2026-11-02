@@ -8,7 +8,7 @@ using ZonaMatch.Domain.Common;
 namespace ZonaMatch.Application.UseCases.Geolocation;
 
 public sealed class GetNearbyPointsOfInterest(
-    IPuntoInteresRepository pointOfInterestRepository,
+    IPointOfInterestRepository pointOfInterestRepository,
     PointOfInterestResponseBuilder responseBuilder)
 {
     public async Task<PuntosInteresCercanosDto> ExecuteAsync(

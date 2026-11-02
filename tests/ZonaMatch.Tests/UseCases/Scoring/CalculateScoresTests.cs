@@ -146,7 +146,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(request));
         }
 
-        private sealed class FakeZoneRepository : IZonaRepository
+        private sealed class FakeZoneRepository : IZoneRepository
         {
             public bool ContainsStartingPoint { get; set; } = true;
 
@@ -195,7 +195,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             Assert.Empty(_routing.Modes);
         }
 
-        private sealed class FakeZoneProfilesRepository : IPerfilesZonaRepository
+        private sealed class FakeZoneProfilesRepository : IZoneProfilesRepository
         {
             public List<ZoneProfile> Zones { get; } = [];
 
@@ -208,7 +208,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
                 Task.FromResult<IReadOnlyList<string>>(Zones.Select(zone => zone.Slug).ToArray());
         }
 
-        private sealed class FakeRoutingClient : IRuteoClient
+        private sealed class FakeRoutingClient : IRoutingClient
         {
             public bool IsAvailable { get; set; } = true;
             public List<TravelMode> Modes { get; } = [];

@@ -9,7 +9,7 @@ namespace ZonaMatch.Application.UseCases.Geolocation;
 
 public sealed class GetLocationSummary(
     LocationBoundaryLookup boundaryLookup,
-    IEscuelaRepository schoolRepository)
+    ISchoolRepository schoolRepository)
 {
     public async Task<UbicacionResumenDto> ExecuteAsync(
         double latitude,

@@ -10,10 +10,10 @@ namespace ZonaMatch.Application.UseCases.SavedZones
     public class SaveZone
     {
         private readonly ISavedZoneRepository _savedZones;
-        private readonly IZonaRepository _zones;
+        private readonly IZoneRepository _zones;
         private readonly TimeProvider _timeProvider;
 
-        public SaveZone(ISavedZoneRepository savedZones, IZonaRepository zones, TimeProvider timeProvider)
+        public SaveZone(ISavedZoneRepository savedZones, IZoneRepository zones, TimeProvider timeProvider)
         {
             _savedZones = savedZones;
             _zones = zones;

@@ -6,9 +6,9 @@ namespace ZonaMatch.Application.UseCases.Contributions
     // Returns the total number of approved and pending contributions for a zone.
     public class GetContributionSummary
     {
-        private readonly IAporteRepository _contributions;
+        private readonly IContributionRepository _contributions;
 
-        public GetContributionSummary(IAporteRepository contributions)
+        public GetContributionSummary(IContributionRepository contributions)
         {
             _contributions = contributions;
         }

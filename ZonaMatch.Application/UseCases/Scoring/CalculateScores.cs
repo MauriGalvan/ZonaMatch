@@ -20,11 +20,11 @@ namespace ZonaMatch.Application.UseCases.Scoring
         // Number of routing requests sent concurrently.
         private const int ConcurrentTrips = 6;
 
-        private readonly IPerfilesZonaRepository _zoneProfiles;
-        private readonly IRuteoClient _routing;
-        private readonly IZonaRepository _zones;
+        private readonly IZoneProfilesRepository _zoneProfiles;
+        private readonly IRoutingClient _routing;
+        private readonly IZoneRepository _zones;
 
-        public CalculateScores(IPerfilesZonaRepository zoneProfiles, IRuteoClient routing, IZonaRepository zones)
+        public CalculateScores(IZoneProfilesRepository zoneProfiles, IRoutingClient routing, IZoneRepository zones)
         {
             _zoneProfiles = zoneProfiles;
             _routing = routing;

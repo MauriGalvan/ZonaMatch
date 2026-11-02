@@ -2,7 +2,7 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    // SQL shared by the queries that work on a zone (ZonaRepository, PuntoInteresRepository), so they all pick
+    // SQL shared by the queries that work on a zone (ZoneRepository, PointOfInterestRepository), so they all pick
     // the same boundary for a slug.
     // Zones are the administrative boundaries of the osm2pgsql import (schema "osm", SRID 3857).
     // admin_level in the AMBA extract: 4 CABA, 5 comunas and partidos, 8 localidades, 9 and 10 barrios.

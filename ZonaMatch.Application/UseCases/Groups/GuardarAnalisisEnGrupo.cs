@@ -14,16 +14,16 @@ public sealed class GuardarAnalisisEnGrupo
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly CalculateGroupScore _calculateRanking;
-    private readonly IAnalisisRepository _analyses;
-    private readonly IPerfilRepository _profiles;
-    private readonly IZonaRepository _zones;
+    private readonly IAnalysisRepository _analyses;
+    private readonly IProfileRepository _profiles;
+    private readonly IZoneRepository _zones;
     private readonly TimeProvider _clock;
 
     public GuardarAnalisisEnGrupo(
         CalculateGroupScore calculateRanking,
-        IAnalisisRepository analyses,
-        IPerfilRepository profiles,
-        IZonaRepository zones,
+        IAnalysisRepository analyses,
+        IProfileRepository profiles,
+        IZoneRepository zones,
         TimeProvider clock)
     {
         _calculateRanking = calculateRanking;

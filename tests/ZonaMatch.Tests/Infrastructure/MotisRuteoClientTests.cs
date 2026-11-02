@@ -120,9 +120,9 @@ public class MotisRuteoClientTests
         using var handler = new JsonHandler(json);
         using var http = new HttpClient(handler) { BaseAddress = new Uri("http://motis.test/") };
         using var cache = new MemoryCache(new MemoryCacheOptions());
-        var cliente = new MotisRuteoClient(
+        var cliente = new MotisRoutingClient(
             http, cache, TimeProvider.System, new ConfigurationBuilder().Build(),
-            NullLogger<MotisRuteoClient>.Instance);
+            NullLogger<MotisRoutingClient>.Instance);
 
         var viaje = await cliente.CalcularAsync(-34.6, -58.4, -34.5, -58.3, modo);
         return (viaje, handler.Query);

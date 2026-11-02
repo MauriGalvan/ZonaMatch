@@ -6,7 +6,7 @@ using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Application.UseCases.Zones;
 
-public sealed class SearchZones(IZonaRepository zoneRepository)
+public sealed class SearchZones(IZoneRepository zoneRepository)
 {
     public async Task<IReadOnlyList<ZonaResumenDto>> ExecuteAsync(
         string? search,

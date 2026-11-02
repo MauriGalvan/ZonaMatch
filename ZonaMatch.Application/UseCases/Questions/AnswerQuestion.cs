@@ -12,7 +12,7 @@ namespace ZonaMatch.Application.UseCases.Questions
 {
     public sealed class AnswerQuestion
     {
-        private readonly IPreguntaRepository _questions;
+        private readonly IQuestionRepository _questions;
         private readonly INotificationRepository _notifications;
         private readonly IEmailService _emailService;
         private readonly ILogger<AnswerQuestion> _logger;
@@ -20,7 +20,7 @@ namespace ZonaMatch.Application.UseCases.Questions
         private readonly FrontendLinks _links;
 
         public AnswerQuestion(
-            IPreguntaRepository questions,
+            IQuestionRepository questions,
             INotificationRepository notifications,
             IEmailService emailService,
             ILogger<AnswerQuestion> logger,

@@ -7,7 +7,7 @@ using ZonaMatch.Domain.Entities;
 namespace ZonaMatch.Application.UseCases.Zones;
 
 // Population, connectivity, living conditions, and safety data for a zone, with sources.
-public sealed class GetZoneIndicators(IIndicadoresZonaRepository indicatorsRepository)
+public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsRepository)
 {
     // Year of the data loaded by etl/descargar_datos.py.
     public const int CensusYear = 2022;

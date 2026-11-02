@@ -8,9 +8,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
     // Returns one of the user's analyses and, for originals, its versions.
     public class GetAnalysisById
     {
-        private readonly IAnalisisRepository _analysisRepository;
+        private readonly IAnalysisRepository _analysisRepository;
 
-        public GetAnalysisById(IAnalisisRepository analysisRepository)
+        public GetAnalysisById(IAnalysisRepository analysisRepository)
         {
             _analysisRepository = analysisRepository;
         }

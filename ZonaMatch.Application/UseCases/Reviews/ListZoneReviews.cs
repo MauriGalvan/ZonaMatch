@@ -6,9 +6,9 @@ namespace ZonaMatch.Application.UseCases.Reviews
     // Lists a zone's reviews from newest to oldest and marks the current user's review when available.
     public class ListZoneReviews
     {
-        private readonly IResenaRepository _reviews;
+        private readonly IReviewRepository _reviews;
 
-        public ListZoneReviews(IResenaRepository reviews)
+        public ListZoneReviews(IReviewRepository reviews)
         {
             _reviews = reviews;
         }

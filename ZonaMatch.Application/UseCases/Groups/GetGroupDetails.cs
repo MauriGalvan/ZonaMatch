@@ -10,13 +10,13 @@ namespace ZonaMatch.Application.UseCases.Groups;
 public sealed class GetGroupDetails
 {
     private readonly IGroupRepository _groups;
-    private readonly IPerfilRepository _profiles;
-    private readonly ICriterioRepository _criteria;
+    private readonly IProfileRepository _profiles;
+    private readonly ICriterionRepository _criteria;
 
     public GetGroupDetails(
         IGroupRepository groups,
-        IPerfilRepository profiles,
-        ICriterioRepository criteria)
+        IProfileRepository profiles,
+        ICriterionRepository criteria)
     {
         _groups = groups;
         _profiles = profiles;

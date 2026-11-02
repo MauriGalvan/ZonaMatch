@@ -11,11 +11,11 @@ namespace ZonaMatch.Application.UseCases.Contributions
     // Suggests a map correction when a place closed or its name, location, or category is incorrect.
     public class CreateContributionCorrection
     {
-        private readonly IAporteRepository _contributions;
-        private readonly IZonaRepository _zones;
+        private readonly IContributionRepository _contributions;
+        private readonly IZoneRepository _zones;
         private readonly TimeProvider _clock;
 
-        public CreateContributionCorrection(IAporteRepository contributions, IZonaRepository zones, TimeProvider clock)
+        public CreateContributionCorrection(IContributionRepository contributions, IZoneRepository zones, TimeProvider clock)
         {
             _contributions = contributions;
             _zones = zones;

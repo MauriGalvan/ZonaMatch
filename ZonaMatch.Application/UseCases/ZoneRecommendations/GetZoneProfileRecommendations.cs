@@ -5,7 +5,7 @@ using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.ZoneRecommendations;
 
-public sealed class GetZoneProfileRecommendations(IPuntoInteresRepository pointOfInterestRepository)
+public sealed class GetZoneProfileRecommendations(IPointOfInterestRepository pointOfInterestRepository)
 {
     private const int MaximumPlacesPerCategory = 100;
 

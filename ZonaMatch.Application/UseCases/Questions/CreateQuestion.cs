@@ -10,15 +10,15 @@ namespace ZonaMatch.Application.UseCases.Questions
 {
     public sealed class CreateQuestion
     {
-        private readonly IPreguntaRepository _questions;
-        private readonly IZonaRepository _zones;
+        private readonly IQuestionRepository _questions;
+        private readonly IZoneRepository _zones;
         private readonly ISavedZoneRepository _savedZones;
         private readonly INotificationRepository _notifications;
         private readonly TimeProvider _clock;
 
         public CreateQuestion(
-            IPreguntaRepository questions,
-            IZonaRepository zones,
+            IQuestionRepository questions,
+            IZoneRepository zones,
             ISavedZoneRepository savedZones,
             INotificationRepository notifications,
             TimeProvider clock)

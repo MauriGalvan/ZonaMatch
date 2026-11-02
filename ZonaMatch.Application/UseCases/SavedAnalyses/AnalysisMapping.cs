@@ -44,7 +44,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
         // Request zones must exist, be unique, and include at most one initial zone.
         public static async Task<List<AnalysisZone>> BuildZonesAsync(
-            IReadOnlyList<AnalysisZoneRequest> zones, IZonaRepository repository, CancellationToken cancellationToken)
+            IReadOnlyList<AnalysisZoneRequest> zones, IZoneRepository repository, CancellationToken cancellationToken)
         {
             if (zones.Count == 0)
                 throw new BadRequestException("Elegí al menos una zona.");

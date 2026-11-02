@@ -5,7 +5,7 @@ using ZonaMatch.Domain.Entities;
 namespace ZonaMatch.Tests.UseCases.Profile;
 
 // In-memory repositories used by profile and saved analysis tests.
-internal sealed class FakeCriterionRepository : ICriterioRepository
+internal sealed class FakeCriterionRepository : ICriterionRepository
 {
     public Task<IReadOnlyList<Criterion>> ListarAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Criterion>>(
@@ -16,7 +16,7 @@ internal sealed class FakeCriterionRepository : ICriterioRepository
         ]);
 }
 
-internal sealed class FakeProfileRepository : IPerfilRepository
+internal sealed class FakeProfileRepository : IProfileRepository
 {
     public List<Context> Profiles { get; } = [];
     public int SaveCount { get; private set; }
@@ -39,7 +39,7 @@ internal sealed class FakeProfileRepository : IPerfilRepository
     }
 }
 
-internal sealed class FakeAnalysisRepository : IAnalisisRepository
+internal sealed class FakeAnalysisRepository : IAnalysisRepository
 {
     public List<Analysis> Analyses { get; } = [];
     public int SaveCount { get; private set; }

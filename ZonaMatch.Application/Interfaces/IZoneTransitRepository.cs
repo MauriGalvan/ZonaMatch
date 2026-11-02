@@ -1,0 +1,14 @@
+using ZonaMatch.Domain.Entities;
+
+namespace ZonaMatch.Application.Interfaces
+{
+    // Lee el resumen de transporte que calcula etl/calcular_transporte.sql. Listas vacias cuando la zona no
+    // tiene paradas o todavia no se cargaron los datos (DATOS-ZONAS-DOCKER.bat).
+    public interface IZoneTransitRepository
+    {
+        // The same zone selection as GET /api/v1/zones/{slug}.
+        Task<IReadOnlyList<ZoneTransitModeStops>> ListarParadasAsync(string slug, CancellationToken cancellationToken = default);
+
+        Task<IReadOnlyList<TransitLineDepartures>> ListarSalidasAsync(string slug, CancellationToken cancellationToken = default);
+    }
+}

@@ -71,7 +71,7 @@ namespace ZonaMatch.Tests.UseCases.Zones
             await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync("no-existe"));
         }
 
-        private sealed class FakeTransitZoneRepository : ITransporteZonaRepository
+        private sealed class FakeTransitZoneRepository : IZoneTransitRepository
         {
             public List<ZoneTransitModeStops> Stops { get; } = [];
             public List<TransitLineDepartures> Departures { get; } = [];

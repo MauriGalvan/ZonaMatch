@@ -6,7 +6,7 @@ using ZonaMatch.Application.Services;
 namespace ZonaMatch.Application.UseCases.Zones;
 
 public sealed class GetZonePointsOfInterestSummary(
-    IPuntoInteresRepository pointOfInterestRepository,
+    IPointOfInterestRepository pointOfInterestRepository,
     PointOfInterestResponseBuilder responseBuilder)
 {
     public async Task<ResumenPuntosInteresDto> ExecuteAsync(

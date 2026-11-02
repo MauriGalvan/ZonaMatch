@@ -10,13 +10,13 @@ using ZonaMatch.Domain.Scoring;
 namespace ZonaMatch.Infrastructure.Geo
 {
     // Trip plans from MOTIS (the "motis" container of docker-compose, GET /api/v1/plan), with every leg and its
-    // geometry. Like MotisRuteoClient, it asks for a weekday of the loaded reference week at 8 in the morning and
+    // geometry. Like MotisRoutingClient, it asks for a weekday of the loaded reference week at 8 in the morning and
     // keeps each plan in memory for a day. Of the itineraries MOTIS offers, the best one is kept: the fastest, with
     // every transfer counted as TransferPenaltySeconds more and every public transport leg shorter than five blocks as
     // ShortRidePenaltySeconds more, so a bus for three blocks or an unnecessary transfer does not win by a minute.
     public class MotisRoutePlanner(HttpClient http, IMemoryCache cache, IConfiguration configuration) : IRoutePlanner
     {
-        // Tuesday, March 3, 2026, 8:00 in Buenos Aires (UTC-3), as in MotisRuteoClient
+        // Tuesday, March 3, 2026, 8:00 in Buenos Aires (UTC-3), as in MotisRoutingClient
         private const string DefaultReferenceTime = "2026-03-03T11:00:00Z";
 
         private static readonly TimeSpan PlanLifetime = TimeSpan.FromDays(1);

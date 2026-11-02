@@ -13,15 +13,15 @@ namespace ZonaMatch.Application.UseCases.Reviews
     // Creates or replaces the user's review for a zone (one per user and zone).
     public class SaveMyReview
     {
-        private readonly IResenaRepository _reviews;
-        private readonly IZonaRepository _zones;
+        private readonly IReviewRepository _reviews;
+        private readonly IZoneRepository _zones;
         private readonly ISavedZoneRepository _savedZones;
         private readonly INotificationRepository _notifications;
         private readonly TimeProvider _clock;
 
         public SaveMyReview(
-            IResenaRepository reviews,
-            IZonaRepository zones,
+            IReviewRepository reviews,
+            IZoneRepository zones,
             ISavedZoneRepository savedZones,
             INotificationRepository notifications,
             TimeProvider clock)

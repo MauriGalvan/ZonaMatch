@@ -22,7 +22,7 @@ namespace ZonaMatch.Api.Background
             {
                 var reloj = Stopwatch.StartNew();
                 using var scope = _scopes.CreateScope();
-                var perfiles = await scope.ServiceProvider.GetRequiredService<IPerfilesZonaRepository>().ListarAsync(stoppingToken);
+                var perfiles = await scope.ServiceProvider.GetRequiredService<IZoneProfilesRepository>().ListarAsync(stoppingToken);
                 _logger.LogInformation("Perfiles de zona para el puntaje: {Cantidad} zonas en {Segundos:F1} s.", perfiles.Count, reloj.Elapsed.TotalSeconds);
             }
             catch (Exception ex) when (!stoppingToken.IsCancellationRequested)

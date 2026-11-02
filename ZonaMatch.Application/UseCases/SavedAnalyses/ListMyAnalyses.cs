@@ -8,9 +8,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
     // Version activity contributes to the position of its original analysis.
     public class ListMyAnalyses
     {
-        private readonly IAnalisisRepository _analysisRepository;
+        private readonly IAnalysisRepository _analysisRepository;
 
-        public ListMyAnalyses(IAnalisisRepository analysisRepository)
+        public ListMyAnalyses(IAnalysisRepository analysisRepository)
         {
             _analysisRepository = analysisRepository;
         }

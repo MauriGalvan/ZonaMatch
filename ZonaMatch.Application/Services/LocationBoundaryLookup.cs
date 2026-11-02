@@ -7,8 +7,8 @@ namespace ZonaMatch.Application.Services;
 /// Shared lookup for the district and commune that contain a coordinate.
 /// </summary>
 public sealed class LocationBoundaryLookup(
-    IPartidoRepository districtRepository,
-    IComunaRepository communeRepository)
+    IDistrictRepository districtRepository,
+    ICommuneRepository communeRepository)
 {
     public async Task<PartidoDto?> GetDistrictAsync(double latitude, double longitude)
     {

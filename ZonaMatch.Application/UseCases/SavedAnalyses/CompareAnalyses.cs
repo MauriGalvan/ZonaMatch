@@ -23,14 +23,14 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
         private const int MaxZones = 10;
         private const int ParallelTrips = 6;
 
-        private readonly IAnalisisRepository _analysisRepository;
-        private readonly IPerfilesZonaRepository _zoneProfilesRepository;
-        private readonly IRuteoClient _routingClient;
+        private readonly IAnalysisRepository _analysisRepository;
+        private readonly IZoneProfilesRepository _zoneProfilesRepository;
+        private readonly IRoutingClient _routingClient;
 
         public CompareAnalyses(
-            IAnalisisRepository analysisRepository,
-            IPerfilesZonaRepository zoneProfilesRepository,
-            IRuteoClient routingClient)
+            IAnalysisRepository analysisRepository,
+            IZoneProfilesRepository zoneProfilesRepository,
+            IRoutingClient routingClient)
         {
             _analysisRepository = analysisRepository;
             _zoneProfilesRepository = zoneProfilesRepository;

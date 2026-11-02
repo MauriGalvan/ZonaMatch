@@ -11,14 +11,14 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
     // The user's saved profile is required before creating an analysis.
     public class CreateAnalysis
     {
-        private readonly IAnalisisRepository _analysisRepository;
-        private readonly IPerfilRepository _profileRepository;
-        private readonly IZonaRepository _zoneRepository;
+        private readonly IAnalysisRepository _analysisRepository;
+        private readonly IProfileRepository _profileRepository;
+        private readonly IZoneRepository _zoneRepository;
         private readonly TimeProvider _clock;
         private readonly IAnalysisResultCalculator _resultCalculator;
 
         public CreateAnalysis(
-            IAnalisisRepository analysisRepository, IPerfilRepository profileRepository, IZonaRepository zoneRepository,
+            IAnalysisRepository analysisRepository, IProfileRepository profileRepository, IZoneRepository zoneRepository,
             TimeProvider clock, IAnalysisResultCalculator resultCalculator)
         {
             _analysisRepository = analysisRepository;

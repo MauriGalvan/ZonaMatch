@@ -10,11 +10,11 @@ namespace ZonaMatch.Application.UseCases.Contributions
     // The vote that approves it persists it as a point of interest (CommunityPoiUpdater).
     public class ValidateContribution
     {
-        private readonly IAporteRepository _contributions;
+        private readonly IContributionRepository _contributions;
         private readonly CommunityPoiUpdater _poiUpdater;
         private readonly TimeProvider _clock;
 
-        public ValidateContribution(IAporteRepository contributions, CommunityPoiUpdater poiUpdater, TimeProvider clock)
+        public ValidateContribution(IContributionRepository contributions, CommunityPoiUpdater poiUpdater, TimeProvider clock)
         {
             _contributions = contributions;
             _poiUpdater = poiUpdater;

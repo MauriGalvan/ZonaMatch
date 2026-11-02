@@ -9,10 +9,10 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
     // Renames an analysis or a version. Criteria are adjusted by creating a new version.
     public class RenameAnalysis
     {
-        private readonly IAnalisisRepository _analysisRepository;
+        private readonly IAnalysisRepository _analysisRepository;
         private readonly TimeProvider _clock;
 
-        public RenameAnalysis(IAnalisisRepository analysisRepository, TimeProvider clock)
+        public RenameAnalysis(IAnalysisRepository analysisRepository, TimeProvider clock)
         {
             _analysisRepository = analysisRepository;
             _clock = clock;

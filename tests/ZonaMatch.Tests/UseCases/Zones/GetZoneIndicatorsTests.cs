@@ -106,7 +106,7 @@ namespace ZonaMatch.Tests.UseCases.Zones
             DelitosAmbito = jurisdiction,
         };
 
-        private sealed class FakeZoneIndicatorsRepository : IIndicadoresZonaRepository
+        private sealed class FakeZoneIndicatorsRepository : IZoneIndicatorsRepository
         {
             public List<ZoneIndicators> Zones { get; } = [];
             public ZoneIndicators? CityReference { get; set; }

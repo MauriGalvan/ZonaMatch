@@ -5,9 +5,9 @@ namespace ZonaMatch.Application.UseCases.Reviews
 {
     public class DeleteMyReview
     {
-        private readonly IResenaRepository _reviews;
+        private readonly IReviewRepository _reviews;
 
-        public DeleteMyReview(IResenaRepository reviews)
+        public DeleteMyReview(IReviewRepository reviews)
         {
             _reviews = reviews;
         }

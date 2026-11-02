@@ -6,9 +6,9 @@ namespace ZonaMatch.Application.UseCases.Profile;
 // Returns the user's profile, or null when it has not been created yet.
 public sealed class GetMyProfile
 {
-    private readonly IPerfilRepository _profiles;
+    private readonly IProfileRepository _profiles;
 
-    public GetMyProfile(IPerfilRepository profiles)
+    public GetMyProfile(IProfileRepository profiles)
     {
         _profiles = profiles;
     }

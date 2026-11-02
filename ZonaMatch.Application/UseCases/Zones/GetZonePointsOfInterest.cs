@@ -8,7 +8,7 @@ using ZonaMatch.Domain.Common;
 namespace ZonaMatch.Application.UseCases.Zones;
 
 public sealed class GetZonePointsOfInterest(
-    IPuntoInteresRepository pointOfInterestRepository,
+    IPointOfInterestRepository pointOfInterestRepository,
     PointOfInterestResponseBuilder responseBuilder)
 {
     public async Task<PuntosInteresCercanosDto> ExecuteAsync(

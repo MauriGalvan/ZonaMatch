@@ -7,10 +7,10 @@ namespace ZonaMatch.Application.UseCases.Reviews
     // Marks or unmarks another user's review as useful.
     public class SetReviewHelpful
     {
-        private readonly IResenaRepository _reviews;
+        private readonly IReviewRepository _reviews;
         private readonly TimeProvider _clock;
 
-        public SetReviewHelpful(IResenaRepository reviews, TimeProvider clock)
+        public SetReviewHelpful(IReviewRepository reviews, TimeProvider clock)
         {
             _reviews = reviews;
             _clock = clock;

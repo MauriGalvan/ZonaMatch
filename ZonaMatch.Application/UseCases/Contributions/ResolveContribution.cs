@@ -9,11 +9,11 @@ namespace ZonaMatch.Application.UseCases.Contributions
     // An approved one is persisted as a point of interest right away. The API checks the administrator role.
     public class ResolveContribution
     {
-        private readonly IAporteRepository _contributions;
+        private readonly IContributionRepository _contributions;
         private readonly CommunityPoiUpdater _poiUpdater;
         private readonly TimeProvider _clock;
 
-        public ResolveContribution(IAporteRepository contributions, CommunityPoiUpdater poiUpdater, TimeProvider clock)
+        public ResolveContribution(IContributionRepository contributions, CommunityPoiUpdater poiUpdater, TimeProvider clock)
         {
             _contributions = contributions;
             _poiUpdater = poiUpdater;

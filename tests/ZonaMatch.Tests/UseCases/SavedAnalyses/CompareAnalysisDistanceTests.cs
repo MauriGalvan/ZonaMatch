@@ -26,13 +26,13 @@ public class CompareAnalysisDistanceTests
             }
         }).ToArray();
 
-        var repositorio = new Mock<IAnalisisRepository>();
+        var repositorio = new Mock<IAnalysisRepository>();
         repositorio.Setup(r => r.ListarDeUsuarioAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(analyses);
-        var perfiles = new Mock<IPerfilesZonaRepository>();
+        var perfiles = new Mock<IZoneProfilesRepository>();
         perfiles.Setup(r => r.ListarAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ZoneProfile[] { new() { Slug = "recoleta", Nombre = "Recoleta", Nivel = 9 } });
-        var ruteo = new Mock<IRuteoClient>();
+        var ruteo = new Mock<IRoutingClient>();
         ruteo.Setup(r => r.CalcularAsync(
                 It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>(), It.IsAny<double>(),
                 TravelMode.Car, It.IsAny<CancellationToken>()))

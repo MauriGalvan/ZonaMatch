@@ -7,9 +7,9 @@ namespace ZonaMatch.Application.UseCases.Questions
     // Lists a zone's questions from newest to oldest, with answers ordered from oldest to newest.
     public sealed class ListZoneQuestions
     {
-        private readonly IPreguntaRepository _questions;
+        private readonly IQuestionRepository _questions;
 
-        public ListZoneQuestions(IPreguntaRepository questions)
+        public ListZoneQuestions(IQuestionRepository questions)
         {
             _questions = questions;
         }

@@ -10,11 +10,11 @@ namespace ZonaMatch.Application.UseCases.Contributions
     // Suggests a place missing from the map; it must be inside the zone.
     public class CreatePointContribution
     {
-        private readonly IAporteRepository _contributions;
-        private readonly IZonaRepository _zones;
+        private readonly IContributionRepository _contributions;
+        private readonly IZoneRepository _zones;
         private readonly TimeProvider _clock;
 
-        public CreatePointContribution(IAporteRepository contributions, IZonaRepository zones, TimeProvider clock)
+        public CreatePointContribution(IContributionRepository contributions, IZoneRepository zones, TimeProvider clock)
         {
             _contributions = contributions;
             _zones = zones;

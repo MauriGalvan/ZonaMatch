@@ -4,7 +4,7 @@ using ZonaMatch.Application.Policies;
 
 namespace ZonaMatch.Application.UseCases.Map;
 
-public sealed class GetMapSchools(IMapaRepository mapRepository)
+public sealed class GetMapSchools(IMapRepository mapRepository)
 {
     public async Task<string> ExecuteAsync(BoundingBox boundingBox, string? level, string? sector)
     {

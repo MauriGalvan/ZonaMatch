@@ -14,14 +14,14 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
     {
         private const int MaxNameLength = 50;
 
-        private readonly IAnalisisRepository _analysisRepository;
-        private readonly ICriterioRepository _criteriaRepository;
-        private readonly IZonaRepository _zoneRepository;
+        private readonly IAnalysisRepository _analysisRepository;
+        private readonly ICriterionRepository _criteriaRepository;
+        private readonly IZoneRepository _zoneRepository;
         private readonly TimeProvider _clock;
         private readonly IAnalysisResultCalculator _resultCalculator;
 
         public CreateAnalysisVersion(
-            IAnalisisRepository analysisRepository, ICriterioRepository criteriaRepository, IZonaRepository zoneRepository,
+            IAnalysisRepository analysisRepository, ICriterionRepository criteriaRepository, IZoneRepository zoneRepository,
             TimeProvider clock, IAnalysisResultCalculator resultCalculator)
         {
             _analysisRepository = analysisRepository;

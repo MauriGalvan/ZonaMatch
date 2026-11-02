@@ -6,9 +6,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
     // Deletes an analysis and its criteria snapshot. Deleting an original also deletes its versions.
     public class DeleteAnalysis
     {
-        private readonly IAnalisisRepository _analysisRepository;
+        private readonly IAnalysisRepository _analysisRepository;
 
-        public DeleteAnalysis(IAnalisisRepository analysisRepository)
+        public DeleteAnalysis(IAnalysisRepository analysisRepository)
         {
             _analysisRepository = analysisRepository;
         }

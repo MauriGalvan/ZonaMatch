@@ -5,7 +5,7 @@ using ZonaMatch.Application.Policies;
 
 namespace ZonaMatch.Application.UseCases.Geolocation;
 
-public sealed class GetNearestSchools(IEscuelaRepository schoolRepository)
+public sealed class GetNearestSchools(ISchoolRepository schoolRepository)
 {
     public async Task<IReadOnlyList<EscuelaDto>> ExecuteAsync(
         double latitude,

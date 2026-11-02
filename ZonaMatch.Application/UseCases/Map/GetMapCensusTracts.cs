@@ -4,7 +4,7 @@ using ZonaMatch.Application.Policies;
 
 namespace ZonaMatch.Application.UseCases.Map;
 
-public sealed class GetMapCensusTracts(IMapaRepository mapRepository)
+public sealed class GetMapCensusTracts(IMapRepository mapRepository)
 {
     public async Task<string> ExecuteAsync(BoundingBox boundingBox, double? tolerance)
     {

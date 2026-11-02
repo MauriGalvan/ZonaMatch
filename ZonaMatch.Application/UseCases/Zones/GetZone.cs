@@ -4,7 +4,7 @@ using ZonaMatch.Application.Policies;
 
 namespace ZonaMatch.Application.UseCases.Zones;
 
-public sealed class GetZone(IZonaRepository zoneRepository)
+public sealed class GetZone(IZoneRepository zoneRepository)
 {
     public async Task<string> ExecuteAsync(
         string slug,

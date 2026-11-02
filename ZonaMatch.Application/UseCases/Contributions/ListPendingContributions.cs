@@ -6,9 +6,9 @@ namespace ZonaMatch.Application.UseCases.Contributions
     // Lists contributions that are waiting for votes, including the current user's vote when available.
     public class ListPendingContributions
     {
-        private readonly IAporteRepository _contributions;
+        private readonly IContributionRepository _contributions;
 
-        public ListPendingContributions(IAporteRepository contributions)
+        public ListPendingContributions(IContributionRepository contributions)
         {
             _contributions = contributions;
         }

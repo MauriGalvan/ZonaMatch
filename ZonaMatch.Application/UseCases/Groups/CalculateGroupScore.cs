@@ -21,15 +21,15 @@ public sealed partial class CalculateGroupScore
     private static readonly string[] RecommendationAgeRangeOrder = ["0-2", "3-5", "6-11", "12-17"];
 
     private readonly IGroupRepository _groups;
-    private readonly IPerfilRepository _profiles;
-    private readonly IPerfilesZonaRepository _zoneProfiles;
-    private readonly IRuteoClient _routing;
+    private readonly IProfileRepository _profiles;
+    private readonly IZoneProfilesRepository _zoneProfiles;
+    private readonly IRoutingClient _routing;
 
     public CalculateGroupScore(
         IGroupRepository groups,
-        IPerfilRepository profiles,
-        IPerfilesZonaRepository zoneProfiles,
-        IRuteoClient routing)
+        IProfileRepository profiles,
+        IZoneProfilesRepository zoneProfiles,
+        IRoutingClient routing)
     {
         _groups = groups;
         _profiles = profiles;
