@@ -11,22 +11,22 @@ public sealed class MapController : ControllerBase
 {
     private const string GeoJson = "application/geo+json";
 
-    // GET /api/v1/map/districts?tolerancia=0.0005
+    // GET /api/v1/map/districts?tolerance=0.0005
     [HttpGet("districts")]
     [ResponseCache(Duration = 3600)]
     public async Task<IActionResult> GetDistricts(
-        [FromQuery(Name = "tolerancia")] double? tolerance,
+        [FromQuery] double? tolerance,
         [FromServices] GetMapDistricts getMapDistricts)
     {
         var geoJson = await getMapDistricts.ExecuteAsync(tolerance);
         return Content(geoJson, GeoJson);
     }
 
-    // GET /api/v1/map/communes?tolerancia=0.0005
+    // GET /api/v1/map/communes?tolerance=0.0005
     [HttpGet("communes")]
     [ResponseCache(Duration = 3600)]
     public async Task<IActionResult> GetCommunes(
-        [FromQuery(Name = "tolerancia")] double? tolerance,
+        [FromQuery] double? tolerance,
         [FromServices] GetMapCommunes getMapCommunes)
     {
         var geoJson = await getMapCommunes.ExecuteAsync(tolerance);
@@ -40,7 +40,7 @@ public sealed class MapController : ControllerBase
         [FromQuery] double minLat,
         [FromQuery] double maxLon,
         [FromQuery] double maxLat,
-        [FromQuery(Name = "tolerancia")] double? tolerance,
+        [FromQuery] double? tolerance,
         [FromServices] GetMapCensusTracts getMapCensusTracts)
     {
         var boundingBox = new BoundingBox(minLon, minLat, maxLon, maxLat);
@@ -48,7 +48,7 @@ public sealed class MapController : ControllerBase
         return Content(geoJson, GeoJson);
     }
 
-    // GET /api/v1/map/schools?minLon=&minLat=&maxLon=&maxLat=&nivel=&sector=
+    // GET /api/v1/map/schools?minLon=&minLat=&maxLon=&maxLat=&level=&sector=
     [HttpGet("schools")]
     public async Task<IActionResult> GetSchools(
         [FromQuery] double minLon,
@@ -56,7 +56,7 @@ public sealed class MapController : ControllerBase
         [FromQuery] double maxLon,
         [FromQuery] double maxLat,
         [FromServices] GetMapSchools getMapSchools,
-        [FromQuery(Name = "nivel")] string? level = null,
+        [FromQuery] string? level = null,
         [FromQuery] string? sector = null)
     {
         var boundingBox = new BoundingBox(minLon, minLat, maxLon, maxLat);

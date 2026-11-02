@@ -12,11 +12,11 @@ namespace ZonaMatch.Infrastructure.Repositories
     {
         private const string Schema = ZonaMatchDbOptions.GeoSchema;
 
-        // ~1 m precision, keeps the payload small
-        private const int Decimales = 5;
+        // Around one-meter precision keeps the payload small.
+        private const int GeoJsonCoordinatePrecision = 5;
 
-        // Uses the GiST index on geom
-        private const string EnViewport = "t.geom && ST_MakeEnvelope(@minLon, @minLat, @maxLon, @maxLat, 4326)";
+        // Uses the GiST index on geom.
+        private const string ViewportPredicate = "t.geom && ST_MakeEnvelope(@minLon, @minLat, @maxLon, @maxLat, 4326)";
 
         private readonly ZonaMatchDbContext _dbContext;
 
@@ -25,98 +25,98 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public Task<string> GetDistrictsAsync(double tolerancia) =>
-            LeerAsync(
+        public Task<string> GetDistrictsAsync(double simplificationTolerance) =>
+            ReadAsync(
                 FeatureCollection("partidos", "t.key",
-                    "json_build_object('key', t.key, 'nombre', t.nombre, 'provincia', t.provincia, 'municipioId', t.municipio_id)",
-                    GeometriaSimplificada),
-                new NpgsqlParameter("tol", tolerancia));
+                    "json_build_object('key', t.key, 'name', t.nombre, 'province', t.provincia, 'municipalityId', t.municipio_id)",
+                    SimplifiedGeometrySql),
+                new NpgsqlParameter("tolerance", simplificationTolerance));
 
-        public Task<string> GetCommunesAsync(double tolerancia) =>
-            LeerAsync(
+        public Task<string> GetCommunesAsync(double simplificationTolerance) =>
+            ReadAsync(
                 FeatureCollection("comunas", "t.key",
-                    "json_build_object('key', t.key, 'nombre', t.nombre, 'cabaId', t.caba_id)",
-                    GeometriaSimplificada),
-                new NpgsqlParameter("tol", tolerancia));
+                    "json_build_object('key', t.key, 'name', t.nombre, 'cabaId', t.caba_id)",
+                    SimplifiedGeometrySql),
+                new NpgsqlParameter("tolerance", simplificationTolerance));
 
-        public Task<int> CountCensusTractsAsync(BoundingBox bbox) =>
-            CountAsync($"SELECT count(*)::int AS \"Value\" FROM {Schema}.radios t WHERE {EnViewport}",
-                ParametrosViewport(bbox));
+        public Task<int> CountCensusTractsAsync(BoundingBox boundingBox) =>
+            CountAsync($"SELECT count(*)::int AS \"Value\" FROM {Schema}.radios t WHERE {ViewportPredicate}",
+                GetViewportParameters(boundingBox));
 
-        public Task<string> GetCensusTractsAsync(BoundingBox bbox, double tolerancia) =>
-            LeerAsync(
+        public Task<string> GetCensusTractsAsync(BoundingBox boundingBox, double simplificationTolerance) =>
+            ReadAsync(
                 FeatureCollection("radios", "t.id",
-                    "json_build_object('id', t.id, 'origen', t.origen, 'depto', t.depto, 'comuna', t.comuna, 'fraccion', t.fraccion, 'radio', t.radio)",
-                    GeometriaSimplificada,
-                    $"WHERE {EnViewport}"),
-                ParametrosViewport(bbox).Append(new NpgsqlParameter("tol", tolerancia)).ToArray());
+                    "json_build_object('id', t.id, 'origin', t.origen, 'department', t.depto, 'commune', t.comuna, 'fraction', t.fraccion, 'tract', t.radio)",
+                    SimplifiedGeometrySql,
+                    $"WHERE {ViewportPredicate}"),
+                GetViewportParameters(boundingBox).Append(new NpgsqlParameter("tolerance", simplificationTolerance)).ToArray());
 
-        public Task<int> CountSchoolsAsync(BoundingBox bbox, string? nivel, string? sector)
+        public Task<int> CountSchoolsAsync(BoundingBox boundingBox, string? level, string? sector)
         {
-            var (where, parametros) = FiltroEscuelas(bbox, nivel, sector);
-            return CountAsync($"SELECT count(*)::int AS \"Value\" FROM {Schema}.escuelas t {where}", parametros);
+            var (where, parameters) = BuildSchoolFilter(boundingBox, level, sector);
+            return CountAsync($"SELECT count(*)::int AS \"Value\" FROM {Schema}.escuelas t {where}", parameters);
         }
 
-        public Task<string> GetSchoolsAsync(BoundingBox bbox, string? nivel, string? sector)
+        public Task<string> GetSchoolsAsync(BoundingBox boundingBox, string? level, string? sector)
         {
-            var (where, parametros) = FiltroEscuelas(bbox, nivel, sector);
+            var (where, parameters) = BuildSchoolFilter(boundingBox, level, sector);
 
-            return LeerAsync(
+            return ReadAsync(
                 FeatureCollection("escuelas", "t.clave_natural",
-                    "json_build_object('claveNatural', t.clave_natural, 'nombre', t.nombre, 'nivel', t.nivel, 'sector', t.sector, 'direccion', t.direccion, 'localidad', t.localidad)",
-                    $"ST_AsGeoJSON(t.geom, {Decimales})",
+                    "json_build_object('naturalKey', t.clave_natural, 'name', t.nombre, 'level', t.nivel, 'sector', t.sector, 'address', t.direccion, 'locality', t.localidad)",
+                    $"ST_AsGeoJSON(t.geom, {GeoJsonCoordinatePrecision})",
                     where),
-                parametros);
+                parameters);
         }
 
-        private static string GeometriaSimplificada =>
-            $"ST_AsGeoJSON(ST_SimplifyPreserveTopology(t.geom, @tol), {Decimales})";
+        private static string SimplifiedGeometrySql =>
+            $"ST_AsGeoJSON(ST_SimplifyPreserveTopology(t.geom, @tolerance), {GeoJsonCoordinatePrecision})";
 
-        private static string FeatureCollection(string tabla, string id, string propiedades, string geometria, string where = "") =>
+        private static string FeatureCollection(string table, string id, string properties, string geometry, string where = "") =>
             $"""
             SELECT json_build_object(
                 'type', 'FeatureCollection',
                 'features', COALESCE(json_agg(json_build_object(
                     'type', 'Feature',
                     'id', {id},
-                    'properties', {propiedades},
-                    'geometry', {geometria}::json)), '[]'::json))::text AS "Value"
-            FROM {Schema}.{tabla} t
+                    'properties', {properties},
+                    'geometry', {geometry}::json)), '[]'::json))::text AS "Value"
+            FROM {Schema}.{table} t
             {where}
             """;
 
-        private static NpgsqlParameter[] ParametrosViewport(BoundingBox bbox) =>
+        private static NpgsqlParameter[] GetViewportParameters(BoundingBox boundingBox) =>
         [
-            new("minLon", bbox.MinLon),
-            new("minLat", bbox.MinLat),
-            new("maxLon", bbox.MaxLon),
-            new("maxLat", bbox.MaxLat)
+            new("minLon", boundingBox.MinLon),
+            new("minLat", boundingBox.MinLat),
+            new("maxLon", boundingBox.MaxLon),
+            new("maxLat", boundingBox.MaxLat)
         ];
 
-        private static (string Where, NpgsqlParameter[] Parametros) FiltroEscuelas(BoundingBox bbox, string? nivel, string? sector)
+        private static (string Where, NpgsqlParameter[] Parameters) BuildSchoolFilter(BoundingBox boundingBox, string? level, string? sector)
         {
-            var where = $"WHERE {EnViewport}";
-            var parametros = ParametrosViewport(bbox).ToList();
+            var where = $"WHERE {ViewportPredicate}";
+            var parameters = GetViewportParameters(boundingBox).ToList();
 
-            if (!string.IsNullOrWhiteSpace(nivel))
+            if (!string.IsNullOrWhiteSpace(level))
             {
-                where += " AND t.nivel = @nivel";
-                parametros.Add(new NpgsqlParameter("nivel", nivel));
+                where += " AND t.nivel = @level";
+                parameters.Add(new NpgsqlParameter("level", level));
             }
 
             if (!string.IsNullOrWhiteSpace(sector))
             {
                 where += " AND t.sector = @sector";
-                parametros.Add(new NpgsqlParameter("sector", sector));
+                parameters.Add(new NpgsqlParameter("sector", sector));
             }
 
-            return (where, parametros.ToArray());
+            return (where, parameters.ToArray());
         }
 
-        private Task<string> LeerAsync(string sql, params NpgsqlParameter[] parametros) =>
-            _dbContext.Database.SqlQueryRaw<string>(sql, parametros).SingleAsync();
+        private Task<string> ReadAsync(string sql, params NpgsqlParameter[] parameters) =>
+            _dbContext.Database.SqlQueryRaw<string>(sql, parameters).SingleAsync();
 
-        private Task<int> CountAsync(string sql, params NpgsqlParameter[] parametros) =>
-            _dbContext.Database.SqlQueryRaw<int>(sql, parametros).SingleAsync();
+        private Task<int> CountAsync(string sql, params NpgsqlParameter[] parameters) =>
+            _dbContext.Database.SqlQueryRaw<int>(sql, parameters).SingleAsync();
     }
 }
