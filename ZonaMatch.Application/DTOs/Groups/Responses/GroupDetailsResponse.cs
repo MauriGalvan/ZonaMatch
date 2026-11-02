@@ -1,4 +1,4 @@
-namespace ZonaMatch.Application.DTOs.Group;
+namespace ZonaMatch.Application.DTOs.Groups.Responses;
 
 public sealed record GroupDetailsResponse(
     Guid Id,

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ZonaMatch.Application.DTOs.GroupLink;
+namespace ZonaMatch.Application.DTOs.GroupLinks.Responses;
 
 public class GroupLinkDetailsResponse
 {

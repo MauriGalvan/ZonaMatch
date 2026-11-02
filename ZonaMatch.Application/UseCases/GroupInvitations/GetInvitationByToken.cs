@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using ZonaMatch.Application.DTOs.GroupInvitation;
+using ZonaMatch.Application.DTOs.GroupInvitations.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 namespace ZonaMatch.Application.UseCases.GroupInvitations;

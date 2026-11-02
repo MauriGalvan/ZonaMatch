@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using ZonaMatch.Application.DTOs.Group;
+using ZonaMatch.Application.DTOs.Groups.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Enums;
 

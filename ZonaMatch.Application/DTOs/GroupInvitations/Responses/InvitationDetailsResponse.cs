@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ZonaMatch.Application.DTOs.GroupInvitation;
+namespace ZonaMatch.Application.DTOs.GroupInvitations.Responses;
 
 public class InvitationDetailsResponse
 {

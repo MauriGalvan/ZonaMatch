@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 
-namespace ZonaMatch.Application.DTOs.Group;
+namespace ZonaMatch.Application.DTOs.Groups.Requests;
 
 public class CreateGroupRequest
 {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ZonaMatch.Application.DTOs.Group;
+namespace ZonaMatch.Application.DTOs.Groups.Responses;
 
 public class GroupListResponse
 {
