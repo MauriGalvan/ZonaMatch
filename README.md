@@ -11,11 +11,48 @@ cd ZonaMatch
 2. Levantar la Base de Datos (Docker)
 
 El proyecto incluye un archivo docker-compose.yml configurado con la imagen de PostgreSQL + PostGIS.
-Abrí una terminal en la raíz del proyecto y ejecutá:
+Antes de levantar los servicios, creá el archivo local `.env` desde la plantilla y configurá una contraseña para PostgreSQL:
 
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+En `.env`, completá `POSTGRES_PASSWORD` con una contraseña local. Este archivo está ignorado por Git y Docker Compose lo carga automáticamente. No lo subas al repositorio. Si ya tenías creado el volumen `db_data`, conservá la contraseña con la que se inicializó: cambiar `POSTGRES_PASSWORD` no cambia la contraseña de una base existente.
+
+Después, desde una terminal en la raíz del proyecto, ejecutá:
+
+```powershell
 docker-compose up -d
+```
 
 Puerto : La base de datos se expone en el puerto local 5433 (para evitar conflictos con instalaciones locales de PostgreSQL).
+
+### Configuración local de la API (User Secrets)
+
+Las credenciales de la API no se guardan en `appsettings.json`. Para ejecutar la API desde Visual Studio o con `dotnet run` en el entorno `Development`, configurá los siguientes valores con User Secrets. El proyecto ya tiene un `UserSecretsId`.
+
+La contraseña de esta cadena debe coincidir con `POSTGRES_PASSWORD` de `.env`:
+
+```powershell
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5433;Database=zonamatch_docker;Username=zonamatch;Password=TU_PASSWORD_LOCAL;Keepalive=30;Connection Idle Lifetime=30" --project ZonaMatch.Api
+```
+
+Generá una clave JWT aleatoria para el entorno local:
+
+```powershell
+$jwtKey = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+dotnet user-secrets set "Jwt:SigningKey" $jwtKey --project ZonaMatch.Api
+Remove-Variable jwtKey
+```
+
+Para habilitar los flujos que envían correos, configurá la contraseña de aplicación SMTP que les hayan compartido por un canal seguro:
+
+```powershell
+dotnet user-secrets set "EmailSettings:Password" "CONTRASEÑA_SMTP" --project ZonaMatch.Api
+```
+
+No incluyas contraseñas, claves JWT ni cadenas de conexión reales en `appsettings.json`, `.env.example`, commits o mensajes. En otros entornos, configurá `ConnectionStrings__DefaultConnection`, `Jwt__SigningKey` y `EmailSettings__Password` como variables de entorno o ajustes del servicio de hosting.
 
 3. Cargar los datos (schemas geo y osm) con un solo script
 

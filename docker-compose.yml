@@ -3,7 +3,7 @@ services:
     image: postgis/postgis:15-3.3
     environment:
       - POSTGRES_USER=zonamatch
-      - POSTGRES_PASSWORD=zonamatch
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
       - POSTGRES_DB=zonamatch_docker
     ports:
       - "5433:5432"
