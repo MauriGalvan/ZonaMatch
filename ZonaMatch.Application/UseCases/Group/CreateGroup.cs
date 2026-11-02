@@ -43,6 +43,7 @@ public class CreateGroup
             Id = newGroup.Id,
             Name = newGroup.Name,
             CreatedAt = newGroup.CreatedAt,
+            IsOwner = true
         };
     }
 }

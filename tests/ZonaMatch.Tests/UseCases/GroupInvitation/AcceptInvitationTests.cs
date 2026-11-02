@@ -150,6 +150,44 @@ public class AcceptInvitationTests
     }
 
     [Fact]
+    public async Task AcceptInvitation_WhenGroupIsFull_ThrowsConflictWithoutAcceptingInvitation()
+    {
+        var token = Guid.NewGuid();
+        var currentUserId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var invitation = new DomainGroupInvitation
+        {
+            GroupId = groupId,
+            Status = InvitationStatus.Pending,
+            ExpiresAt = DateTime.UtcNow.AddDays(1)
+        };
+        var group = new DomainGroup
+        {
+            Id = groupId,
+            Participants = Enumerable.Range(0, DomainGroup.MaximumParticipants)
+                .Select(_ => new Participant { UserId = Guid.NewGuid(), Role = GroupRole.Guest })
+                .ToList()
+        };
+        _invitationRepositoryMock
+            .Setup(repository => repository.GetByTokenAsync(token, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(invitation);
+        _groupRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(groupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Func<Task> action = () => _useCase.ExecuteAsync(token, currentUserId, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>();
+        invitation.Status.Should().Be(InvitationStatus.Pending);
+        _groupRepositoryMock.Verify(
+            repository => repository.AddParticipantAsync(It.IsAny<Participant>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _invitationRepositoryMock.Verify(
+            repository => repository.UpdateAsync(It.IsAny<DomainGroupInvitation>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task AcceptInvitation_WhenInvitationIsValid_UpdatesInvitationAndAddsParticipant()
     {
         // Arrange

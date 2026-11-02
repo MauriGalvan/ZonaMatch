@@ -114,6 +114,25 @@ public class RemoveParticipantTests
     }
 
     [Fact]
+    public async Task RemoveParticipant_WhenOwnerTriesToLeave_ThrowsConflictException()
+    {
+        var groupId = Guid.NewGuid();
+        var ownerId = Guid.NewGuid();
+        var owner = new Participant { UserId = ownerId, Role = GroupRole.Owner };
+        var group = new DomainGroup { Id = groupId, Participants = new List<Participant> { owner } };
+        _groupRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(groupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Func<Task> action = () => _useCase.ExecuteAsync(groupId, ownerId, ownerId, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>();
+        _groupRepositoryMock.Verify(
+            repository => repository.RemoveParticipantAsync(It.IsAny<Participant>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task RemoveParticipant_WhenOwnerRemovesAnotherParticipant_RemovesParticipant()
     {
         var groupId = Guid.NewGuid();

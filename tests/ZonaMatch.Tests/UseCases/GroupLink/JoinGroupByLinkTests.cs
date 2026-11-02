@@ -71,6 +71,31 @@ public class JoinGroupByLinkTests
     }
 
     [Fact]
+    public async Task JoinGroupByLink_WhenGroupIsFull_ThrowsConflictWithoutAddingParticipant()
+    {
+        var token = Guid.NewGuid();
+        var currentUserId = Guid.NewGuid();
+        var group = new DomainGroup
+        {
+            Id = Guid.NewGuid(),
+            InviteToken = token,
+            Participants = Enumerable.Range(0, DomainGroup.MaximumParticipants)
+                .Select(_ => new Participant { UserId = Guid.NewGuid(), Role = GroupRole.Guest })
+                .ToList()
+        };
+        _groupRepositoryMock
+            .Setup(repository => repository.GetByInviteTokenAsync(token, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+
+        Func<Task> action = () => _useCase.ExecuteAsync(token, currentUserId, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ConflictException>();
+        _groupRepositoryMock.Verify(
+            repository => repository.AddParticipantAsync(It.IsAny<Participant>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task JoinGroupByLink_WhenTokenIsValidAndUserIsNotMember_AddsParticipant()
     {
         // Arrange
