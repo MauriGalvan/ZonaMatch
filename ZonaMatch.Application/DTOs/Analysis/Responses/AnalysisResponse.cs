@@ -18,5 +18,5 @@ public sealed record AnalysisResponse(
     // Result saved with a personal analysis and when it was calculated; null when it is scored live
     ScoresResponse? Result = null,
     DateTimeOffset? CalculatedAt = null,
-    // Starred in "Mis análisis"
+    // Starred in the user's "Mis análisis" list.
     bool IsFavorite = false);

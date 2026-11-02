@@ -1,6 +1,6 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Registered user of the site (table app.usuarios)
+    // Registered user of the site (app.usuarios table).
     public class User
     {
         // UUIDv7: unique and time-ordered, so the primary key index stays compact

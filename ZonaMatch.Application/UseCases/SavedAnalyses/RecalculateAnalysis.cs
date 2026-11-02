@@ -55,7 +55,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             return AnalysisMapping.ToResponse(version);
         }
 
-        // "Cerca del trabajo · datos al 25/10", trimmed to the maximum name length
+        // Example: "Cerca del trabajo · datos al 25/10", trimmed to the maximum name length.
         public static string RecalculatedName(string originalName, DateTimeOffset now)
         {
             var suffix = $" · datos al {now.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM", CultureInfo.InvariantCulture)}";
