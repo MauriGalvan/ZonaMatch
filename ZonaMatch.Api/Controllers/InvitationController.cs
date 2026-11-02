@@ -20,7 +20,7 @@ public class InvitationsController : ControllerBase
     }
 
     // ==========================================
-    // INVITACIONES POR CORREO ELECTRÓNICO
+    // EMAIL INVITATIONS
     // ==========================================
 
     [Authorize]
@@ -86,7 +86,7 @@ public class InvitationsController : ControllerBase
     }
 
     // ==========================================
-    // INVITACIONES POR LINK PÚBLICO (ESTILO WHATSAPP)
+    // PUBLIC LINK INVITATIONS (WHATSAPP-STYLE)
     // ==========================================
 
     [Authorize]

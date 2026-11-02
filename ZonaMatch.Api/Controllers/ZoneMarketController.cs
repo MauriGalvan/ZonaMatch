@@ -10,7 +10,7 @@ namespace ZonaMatch.Api.Controllers
     {
         // GET /api/v1/zones/villa-crespo/market
         // Rent and sale of the zone from the Zonaprop listings: averages, price per m2, expenses and listings, by type,
-        // with the source and the comuna or partido to compare. 404 when there is no data for the zone.
+        // with the source and the commune or district used for comparison. Returns 404 when the zone has no data.
         [HttpGet("{slug}/market")]
         [ResponseCache(Duration = 3600)]
         [ProducesResponseType<ZoneMarketResponse>(StatusCodes.Status200OK)]

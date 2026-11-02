@@ -1,7 +1,7 @@
 namespace ZonaMatch.Api.Controllers
 {
-    // Restriccion de ruta del slug de una zona (mismo formato que ZoneSlug.IsValid): un slug mal formado da 404.
-    // Los corchetes van duplicados porque son especiales en las plantillas de rutas.
+    // Route constraint for a zone slug (same format as ZoneSlug.IsValid); malformed slugs return 404.
+    // Braces are doubled because they have a special meaning in route templates.
     internal static class ZoneRouteConstraints
     {
         public const string Slug = "^[[a-z0-9]]+(-[[a-z0-9]]+)*$";

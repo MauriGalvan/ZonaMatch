@@ -79,7 +79,7 @@ namespace ZonaMatch.Api.Controllers
         }
 
         // POST /api/v1/analyses
-        // Body: { "nombre": "Cerca del trabajo", "zonas": [{ "slug": "villa-luro", "nombre": "Villa Luro, CABA", "esInicial": true }] }
+        // Body: { "name": "Near work", "zones": [{ "slug": "villa-luro", "name": "Villa Luro, CABA", "isInitial": true }] }
         // Criteria are copied from the profile (404 if the user has not created one yet).
         [HttpPost]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
@@ -98,7 +98,7 @@ namespace ZonaMatch.Api.Controllers
         }
 
         // POST /api/v1/analyses/{id}/versions
-        // Body: { "nombre": null, "criterio": { "contexto": {}, "criterios": {}, "puntos": {} }, "zonas": null }
+        // Body: { "name": null, "criterion": { "context": {}, "criteria": {}, "points": {} }, "zones": null }
         // Saves adjusted criteria as a version of the original, even when {id} belongs to another version.
         [HttpPost("{id:guid}/versions")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
@@ -155,7 +155,7 @@ namespace ZonaMatch.Api.Controllers
             return NoContent();
         }
 
-        // PUT /api/v1/analyses/{id} — Body: { "nombre": "..." }
+        // PUT /api/v1/analyses/{id} — Body: { "name": "..." }
         [HttpPut("{id:guid}")]
         [ProducesResponseType<AnalysisResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
