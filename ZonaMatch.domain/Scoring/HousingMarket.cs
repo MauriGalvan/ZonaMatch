@@ -3,33 +3,33 @@ namespace ZonaMatch.Domain.Scoring
     // Real estate market data for a zone and housing type (Zonaprop): rent and building expenses in Argentine pesos,
     // sale prices in US dollars, and prices per square meter. Null values indicate unavailable data.
     public sealed record HousingMarket(
-        decimal? AlquilerPromedio,
-        int? PropiedadesEnAlquiler,
-        decimal? ExpensasPromedio,
-        decimal? VentaPromedioUsd,
-        int? PropiedadesEnVenta,
-        decimal? AlquilerM2 = null,
-        decimal? VentaM2Usd = null)
+        decimal? AverageRent,
+        int? AvailablePropertiesForRent,
+        decimal? AverageExpenses,
+        decimal? AverageSalePriceUsd,
+        int? AvailablePropertiesForSale,
+        decimal? RentPricePerM2 = null,
+        decimal? SalePricePerM2Usd = null)
     {
         public static readonly HousingMarket NoData = new(null, null, null, null, null);
 
         // Monthly rent cost: rent plus building expenses, or rent alone when expenses are unavailable.
-        public decimal? MonthlyRentCost => AlquilerPromedio is { } alquiler ? alquiler + (ExpensasPromedio ?? 0) : null;
+        public decimal? MonthlyRentCost => AverageRent is { } rent ? rent + (AverageExpenses ?? 0) : null;
 
         // When area and price per square meter are available, calculate the price for that area; otherwise use the zone
         // average. The average includes all sizes, and a small one-bedroom apartment usually costs much less.
-        public bool EstimatesRent(int? superficieM2) => superficieM2 is > 0 && AlquilerM2 is not null;
+        public bool EstimatesRent(int? areaM2) => areaM2 is > 0 && RentPricePerM2 is not null;
 
-        public bool EstimatesSale(int? superficieM2) => superficieM2 is > 0 && VentaM2Usd is not null;
+        public bool EstimatesSale(int? areaM2) => areaM2 is > 0 && SalePricePerM2Usd is not null;
 
-        public decimal? RentForArea(int? superficieM2) =>
-            EstimatesRent(superficieM2) ? Math.Round(AlquilerM2!.Value * superficieM2!.Value) : AlquilerPromedio;
+        public decimal? RentForArea(int? areaM2) =>
+            EstimatesRent(areaM2) ? Math.Round(RentPricePerM2!.Value * areaM2!.Value) : AverageRent;
 
-        public decimal? SalePriceUsdForArea(int? superficieM2) =>
-            EstimatesSale(superficieM2) ? Math.Round(VentaM2Usd!.Value * superficieM2!.Value) : VentaPromedioUsd;
+        public decimal? SalePriceUsdForArea(int? areaM2) =>
+            EstimatesSale(areaM2) ? Math.Round(SalePricePerM2Usd!.Value * areaM2!.Value) : AverageSalePriceUsd;
 
-        public decimal? MonthlyRentCostForArea(int? superficieM2) =>
-            RentForArea(superficieM2) is { } alquiler ? alquiler + (ExpensasPromedio ?? 0) : null;
+        public decimal? MonthlyRentCostForArea(int? areaM2) =>
+            RentForArea(areaM2) is { } rent ? rent + (AverageExpenses ?? 0) : null;
     }
 
     // The user's housing operation: rent or purchase.

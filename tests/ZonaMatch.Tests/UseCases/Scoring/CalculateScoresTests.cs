@@ -24,14 +24,14 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         private void AddZone(string slug, int crimes) => _zoneProfiles.Zones.Add(new ZoneProfile
         {
             Slug = slug,
-            Nombre = slug,
-            Nivel = 9,
-            Poblacion = 1000,
-            SuperficieKm2 = 1,
-            Delitos = crimes,
-            Latitud = -34.6,
-            Longitud = -58.5,
-            AlquilerPromedio = 600_000,
+            Name = slug,
+            Level = 9,
+            Population = 1000,
+            AreaKm2 = 1,
+            CrimeCount = crimes,
+            Latitude = -34.6,
+            Longitude = -58.5,
+            AverageRent = 600_000,
         });
 
         private static CalculateScoresRequest BuildRequest() => new()
@@ -204,7 +204,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
                 Task.FromResult<IReadOnlyList<ZoneProfile>>(Zones);
 
             public Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
-                IReadOnlyCollection<(double Latitud, double Longitud)> locations,
+                IReadOnlyCollection<(double Latitude, double Longitude)> locations,
                 CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<string>>(Zones.Select(zone => zone.Slug).ToArray());
         }

@@ -7,21 +7,21 @@ namespace ZonaMatch.Domain.Scoring
     // The purchase price limit is in US dollars. Without a housing type, all types are considered.
     // If the user provides a desired area, prices are estimated for that area.
     public sealed record ScoringRequest(
-        IReadOnlyDictionary<string, string> Criterios,
-        IReadOnlyList<UserPlace> Lugares,
-        decimal? GastoMensualMaximo,
-        string Operacion = HousingOperations.Rent,
-        decimal? CompraMaximaUsd = null,
-        string? TipoVivienda = null,
-        int? SuperficieM2 = null)
+        IReadOnlyDictionary<string, string> Criteria,
+        IReadOnlyList<UserPlace> Places,
+        decimal? MaximumMonthlyBudget,
+        string Operation = HousingOperations.Rent,
+        decimal? MaximumPurchasePriceUsd = null,
+        string? HousingType = null,
+        int? AreaM2 = null)
     {
-        public bool EsCompra => Operacion == HousingOperations.Purchase;
+        public bool IsPurchase => Operation == HousingOperations.Purchase;
     }
 
     // A place the user visits regularly. Travel time cannot be measured without coordinates.
-    public sealed record UserPlace(string Nombre, double? Latitud, double? Longitud, string? Prioridad, int TiempoMaximoMinutos)
+    public sealed record UserPlace(string Name, double? Latitude, double? Longitude, string? Priority, int MaximumTravelTimeMinutes)
     {
-        public bool TieneUbicacion => Latitud is not null && Longitud is not null;
+        public bool HasLocation => Latitude is not null && Longitude is not null;
     }
 
     // Trip duration; minutes are null when no route is available. Estimated when routing did not calculate it.
@@ -32,22 +32,22 @@ namespace ZonaMatch.Domain.Scoring
 
     // Route distance in kilometers; null when only travel time could be estimated.
     public sealed record PlaceScoreResult(
-        string Nombre,
-        string? Prioridad,
-        int? Minutos,
-        int MaximoMinutos,
-        bool Estimado,
-        int? Puntaje,
-        double? DistanciaKm = null);
+        string Name,
+        string? Priority,
+        int? Minutes,
+        int MaximumMinutes,
+        bool IsEstimated,
+        int? Score,
+        double? DistanceKm = null);
 
-    public sealed record ScoreComponent(string Criterion, string Prioridad, int? Puntaje, string Detalle);
-    public sealed record LimitResult(string Tipo, bool? Cumple, string Detalle);
+    public sealed record ScoreComponent(string Criterion, string Priority, int? Score, string Details);
+    public sealed record LimitResult(string Type, bool? IsSatisfied, string Details);
     public sealed record ZoneScoreResult(
-        ZoneProfile Zona,
-        int? Puntaje,
-        IReadOnlyList<ScoreComponent> Componentes,
-        IReadOnlyList<LimitResult> Limites,
-        IReadOnlyList<PlaceScoreResult> Lugares);
+        ZoneProfile Zone,
+        int? Score,
+        IReadOnlyList<ScoreComponent> Components,
+        IReadOnlyList<LimitResult> Limits,
+        IReadOnlyList<PlaceScoreResult> Places);
 
     // Calculate a zone's score (0 to 100) for a request. The engine is stateless between calculations and can be shared.
     // Each criterion is the zone's percentile among zones of the same type (neighborhoods and localities, or communes
@@ -59,38 +59,38 @@ namespace ZonaMatch.Domain.Scoring
     // the remaining score exponentially. A limit without data does not affect the score.
     public sealed class ScoringEngine
     {
-        public const string Seguridad = "seguridad";
-        public const string Movilidad = "movilidad";
-        public const string EspaciosVerdes = "espacios-verdes";
-        public const string Educacion = "educacion";
-        public const string Salud = "salud";
-        public const string Lugares = "lugares";
+        public const string Safety = "seguridad";
+        public const string Mobility = "movilidad";
+        public const string GreenSpaces = "espacios-verdes";
+        public const string Education = "educacion";
+        public const string Health = "salud";
+        public const string Places = "lugares";
 
-        public const string LimiteAlquiler = "alquiler";
-        public const string LimiteExpensas = "expensas";
-        public const string LimiteCompra = "compra";
-        public const string LimiteTiempo = "tiempo";
+        public const string RentLimit = "alquiler";
+        public const string ExpensesLimit = "expensas";
+        public const string PurchaseLimit = "compra";
+        public const string TravelTimeLimit = "tiempo";
 
         // In a group analysis, the group sets budget limits instead of individual participants.
-        public static bool EsLimiteDePresupuesto(string tipo) => tipo is LimiteAlquiler or LimiteExpensas or LimiteCompra;
+        public static bool IsBudgetLimit(string type) => type is RentLimit or ExpensesLimit or PurchaseLimit;
 
         // The penalty is linear up to this overage (20%); each additional 20% overage divides the remaining score by e.
-        public const double ExcesoLeve = 0.20;
-        public const double EscalaExceso = 0.20;
+        public const double MinorOverage = 0.20;
+        public const double OverageScale = 0.20;
 
         // Morning peak hours (6 to 9) used to count peak-hour departures.
-        private const int HorasHoraPico = 3;
+        private const int PeakHours = 3;
 
-        private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-AR");
+        private static readonly CultureInfo SpanishCulture = CultureInfo.GetCultureInfo("es-AR");
 
-        private static readonly IReadOnlyDictionary<string, int> PesoPrioridad = new Dictionary<string, int>
+        private static readonly IReadOnlyDictionary<string, int> PriorityWeights = new Dictionary<string, int>
         {
             ["baja"] = 1,
             ["media"] = 3,
             ["alta"] = 9,
         };
 
-        private static readonly IReadOnlyDictionary<string, int> PesoLugar = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        private static readonly IReadOnlyDictionary<string, int> PlacePriorityWeights = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
             ["Muy importante"] = 4,
             ["Alta"] = 3,
@@ -99,268 +99,268 @@ namespace ZonaMatch.Domain.Scoring
         };
 
         // Criterion indicators where higher is better; safety reverses the sign of crime counts.
-        private static readonly IReadOnlyDictionary<string, Func<ZoneProfile, double?>> Indicadores =
+        private static readonly IReadOnlyDictionary<string, Func<ZoneProfile, double?>> Indicators =
             new Dictionary<string, Func<ZoneProfile, double?>>
             {
-                [Seguridad] = z => -z.DelitosCadaMilHabitantes,
-                [Movilidad] = z => z.SalidasHoraPicoPorKm2,
-                [EspaciosVerdes] = z => z.VerdePorHabitanteM2,
-                [Educacion] = z => z.EscuelasCadaDiezMil,
-                [Salud] = z => z.CentrosSaludCadaDiezMil,
+                [Safety] = z => -z.CrimesPerThousandResidents,
+                [Mobility] = z => z.PeakHourDeparturesPerKm2,
+                [GreenSpaces] = z => z.GreenSpaceM2PerResident,
+                [Education] = z => z.SchoolsPerTenThousandResidents,
+                [Health] = z => z.HealthCentersPerTenThousandResidents,
             };
 
         // Sorted indicator values by zone type (large or small), used to calculate percentiles.
-        private readonly Dictionary<(string Criterion, bool Grande), double[]> _distribuciones = [];
+        private readonly Dictionary<(string Criterion, bool IsLargeZone), double[]> _distributions = [];
 
-        public ScoringEngine(IReadOnlyCollection<ZoneProfile> universo)
+        public ScoringEngine(IReadOnlyCollection<ZoneProfile> zoneProfiles)
         {
-            foreach (var (criterio, indicador) in Indicadores)
-                foreach (var grande in new[] { false, true })
+            foreach (var (criterion, indicator) in Indicators)
+                foreach (var isLargeZone in new[] { false, true })
                 {
-                    _distribuciones[(criterio, grande)] = universo
-                        .Where(z => z.IsLargeZone == grande)
-                        .Select(indicador)
+                    _distributions[(criterion, isLargeZone)] = zoneProfiles
+                        .Where(zone => zone.IsLargeZone == isLargeZone)
+                        .Select(indicator)
                         .OfType<double>()
                         .Order()
                         .ToArray();
                 }
         }
 
-        public static bool EsCriterioConocido(string criterio) => Indicadores.ContainsKey(criterio);
+        public static bool IsKnownCriterion(string criterion) => Indicators.ContainsKey(criterion);
 
         // Times are provided for each request place in the same order (null when a place has no location).
-        public ZoneScoreResult Calcular(ZoneProfile zona, ScoringRequest pedido, IReadOnlyList<TravelTime?>? tiempos = null)
+        public ZoneScoreResult Calculate(ZoneProfile zone, ScoringRequest request, IReadOnlyList<TravelTime?>? travelTimes = null)
         {
-            var componentes = pedido.Criterios
-                .Where(c => Indicadores.ContainsKey(c.Key) && PesoPrioridad.ContainsKey(c.Value))
-                .Select(c => Componente(zona, c.Key, c.Value))
+            var components = request.Criteria
+                .Where(c => Indicators.ContainsKey(c.Key) && PriorityWeights.ContainsKey(c.Value))
+                .Select(c => BuildComponent(zone, c.Key, c.Value))
                 .ToList();
 
-            var lugares = ResultadosLugares(pedido.Lugares, tiempos);
-            if (lugares.Count > 0)
-                componentes.Add(ComponenteLugares(lugares));
+            var places = BuildPlaceResults(request.Places, travelTimes);
+            if (places.Count > 0)
+                components.Add(BuildPlacesComponent(places));
 
-            var limites = new List<LimitResult>();
-            var excesoPresupuesto = 0.0;
-            var mercado = zona.GetMarket(pedido.TipoVivienda);
+            var limits = new List<LimitResult>();
+            var budgetOverage = 0.0;
+            var market = zone.GetMarket(request.HousingType);
 
-            if (pedido.EsCompra && pedido.CompraMaximaUsd is { } compraMaxima && compraMaxima > 0)
+            if (request.IsPurchase && request.MaximumPurchasePriceUsd is { } maximumPurchasePriceUsd && maximumPurchasePriceUsd > 0)
             {
-                var (limite, exceso) = LimiteDeCompra(mercado, compraMaxima, pedido.TipoVivienda, pedido.SuperficieM2);
-                limites.Add(limite);
-                excesoPresupuesto = Math.Max(excesoPresupuesto, exceso);
+                var (limit, overage) = PurchaseLimitFor(market, maximumPurchasePriceUsd, request.HousingType, request.AreaM2);
+                limits.Add(limit);
+                budgetOverage = Math.Max(budgetOverage, overage);
             }
 
-            if (pedido.GastoMensualMaximo is { } maximo && maximo > 0)
+            if (request.MaximumMonthlyBudget is { } maximumMonthlyBudget && maximumMonthlyBudget > 0)
             {
-                var (limite, exceso) = pedido.EsCompra
-                    ? LimiteDeExpensas(mercado, maximo)
-                    : LimiteDeAlquiler(mercado, maximo, pedido.TipoVivienda, pedido.SuperficieM2);
-                limites.Add(limite);
-                excesoPresupuesto = Math.Max(excesoPresupuesto, exceso);
+                var (limit, overage) = request.IsPurchase
+                    ? ExpensesLimitFor(market, maximumMonthlyBudget)
+                    : RentLimitFor(market, maximumMonthlyBudget, request.HousingType, request.AreaM2);
+                limits.Add(limit);
+                budgetOverage = Math.Max(budgetOverage, overage);
             }
 
-            if (lugares.Count > 0)
-                limites.AddRange(LimitesDeTiempo(lugares));
+            if (places.Count > 0)
+                limits.AddRange(BuildTravelTimeLimits(places));
 
-            return new ZoneScoreResult(zona, PuntajeTotal(componentes, excesoPresupuesto), componentes, limites, lugares);
+            return new ZoneScoreResult(zone, CalculateTotalScore(components, budgetOverage), components, limits, places);
         }
 
         // Percentile of a value in its distribution (ties count as half), from 0 to 100.
-        public static int Percentil(IReadOnlyList<double> ordenados, double valor)
+        public static int Percentile(IReadOnlyList<double> sortedValues, double value)
         {
-            if (ordenados.Count == 0)
+            if (sortedValues.Count == 0)
                 return 50;
 
-            var menores = 0;
-            var iguales = 0;
-            foreach (var x in ordenados)
+            var lowerValues = 0;
+            var matchingValues = 0;
+            foreach (var item in sortedValues)
             {
-                if (x < valor) menores++;
-                else if (x == valor) iguales++;
+                if (item < value) lowerValues++;
+                else if (item == value) matchingValues++;
             }
 
-            return (int)Redondear(100.0 * (menores + 0.5 * iguales) / ordenados.Count);
+            return (int)RoundAwayFromZero(100.0 * (lowerValues + 0.5 * matchingValues) / sortedValues.Count);
         }
 
-        // Score after exceeding a limit (0.1 means 10% over): deduct one point per 1% up to ExcesoLeve, then reduce the
+        // Score after exceeding a limit (0.1 means 10% over): deduct one point per 1% up to MinorOverage, then reduce the
         // remaining score exponentially. The score stays unchanged when there is no overage.
-        public static double Penalizar(double puntaje, double exceso)
+        public static double ApplyPenalty(double score, double overage)
         {
-            if (exceso <= 0)
-                return puntaje;
+            if (overage <= 0)
+                return score;
 
-            var restante = Math.Max(0, puntaje - Math.Min(exceso, ExcesoLeve) * 100);
+            var remainingScore = Math.Max(0, score - Math.Min(overage, MinorOverage) * 100);
 
-            return exceso <= ExcesoLeve ? restante : restante * Math.Exp(-(exceso - ExcesoLeve) / EscalaExceso);
+            return overage <= MinorOverage ? remainingScore : remainingScore * Math.Exp(-(overage - MinorOverage) / OverageScale);
         }
 
         // Scores range from 100 (arrives immediately) to 80 (exactly at the limit); beyond the limit, apply the usual
         // penalty. Null when travel time could not be calculated.
-        public static int? PuntajeViaje(int? minutos, int maximo)
+        public static int? TravelScore(int? minutes, int maximumMinutes)
         {
-            if (minutos is not { } m)
+            if (minutes is not { } elapsedMinutes)
                 return null;
 
-            if (m <= maximo)
-                return (int)Redondear(100 - 20.0 * m / maximo);
+            if (elapsedMinutes <= maximumMinutes)
+                return (int)RoundAwayFromZero(100 - 20.0 * elapsedMinutes / maximumMinutes);
 
-            return (int)Redondear(Penalizar(80, (double)m / maximo - 1));
+            return (int)RoundAwayFromZero(ApplyPenalty(80, (double)elapsedMinutes / maximumMinutes - 1));
         }
 
-        private ScoreComponent Componente(ZoneProfile zona, string criterio, string prioridad)
+        private ScoreComponent BuildComponent(ZoneProfile zone, string criterion, string priority)
         {
-            var valor = Indicadores[criterio](zona);
-            int? puntaje = valor is { } v ? Percentil(_distribuciones[(criterio, zona.IsLargeZone)], v) : null;
+            var value = Indicators[criterion](zone);
+            int? score = value is { } indicatorValue ? Percentile(_distributions[(criterion, zone.IsLargeZone)], indicatorValue) : null;
 
-            return new ScoreComponent(criterio, prioridad, puntaje, Detalle(zona, criterio));
+            return new ScoreComponent(criterion, priority, score, Details(zone, criterion));
         }
 
-        private static string Detalle(ZoneProfile zona, string criterio) => criterio switch
+        private static string Details(ZoneProfile zone, string criterion) => criterion switch
         {
-            Seguridad => zona.DelitosCadaMilHabitantes is { } delitos
-                ? $"{delitos.ToString("N1", Es)} delitos estimados cada 1.000 hab. en un año, incluidos los no denunciados"
+            Safety => zone.CrimesPerThousandResidents is { } crimes
+                ? $"{crimes.ToString("N1", SpanishCulture)} delitos estimados cada 1.000 hab. en un año, incluidos los no denunciados"
                 : "Sin datos de delitos",
-            Movilidad => $"{zona.LineasTransporte} líneas · {(zona.SalidasHoraPico / HorasHoraPico).ToString("N0", Es)} salidas por hora en hora pico",
-            EspaciosVerdes => zona.VerdePorHabitanteM2 is { } verde
-                ? $"{verde.ToString("N1", Es)} m² de plazas y parques por habitante"
+            Mobility => $"{zone.TransitLineCount} líneas · {(zone.PeakHourDepartures / PeakHours).ToString("N0", SpanishCulture)} salidas por hora en hora pico",
+            GreenSpaces => zone.GreenSpaceM2PerResident is { } greenSpaceArea
+                ? $"{greenSpaceArea.ToString("N1", SpanishCulture)} m² de plazas y parques por habitante"
                 : "Sin datos de población para comparar",
-            Educacion => $"{zona.Escuelas.ToString("N0", Es)} escuelas y jardines",
-            Salud => $"{zona.CentrosSalud.ToString("N0", Es)} hospitales, clínicas y centros de salud",
+            Education => $"{zone.SchoolCount.ToString("N0", SpanishCulture)} escuelas y jardines",
+            Health => $"{zone.HealthCenterCount.ToString("N0", SpanishCulture)} hospitales, clínicas y centros de salud",
             _ => string.Empty,
         };
 
-        private static List<PlaceScoreResult> ResultadosLugares(IReadOnlyList<UserPlace> lugares, IReadOnlyList<TravelTime?>? tiempos)
+        private static List<PlaceScoreResult> BuildPlaceResults(IReadOnlyList<UserPlace> places, IReadOnlyList<TravelTime?>? travelTimes)
         {
-            var resultados = new List<PlaceScoreResult>();
+            var results = new List<PlaceScoreResult>();
 
-            for (var i = 0; i < lugares.Count; i++)
+            for (var i = 0; i < places.Count; i++)
             {
-                if (tiempos is null || i >= tiempos.Count || tiempos[i] is not { } tiempo)
+                if (travelTimes is null || i >= travelTimes.Count || travelTimes[i] is not { } travelTime)
                     continue;
 
-                var lugar = lugares[i];
-                resultados.Add(new PlaceScoreResult(
-                    lugar.Nombre,
-                    lugar.Prioridad,
-                    tiempo.Minutes,
-                    lugar.TiempoMaximoMinutos,
-                    tiempo.IsEstimated,
-                    PuntajeViaje(tiempo.Minutes, lugar.TiempoMaximoMinutos),
-                    tiempo.DistanceKm));
+                var place = places[i];
+                results.Add(new PlaceScoreResult(
+                    place.Name,
+                    place.Priority,
+                    travelTime.Minutes,
+                    place.MaximumTravelTimeMinutes,
+                    travelTime.IsEstimated,
+                    TravelScore(travelTime.Minutes, place.MaximumTravelTimeMinutes),
+                    travelTime.DistanceKm));
             }
 
-            return resultados;
+            return results;
         }
 
-        private static ScoreComponent ComponenteLugares(IReadOnlyList<PlaceScoreResult> lugares)
+        private static ScoreComponent BuildPlacesComponent(IReadOnlyList<PlaceScoreResult> places)
         {
             // Only calculated trips count; places that matter more to the user receive higher weights.
-            var medidos = lugares.Where(l => l.Puntaje is not null).ToList();
-            if (medidos.Count == 0)
-                return new ScoreComponent(Lugares, "alta", null, "No pudimos calcular los viajes a tus lugares");
+            var measuredPlaces = places.Where(place => place.Score is not null).ToList();
+            if (measuredPlaces.Count == 0)
+                return new ScoreComponent(Places, "alta", null, "No pudimos calcular los viajes a tus lugares");
 
-            var pesos = medidos.Select(l => PesoDeLugar(l.Prioridad)).ToList();
-            var puntaje = (int)Redondear(medidos.Select((l, i) => (double)l.Puntaje!.Value * pesos[i]).Sum() / pesos.Sum());
-            var aTiempo = medidos.Count(l => l.Minutos <= l.MaximoMinutos);
+            var weights = measuredPlaces.Select(place => GetPlacePriorityWeight(place.Priority)).ToList();
+            var score = (int)RoundAwayFromZero(measuredPlaces.Select((place, i) => (double)place.Score!.Value * weights[i]).Sum() / weights.Sum());
+            var placesWithinLimit = measuredPlaces.Count(place => place.Minutes <= place.MaximumMinutes);
 
-            return new ScoreComponent(Lugares, "alta", puntaje, $"{aTiempo} de {medidos.Count} lugares dentro de tu tiempo máximo");
+            return new ScoreComponent(Places, "alta", score, $"{placesWithinLimit} de {measuredPlaces.Count} lugares dentro de tu tiempo máximo");
         }
 
         // A place without a known priority uses the medium-priority weight.
-        private static int PesoDeLugar(string? prioridad) =>
-            prioridad is not null && PesoLugar.TryGetValue(prioridad, out var peso) ? peso : PesoLugar["Media"];
+        private static int GetPlacePriorityWeight(string? priority) =>
+            priority is not null && PlacePriorityWeights.TryGetValue(priority, out var weight) ? weight : PlacePriorityWeights["Media"];
 
         // Return the limit and the overage (0.1 means 10%); missing data does not affect the score.
         // The limit is monthly, so compare it with rent plus building expenses.
-        private static (LimitResult Limite, double Exceso) LimiteDeAlquiler(
-            HousingMarket mercado, decimal maximo, string? tipo, int? superficieM2)
+        private static (LimitResult Limit, double Overage) RentLimitFor(
+            HousingMarket market, decimal maximumBudget, string? housingType, int? areaM2)
         {
-            var vivienda = HousingTypes.TextSuffix(tipo);
-            if (mercado.MonthlyRentCostForArea(superficieM2) is not { } costo)
-                return (new LimitResult(LimiteAlquiler, null, $"Sin datos de alquiler{vivienda} para esta zona"), 0);
+            var housingTypeSuffix = HousingTypes.TextSuffix(housingType);
+            if (market.MonthlyRentCostForArea(areaM2) is not { } monthlyCost)
+                return (new LimitResult(RentLimit, null, $"Sin datos de alquiler{housingTypeSuffix} para esta zona"), 0);
 
-            var alquiler = mercado.RentForArea(superficieM2)!.Value;
-            var estimado = mercado.EstimatesRent(superficieM2);
-            var etiqueta = estimado
-                ? $"Alquiler estimado{vivienda} para {superficieM2} m² {Pesos(alquiler)}"
-                : $"Alquiler{vivienda} {Pesos(alquiler)}";
-            var detallePromedio = mercado.ExpensasPromedio is { } expensas
-                ? $"{etiqueta} + expensas {Pesos(expensas)} = {Pesos(costo)} por mes"
-                : estimado
-                    ? $"{etiqueta} por mes (sin dato de expensas)"
-                    : $"Alquiler promedio{vivienda} {Pesos(costo)} (sin dato de expensas)";
+            var rent = market.RentForArea(areaM2)!.Value;
+            var isEstimated = market.EstimatesRent(areaM2);
+            var rentLabel = isEstimated
+                ? $"Alquiler estimado{housingTypeSuffix} para {areaM2} m² {FormatArgentinePesos(rent)}"
+                : $"Alquiler{housingTypeSuffix} {FormatArgentinePesos(rent)}";
+            var details = market.AverageExpenses is { } expenses
+                ? $"{rentLabel} + expensas {FormatArgentinePesos(expenses)} = {FormatArgentinePesos(monthlyCost)} por mes"
+                : isEstimated
+                    ? $"{rentLabel} por mes (sin dato de expensas)"
+                    : $"Alquiler promedio{housingTypeSuffix} {FormatArgentinePesos(monthlyCost)} (sin dato de expensas)";
 
-            return Comparar(LimiteAlquiler, costo, maximo, detallePromedio, $"tu tope de {Pesos(maximo)}");
+            return CompareWithLimit(RentLimit, monthlyCost, maximumBudget, details, $"tu tope de {FormatArgentinePesos(maximumBudget)}");
         }
 
         // Buyers do not pay rent; their monthly housing cost is the building expenses.
-        private static (LimitResult Limite, double Exceso) LimiteDeExpensas(HousingMarket mercado, decimal maximo)
+        private static (LimitResult Limit, double Overage) ExpensesLimitFor(HousingMarket market, decimal maximumBudget)
         {
-            if (mercado.ExpensasPromedio is not { } expensas)
-                return (new LimitResult(LimiteExpensas, null, "Sin datos de expensas para esta zona"), 0);
+            if (market.AverageExpenses is not { } expenses)
+                return (new LimitResult(ExpensesLimit, null, "Sin datos de expensas para esta zona"), 0);
 
-            return Comparar(LimiteExpensas, expensas, maximo, $"Expensas promedio {Pesos(expensas)} por mes", $"tu tope mensual de {Pesos(maximo)}");
+            return CompareWithLimit(ExpensesLimit, expenses, maximumBudget, $"Expensas promedio {FormatArgentinePesos(expenses)} por mes", $"tu tope mensual de {FormatArgentinePesos(maximumBudget)}");
         }
 
-        private static (LimitResult Limite, double Exceso) LimiteDeCompra(
-            HousingMarket mercado, decimal maximo, string? tipo, int? superficieM2)
+        private static (LimitResult Limit, double Overage) PurchaseLimitFor(
+            HousingMarket market, decimal maximumPriceUsd, string? housingType, int? areaM2)
         {
-            var vivienda = HousingTypes.TextSuffix(tipo);
-            if (mercado.SalePriceUsdForArea(superficieM2) is not { } precio)
-                return (new LimitResult(LimiteCompra, null, $"Sin datos de venta{vivienda} para esta zona"), 0);
+            var housingTypeSuffix = HousingTypes.TextSuffix(housingType);
+            if (market.SalePriceUsdForArea(areaM2) is not { } salePrice)
+                return (new LimitResult(PurchaseLimit, null, $"Sin datos de venta{housingTypeSuffix} para esta zona"), 0);
 
-            var detalle = mercado.EstimatesSale(superficieM2)
-                ? $"Precio estimado{vivienda} para {superficieM2} m² {Dolares(precio)} ({Dolares(mercado.VentaM2Usd!.Value)}/m²)"
-                : $"Precio promedio{vivienda} {Dolares(precio)}";
+            var details = market.EstimatesSale(areaM2)
+                ? $"Precio estimado{housingTypeSuffix} para {areaM2} m² {FormatDollars(salePrice)} ({FormatDollars(market.SalePricePerM2Usd!.Value)}/m²)"
+                : $"Precio promedio{housingTypeSuffix} {FormatDollars(salePrice)}";
 
-            return Comparar(LimiteCompra, precio, maximo, detalle, $"tu tope de compra de {Dolares(maximo)}");
+            return CompareWithLimit(PurchaseLimit, salePrice, maximumPriceUsd, details, $"tu tope de compra de {FormatDollars(maximumPriceUsd)}");
         }
 
-        private static (LimitResult Limite, double Exceso) Comparar(string tipo, decimal valor, decimal maximo, string detalle, string tope)
+        private static (LimitResult Limit, double Overage) CompareWithLimit(string type, decimal value, decimal maximum, string details, string limitDescription)
         {
-            if (valor <= maximo)
-                return (new LimitResult(tipo, true, $"{detalle}: dentro de {tope}"), 0);
+            if (value <= maximum)
+                return (new LimitResult(type, true, $"{details}: dentro de {limitDescription}"), 0);
 
-            var exceso = (double)(valor / maximo - 1);
-            var porcentaje = (int)Math.Ceiling(exceso * 100);
+            var overage = (double)(value / maximum - 1);
+            var percentage = (int)Math.Ceiling(overage * 100);
 
-            return (new LimitResult(tipo, false, $"{detalle}: supera {tope} en un {porcentaje} %"), exceso);
+            return (new LimitResult(type, false, $"{details}: supera {limitDescription} en un {percentage} %"), overage);
         }
 
-        private static IEnumerable<LimitResult> LimitesDeTiempo(IReadOnlyList<PlaceScoreResult> lugares)
+        private static IEnumerable<LimitResult> BuildTravelTimeLimits(IReadOnlyList<PlaceScoreResult> places)
         {
-            var fuera = lugares.Where(l => l.Minutos > l.MaximoMinutos).ToList();
-            var sinDato = lugares.Where(l => l.Minutos is null).ToList();
+            var overLimitPlaces = places.Where(place => place.Minutes > place.MaximumMinutes).ToList();
+            var unmeasuredPlaces = places.Where(place => place.Minutes is null).ToList();
 
-            if (fuera.Count == 0 && sinDato.Count < lugares.Count)
-                yield return new LimitResult(LimiteTiempo, true,
-                    sinDato.Count == 0 ? "Llegás a todos tus lugares dentro de tu tiempo máximo" : "Llegás a tiempo a los lugares que pudimos medir");
+            if (overLimitPlaces.Count == 0 && unmeasuredPlaces.Count < places.Count)
+                yield return new LimitResult(TravelTimeLimit, true,
+                    unmeasuredPlaces.Count == 0 ? "Llegás a todos tus lugares dentro de tu tiempo máximo" : "Llegás a tiempo a los lugares que pudimos medir");
 
-            foreach (var lugar in fuera)
-                yield return new LimitResult(LimiteTiempo, false, $"A {lugar.Nombre}: {lugar.Minutos} min (tu máximo es {lugar.MaximoMinutos} min)");
+            foreach (var place in overLimitPlaces)
+                yield return new LimitResult(TravelTimeLimit, false, $"A {place.Name}: {place.Minutes} min (tu máximo es {place.MaximumMinutes} min)");
 
-            foreach (var lugar in sinDato)
-                yield return new LimitResult(LimiteTiempo, null, $"A {lugar.Nombre}: no pudimos calcular el viaje");
+            foreach (var place in unmeasuredPlaces)
+                yield return new LimitResult(TravelTimeLimit, null, $"A {place.Name}: no pudimos calcular el viaje");
         }
 
-        private static int? PuntajeTotal(IReadOnlyList<ScoreComponent> componentes, double excesoAlquiler)
+        private static int? CalculateTotalScore(IReadOnlyList<ScoreComponent> components, double budgetOverage)
         {
-            var conDato = componentes.Where(c => c.Puntaje is not null).ToList();
-            if (conDato.Count == 0)
+            var scoredComponents = components.Where(component => component.Score is not null).ToList();
+            if (scoredComponents.Count == 0)
                 return null;
 
-            var pesoTotal = conDato.Sum(c => PesoPrioridad[c.Prioridad]);
-            var promedio = conDato.Sum(c => c.Puntaje!.Value * PesoPrioridad[c.Prioridad]) / (double)pesoTotal;
+            var totalWeight = scoredComponents.Sum(component => PriorityWeights[component.Priority]);
+            var weightedAverage = scoredComponents.Sum(component => component.Score!.Value * PriorityWeights[component.Priority]) / (double)totalWeight;
 
-            return (int)Math.Clamp(Redondear(Penalizar(promedio, excesoAlquiler)), 0, 100);
+            return (int)Math.Clamp(RoundAwayFromZero(ApplyPenalty(weightedAverage, budgetOverage)), 0, 100);
         }
 
         // Round midpoint values away from zero (12.5 -> 13), instead of to even as Math.Round does by default.
-        private static double Redondear(double valor) => Math.Round(valor, MidpointRounding.AwayFromZero);
+        private static double RoundAwayFromZero(double value) => Math.Round(value, MidpointRounding.AwayFromZero);
 
-        private static string Pesos(decimal monto) => $"$ {monto.ToString("N0", Es)}";
+        private static string FormatArgentinePesos(decimal amount) => $"$ {amount.ToString("N0", SpanishCulture)}";
 
-        private static string Dolares(decimal monto) => $"US$ {monto.ToString("N0", Es)}";
+        private static string FormatDollars(decimal amount) => $"US$ {amount.ToString("N0", SpanishCulture)}";
     }
 }

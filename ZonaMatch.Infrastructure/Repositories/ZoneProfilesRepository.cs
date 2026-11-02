@@ -18,12 +18,13 @@ namespace ZonaMatch.Infrastructure.Repositories
         private const string Osm = ZonaMatchDbOptions.OsmSchema;
         private const string App = ZonaMatchDbOptions.AppSchema;
 
-        // Uses the same labels as PointOfInterestRepository (educacion, salud, espacios verdes).
+        // Uses the same categories as PointOfInterestRepository (education, health, green spaces).
         // Polygons are counted by an interior point. Green area includes parks inside the zone in real square
         // meters (the area in SRID 3857 is adjusted by cos^2 of the latitude).
-        private static readonly string SqlPerfiles = $"""
-            WITH zonas AS (
-                SELECT DISTINCT ON (z.slug) z.osm_id, z.slug, z.nombre, z.nivel, z.superficie_km2, z.geom,
+        private static readonly string ZoneProfilesSql = $"""
+            WITH zones AS (
+                SELECT DISTINCT ON (z.slug) z.osm_id, z.slug, z.nombre AS name, z.nivel AS level,
+                       z.superficie_km2 AS area_km2, z.geom,
                        ST_Transform(z.geom, 3857) AS way
                 FROM {Geo}.zonas z
                 WHERE z.elegida
@@ -32,7 +33,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                   AND z.slug <> 'buenos-aires'
                 ORDER BY z.slug, z.nivel DESC
             ),
-            etiquetados AS (
+            tagged_features AS (
                 SELECT amenity, leisure, way FROM {Osm}.planet_osm_point
                 WHERE name IS NOT NULL
                   AND (amenity IN ('kindergarten', 'school', 'college', 'university', 'hospital', 'clinic', 'doctors')
@@ -43,150 +44,151 @@ namespace ZonaMatch.Infrastructure.Repositories
                   AND (amenity IN ('kindergarten', 'school', 'college', 'university', 'hospital', 'clinic', 'doctors')
                        OR leisure IN ('park', 'garden', 'nature_reserve'))
             ),
-            puntos AS (
+            features AS (
                 SELECT CASE
-                           WHEN amenity IN ('kindergarten', 'school', 'college', 'university') THEN 'educacion'
-                           WHEN amenity IN ('hospital', 'clinic', 'doctors') THEN 'salud'
-                           ELSE 'verde'
-                       END AS categoria, way
-                FROM etiquetados
+                           WHEN amenity IN ('kindergarten', 'school', 'college', 'university') THEN 'education'
+                           WHEN amenity IN ('hospital', 'clinic', 'doctors') THEN 'health'
+                           ELSE 'green'
+                       END AS category, way
+                FROM tagged_features
             ),
-            equipamiento AS (
+            amenities AS (
                 SELECT z.osm_id,
-                       count(*) FILTER (WHERE p.categoria = 'educacion')::int AS escuelas,
-                       count(*) FILTER (WHERE p.categoria = 'salud')::int AS salud,
-                       count(*) FILTER (WHERE p.categoria = 'verde')::int AS verdes
-                FROM zonas z
-                LEFT JOIN puntos p ON ST_Intersects(p.way, z.way)
+                       count(*) FILTER (WHERE p.category = 'education')::int AS school_count,
+                       count(*) FILTER (WHERE p.category = 'health')::int AS health_center_count,
+                       count(*) FILTER (WHERE p.category = 'green')::int AS green_space_count
+                FROM zones z
+                LEFT JOIN features p ON ST_Intersects(p.way, z.way)
                 GROUP BY z.osm_id
             ),
-            verde AS (
+            green_areas AS (
                 SELECT z.osm_id,
-                       COALESCE(sum(ST_Area(ST_Intersection(ST_MakeValid(v.way), z.way))
-                                    * cos(radians(ST_Y(ST_Centroid(z.geom)))) ^ 2), 0) AS m2
-                FROM zonas z
-                LEFT JOIN {Osm}.planet_osm_polygon v
-                       ON v.leisure IN ('park', 'garden', 'nature_reserve') AND ST_Intersects(v.way, z.way)
+                       COALESCE(sum(ST_Area(ST_Intersection(ST_MakeValid(green_feature.way), z.way))
+                                    * cos(radians(ST_Y(ST_Centroid(z.geom)))) ^ 2), 0) AS area_m2
+                FROM zones z
+                LEFT JOIN {Osm}.planet_osm_polygon green_feature
+                       ON green_feature.leisure IN ('park', 'garden', 'nature_reserve') AND ST_Intersects(green_feature.way, z.way)
                 GROUP BY z.osm_id
             ),
-            lineas AS (
-                SELECT osm_id, sum(lineas)::int AS lineas FROM {Geo}.zona_transporte_paradas GROUP BY osm_id
+            transit_line_counts AS (
+                SELECT osm_id, sum(lineas)::int AS line_count FROM {Geo}.zona_transporte_paradas GROUP BY osm_id
             ),
-            pico AS (
-                SELECT osm_id, sum(salidas)::int AS salidas FROM {Geo}.zona_transporte_lineas
+            peak_hour_departures AS (
+                SELECT osm_id, sum(salidas)::int AS departure_count FROM {Geo}.zona_transporte_lineas
                 WHERE franja = 'manana' GROUP BY osm_id
             )
-            SELECT z.slug AS "Slug", z.nombre AS "Nombre", z.nivel AS "Nivel", z.superficie_km2 AS "SuperficieKm2",
-                   COALESCE(i.poblacion, 0) AS "Poblacion", i.delitos_comparables AS "Delitos",
-                   COALESCE(l.lineas, 0) AS "LineasTransporte", COALESCE(p.salidas, 0) AS "SalidasHoraPico",
-                   e.escuelas AS "Escuelas", e.salud AS "CentrosSalud", e.verdes AS "EspaciosVerdes",
-                   v.m2 AS "SuperficieVerdeM2",
-                   ST_Y({ZoneSql.GetCenter("z.geom")}) AS "Latitud", ST_X({ZoneSql.GetCenter("z.geom")}) AS "Longitud"
-            FROM zonas z
+            SELECT z.slug AS "Slug", z.name AS "Name", z.level AS "Level", z.area_km2 AS "AreaKm2",
+                   COALESCE(i.poblacion, 0) AS "Population", i.delitos_comparables AS "CrimeCount",
+                   COALESCE(transit.line_count, 0) AS "TransitLineCount", COALESCE(peak.departure_count, 0) AS "PeakHourDepartures",
+                   amenities.school_count AS "SchoolCount", amenities.health_center_count AS "HealthCenterCount", amenities.green_space_count AS "GreenSpaceCount",
+                   green_areas.area_m2 AS "GreenSpaceAreaM2",
+                   ST_Y({ZoneSql.GetCenter("z.geom")}) AS "Latitude", ST_X({ZoneSql.GetCenter("z.geom")}) AS "Longitude"
+            FROM zones z
             LEFT JOIN {Geo}.zona_indicadores i USING (osm_id)
-            LEFT JOIN lineas l USING (osm_id)
-            LEFT JOIN pico p USING (osm_id)
-            JOIN equipamiento e USING (osm_id)
-            JOIN verde v USING (osm_id)
+            LEFT JOIN transit_line_counts transit USING (osm_id)
+            LEFT JOIN peak_hour_departures peak USING (osm_id)
+            JOIN amenities USING (osm_id)
+            JOIN green_areas USING (osm_id)
             """;
 
         // Rent and sale data for each zone (app.zone_market), by operation and property type ("all" combines all types):
         // rent and expenses are in ARS; sale prices are in USD. Districts and communes without a row for a combination
         // aggregate their contained zones using a weighted average based on published listings.
-        private static readonly string SqlMercado = $"""
-            WITH zonas AS (
-                SELECT DISTINCT ON (z.slug) z.slug, z.nivel, z.geom
+        private static readonly string HousingMarketSql = $"""
+            WITH zones AS (
+                SELECT DISTINCT ON (z.slug) z.slug, z.nivel AS level, z.geom
                 FROM {Geo}.zonas z
                 WHERE z.elegida AND z.slug <> 'buenos-aires'
                 ORDER BY z.slug, z.nivel DESC
             ),
-            filas AS (
+            market_rows AS (
                 SELECT zone_slug, operation, property_type, average_price, average_expenses_ars, average_price_m2, listings
                 FROM {App}.zone_market
                 WHERE average_price IS NOT NULL
             ),
-            propias AS (
-                SELECT z.slug, f.operation, f.property_type, f.average_price AS promedio, f.listings AS propiedades,
-                       f.average_expenses_ars AS expensas, f.average_price_m2 AS precio_m2
-                FROM zonas z
-                JOIN filas f ON f.zone_slug = z.slug
+            zone_market_rows AS (
+                SELECT z.slug, market.operation, market.property_type, market.average_price,
+                       market.listings AS listing_count, market.average_expenses_ars AS average_expenses,
+                       market.average_price_m2 AS average_price_per_m2
+                FROM zones z
+                JOIN market_rows market ON market.zone_slug = z.slug
             ),
-            sumadas AS (
-                SELECT z.slug, b.operation, b.property_type,
-                       round(sum(b.average_price * greatest(b.listings, 1)) / sum(greatest(b.listings, 1))) AS promedio,
-                       sum(b.listings)::int AS propiedades,
-                       round(sum(b.average_expenses_ars * greatest(b.listings, 1))
-                             / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_expenses_ars IS NOT NULL), 0)) AS expensas,
-                       round(sum(b.average_price_m2 * greatest(b.listings, 1))
-                             / nullif(sum(greatest(b.listings, 1)) FILTER (WHERE b.average_price_m2 IS NOT NULL), 0)) AS precio_m2
-                FROM zonas z
-                JOIN zonas h ON h.nivel > 5 AND ST_Contains(z.geom, ST_PointOnSurface(h.geom))
-                JOIN filas b ON b.zone_slug = h.slug
-                WHERE z.nivel <= 5
-                  AND NOT EXISTS (SELECT 1 FROM propias p
-                                  WHERE p.slug = z.slug AND p.operation = b.operation AND p.property_type = b.property_type)
-                GROUP BY z.slug, b.operation, b.property_type
+            aggregated_market_rows AS (
+                SELECT z.slug, market.operation, market.property_type,
+                       round(sum(market.average_price * greatest(market.listings, 1)) / sum(greatest(market.listings, 1))) AS average_price,
+                       sum(market.listings)::int AS listing_count,
+                       round(sum(market.average_expenses_ars * greatest(market.listings, 1))
+                             / nullif(sum(greatest(market.listings, 1)) FILTER (WHERE market.average_expenses_ars IS NOT NULL), 0)) AS average_expenses,
+                       round(sum(market.average_price_m2 * greatest(market.listings, 1))
+                             / nullif(sum(greatest(market.listings, 1)) FILTER (WHERE market.average_price_m2 IS NOT NULL), 0)) AS average_price_per_m2
+                FROM zones z
+                JOIN zones contained ON contained.level > 5 AND ST_Contains(z.geom, ST_PointOnSurface(contained.geom))
+                JOIN market_rows market ON market.zone_slug = contained.slug
+                WHERE z.level <= 5
+                  AND NOT EXISTS (SELECT 1 FROM zone_market_rows own
+                                  WHERE own.slug = z.slug AND own.operation = market.operation AND own.property_type = market.property_type)
+                GROUP BY z.slug, market.operation, market.property_type
             )
-            SELECT slug AS "Slug", operation AS "Operacion", property_type AS "Tipo", promedio AS "Promedio",
-                   propiedades AS "Propiedades", expensas AS "Expensas", precio_m2 AS "PrecioM2"
-            FROM propias
+            SELECT slug AS "Slug", operation AS "Operation", property_type AS "PropertyType", average_price AS "AveragePrice",
+                   listing_count AS "ListingCount", average_expenses AS "AverageExpenses", average_price_per_m2 AS "AveragePricePerM2"
+            FROM zone_market_rows
             UNION ALL
-            SELECT slug, operation, property_type, promedio, propiedades, expensas, precio_m2
-            FROM sumadas
+            SELECT slug, operation, property_type, average_price, listing_count, average_expenses, average_price_per_m2
+            FROM aggregated_market_rows
             """;
 
-        private static readonly string SqlZonasDelEntorno = $"""
-            WITH zonas_validas AS (
+        private static readonly string NearbyZonesSql = $"""
+            WITH valid_zones AS (
                 -- Buenos Aires repeats the full CABA boundary; keep other same-area neighborhoods.
                 SELECT z.*
                 FROM {Geo}.zonas z
                 WHERE z.elegida
                   AND z.slug <> 'buenos-aires'
             ),
-            puntos AS (
-                SELECT p.orden, ST_SetSRID(ST_MakePoint(p.longitud, p.latitud), 4326) AS geom
+            points AS (
+                SELECT p.ordinal, ST_SetSRID(ST_MakePoint(p.longitude, p.latitude), 4326) AS geom
                 FROM unnest(@latitudes::double precision[], @longitudes::double precision[])
-                     WITH ORDINALITY AS p(latitud, longitud, orden)
+                     WITH ORDINALITY AS p(latitude, longitude, ordinal)
             ),
-            contenedoras AS (
-                SELECT p.orden, z.osm_id, z.slug, z.nivel, z.geom
-                FROM puntos p
-                JOIN zonas_validas z ON ST_Covers(z.geom, p.geom)
+            containing_zones AS (
+                SELECT p.ordinal, z.osm_id, z.slug, z.nivel AS level, z.geom
+                FROM points p
+                JOIN valid_zones z ON ST_Covers(z.geom, p.geom)
             ),
-            mas_especificas AS (
-                SELECT c.*
-                FROM contenedoras c
-                WHERE c.nivel = (
-                    SELECT max(c2.nivel)
-                    FROM contenedoras c2
-                    WHERE c2.orden = c.orden
+            most_specific_zones AS (
+                SELECT containing.*
+                FROM containing_zones containing
+                WHERE containing.level = (
+                    SELECT max(candidate.level)
+                    FROM containing_zones candidate
+                    WHERE candidate.ordinal = containing.ordinal
                 )
             ),
-            segmentos AS (
-                SELECT a.orden AS origen, b.orden AS destino,
-                       ST_MakeLine(a.geom, b.geom) AS geom,
-                       greatest(za.nivel, zb.nivel) AS nivel
-                FROM puntos a
-                JOIN puntos b ON a.orden < b.orden
-                JOIN mas_especificas za ON za.orden = a.orden
-                JOIN mas_especificas zb ON zb.orden = b.orden
+            segments AS (
+                SELECT first_point.ordinal AS origin, second_point.ordinal AS destination,
+                       ST_MakeLine(first_point.geom, second_point.geom) AS geom,
+                       greatest(first_zone.level, second_zone.level) AS level
+                FROM points first_point
+                JOIN points second_point ON first_point.ordinal < second_point.ordinal
+                JOIN most_specific_zones first_zone ON first_zone.ordinal = first_point.ordinal
+                JOIN most_specific_zones second_zone ON second_zone.ordinal = second_point.ordinal
             )
-            SELECT DISTINCT candidatas.slug AS "Value"
+            SELECT DISTINCT candidates.slug AS "Value"
             FROM (
-                SELECT vecina.slug
-                FROM mas_especificas base
-                JOIN zonas_validas vecina
-                  ON vecina.nivel = base.nivel
-                 AND ST_Intersects(vecina.geom, base.geom)
+                SELECT neighbor.slug
+                FROM most_specific_zones base
+                JOIN valid_zones neighbor
+                  ON neighbor.nivel = base.level
+                 AND ST_Intersects(neighbor.geom, base.geom)
 
                 UNION
 
-                SELECT intermedia.slug
-                FROM segmentos tramo
-                JOIN zonas_validas intermedia
-                  ON intermedia.nivel = tramo.nivel
-                 AND ST_Intersects(intermedia.geom, tramo.geom)
-            ) candidatas
+                SELECT intermediate.slug
+                FROM segments segment
+                JOIN valid_zones intermediate
+                  ON intermediate.nivel = segment.level
+                 AND ST_Intersects(intermediate.geom, segment.geom)
+            ) candidates
             """;
 
         private readonly ZonaMatchDbContext _dbContext;
@@ -201,23 +203,23 @@ namespace ZonaMatch.Infrastructure.Repositories
         }
 
         public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
-            _cache.GetAsync(GetTravelTimeAsync, cancellationToken);
+            _cache.GetAsync(LoadZoneProfilesAsync, cancellationToken);
 
         public async Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
-            IReadOnlyCollection<(double Latitud, double Longitud)> ubicaciones,
+            IReadOnlyCollection<(double Latitude, double Longitude)> locations,
             CancellationToken cancellationToken = default)
         {
-            if (ubicaciones.Count == 0)
+            if (locations.Count == 0)
                 return [];
 
-            var latitudes = ubicaciones.Select(point => point.Latitud).ToArray();
-            var longitudes = ubicaciones.Select(point => point.Longitud).ToArray();
+            var latitudes = locations.Select(point => point.Latitude).ToArray();
+            var longitudes = locations.Select(point => point.Longitude).ToArray();
 
             try
             {
                 return await _dbContext.Database
                     .SqlQueryRaw<string>(
-                        SqlZonasDelEntorno,
+                        NearbyZonesSql,
                         new NpgsqlParameter("latitudes", NpgsqlDbType.Array | NpgsqlDbType.Double) { Value = latitudes },
                         new NpgsqlParameter("longitudes", NpgsqlDbType.Array | NpgsqlDbType.Double) { Value = longitudes })
                     .ToListAsync(cancellationToken);
@@ -229,22 +231,22 @@ namespace ZonaMatch.Infrastructure.Repositories
             }
         }
 
-        private async Task<IReadOnlyList<ZoneProfile>> GetTravelTimeAsync(CancellationToken cancellationToken)
+        private async Task<IReadOnlyList<ZoneProfile>> LoadZoneProfilesAsync(CancellationToken cancellationToken)
         {
             try
             {
                 // This query covers the entire AMBA and takes longer than the default command timeout.
                 _dbContext.Database.SetCommandTimeout(TimeSpan.FromMinutes(2));
 
-                var filas = await _dbContext.Database
-                    .SqlQueryRaw<PerfilFila>(SqlPerfiles)
+                var zoneRows = await _dbContext.Database
+                    .SqlQueryRaw<ZoneProfileRow>(ZoneProfilesSql)
                     .ToListAsync(cancellationToken);
-                var mercado = (await _dbContext.Database
-                        .SqlQueryRaw<MercadoFila>(SqlMercado)
+                var marketRows = (await _dbContext.Database
+                        .SqlQueryRaw<HousingMarketRow>(HousingMarketSql)
                         .ToListAsync(cancellationToken))
-                    .ToLookup(f => f.Slug, StringComparer.Ordinal);
+                    .ToLookup(row => row.Slug, StringComparer.Ordinal);
 
-                return filas.Select(f => f.APerfil(mercado[f.Slug])).ToList();
+                return zoneRows.Select(row => row.ToZoneProfile(marketRows[row.Slug])).ToList();
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
@@ -254,77 +256,77 @@ namespace ZonaMatch.Infrastructure.Repositories
         }
 
         // Keyless result type for the zone profile query; property names match the SQL aliases.
-        private sealed class PerfilFila
+        private sealed class ZoneProfileRow
         {
             public string Slug { get; set; } = string.Empty;
-            public string Nombre { get; set; } = string.Empty;
-            public int Nivel { get; set; }
-            public double SuperficieKm2 { get; set; }
-            public int Poblacion { get; set; }
-            public int? Delitos { get; set; }
-            public int LineasTransporte { get; set; }
-            public int SalidasHoraPico { get; set; }
-            public int Escuelas { get; set; }
-            public int CentrosSalud { get; set; }
-            public int EspaciosVerdes { get; set; }
-            public double SuperficieVerdeM2 { get; set; }
-            public double Latitud { get; set; }
-            public double Longitud { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public int Level { get; set; }
+            public double AreaKm2 { get; set; }
+            public int Population { get; set; }
+            public int? CrimeCount { get; set; }
+            public int TransitLineCount { get; set; }
+            public int PeakHourDepartures { get; set; }
+            public int SchoolCount { get; set; }
+            public int HealthCenterCount { get; set; }
+            public int GreenSpaceCount { get; set; }
+            public double GreenSpaceAreaM2 { get; set; }
+            public double Latitude { get; set; }
+            public double Longitude { get; set; }
 
-            public ZoneProfile APerfil(IEnumerable<MercadoFila> mercado)
+            public ZoneProfile ToZoneProfile(IEnumerable<HousingMarketRow> marketRows)
             {
-                var porClave = mercado.ToDictionary(f => (f.Operacion, f.Tipo));
+                var marketByOperationAndType = marketRows.ToDictionary(row => (row.Operation, row.PropertyType));
 
-                HousingMarket Vivienda(string tipo)
+                HousingMarket CreateHousingMarket(string propertyType)
                 {
-                    var alquiler = porClave.GetValueOrDefault(("rent", tipo));
-                    var venta = porClave.GetValueOrDefault(("sale", tipo));
+                    var rent = marketByOperationAndType.GetValueOrDefault(("rent", propertyType));
+                    var sale = marketByOperationAndType.GetValueOrDefault(("sale", propertyType));
                     return new HousingMarket(
-                        alquiler?.Promedio, alquiler?.Propiedades, alquiler?.Expensas, venta?.Promedio, venta?.Propiedades,
-                        alquiler?.PrecioM2, venta?.PrecioM2);
+                        rent?.AveragePrice, rent?.ListingCount, rent?.AverageExpenses, sale?.AveragePrice, sale?.ListingCount,
+                        rent?.AveragePricePerM2, sale?.AveragePricePerM2);
                 }
 
-                var todos = Vivienda(HousingTypes.All);
+                var combinedMarket = CreateHousingMarket(HousingTypes.All);
 
                 return new ZoneProfile
                 {
                 Slug = Slug,
-                Nombre = Nombre,
-                Nivel = Nivel,
-                SuperficieKm2 = SuperficieKm2,
-                Poblacion = Poblacion,
-                Delitos = Delitos,
-                LineasTransporte = LineasTransporte,
-                SalidasHoraPico = SalidasHoraPico,
-                Escuelas = Escuelas,
-                CentrosSalud = CentrosSalud,
-                EspaciosVerdes = EspaciosVerdes,
-                SuperficieVerdeM2 = SuperficieVerdeM2,
-                Latitud = Latitud,
-                Longitud = Longitud,
-                AlquilerPromedio = todos.AlquilerPromedio,
-                PropiedadesDisponibles = todos.PropiedadesEnAlquiler,
-                ExpensasPromedio = todos.ExpensasPromedio,
-                VentaPromedioUsd = todos.VentaPromedioUsd,
-                PropiedadesEnVenta = todos.PropiedadesEnVenta,
-                AlquilerM2 = todos.AlquilerM2,
-                VentaM2Usd = todos.VentaM2Usd,
-                MercadoPorTipo = new[] { HousingTypes.Apartment, HousingTypes.House, HousingTypes.Ph }
-                    .ToDictionary(tipo => tipo, Vivienda),
+                Name = Name,
+                Level = Level,
+                AreaKm2 = AreaKm2,
+                Population = Population,
+                CrimeCount = CrimeCount,
+                TransitLineCount = TransitLineCount,
+                PeakHourDepartures = PeakHourDepartures,
+                SchoolCount = SchoolCount,
+                HealthCenterCount = HealthCenterCount,
+                GreenSpaceCount = GreenSpaceCount,
+                GreenSpaceAreaM2 = GreenSpaceAreaM2,
+                Latitude = Latitude,
+                Longitude = Longitude,
+                AverageRent = combinedMarket.AverageRent,
+                AvailableRentalProperties = combinedMarket.AvailablePropertiesForRent,
+                AverageExpenses = combinedMarket.AverageExpenses,
+                AverageSalePriceUsd = combinedMarket.AverageSalePriceUsd,
+                AvailablePropertiesForSale = combinedMarket.AvailablePropertiesForSale,
+                RentPricePerM2 = combinedMarket.RentPricePerM2,
+                SalePricePerM2Usd = combinedMarket.SalePricePerM2Usd,
+                MarketByPropertyType = new[] { HousingTypes.Apartment, HousingTypes.House, HousingTypes.Ph }
+                    .ToDictionary(propertyType => propertyType, CreateHousingMarket),
                 };
             }
         }
 
         // Keyless result type for the market query: operation is rent|sale and property type comes from app.zone_market.
-        private sealed class MercadoFila
+        private sealed class HousingMarketRow
         {
             public string Slug { get; set; } = string.Empty;
-            public string Operacion { get; set; } = string.Empty;
-            public string Tipo { get; set; } = string.Empty;
-            public decimal? Promedio { get; set; }
-            public int? Propiedades { get; set; }
-            public decimal? Expensas { get; set; }
-            public decimal? PrecioM2 { get; set; }
+            public string Operation { get; set; } = string.Empty;
+            public string PropertyType { get; set; } = string.Empty;
+            public decimal? AveragePrice { get; set; }
+            public int? ListingCount { get; set; }
+            public decimal? AverageExpenses { get; set; }
+            public decimal? AveragePricePerM2 { get; set; }
         }
     }
 }

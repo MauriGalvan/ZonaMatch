@@ -8,7 +8,7 @@ namespace ZonaMatch.Application.Interfaces
         // Travel time in minutes on a weekday morning; null when no route is available.
         // If the routing service is unavailable, the caller decides whether to estimate.
         Task<TravelTime?> GetTravelTimeAsync(
-            double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, TravelMode modo,
+            double originLatitude, double originLongitude, double destinationLatitude, double destinationLongitude, TravelMode mode,
             CancellationToken cancellationToken = default);
     }
 }

@@ -110,9 +110,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                     .OrderBy(zone => zone.Order)
                     .Select(zone => zonesBySlug[zone.ZoneSlug])
                     .ToArray();
-                var travelTimes = await MeasureTripsAsync(analysisZones, request.Lugares, mode, routeLimit, cancellationToken);
+                var travelTimes = await MeasureTripsAsync(analysisZones, request.Places, mode, routeLimit, cancellationToken);
                 var rankedZones = analysisZones
-                    .Select(zone => ToDto(motor!.Calcular(zone, request, travelTimes[zone.Slug]), request))
+                    .Select(zone => ToDto(motor!.Calculate(zone, request, travelTimes[zone.Slug]), request))
                     .OrderByDescending(zone => zone.Score.HasValue)
                     .ThenByDescending(zone => zone.Score)
                     .ThenBy(zone => zone.Name, StringComparer.CurrentCulture)
@@ -186,19 +186,19 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
         {
             async Task<TravelTime?> MeasureAsync(ZoneProfile zone, UserPlace place)
             {
-                if (!place.TieneUbicacion)
+                if (!place.HasLocation)
                     return null;
 
                 await limiter.WaitAsync(cancellationToken);
                 try
                 {
                     return await _routingClient.GetTravelTimeAsync(
-                               zone.Latitud, zone.Longitud,
-                               place.Latitud!.Value, place.Longitud!.Value,
+                               zone.Latitude, zone.Longitude,
+                               place.Latitude!.Value, place.Longitude!.Value,
                                mode, cancellationToken)
                            ?? TravelModes.Estimate(
-                               mode, zone.Latitud, zone.Longitud,
-                               place.Latitud!.Value, place.Longitud!.Value);
+                               mode, zone.Latitude, zone.Longitude,
+                               place.Latitude!.Value, place.Longitude!.Value);
                 }
                 finally
                 {
@@ -218,7 +218,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
         private static ScoringRequest BuildRequest(Context context)
         {
             var criteria = context.Criteria
-                .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterionId)
+                .Where(criterion => ScoringEngine.IsKnownCriterion(criterion.CriterionId)
                                     && criterion.Priority is "baja" or "media" or "alta")
                 .ToDictionary(criterion => criterion.CriterionId, criterion => criterion.Priority, StringComparer.Ordinal);
 
@@ -253,22 +253,22 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
         private static ScoredZoneResponse ToDto(ZoneScoreResult result, ScoringRequest request) =>
             new(
-                result.Zona.Slug,
-                result.Zona.Nombre,
-                result.Puntaje,
-                result.Componentes
+                result.Zone.Slug,
+                result.Zone.Name,
+                result.Score,
+                result.Components
                     .Select(component => new ScoreComponentResponse(
-                        component.Criterion, component.Prioridad, component.Puntaje, component.Detalle))
+                        component.Criterion, component.Priority, component.Score, component.Details))
                     .ToArray(),
-                result.Limites
-                    .Select(limit => new ScoreLimitResponse(limit.Tipo, limit.Cumple, limit.Detalle))
+                result.Limits
+                    .Select(limit => new ScoreLimitResponse(limit.Type, limit.IsSatisfied, limit.Details))
                     .ToArray(),
-                result.Lugares
+                result.Places
                     .Select(place => new PlaceTravelTimeResponse(
-                        place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm))
+                        place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm))
                     .ToArray(),
-                HousingScoring.Rent(result.Zona, request.TipoVivienda, request.SuperficieM2),
-                HousingScoring.Sale(result.Zona, request.TipoVivienda, request.SuperficieM2));
+                HousingScoring.Rent(result.Zone, request.HousingType, request.AreaM2),
+                HousingScoring.Sale(result.Zone, request.HousingType, request.AreaM2));
 
         private static ScoredZoneResponse ToDto(RankedZoneResponse result) =>
             new(

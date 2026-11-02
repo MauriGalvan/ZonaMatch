@@ -17,51 +17,51 @@ namespace ZonaMatch.Infrastructure.Geo
     public class MotisRoutingClient : IRoutingClient
     {
         // Tuesday, March 3, 2026, at 8:00 AM in Buenos Aires (UTC-3).
-        private const string FechaReferenciaPorDefecto = "2026-03-03T11:00:00Z";
+        private const string DefaultReferenceDate = "2026-03-03T11:00:00Z";
 
-        private static readonly TimeSpan VigenciaViaje = TimeSpan.FromDays(1);
-        private static readonly TimeSpan PausaSiFalla = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan TravelTimeCacheDuration = TimeSpan.FromDays(1);
+        private static readonly TimeSpan FailureBackoffDuration = TimeSpan.FromMinutes(1);
 
         // Maximum duration for direct walking or cycling routes, in seconds.
-        private const int MaximoDirectoSegundos = 7200;
+        private const int MaximumDirectRouteSeconds = 7200;
 
-        private static DateTimeOffset _noConsultarHasta = DateTimeOffset.MinValue;
+        private static DateTimeOffset _doNotQueryUntil = DateTimeOffset.MinValue;
 
         private readonly HttpClient _http;
         private readonly IMemoryCache _cache;
-        private readonly TimeProvider _reloj;
+        private readonly TimeProvider _timeProvider;
         private readonly ILogger<MotisRoutingClient> _logger;
-        private readonly string _fechaReferencia;
+        private readonly string _referenceDate;
 
-        public MotisRoutingClient(HttpClient http, IMemoryCache cache, TimeProvider reloj, IConfiguration configuracion, ILogger<MotisRoutingClient> logger)
+        public MotisRoutingClient(HttpClient http, IMemoryCache cache, TimeProvider timeProvider, IConfiguration configuration, ILogger<MotisRoutingClient> logger)
         {
             _http = http;
             _cache = cache;
-            _reloj = reloj;
+            _timeProvider = timeProvider;
             _logger = logger;
-            _fechaReferencia = configuracion["Motis:FechaReferencia"] ?? FechaReferenciaPorDefecto;
+            _referenceDate = configuration["Motis:FechaReferencia"] ?? DefaultReferenceDate;
         }
 
         public async Task<TravelTime?> GetTravelTimeAsync(
-            double latitudOrigen, double longitudOrigen, double latitudDestino, double longitudDestino, TravelMode modo,
+            double originLatitude, double originLongitude, double destinationLatitude, double destinationLongitude, TravelMode mode,
             CancellationToken cancellationToken = default)
         {
             // About 10 m: requests from the same center to the same destination share a result.
-            var clave = string.Create(CultureInfo.InvariantCulture,
-                $"motis:{modo}:{latitudOrigen:F4},{longitudOrigen:F4}:{latitudDestino:F4},{longitudDestino:F4}");
+            var cacheKey = string.Create(CultureInfo.InvariantCulture,
+                $"motis:{mode}:{originLatitude:F4},{originLongitude:F4}:{destinationLatitude:F4},{destinationLongitude:F4}");
 
-            if (_cache.TryGetValue(clave, out TravelTime? guardado))
-                return guardado;
+            if (_cache.TryGetValue(cacheKey, out TravelTime? cachedTravelTime))
+                return cachedTravelTime;
 
-            if (_reloj.GetUtcNow() < _noConsultarHasta)
+            if (_timeProvider.GetUtcNow() < _doNotQueryUntil)
                 return null;
 
             try
             {
                 var url = string.Create(CultureInfo.InvariantCulture,
-                    $"api/v1/plan?fromPlace={latitudOrigen},{longitudOrigen}&toPlace={latitudDestino},{longitudDestino}&time={_fechaReferencia}&{Modos(modo)}&detailedLegs=true&detailedTransfers=true&useRoutedTransfers=true");
+                    $"api/v1/plan?fromPlace={originLatitude},{originLongitude}&toPlace={destinationLatitude},{destinationLongitude}&time={_referenceDate}&{Modes(mode)}&detailedLegs=true&detailedTransfers=true&useRoutedTransfers=true");
 
-                var plan = await _http.GetFromJsonAsync<Plan>(url, cancellationToken);
+                var plan = await _http.GetFromJsonAsync<RoutingPlan>(url, cancellationToken);
 
                 if (plan is null || plan.Error is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) })
                 {
@@ -70,19 +70,19 @@ namespace ZonaMatch.Infrastructure.Geo
                 }
 
                 // Select one itinerary first so its duration and distance are not mixed with another itinerary.
-                var itinerario = (plan.Itinerarios ?? [])
-                    .Concat(plan.Directos ?? [])
-                    .Where(i => i.Duracion is >= 0)
-                    .MinBy(i => i.Duracion!.Value);
-                var tiempo = itinerario is null
+                var itinerary = (plan.Itineraries ?? [])
+                    .Concat(plan.DirectRoutes ?? [])
+                    .Where(item => item.DurationSeconds is >= 0)
+                    .MinBy(item => item.DurationSeconds!.Value);
+                var travelTime = itinerary is null
                     ? new TravelTime(null, IsEstimated: false)
                     : new TravelTime(
-                        (int)Math.Round(itinerario.Duracion!.Value / 60.0),
+                        (int)Math.Round(itinerary.DurationSeconds!.Value / 60.0),
                         IsEstimated: false,
-                        DistanceKm: CalcularDistanciaKm(itinerario));
+                        DistanceKm: CalculateDistanceKm(itinerary));
 
-                _cache.Set(clave, tiempo, VigenciaViaje);
-                return tiempo;
+                _cache.Set(cacheKey, travelTime, TravelTimeCacheDuration);
+                return travelTime;
             }
             catch (JsonException ex)
             {
@@ -91,78 +91,78 @@ namespace ZonaMatch.Infrastructure.Geo
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
             {
-                _noConsultarHasta = _reloj.GetUtcNow() + PausaSiFalla;
+                _doNotQueryUntil = _timeProvider.GetUtcNow() + FailureBackoffDuration;
                 _logger.LogWarning("MOTIS is unavailable ({Message}); trips will be estimated from distance for one minute.", ex.Message);
                 return null;
             }
         }
 
-        private static double? CalcularDistanciaKm(Itinerario itinerario)
+        private static double? CalculateDistanceKm(Itinerary itinerary)
         {
-            if (itinerario.Tramos is not { Count: > 0 } tramos)
+            if (itinerary.Segments is not { Count: > 0 } segments)
                 return null;
 
-            var totalMetros = 0.0;
-            foreach (var tramo in tramos)
+            var totalMeters = 0.0;
+            foreach (var segment in segments)
             {
                 // For public transit, MOTIS may return geometry without the distance field.
-                var distancia = tramo.DistanciaMetros ?? RoutePolyline.GetLengthInMeters(
-                    tramo.Geometria?.Puntos, tramo.Geometria?.Precision);
+                var distance = segment.DistanceMeters ?? RoutePolyline.GetLengthInMeters(
+                    segment.Geometry?.Points, segment.Geometry?.Precision);
 
                 // Do not report only the walking segments as the total trip distance.
-                if (distancia is not { } metros || !double.IsFinite(metros) || metros < 0)
+                if (distance is not { } meters || !double.IsFinite(meters) || meters < 0)
                     return null;
 
-                totalMetros += metros;
+                totalMeters += meters;
             }
 
-            return double.IsFinite(totalMetros) ? totalMetros / 1000.0 : null;
+            return double.IsFinite(totalMeters) ? totalMeters / 1000.0 : null;
         }
 
         // Public transit with walking transfers; other modes use direct routes only.
-        private static string Modos(TravelMode modo) => modo switch
+        private static string Modes(TravelMode mode) => mode switch
         {
             TravelMode.Car => "transitModes=&directModes=CAR",
-            TravelMode.Bicycle => $"transitModes=&directModes=BIKE&maxDirectTime={MaximoDirectoSegundos}",
-            TravelMode.Walking => $"transitModes=&directModes=WALK&maxDirectTime={MaximoDirectoSegundos}",
+            TravelMode.Bicycle => $"transitModes=&directModes=BIKE&maxDirectTime={MaximumDirectRouteSeconds}",
+            TravelMode.Walking => $"transitModes=&directModes=WALK&maxDirectTime={MaximumDirectRouteSeconds}",
             _ => "transitModes=TRANSIT&directModes=WALK",
         };
 
-        private sealed class Plan
+        private sealed class RoutingPlan
         {
             [JsonPropertyName("itineraries")]
-            public List<Itinerario>? Itinerarios { get; set; }
+            public List<Itinerary>? Itineraries { get; set; }
 
             [JsonPropertyName("direct")]
-            public List<Itinerario>? Directos { get; set; }
+            public List<Itinerary>? DirectRoutes { get; set; }
 
             [JsonPropertyName("error")]
             public JsonElement? Error { get; set; }
         }
 
-        private sealed class Itinerario
+        private sealed class Itinerary
         {
             // Duration in seconds.
             [JsonPropertyName("duration")]
-            public int? Duracion { get; set; }
+            public int? DurationSeconds { get; set; }
 
             [JsonPropertyName("legs")]
-            public List<Tramo>? Tramos { get; set; }
+            public List<RouteSegment>? Segments { get; set; }
         }
 
-        private sealed class Tramo
+        private sealed class RouteSegment
         {
             [JsonPropertyName("distance")]
-            public double? DistanciaMetros { get; set; }
+            public double? DistanceMeters { get; set; }
 
             [JsonPropertyName("legGeometry")]
-            public GeometriaTramo? Geometria { get; set; }
+            public RouteGeometry? Geometry { get; set; }
         }
 
-        private sealed class GeometriaTramo
+        private sealed class RouteGeometry
         {
             [JsonPropertyName("points")]
-            public string? Puntos { get; set; }
+            public string? Points { get; set; }
 
             [JsonPropertyName("precision")]
             public int? Precision { get; set; }

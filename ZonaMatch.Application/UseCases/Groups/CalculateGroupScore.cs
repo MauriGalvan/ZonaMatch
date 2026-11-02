@@ -82,10 +82,10 @@ public sealed partial class CalculateGroupScore
                     participant,
                     BuildRequest(profile, request.MaximumRent) with
                     {
-                        Operacion = operation,
-                        CompraMaximaUsd = maximumPurchase,
-                        TipoVivienda = propertyType,
-                        SuperficieM2 = surface,
+                        Operation = operation,
+                        MaximumPurchasePriceUsd = maximumPurchase,
+                        HousingType = propertyType,
+                        AreaM2 = surface,
                     },
                     TravelModes.FromMobility(profile.Mobility ?? []),
                     profile.Places.OrderBy(point => point.Order).ToArray());
@@ -94,9 +94,9 @@ public sealed partial class CalculateGroupScore
 
         var locations = members
             .Where(member => weights[member.Participant.Id] > 0)
-            .SelectMany(member => member.Request.Lugares)
-            .Where(place => place.TieneUbicacion)
-            .Select(place => (Latitud: place.Latitud!.Value, Longitud: place.Longitud!.Value))
+            .SelectMany(member => member.Request.Places)
+            .Where(place => place.HasLocation)
+            .Select(place => (Latitude: place.Latitude!.Value, Longitude: place.Longitude!.Value))
             .ToArray();
         var nearbySlugs = locations.Length == 0
             ? universe.Select(zone => zone.Slug).ToArray()
@@ -115,13 +115,13 @@ public sealed partial class CalculateGroupScore
         var calculations = members
             .Select(async member =>
             {
-                var travelTimes = await MeasureTripsAsync(zonesToCalculate, member.Request.Lugares, member.Mode, routeLimit, cancellationToken);
+                var travelTimes = await MeasureTripsAsync(zonesToCalculate, member.Request.Places, member.Mode, routeLimit, cancellationToken);
                 var results = zonesToCalculate.ToDictionary(
                     zone => zone.Slug,
                     zone =>
                     {
                         var times = travelTimes[zone.Slug];
-                        var result = motor.Calcular(zone, member.Request, times);
+                        var result = motor.Calculate(zone, member.Request, times);
                         return new MemberZoneResult(result, BuildPlaceDetails(member, times));
                     },
                     StringComparer.Ordinal);
@@ -132,7 +132,7 @@ public sealed partial class CalculateGroupScore
 
         var memberScores = await Task.WhenAll(calculations);
         var hasAnyRanking = zonesToCalculate.Any(zone => memberScores.Any(member =>
-            weights[member.Participant.Id] > 0 && member.Zones[zone.Slug].Resultado.Puntaje is not null));
+            weights[member.Participant.Id] > 0 && member.Zones[zone.Slug].Resultado.Score is not null));
         if (!hasAnyRanking)
             throw new BadRequestException("Ningún participante con peso positivo tiene datos suficientes para puntuar las zonas disponibles.");
 
@@ -270,19 +270,19 @@ public sealed partial class CalculateGroupScore
     {
         async Task<TravelTime?> MeasureAsync(ZoneProfile zone, UserPlace place)
         {
-            if (!place.TieneUbicacion)
+            if (!place.HasLocation)
                 return null;
 
             await limiter.WaitAsync(cancellationToken);
             try
             {
                 return await _routing.GetTravelTimeAsync(
-                           zone.Latitud, zone.Longitud,
-                           place.Latitud!.Value, place.Longitud!.Value,
+                           zone.Latitude, zone.Longitude,
+                           place.Latitude!.Value, place.Longitude!.Value,
                            mode, cancellationToken)
                        ?? TravelModes.Estimate(
-                           mode, zone.Latitud, zone.Longitud,
-                           place.Latitud!.Value, place.Longitud!.Value);
+                           mode, zone.Latitude, zone.Longitude,
+                           place.Latitude!.Value, place.Longitude!.Value);
             }
             finally
             {
@@ -299,7 +299,7 @@ public sealed partial class CalculateGroupScore
     private static ScoringRequest BuildRequest(Context profile, decimal? sharedRentLimit)
     {
         var criteria = profile.Criteria
-            .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterionId)
+            .Where(criterion => ScoringEngine.IsKnownCriterion(criterion.CriterionId)
                                 && criterion.Priority is "baja" or "media" or "alta")
             .ToDictionary(criterion => criterion.CriterionId, criterion => criterion.Priority, StringComparer.Ordinal);
 
@@ -343,7 +343,7 @@ public sealed partial class CalculateGroupScore
                 time?.Minutes,
                 maximumMinutes,
                 time?.IsEstimated ?? false,
-                time is null ? null : ScoringEngine.PuntajeViaje(time.Minutes, maximumMinutes));
+                time is null ? null : ScoringEngine.TravelScore(time.Minutes, maximumMinutes));
         })
         .ToArray();
 
@@ -361,7 +361,7 @@ public sealed partial class CalculateGroupScore
             {
                 var score = scoresByParticipant.TryGetValue(participant.Id, out var calculation)
                     && calculation.Zones.TryGetValue(zone.Slug, out var zoneResult)
-                    ? zoneResult.Resultado.Puntaje
+                    ? zoneResult.Resultado.Score
                     : null;
                 return (Participant: participant, Score: score, Weight: weights[participant.Id]);
             })
@@ -388,33 +388,33 @@ public sealed partial class CalculateGroupScore
 
         var componentGroups = memberScores
             .Where(member => member.Zones.ContainsKey(zone.Slug))
-            .SelectMany(member => member.Zones[zone.Slug].Resultado.Componentes
+            .SelectMany(member => member.Zones[zone.Slug].Resultado.Components
                 .Select(component => (Member: member, Component: component)))
             .GroupBy(entry => entry.Component.Criterion, StringComparer.Ordinal)
             .Select(group =>
             {
                 var withScore = group
-                    .Where(entry => entry.Component.Puntaje is not null && weights[entry.Member.Participant.Id] > 0)
+                    .Where(entry => entry.Component.Score is not null && weights[entry.Member.Participant.Id] > 0)
                     .ToArray();
                 var componentWeight = withScore.Sum(entry => weights[entry.Member.Participant.Id]);
                 int? componentScore = componentWeight > 0
                     ? (int)Math.Clamp(decimal.Round(
-                        withScore.Sum(entry => entry.Component.Puntaje!.Value * weights[entry.Member.Participant.Id]) / componentWeight,
+                        withScore.Sum(entry => entry.Component.Score!.Value * weights[entry.Member.Participant.Id]) / componentWeight,
                         0, MidpointRounding.AwayFromZero), 0, 100)
                     : null;
                 var componentParticipants = group
                     .Select(entry => new ParticipantScoreComponentResponse(
                         entry.Member.Participant.Id,
                         entry.Member.Participant.User.Email,
-                        entry.Component.Puntaje is not null && weights[entry.Member.Participant.Id] > 0 && componentWeight > 0
+                        entry.Component.Score is not null && weights[entry.Member.Participant.Id] > 0 && componentWeight > 0
                             ? decimal.Round(weights[entry.Member.Participant.Id] / componentWeight * 100, 2, MidpointRounding.AwayFromZero)
                             : 0,
-                        entry.Component.Prioridad,
-                        entry.Component.Puntaje,
-                        entry.Component.Detalle))
+                        entry.Component.Priority,
+                        entry.Component.Score,
+                        entry.Component.Details))
                     .ToArray();
-                var details = group.Select(entry => entry.Component.Detalle).Where(detail => !string.IsNullOrWhiteSpace(detail)).Distinct().ToArray();
-                var detail = group.Key == ScoringEngine.Lugares
+                var details = group.Select(entry => entry.Component.Details).Where(detail => !string.IsNullOrWhiteSpace(detail)).Distinct().ToArray();
+                var detail = group.Key == ScoringEngine.Places
                     ? "Promedio ponderado de los viajes individuales con datos disponibles."
                     : string.Join(" · ", details);
 
@@ -425,21 +425,21 @@ public sealed partial class CalculateGroupScore
 
         var participantLimits = memberScores
             .Where(member => member.Zones.ContainsKey(zone.Slug))
-            .SelectMany(member => member.Zones[zone.Slug].Resultado.Limites.Select(limit =>
+            .SelectMany(member => member.Zones[zone.Slug].Resultado.Limits.Select(limit =>
                 new ScoreLimitResponse(
                     member.Participant.Id,
                     member.Participant.User.Email,
                     normalizedWeights.GetValueOrDefault(member.Participant.Id),
-                    limit.Tipo,
-                    limit.Cumple,
-                    limit.Detalle)))
+                    limit.Type,
+                    limit.IsSatisfied,
+                    limit.Details)))
             .ToArray();
         // The budget is the group's: its limits are the same for everyone, so they are shown once
         var limits = participantLimits
-            .Where(limit => ScoringEngine.EsLimiteDePresupuesto(limit.Type))
+            .Where(limit => ScoringEngine.IsBudgetLimit(limit.Type))
             .DistinctBy(limit => limit.Type)
             .Select(limit => limit with { ParticipantId = Guid.Empty, ParticipantName = "Grupo", NormalizedWeight = 100 })
-            .Concat(participantLimits.Where(limit => !ScoringEngine.EsLimiteDePresupuesto(limit.Type)))
+            .Concat(participantLimits.Where(limit => !ScoringEngine.IsBudgetLimit(limit.Type)))
             .ToArray();
         var places = memberScores
             .Where(member => member.Zones.ContainsKey(zone.Slug))
@@ -456,7 +456,7 @@ public sealed partial class CalculateGroupScore
                 zoneSale.PricePerM2Usd, zoneSale.SurfaceM2, zoneSale.EstimatedUsd)
             : null;
 
-        return new RankedZoneResponse(zone.Slug, zone.Nombre, groupScore, breakdown, componentGroups, limits, places, rent, sale);
+        return new RankedZoneResponse(zone.Slug, zone.Name, groupScore, breakdown, componentGroups, limits, places, rent, sale);
     }
 
     private static ExcludedParticipantResponse? Exclusion(
@@ -472,7 +472,7 @@ public sealed partial class CalculateGroupScore
         else if (weight == 0)
             reason = "Tiene un peso asignado de 0.";
         else if (!memberScores.Any(member => member.Participant.Id == participant.Id && selectedZones.Any(zone =>
-                     member.Zones.TryGetValue(zone.Slug, out var result) && result.Resultado.Puntaje is not null)))
+                     member.Zones.TryGetValue(zone.Slug, out var result) && result.Resultado.Score is not null)))
             reason = "No obtuvo puntajes con los datos disponibles en las zonas del ranking.";
 
         return reason is null

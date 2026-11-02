@@ -11,7 +11,7 @@ namespace ZonaMatch.Application.Interfaces
         // Zones containing geocoded locations, contiguous zones at the same level, and zones crossed by direct
         // segments between each pair of locations (using the more detailed level of the pair).
         Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
-            IReadOnlyCollection<(double Latitud, double Longitud)> ubicaciones,
+            IReadOnlyCollection<(double Latitude, double Longitude)> locations,
             CancellationToken cancellationToken = default);
     }
 }
