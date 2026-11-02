@@ -33,7 +33,7 @@ namespace ZonaMatch.Api.Authentication
                 new(JwtRegisteredClaimNames.Email, user.Email),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
-            if (user.EsAdministrador)
+            if (user.IsAdministrator)
                 claims.Add(new Claim(AppRoles.ClaimType, AppRoles.Admin));
 
             var descriptor = new SecurityTokenDescriptor

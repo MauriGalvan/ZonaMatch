@@ -28,14 +28,14 @@ public sealed class RegisterUser(
         {
             Email = normalizedEmail,
             PasswordHash = passwordHasher.Hash(request.Password),
-            FechaNacimiento = birthDate,
-            FechaCreacion = timeProvider.GetUtcNow()
+            DateOfBirth = birthDate,
+            CreatedAt = timeProvider.GetUtcNow()
         };
 
         await users.AddAsync(user, cancellationToken);
 
         logger.LogInformation("User {UserId} registered", user.Id);
 
-        return new UserResponse(user.Id, user.Email, user.FechaNacimiento);
+        return new UserResponse(user.Id, user.Email, user.DateOfBirth);
     }
 }

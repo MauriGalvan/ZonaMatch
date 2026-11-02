@@ -97,8 +97,9 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Email).HasMaxLength(254).IsRequired();
                 e.HasIndex(x => x.Email).IsUnique();
                 e.Property(x => x.PasswordHash).HasMaxLength(255).IsRequired();
-                e.Property(x => x.FechaNacimiento).HasColumnType("date");
-                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
+                e.Property(x => x.DateOfBirth).HasColumnName("fecha_nacimiento").HasColumnType("date");
+                e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
+                e.Property(x => x.IsAdministrator).HasColumnName("es_administrador");
             });
 
             // Search criteria: the user's profile or the snapshot saved with an analysis.

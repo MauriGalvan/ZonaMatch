@@ -12,11 +12,11 @@ namespace ZonaMatch.Domain.Entities
         // Output of IPasswordHasher (salted PBKDF2). The plain password is never stored.
         public string PasswordHash { get; set; } = string.Empty;
 
-        public DateOnly FechaNacimiento { get; set; }
+        public DateOnly DateOfBirth { get; set; }
 
-        public DateTimeOffset FechaCreacion { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
 
         // Site administrator: can approve or reject community contributions directly
-        public bool EsAdministrador { get; set; }
+        public bool IsAdministrator { get; set; }
     }
 }

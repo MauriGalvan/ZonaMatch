@@ -1257,23 +1257,23 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<DateOnly>("DateOfBirth")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_nacimiento");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)")
                         .HasColumnName("email");
 
-                    b.Property<bool>("EsAdministrador")
+                    b.Property<bool>("IsAdministrator")
                         .HasColumnType("boolean")
                         .HasColumnName("es_administrador");
-
-                    b.Property<DateTimeOffset>("FechaCreacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_creacion");
-
-                    b.Property<DateOnly>("FechaNacimiento")
-                        .HasColumnType("date")
-                        .HasColumnName("fecha_nacimiento");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
