@@ -26,59 +26,59 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             ?? throw new NotFoundException("Todavia no hay datos de censo ni de seguridad para esta zona.");
 
         // Zones with geolocated crimes are compared against the whole city.
-        var cityReference = zone.DelitosGeorreferenciados
+        var cityReference = zone.HasGeolocatedCrimes
             ? await indicatorsRepository.GetCapitalCityAsync(cancellationToken)
             : null;
 
         return new ZoneIndicatorsResponse(
             zone.Slug,
-            zone.Nombre,
-            zone.Nivel,
+            zone.Name,
+            zone.Level,
             new ZonePopulationResponse(
-                zone.Poblacion,
-                zone.DensidadHabitantesKm2,
-                zone.Hogares,
-                zone.Viviendas,
-                zone.PorcentajeMenores15,
-                zone.Porcentaje15a64,
-                zone.Porcentaje65yMas),
+                zone.Population,
+                zone.PopulationDensityPerKm2,
+                zone.Households,
+                zone.Dwellings,
+                zone.ResidentsUnder15Percentage,
+                zone.ResidentsAged15To64Percentage,
+                zone.ResidentsAged65PlusPercentage),
             new ZoneConnectivityResponse(
-                zone.PorcentajeHogaresInternet,
-                zone.PorcentajeHogaresComputadora,
-                zone.PorcentajeHogaresCelularInternet,
+                zone.HouseholdsWithInternetPercentage,
+                zone.HouseholdsWithComputerPercentage,
+                zone.HouseholdsWithMobileInternetPercentage,
                 cityReference is null || IsBuenosAiresCity(zone)
                     ? null
-                    : new IndicatorReferenceResponse(BuenosAiresCity, cityReference.PorcentajeHogaresInternet)),
+                    : new IndicatorReferenceResponse(BuenosAiresCity, cityReference.HouseholdsWithInternetPercentage)),
             new ZoneConditionsResponse(
-                zone.PorcentajeHogaresNbi,
-                zone.PorcentajeHogaresHacinamiento,
-                zone.PorcentajeHogaresAlquilan,
-                zone.PorcentajeCoberturaSalud,
-                zone.PorcentajeUniversitario),
+                zone.HouseholdsWithUnmetBasicNeedsPercentage,
+                zone.OvercrowdedHouseholdsPercentage,
+                zone.RentingHouseholdsPercentage,
+                zone.HealthCoveragePercentage,
+                zone.UniversityEducationPercentage),
             BuildSafety(zone, cityReference),
             BuildSources(zone));
     }
 
     private static ZoneSafetyResponse? BuildSafety(ZoneIndicators zone, ZoneIndicators? cityReference)
     {
-        if (zone.Delitos is not { } crimes || zone.DelitosPeriodo is not { } year)
+        if (zone.CrimeCount is not { } crimes || zone.CrimeDataYear is not { } year)
             return null;
 
         return new ZoneSafetyResponse(
             year,
-            zone.DelitosFuente ?? ZoneIndicators.FuenteMapaDelito,
-            zone.DelitosAmbito,
+            zone.CrimeDataSource ?? ZoneIndicators.CrimeMapSource,
+            zone.CrimeDataCoverage,
             crimes,
-            zone.DelitosCada1000Habitantes,
-            zone.Robos ?? 0,
-            zone.Hurtos ?? 0,
-            zone.Lesiones ?? 0,
-            zone.Homicidios ?? 0,
-            zone.Amenazas ?? 0,
-            zone.SiniestrosViales ?? 0,
+            zone.CrimesPerThousandResidents,
+            zone.Robberies ?? 0,
+            zone.Thefts ?? 0,
+            zone.Injuries ?? 0,
+            zone.Homicides ?? 0,
+            zone.Threats ?? 0,
+            zone.TrafficIncidents ?? 0,
             cityReference is null || IsBuenosAiresCity(zone)
                 ? null
-                : new IndicatorReferenceResponse(BuenosAiresCity, cityReference.DelitosCada1000Habitantes));
+                : new IndicatorReferenceResponse(BuenosAiresCity, cityReference.CrimesPerThousandResidents));
     }
 
     private static IReadOnlyList<DataSourceResponse> BuildSources(ZoneIndicators zone)
@@ -88,9 +88,9 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             new("Poblacion, hogares y conectividad", "Censo 2022 (INDEC)", "Radio censal", CensusYear),
         };
 
-        if (zone.TieneDelitos && zone.DelitosPeriodo is { } year)
+        if (zone.HasCrimeData && zone.CrimeDataYear is { } year)
         {
-            sources.Add(zone.DelitosGeorreferenciados
+            sources.Add(zone.HasGeolocatedCrimes
                 ? new("Seguridad", "Mapa del Delito (Buenos Aires Data)", "Hecho georreferenciado", year)
                 : new("Seguridad", "SNIC (Ministerio de Seguridad de la Nación)", "Partido", year));
         }
@@ -99,5 +99,5 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
     }
 
     private static bool IsBuenosAiresCity(ZoneIndicators zone) =>
-        zone.Nivel == BuenosAiresCityAdminLevel;
+        zone.Level == BuenosAiresCityAdminLevel;
 }

@@ -6,80 +6,80 @@ namespace ZonaMatch.Domain.Entities
     public class ZoneIndicators
     {
         public string Slug { get; set; } = string.Empty;
-        public string Nombre { get; set; } = string.Empty;
-        public int Nivel { get; set; }
-        public double SuperficieKm2 { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int Level { get; set; }
+        public double AreaKm2 { get; set; }
 
         // 2022 census data (INDEC), grouped by census tract.
-        public int Radios { get; set; }
-        public int Poblacion { get; set; }
-        public int Viviendas { get; set; }
-        public int Personas0a14 { get; set; }
-        public int Personas15a64 { get; set; }
-        public int Personas65yMas { get; set; }
-        public int PersonasConCoberturaSalud { get; set; }
-        public int PersonasConDatoCobertura { get; set; }
-        public int PersonasUniversitario { get; set; }
-        public int PersonasConDatoEducacion { get; set; }
-        public int Hogares { get; set; }
-        public int HogaresInternet { get; set; }
-        public int HogaresCelularInternet { get; set; }
-        public int HogaresComputadora { get; set; }
-        public int HogaresNbi { get; set; }
-        public int HogaresHacinamiento { get; set; }
-        public int HogaresAlquilan { get; set; }
+        public int CensusTractCount { get; set; }
+        public int Population { get; set; }
+        public int Dwellings { get; set; }
+        public int ResidentsAged0To14 { get; set; }
+        public int ResidentsAged15To64 { get; set; }
+        public int ResidentsAged65Plus { get; set; }
+        public int ResidentsWithHealthCoverage { get; set; }
+        public int ResidentsWithHealthCoverageData { get; set; }
+        public int ResidentsWithUniversityEducation { get; set; }
+        public int ResidentsWithEducationData { get; set; }
+        public int Households { get; set; }
+        public int HouseholdsWithInternet { get; set; }
+        public int HouseholdsWithMobileInternet { get; set; }
+        public int HouseholdsWithComputer { get; set; }
+        public int HouseholdsWithUnmetBasicNeeds { get; set; }
+        public int OvercrowdedHouseholds { get; set; }
+        public int RentingHouseholds { get; set; }
 
         // Crimes for the reported year. CABA uses geolocated CABA Crime Map events; the province uses SNIC district
         // counts distributed among localities by population. Null when data is unavailable.
-        public int? Delitos { get; set; }
-        public int? Robos { get; set; }
-        public int? Hurtos { get; set; }
-        public int? Lesiones { get; set; }
-        public int? Homicidios { get; set; }
-        public int? Amenazas { get; set; }
-        public int? SiniestrosViales { get; set; }
+        public int? CrimeCount { get; set; }
+        public int? Robberies { get; set; }
+        public int? Thefts { get; set; }
+        public int? Injuries { get; set; }
+        public int? Homicides { get; set; }
+        public int? Threats { get; set; }
+        public int? TrafficIncidents { get; set; }
 
-        // FuenteMapaDelito or FuenteSnic source code.
-        public string? DelitosFuente { get; set; }
-        public int? DelitosPeriodo { get; set; }
+        // CrimeMapSource or SnicSource code.
+        public string? CrimeDataSource { get; set; }
+        public int? CrimeDataYear { get; set; }
 
         // SNIC districts used for the zone's crime data, ordered by population descending (for example, "Morón").
-        public string? DelitosAmbito { get; set; }
+        public string? CrimeDataCoverage { get; set; }
 
-        public const string FuenteMapaDelito = "mapa-delito";
-        public const string FuenteSnic = "snic";
+        public const string CrimeMapSource = "mapa-delito";
+        public const string SnicSource = "snic";
 
-        // Geolocated crimes (CABA): the zone can be compared with the whole city
-        public bool DelitosGeorreferenciados => DelitosFuente == FuenteMapaDelito;
+        // Geolocated crimes (CABA): the zone can be compared with the whole city.
+        public bool HasGeolocatedCrimes => CrimeDataSource == CrimeMapSource;
 
-        public bool TieneDelitos => Delitos is not null;
+        public bool HasCrimeData => CrimeCount is not null;
 
-        public double? DensidadHabitantesKm2 =>
-            SuperficieKm2 > 0 ? Math.Round(Poblacion / SuperficieKm2) : null;
+        public double? PopulationDensityPerKm2 =>
+            AreaKm2 > 0 ? Math.Round(Population / AreaKm2) : null;
 
-        public double? PorcentajeMenores15 => Porcentaje(Personas0a14, Poblacion0a65);
-        public double? Porcentaje15a64 => Porcentaje(Personas15a64, Poblacion0a65);
-        public double? Porcentaje65yMas => Porcentaje(Personas65yMas, Poblacion0a65);
+        public double? ResidentsUnder15Percentage => Percentage(ResidentsAged0To14, ResidentsWithKnownAge);
+        public double? ResidentsAged15To64Percentage => Percentage(ResidentsAged15To64, ResidentsWithKnownAge);
+        public double? ResidentsAged65PlusPercentage => Percentage(ResidentsAged65Plus, ResidentsWithKnownAge);
 
-        public double? PorcentajeHogaresInternet => Porcentaje(HogaresInternet, Hogares);
-        public double? PorcentajeHogaresCelularInternet => Porcentaje(HogaresCelularInternet, Hogares);
-        public double? PorcentajeHogaresComputadora => Porcentaje(HogaresComputadora, Hogares);
-        public double? PorcentajeHogaresNbi => Porcentaje(HogaresNbi, Hogares);
-        public double? PorcentajeHogaresHacinamiento => Porcentaje(HogaresHacinamiento, Hogares);
-        public double? PorcentajeHogaresAlquilan => Porcentaje(HogaresAlquilan, Hogares);
+        public double? HouseholdsWithInternetPercentage => Percentage(HouseholdsWithInternet, Households);
+        public double? HouseholdsWithMobileInternetPercentage => Percentage(HouseholdsWithMobileInternet, Households);
+        public double? HouseholdsWithComputerPercentage => Percentage(HouseholdsWithComputer, Households);
+        public double? HouseholdsWithUnmetBasicNeedsPercentage => Percentage(HouseholdsWithUnmetBasicNeeds, Households);
+        public double? OvercrowdedHouseholdsPercentage => Percentage(OvercrowdedHouseholds, Households);
+        public double? RentingHouseholdsPercentage => Percentage(RentingHouseholds, Households);
 
-        public double? PorcentajeCoberturaSalud => Porcentaje(PersonasConCoberturaSalud, PersonasConDatoCobertura);
-        public double? PorcentajeUniversitario => Porcentaje(PersonasUniversitario, PersonasConDatoEducacion);
+        public double? HealthCoveragePercentage => Percentage(ResidentsWithHealthCoverage, ResidentsWithHealthCoverageData);
+        public double? UniversityEducationPercentage => Percentage(ResidentsWithUniversityEducation, ResidentsWithEducationData);
 
         // Crimes per 1,000 residents for the year, excluding road incidents.
-        public double? DelitosCada1000Habitantes =>
-            Delitos is { } delitos && Poblacion > 0 ? Math.Round(1000.0 * delitos / Poblacion, 1) : null;
+        public double? CrimesPerThousandResidents =>
+            CrimeCount is { } crimes && Population > 0 ? Math.Round(1000.0 * crimes / Population, 1) : null;
 
         // Age percentages use residents with a reported age, who may not represent the entire population.
-        private int Poblacion0a65 => Personas0a14 + Personas15a64 + Personas65yMas;
+        private int ResidentsWithKnownAge => ResidentsAged0To14 + ResidentsAged15To64 + ResidentsAged65Plus;
 
         // One decimal place; null when there is no valid denominator.
-        public static double? Porcentaje(int parte, int total) =>
-            total > 0 ? Math.Round(100.0 * parte / total, 1) : null;
+        public static double? Percentage(int numerator, int denominator) =>
+            denominator > 0 ? Math.Round(100.0 * numerator / denominator, 1) : null;
     }
 }

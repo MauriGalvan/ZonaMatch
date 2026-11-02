@@ -15,31 +15,31 @@ namespace ZonaMatch.Infrastructure.Repositories
         private const string Schema = ZonaMatchDbOptions.GeoSchema;
 
         private static readonly string SqlSelect = $"""
-            SELECT z.slug AS "Slug", z.nombre AS "Nombre", z.nivel AS "Nivel", z.superficie_km2 AS "SuperficieKm2",
-                   i.radios AS "Radios", i.poblacion AS "Poblacion", i.viviendas AS "Viviendas",
-                   i.personas_0_14 AS "Personas0a14", i.personas_15_64 AS "Personas15a64",
-                   i.personas_65_mas AS "Personas65yMas",
-                   i.personas_con_cobertura_salud AS "PersonasConCoberturaSalud",
-                   i.personas_con_dato_cobertura AS "PersonasConDatoCobertura",
-                   i.personas_universitario AS "PersonasUniversitario",
-                   i.personas_con_dato_educacion AS "PersonasConDatoEducacion",
-                   i.hogares AS "Hogares", i.hogares_internet AS "HogaresInternet",
-                   i.hogares_celular_internet AS "HogaresCelularInternet",
-                   i.hogares_computadora AS "HogaresComputadora", i.hogares_nbi AS "HogaresNbi",
-                   i.hogares_hacinamiento AS "HogaresHacinamiento", i.hogares_alquilan AS "HogaresAlquilan",
-                   i.delitos_anio AS "Delitos", i.delitos_robos AS "Robos", i.delitos_hurtos AS "Hurtos",
-                   i.delitos_lesiones AS "Lesiones", i.delitos_homicidios AS "Homicidios",
-                   i.delitos_amenazas AS "Amenazas", i.siniestros_viales AS "SiniestrosViales",
-                   i.delitos_fuente AS "DelitosFuente", i.delitos_periodo AS "DelitosPeriodo",
-                   i.delitos_ambito AS "DelitosAmbito"
+            SELECT z.slug AS "Slug", z.nombre AS "Name", z.nivel AS "Level", z.superficie_km2 AS "AreaKm2",
+                   i.radios AS "CensusTractCount", i.poblacion AS "Population", i.viviendas AS "Dwellings",
+                   i.personas_0_14 AS "ResidentsAged0To14", i.personas_15_64 AS "ResidentsAged15To64",
+                   i.personas_65_mas AS "ResidentsAged65Plus",
+                   i.personas_con_cobertura_salud AS "ResidentsWithHealthCoverage",
+                   i.personas_con_dato_cobertura AS "ResidentsWithHealthCoverageData",
+                   i.personas_universitario AS "ResidentsWithUniversityEducation",
+                   i.personas_con_dato_educacion AS "ResidentsWithEducationData",
+                   i.hogares AS "Households", i.hogares_internet AS "HouseholdsWithInternet",
+                   i.hogares_celular_internet AS "HouseholdsWithMobileInternet",
+                   i.hogares_computadora AS "HouseholdsWithComputer", i.hogares_nbi AS "HouseholdsWithUnmetBasicNeeds",
+                   i.hogares_hacinamiento AS "OvercrowdedHouseholds", i.hogares_alquilan AS "RentingHouseholds",
+                   i.delitos_anio AS "CrimeCount", i.delitos_robos AS "Robberies", i.delitos_hurtos AS "Thefts",
+                   i.delitos_lesiones AS "Injuries", i.delitos_homicidios AS "Homicides",
+                   i.delitos_amenazas AS "Threats", i.siniestros_viales AS "TrafficIncidents",
+                   i.delitos_fuente AS "CrimeDataSource", i.delitos_periodo AS "CrimeDataYear",
+                   i.delitos_ambito AS "CrimeDataCoverage"
             FROM {Schema}.zonas z
             JOIN {Schema}.zona_indicadores i USING (osm_id)
             """;
 
-        private static readonly string SqlPorSlug = $"{SqlSelect} WHERE z.elegida AND z.slug = @slug";
+        private static readonly string SqlBySlug = $"{SqlSelect} WHERE z.elegida AND z.slug = @slug";
 
         // The city is the only level-4 zone in the AMBA extract.
-        private static readonly string SqlCaba = $"{SqlSelect} WHERE z.nivel = 4 ORDER BY z.superficie_km2 DESC LIMIT 1";
+        private static readonly string SqlCapitalCity = $"{SqlSelect} WHERE z.nivel = 4 ORDER BY z.superficie_km2 DESC LIMIT 1";
 
         private readonly ZonaMatchDbContext _dbContext;
         private readonly ILogger<ZoneIndicatorsRepository> _logger;
@@ -51,21 +51,21 @@ namespace ZonaMatch.Infrastructure.Repositories
         }
 
         public Task<ZoneIndicators?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-            PrimeraAsync(SqlPorSlug, cancellationToken, new NpgsqlParameter("slug", slug));
+            QueryFirstOrDefaultAsync(SqlBySlug, cancellationToken, new NpgsqlParameter("slug", slug));
 
         public Task<ZoneIndicators?> GetCapitalCityAsync(CancellationToken cancellationToken = default) =>
-            PrimeraAsync(SqlCaba, cancellationToken);
+            QueryFirstOrDefaultAsync(SqlCapitalCity, cancellationToken);
 
-        private async Task<ZoneIndicators?> PrimeraAsync(
-            string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
+        private async Task<ZoneIndicators?> QueryFirstOrDefaultAsync(
+            string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parameters)
         {
             try
             {
-                var filas = await _dbContext.Database
-                    .SqlQueryRaw<ZoneIndicators>(sql, parametros)
+                var rows = await _dbContext.Database
+                    .SqlQueryRaw<ZoneIndicators>(sql, parameters)
                     .ToListAsync(cancellationToken);
 
-                return filas.FirstOrDefault();
+                return rows.FirstOrDefault();
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
