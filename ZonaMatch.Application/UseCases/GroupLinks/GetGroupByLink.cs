@@ -18,7 +18,7 @@ public class GetGroupByLink
 
     public async Task<GroupLinkDetailsResponse> ExecuteAsync(Guid inviteToken, CancellationToken cancellationToken)
     {
-        // Usamos el método que creamos en la Tarjeta 2
+        // Load the group associated with the invitation token.
         var group = await _groupRepository.GetByInviteTokenAsync(inviteToken, cancellationToken);
 
         if (group == null)

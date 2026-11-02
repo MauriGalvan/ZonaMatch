@@ -27,7 +27,7 @@ public class GetInvitationByToken
         return new InvitationDetailsResponse
         {
             GroupId = invitation.GroupId,
-            // Esto no da error porque en el Repositorio usamos el .Include(i => i.Group)
+            // The repository includes the related group with Include(i => i.Group).
             GroupName = invitation.Group.Name,
             Status = invitation.Status.ToString(),
             ExpiresAt = invitation.ExpiresAt

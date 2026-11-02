@@ -2,10 +2,10 @@ using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.Interfaces
 {
-    // Perfil del usuario: su Context de tipo perfil (uno por usuario)
+    // A user's profile: their Context of type profile (one per user).
     public interface IProfileRepository
     {
-        // Con su detalle y seguimiento de cambios; null si todavia no lo armo
+        // Includes details and change tracking; null when the profile has not been created.
         Task<Context?> GetByUserAsync(Guid usuarioId, CancellationToken cancellationToken = default);
 
         // Perfiles existentes de varios usuarios, con sus preferencias y restricciones.

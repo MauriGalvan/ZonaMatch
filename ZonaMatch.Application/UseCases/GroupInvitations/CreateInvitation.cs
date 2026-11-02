@@ -39,22 +39,21 @@ public class CreateInvitation
         _logger = logger;
     }
 
-    // Le pasamos el currentUserId que sacaremos del JWT en el Controlador
+    // currentUserId is read from the JWT by the controller.
     public async Task ExecuteAsync(
         CreateInvitationRequest request,
         Guid currentUserId,
         CancellationToken cancellationToken,
         string? frontendBaseUrl = null)
     {
-        // 1. Buscar el grupo y validar que exista
+        // 1. Find the group and ensure it exists.
         var group = await _groupRepository.GetByIdAsync(request.GroupId, cancellationToken);
         if (group == null)
         {
             throw new NotFoundException("El grupo no existe.");
         }
 
-        // 2. Validar que el usuario que intenta invitar sea el Propietario (Owner)
-        // Asumo que tienes alguna forma de saber si es el dueño, ajusta esta línea a tu lógica real de tu entidad:
+        // 2. Verify that the user sending the invitation owns the group.
         bool isOwner = group.Participants.Any(p => p.UserId == currentUserId && GroupRole.Owner == p.Role);
         if (!isOwner)
         {
@@ -66,14 +65,14 @@ public class CreateInvitation
             throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
         }
 
-        // 3. Crear la entidad de invitación con el Token aleatorio
+        // 3. Create the invitation with a random token.
         var invitation = new GroupInvitation
         {
             GroupId = request.GroupId,
             Email = request.Email,
-            Token = Guid.NewGuid(), // Este es el Guid V4 que viajará en el link
+            Token = Guid.NewGuid(), // This UUIDv4 is included in the invitation link.
             Status = InvitationStatus.Pending,
-            ExpiresAt = DateTime.UtcNow.AddDays(7) // Le damos 7 días de validez a la invitación
+            ExpiresAt = DateTime.UtcNow.AddDays(7) // Invitations are valid for seven days.
         };
 
         var invitedUser = await _userRepository.GetByEmailAsync(
@@ -93,10 +92,10 @@ public class CreateInvitation
             ]);
         }
 
-        // 4. Guardar en la base de datos
+        // 4. Save the invitation to the database.
         await _invitationRepository.AddAsync(invitation, cancellationToken);
 
-        // 5. Enviar el correo usando tu IEmailService
+        // 5. Send the invitation email.
         var frontendUrl = string.IsNullOrWhiteSpace(frontendBaseUrl)
             ? "http://localhost:5173"
             : frontendBaseUrl.TrimEnd('/');

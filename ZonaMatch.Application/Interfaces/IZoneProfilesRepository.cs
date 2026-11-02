@@ -2,10 +2,10 @@ using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.Interfaces
 {
-    // Datos de todas las zonas para el motor de puntaje (censo, delitos, transporte, equipamiento y alquiler)
+    // Data for all zones used by the scoring engine (census, crime, transit, amenities, and rent).
     public interface IZoneProfilesRepository
     {
-        // Todas las zonas con datos; el motor compara cada una con las demas de su tipo
+        // All zones with data; the engine compares each zone with others at the same level.
         Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default);
 
         // Zones containing geocoded locations, contiguous zones at the same level, and zones crossed by direct

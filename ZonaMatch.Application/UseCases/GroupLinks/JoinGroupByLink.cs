@@ -27,7 +27,7 @@ public class JoinGroupByLink
             throw new NotFoundException("El enlace de invitación no es válido o ha sido revocado.");
         }
 
-        // Validar si ya está adentro
+        // Ensure the user is not already a member.
         bool alreadyMember = group.Participants.Any(p => p.UserId == currentUserId);
         if (alreadyMember)
         {
@@ -39,7 +39,7 @@ public class JoinGroupByLink
             throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
         }
 
-        // Crear el objeto participante
+        // Create the participant record.
         var newParticipant = new Participant
         {
             Id = Guid.CreateVersion7(),
@@ -48,7 +48,7 @@ public class JoinGroupByLink
             Role = GroupRole.Guest
         };
 
-        // Insertar directamente al participante en lugar de intentar actualizar el grupo completo
+        // Insert the participant directly instead of updating the entire group.
         await _groupRepository.AddParticipantAsync(newParticipant, cancellationToken);
     }
 }

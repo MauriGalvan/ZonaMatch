@@ -4,8 +4,8 @@ namespace ZonaMatch.Application.Interfaces
 {
     public interface ICriterionRepository
     {
-        // Todos los criterios del catalogo, en orden de aparicion en el wizard.
-        // Incluye los inactivos: la validacion los distingue de los desconocidos.
+        // All catalog criteria, in the order shown in the wizard.
+        // Inactive criteria are included so validation can distinguish them from unknown criteria.
         Task<IReadOnlyList<Criterion>> ListAsync(CancellationToken cancellationToken = default);
     }
 }
