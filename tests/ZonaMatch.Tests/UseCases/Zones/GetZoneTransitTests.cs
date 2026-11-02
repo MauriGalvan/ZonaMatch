@@ -4,83 +4,88 @@ using ZonaMatch.Application.UseCases.Zones;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Tests.UseCases;
 
-namespace ZonaMatch.Tests.UseCases.Zones
+namespace ZonaMatch.Tests.UseCases.Zones;
+
+public class GetZoneTransitTests
 {
-    public class GetZoneTransitTests
+    private const string ZoneSlug = FakeZoneRepository.ZoneSlug;
+
+    private readonly FakeTransitZoneRepository _transitRepository = new();
+    private readonly GetZoneTransit _useCase;
+
+    public GetZoneTransitTests()
     {
-        private const string ZoneSlug = FakeZonaRepository.Zona;
+        _useCase = new GetZoneTransit(_transitRepository, new FakeZoneRepository());
+    }
 
-        private readonly FakeTransitZoneRepository _transitRepository = new();
-        private readonly GetZoneTransit _useCase;
-
-        public GetZoneTransitTests()
+    private void AddDepartures(string mode, string line, string timeWindow, int departures, int stops = 3) =>
+        _transitRepository.Departures.Add(new TransitLineDepartures
         {
-            _useCase = new GetZoneTransit(_transitRepository, new FakeZonaRepository());
-        }
+            Mode = mode,
+            Line = line,
+            TimeWindow = timeWindow,
+            DepartureCount = departures,
+            StopCount = stops
+        });
 
-        private void AddDepartures(string mode, string line, string timeWindow, int departures, int stops = 3) =>
-            _transitRepository.Departures.Add(new TransitLineDepartures
-                { Modo = mode, Linea = line, Franja = timeWindow, Salidas = departures, Paradas = stops });
+    [Fact]
+    public async Task GetZoneTransit_ReturnsModesInDisplayOrder()
+    {
+        _transitRepository.Stops.AddRange([
+            new ZoneTransitModeStops { Mode = "colectivo", StopCount = 90, LineCount = 25 },
+            new ZoneTransitModeStops { Mode = "tren", StopCount = 1, LineCount = 1 },
+        ]);
 
-        [Fact]
-        public async Task GetZoneTransit_ReturnsModesInDisplayOrder()
-        {
-            _transitRepository.Stops.AddRange([
-                new ZoneTransitModeStops { Modo = "colectivo", Paradas = 90, Lineas = 25 },
-                new ZoneTransitModeStops { Modo = "tren", Paradas = 1, Lineas = 1 },
-            ]);
+        var result = await _useCase.ExecuteAsync(ZoneSlug);
 
-            var result = await _useCase.ExecuteAsync(ZoneSlug);
+        Assert.Equal(["tren", "colectivo"], result.Modes.Select(mode => mode.Mode));
+        Assert.Equal(2, result.Sources.Count);
+    }
 
-            Assert.Equal(["tren", "colectivo"], result.Modos.Select(mode => mode.Modo));
-            Assert.Equal(2, result.Fuentes.Count);
-        }
+    [Fact]
+    public async Task GetZoneTransit_SumsEachTimeWindowAndSortsLinesByPeakDepartures()
+    {
+        _transitRepository.Stops.Add(new ZoneTransitModeStops { Mode = "colectivo", StopCount = 90, LineCount = 2 });
+        AddDepartures("colectivo", "2", "manana", 30);
+        AddDepartures("colectivo", "47", "manana", 45);
+        AddDepartures("colectivo", "47", "noche", 0);
 
-        [Fact]
-        public async Task GetZoneTransit_SumsEachTimeWindowAndSortsLinesByPeakDepartures()
-        {
-            _transitRepository.Stops.Add(new ZoneTransitModeStops { Modo = "colectivo", Paradas = 90, Lineas = 2 });
-            AddDepartures("colectivo", "2", "manana", 30);
-            AddDepartures("colectivo", "47", "manana", 45);
-            AddDepartures("colectivo", "47", "noche", 0);
+        var buses = Assert.Single((await _useCase.ExecuteAsync(ZoneSlug)).Modes);
 
-            var buses = Assert.Single((await _useCase.ExecuteAsync(ZoneSlug)).Modos);
+        var morning = buses.TimeWindows.Single(window => window.TimeWindow == "manana");
+        Assert.Equal(2, morning.ActiveLines);
+        Assert.Equal(25.0, morning.DeparturesPerHour);
+        Assert.Equal(0, buses.TimeWindows.Single(window => window.TimeWindow == "noche").ActiveLines);
+        Assert.Equal(["47", "2"], buses.Lines.Select(line => line.Name));
+        var line47Morning = buses.Lines[0].Frequencies.Single(window => window.TimeWindow == "manana");
+        Assert.Equal(15.0, line47Morning.DeparturesPerHour);
+        Assert.Equal(4, line47Morning.MinutesBetweenDepartures);
+    }
 
-            var morning = buses.Franjas.Single(window => window.Franja == "manana");
-            Assert.Equal(2, morning.LineasConServicio);
-            Assert.Equal(25.0, morning.SalidasPorHora);
-            Assert.Equal(0, buses.Franjas.Single(window => window.Franja == "noche").LineasConServicio);
-            Assert.Equal(["47", "2"], buses.Lineas.Select(line => line.Linea));
-            var line47Morning = buses.Lineas[0].Franjas.Single(window => window.Franja == "manana");
-            Assert.Equal(15.0, line47Morning.SalidasPorHora);
-            Assert.Equal(4, line47Morning.MinutosEntreSalidas);
-        }
+    [Fact]
+    public async Task GetZoneTransit_WhenZoneHasNoStops_ReturnsEmptyTransitData()
+    {
+        var result = await _useCase.ExecuteAsync(ZoneSlug);
 
-        [Fact]
-        public async Task GetZoneTransit_WhenZoneHasNoStops_ReturnsEmptyTransitData()
-        {
-            var result = await _useCase.ExecuteAsync(ZoneSlug);
+        Assert.Empty(result.Modes);
+        Assert.Empty(result.Sources);
+    }
 
-            Assert.Empty(result.Modos);
-            Assert.Empty(result.Fuentes);
-        }
+    [Fact]
+    public async Task GetZoneTransit_WhenZoneDoesNotExist_ThrowsNotFoundException()
+    {
+        await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync("no-existe"));
+    }
 
-        [Fact]
-        public async Task GetZoneTransit_WhenZoneDoesNotExist_ThrowsNotFoundException()
-        {
-            await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync("no-existe"));
-        }
+    private sealed class FakeTransitZoneRepository : IZoneTransitRepository
+    {
+        public List<ZoneTransitModeStops> Stops { get; } = [];
+        public List<TransitLineDepartures> Departures { get; } = [];
 
-        private sealed class FakeTransitZoneRepository : IZoneTransitRepository
-        {
-            public List<ZoneTransitModeStops> Stops { get; } = [];
-            public List<TransitLineDepartures> Departures { get; } = [];
+        public Task<IReadOnlyList<ZoneTransitModeStops>> ListStopsAsync(string slug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ZoneTransitModeStops>>(slug == ZoneSlug ? Stops : []);
 
-            public Task<IReadOnlyList<ZoneTransitModeStops>> ListStopsAsync(string slug, CancellationToken cancellationToken = default) =>
-                Task.FromResult<IReadOnlyList<ZoneTransitModeStops>>(slug == ZoneSlug ? Stops : []);
-
-            public Task<IReadOnlyList<TransitLineDepartures>> ListDeparturesAsync(string slug, CancellationToken cancellationToken = default) =>
-                Task.FromResult<IReadOnlyList<TransitLineDepartures>>(slug == ZoneSlug ? Departures : []);
-        }
+        public Task<IReadOnlyList<TransitLineDepartures>> ListDeparturesAsync(string slug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<TransitLineDepartures>>(slug == ZoneSlug ? Departures : []);
     }
 }

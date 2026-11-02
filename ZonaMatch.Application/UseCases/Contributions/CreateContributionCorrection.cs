@@ -29,41 +29,41 @@ namespace ZonaMatch.Application.UseCases.Contributions
 
             var contribution = new Contribution
             {
-                ZonaSlug = zoneSlug,
-                UsuarioId = currentUser.Id,
-                Tipo = ContributionType.Correccion,
-                PuntoInteresId = request.PointOfInterestId,
-                PuntoInteresNombre = request.PointOfInterestName.Trim(),
-                Motivo = reason,
-                Comentario = ContributionMapper.Normalize(request.Comment),
-                FechaCreacion = _clock.GetUtcNow()
+                ZoneSlug = zoneSlug,
+                UserId = currentUser.Id,
+                Type = ContributionType.Correction,
+                PointOfInterestId = request.PointOfInterestId,
+                PointOfInterestName = request.PointOfInterestName.Trim(),
+                Reason = reason,
+                Comment = ContributionMapper.Normalize(request.Comment),
+                CreatedAt = _clock.GetUtcNow()
             };
 
             // Store only the value associated with the selected reason.
             switch (reason)
             {
-                case CorrectionReason.Nombre:
-                    contribution.Nombre = ContributionMapper.Normalize(request.ProposedName)
+                case CorrectionReason.Name:
+                    contribution.Name = ContributionMapper.Normalize(request.ProposedName)
                         ?? throw new BadRequestException("Indica el nombre correcto del lugar.");
                     break;
 
-                case CorrectionReason.Categoria:
-                    contribution.Categoria = ContributionMapper.ValidateCategory(request.ProposedCategory);
+                case CorrectionReason.Category:
+                    contribution.Category = ContributionMapper.ValidateCategory(request.ProposedCategory);
                     break;
 
-                case CorrectionReason.Ubicacion:
+                case CorrectionReason.Location:
                     if (request.Latitude is not { } latitude || request.Longitude is not { } longitude)
                         throw new BadRequestException("Marca en el mapa la ubicacion correcta del lugar.");
                     await _zones.EnsurePointBelongsToZoneAsync(zoneSlug, latitude, longitude, cancellationToken);
-                    contribution.Ubicacion = ContributionMapper.CreatePoint(latitude, longitude);
+                    contribution.Location = ContributionMapper.CreatePoint(latitude, longitude);
                     break;
 
-                case CorrectionReason.Otro when contribution.Comentario is null:
+                case CorrectionReason.Other when contribution.Comment is null:
                     throw new BadRequestException("Contanos que hay que corregir en el comentario.");
             }
 
             // Location validation above already checks the zone; other reasons are validated here.
-            if (reason != CorrectionReason.Ubicacion)
+            if (reason != CorrectionReason.Location)
                 await _zones.EnsureZoneExistsAsync(zoneSlug, cancellationToken);
 
             _contributions.Add(contribution);

@@ -8,10 +8,10 @@ namespace ZonaMatch.Tests.UseCases.Reviews
 {
     public class SaveMyReviewTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
         private static readonly DateTimeOffset CurrentTime = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
-        private readonly FakeResenaRepository _reviews = new();
+        private readonly FakeReviewRepository _reviews = new();
         private readonly SaveMyReview _useCase;
         private readonly AuthenticatedUserContext _ana = new(Guid.NewGuid(), "ana@example.com");
 
@@ -19,7 +19,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         {
             _useCase = new SaveMyReview(
                 _reviews,
-                new FakeZonaRepository(),
+                new FakeZoneRepository(),
                 new FakeSavedZoneRepository(),
                 new FakeNotificationRepository(),
                 new FixedTimeProvider(CurrentTime));
@@ -34,12 +34,12 @@ namespace ZonaMatch.Tests.UseCases.Reviews
             await _useCase.ExecuteAsync(Zone, _ana, Review(safety: 3));
             var second = await _useCase.ExecuteAsync(Zone, _ana, Review(safety: 1, topics: ["Transporte", "seguridad"]));
 
-            var savedReview = Assert.Single(_reviews.Resenas);
-            Assert.Equal(1, savedReview.PuntajeSeguridad);
-            Assert.Equal(5, savedReview.PuntajeTransporte);
-            Assert.Equal("Barrio tranquilo y bien conectado con el centro.", savedReview.Texto);
-            Assert.Equal([ReviewAspect.Safety, ReviewAspect.PublicTransport], savedReview.Temas);
-            Assert.Equal(CurrentTime, savedReview.FechaCreacion);
+            var savedReview = Assert.Single(_reviews.Reviews);
+            Assert.Equal(1, savedReview.SafetyScore);
+            Assert.Equal(5, savedReview.TransitScore);
+            Assert.Equal("Barrio tranquilo y bien conectado con el centro.", savedReview.Text);
+            Assert.Equal([ReviewAspect.Safety, ReviewAspect.PublicTransport], savedReview.Topics);
+            Assert.Equal(CurrentTime, savedReview.CreatedAt);
             Assert.True(second.IsMine);
             Assert.Equal("AN", second.Initials);
         }
@@ -56,14 +56,14 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         public async Task Save_WithUnknownTopic_ThrowsBadRequest()
         {
             await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(Zone, _ana, Review(topics: ["ruido"])));
-            Assert.Empty(_reviews.Resenas);
+            Assert.Empty(_reviews.Reviews);
         }
 
         [Fact]
         public async Task Save_WhenZoneDoesNotExist_ThrowsNotFound()
         {
             await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync("no-existe", _ana, Review()));
-            Assert.Empty(_reviews.Resenas);
+            Assert.Empty(_reviews.Reviews);
         }
     }
 }

@@ -29,13 +29,13 @@ namespace ZonaMatch.Tests.UseCases.Profile
                 rentLimit: "800000"));
 
             var profile = Assert.Single(_profiles.Profiles);
-            Assert.Equal(ContextType.Perfil, profile.Tipo);
-            Assert.Equal(UserId, profile.UsuarioId);
-            Assert.Equal(CurrentTime, profile.FechaCreacion);
-            Assert.Equal(2, profile.Integrantes.Count);
-            Assert.Equal(["26–35 años", null], profile.Integrantes.OrderBy(person => person.Orden).Select(person => person.Edad));
-            Assert.Equal("Facultad", Assert.Single(profile.Puntos).Nombre);
-            Assert.Equal("800000", profile.AlquilerMaximo);
+            Assert.Equal(ContextType.Profile, profile.Type);
+            Assert.Equal(UserId, profile.UserId);
+            Assert.Equal(CurrentTime, profile.CreatedAt);
+            Assert.Equal(2, profile.People.Count);
+            Assert.Equal(["26–35 años", null], profile.People.OrderBy(person => person.Order).Select(person => person.AgeRange));
+            Assert.Equal("Facultad", Assert.Single(profile.Places).Name);
+            Assert.Equal("800000", profile.MaximumRent);
 
             Assert.Equal("alta", profileResponse.Criteria["seguridad"]);
             Assert.Equal("baja", profileResponse.Criteria["salud"]);
@@ -50,9 +50,9 @@ namespace ZonaMatch.Tests.UseCases.Profile
             await _useCase.ExecuteAsync(UserId, TestRequests.AnalysisCriteria(new() { ["salud"] = "media" }, peopleCount: 1));
 
             var profile = Assert.Single(_profiles.Profiles);
-            Assert.Single(profile.Integrantes);
-            var criterion = Assert.Single(profile.Criterios);
-            Assert.Equal("salud", criterion.CriterioId);
+            Assert.Single(profile.People);
+            var criterion = Assert.Single(profile.Criteria);
+            Assert.Equal("salud", criterion.CriterionId);
         }
 
         [Theory]
@@ -102,7 +102,7 @@ namespace ZonaMatch.Tests.UseCases.Profile
                 places: [new AnalysisPlaceRequest { Name = "  " }])));
 
             // No partial updates: the profile keeps its previous criterion.
-            Assert.Equal("seguridad", Assert.Single(Assert.Single(_profiles.Profiles).Criterios).CriterioId);
+            Assert.Equal("seguridad", Assert.Single(Assert.Single(_profiles.Profiles).Criteria).CriterionId);
         }
 
         [Fact]

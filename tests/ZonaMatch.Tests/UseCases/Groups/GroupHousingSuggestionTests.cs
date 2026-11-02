@@ -7,7 +7,7 @@ namespace ZonaMatch.Tests.UseCases.Groups;
 public class GroupHousingSuggestionTests
 {
     private static Context Profile(string operation, string? monthly, decimal? purchase = null, string? type = null, int? surface = null) =>
-        new() { Operacion = operation, AlquilerMaximo = monthly, CompraMaximaUsd = purchase, TipoVivienda = type, SuperficieM2 = surface };
+        new() { Operation = operation, MaximumRent = monthly, MaximumPurchasePriceUsd = purchase, HousingType = type, AreaM2 = surface };
 
     [Fact]
     public void The_group_looks_for_the_largest_surface()

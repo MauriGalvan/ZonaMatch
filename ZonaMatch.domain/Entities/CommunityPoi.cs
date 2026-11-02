@@ -34,10 +34,10 @@ namespace ZonaMatch.Domain.Entities
             {
                 Id = NewPointId(contribution.Id),
                 IsNew = true,
-                ZoneSlug = contribution.ZonaSlug,
-                Name = contribution.Nombre,
-                Category = contribution.Categoria,
-                Location = contribution.Ubicacion,
+                ZoneSlug = contribution.ZoneSlug,
+                Name = contribution.Name,
+                Category = contribution.Category,
+                Location = contribution.Location,
                 LastContributionId = contribution.Id,
                 UpdatedAt = now
             };
@@ -46,22 +46,22 @@ namespace ZonaMatch.Domain.Entities
         public static CommunityPoi ForOsmPoint(string poiId, string zoneSlug) =>
             new() { Id = poiId, IsNew = false, ZoneSlug = zoneSlug };
 
-        // Applies an approved correction. "Otro" is informative only and changes nothing.
+        // Applies an approved correction. "Other" is informative only and changes nothing.
         public void ApplyCorrection(Contribution correction, DateTimeOffset now)
         {
-            switch (correction.Motivo)
+            switch (correction.Reason)
             {
-                case CorrectionReason.Cerro:
+                case CorrectionReason.Closed:
                     Removed = true;
                     break;
-                case CorrectionReason.Nombre:
-                    Name = correction.Nombre;
+                case CorrectionReason.Name:
+                    Name = correction.Name;
                     break;
-                case CorrectionReason.Categoria:
-                    Category = correction.Categoria;
+                case CorrectionReason.Category:
+                    Category = correction.Category;
                     break;
-                case CorrectionReason.Ubicacion:
-                    Location = correction.Ubicacion;
+                case CorrectionReason.Location:
+                    Location = correction.Location;
                     break;
                 default:
                     return;

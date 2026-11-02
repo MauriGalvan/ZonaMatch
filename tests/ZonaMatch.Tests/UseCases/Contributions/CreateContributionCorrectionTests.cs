@@ -8,16 +8,16 @@ namespace ZonaMatch.Tests.UseCases.Contributions
 {
     public class CreateContributionCorrectionTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
         private static readonly DateTimeOffset Now = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
-        private readonly FakeAporteRepository _contributions = new();
+        private readonly FakeContributionRepository _contributions = new();
         private readonly CreateContributionCorrection _useCase;
         private readonly AuthenticatedUserContext _author = new(Guid.NewGuid(), "ana.perez@example.com");
 
         public CreateContributionCorrectionTests()
         {
-            _useCase = new CreateContributionCorrection(_contributions, new FakeZonaRepository(), new FixedTimeProvider(Now));
+            _useCase = new CreateContributionCorrection(_contributions, new FakeZoneRepository(), new FixedTimeProvider(Now));
         }
 
         private static CreateContributionCorrectionRequest Correction(
@@ -29,60 +29,60 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         public async Task CreateCorrection_WhenValid_SavesOnlyTheSelectedValue()
         {
             await _useCase.ExecuteAsync(Zone, _author,
-                Correction(CorrectionReason.Nombre, proposedName: "Kiosco Pepito", proposedCategory: "salud", latitude: -34.6, longitude: -58.5));
+                Correction(CorrectionReason.Name, proposedName: "Kiosco Pepito", proposedCategory: "salud", latitude: -34.6, longitude: -58.5));
 
-            var guardado = Assert.Single(_contributions.Aportes);
-            Assert.Equal(ContributionType.Correccion, guardado.Tipo);
-            Assert.Equal(ContributionStatus.Pendiente, guardado.Estado);
-            Assert.Equal("n123", guardado.PuntoInteresId);
-            Assert.Equal("Kiosco Pepito", guardado.Nombre);
-            Assert.Null(guardado.Categoria);
-            Assert.Null(guardado.Ubicacion);
+            var savedContribution = Assert.Single(_contributions.Contributions);
+            Assert.Equal(ContributionType.Correction, savedContribution.Type);
+            Assert.Equal(ContributionStatus.Pending, savedContribution.Status);
+            Assert.Equal("n123", savedContribution.PointOfInterestId);
+            Assert.Equal("Kiosco Pepito", savedContribution.Name);
+            Assert.Null(savedContribution.Category);
+            Assert.Null(savedContribution.Location);
         }
 
         [Fact]
         public async Task CreateCorrection_WhenReasonIsLocation_SavesTheProposedPoint()
         {
-            await _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Ubicacion, latitude: -34.6, longitude: -58.5));
+            await _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Location, latitude: -34.6, longitude: -58.5));
 
-            var location = Assert.Single(_contributions.Aportes).Ubicacion!;
+            var location = Assert.Single(_contributions.Contributions).Location!;
             Assert.Equal(-34.6, location.Y);
             Assert.Equal(-58.5, location.X);
         }
 
         [Theory]
-        [InlineData(CorrectionReason.Nombre)]
-        [InlineData(CorrectionReason.Categoria)]
-        [InlineData(CorrectionReason.Ubicacion)]
-        [InlineData(CorrectionReason.Otro)]
+        [InlineData(CorrectionReason.Name)]
+        [InlineData(CorrectionReason.Category)]
+        [InlineData(CorrectionReason.Location)]
+        [InlineData(CorrectionReason.Other)]
         public async Task CreateCorrection_WhenRequiredValueIsMissing_ThrowsBadRequestException(CorrectionReason reason)
         {
             await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(Zone, _author, Correction(reason)));
-            Assert.Empty(_contributions.Aportes);
+            Assert.Empty(_contributions.Contributions);
         }
 
         [Fact]
         public async Task CreateCorrection_WhenLocationIsOutsideZone_ThrowsBadRequestException()
         {
             await Assert.ThrowsAsync<BadRequestException>(
-                () => _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Ubicacion, latitude: 10, longitude: -58.5)));
-            Assert.Empty(_contributions.Aportes);
+                () => _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Location, latitude: 10, longitude: -58.5)));
+            Assert.Empty(_contributions.Contributions);
         }
 
         [Fact]
         public async Task CreateCorrection_WhenReasonIsClosed_DoesNotRequireAdditionalValues()
         {
-            await _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Cerro));
+            await _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Closed));
 
-            Assert.Equal(CorrectionReason.Cerro, Assert.Single(_contributions.Aportes).Motivo);
+            Assert.Equal(CorrectionReason.Closed, Assert.Single(_contributions.Contributions).Reason);
         }
 
         [Fact]
         public async Task CreateCorrection_WhenZoneDoesNotExist_ThrowsNotFoundException()
         {
             await Assert.ThrowsAsync<NotFoundException>(
-                () => _useCase.ExecuteAsync("no-existe", _author, Correction(CorrectionReason.Cerro)));
-            Assert.Empty(_contributions.Aportes);
+                () => _useCase.ExecuteAsync("no-existe", _author, Correction(CorrectionReason.Closed)));
+            Assert.Empty(_contributions.Contributions);
         }
     }
 }

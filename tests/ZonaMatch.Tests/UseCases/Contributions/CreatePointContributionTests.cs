@@ -8,16 +8,16 @@ namespace ZonaMatch.Tests.UseCases.Contributions
 {
     public class CreatePointContributionTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
         private static readonly DateTimeOffset Now = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
-        private readonly FakeAporteRepository _contributions = new();
+        private readonly FakeContributionRepository _contributions = new();
         private readonly CreatePointContribution _useCase;
         private readonly AuthenticatedUserContext _author = new(Guid.NewGuid(), "ana.perez@example.com");
 
         public CreatePointContributionTests()
         {
-            _useCase = new CreatePointContribution(_contributions, new FakeZonaRepository(), new FixedTimeProvider(Now));
+            _useCase = new CreatePointContribution(_contributions, new FakeZoneRepository(), new FixedTimeProvider(Now));
         }
 
         private static CreatePointContributionRequest Point(string category = "salud", double latitude = -34.63) =>
@@ -28,15 +28,15 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         {
             var response = await _useCase.ExecuteAsync(Zone, _author, Point(category: " Salud "));
 
-            var guardado = Assert.Single(_contributions.Aportes);
-            Assert.Equal(ContributionType.PuntoNuevo, guardado.Tipo);
-            Assert.Equal(ContributionStatus.Pendiente, guardado.Estado);
-            Assert.Equal("salud", guardado.Categoria);
-            Assert.Equal("Farmacia Nueva", guardado.Nombre);
-            Assert.Null(guardado.Direccion);
-            Assert.Equal(-34.63, guardado.Ubicacion!.Y);
-            Assert.Equal(4326, guardado.Ubicacion.SRID);
-            Assert.Equal(Now, guardado.FechaCreacion);
+            var savedContribution = Assert.Single(_contributions.Contributions);
+            Assert.Equal(ContributionType.NewPoint, savedContribution.Type);
+            Assert.Equal(ContributionStatus.Pending, savedContribution.Status);
+            Assert.Equal("salud", savedContribution.Category);
+            Assert.Equal("Farmacia Nueva", savedContribution.Name);
+            Assert.Null(savedContribution.Address);
+            Assert.Equal(-34.63, savedContribution.Location!.Y);
+            Assert.Equal(4326, savedContribution.Location.SRID);
+            Assert.Equal(Now, savedContribution.CreatedAt);
             Assert.Equal("AP", response.AuthorInitials);
             Assert.True(response.IsMine);
         }
@@ -45,21 +45,21 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         public async Task CreatePoint_WhenOutsideZone_ThrowsBadRequestException()
         {
             await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(Zone, _author, Point(latitude: 10)));
-            Assert.Empty(_contributions.Aportes);
+            Assert.Empty(_contributions.Contributions);
         }
 
         [Fact]
         public async Task CreatePoint_WhenZoneDoesNotExist_ThrowsNotFoundException()
         {
             await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync("no-existe", _author, Point()));
-            Assert.Empty(_contributions.Aportes);
+            Assert.Empty(_contributions.Contributions);
         }
 
         [Fact]
         public async Task CreatePoint_WhenCategoryIsUnknown_ThrowsBadRequestException()
         {
             await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(Zone, _author, Point(category: "boliches")));
-            Assert.Empty(_contributions.Aportes);
+            Assert.Empty(_contributions.Contributions);
         }
     }
 }

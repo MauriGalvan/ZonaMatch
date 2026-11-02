@@ -10,13 +10,13 @@ namespace ZonaMatch.Tests.UseCases.Questions
 {
     public class AnswerQuestionTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
         private static readonly DateTimeOffset CurrentTime = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
-        private readonly FakePreguntaRepository _questions = new();
+        private readonly FakeQuestionRepository _questions = new();
         private readonly AnswerQuestion _useCase;
         private readonly AuthenticatedUserContext _luis = new(Guid.NewGuid(), "luis.gomez@example.com");
-        private readonly Question _question = new() { ZonaSlug = Zone, UsuarioId = Guid.NewGuid(), Texto = "¿Hay verdulerias?" };
+        private readonly Question _question = new() { ZoneSlug = Zone, UserId = Guid.NewGuid(), Text = "¿Hay verdulerias?" };
 
         public AnswerQuestionTests()
         {
@@ -35,10 +35,10 @@ namespace ZonaMatch.Tests.UseCases.Questions
         {
             var created = await _useCase.ExecuteAsync(Zone, _question.Id, _luis, new CreateAnswerRequest("  Si, sobre Rivadavia. "));
 
-            var saved = Assert.Single(_question.Respuestas);
-            Assert.Equal("Si, sobre Rivadavia.", saved.Texto);
-            Assert.Equal(_luis.Id, saved.UsuarioId);
-            Assert.Equal(CurrentTime, saved.FechaCreacion);
+            var saved = Assert.Single(_question.Answers);
+            Assert.Equal("Si, sobre Rivadavia.", saved.Text);
+            Assert.Equal(_luis.Id, saved.UserId);
+            Assert.Equal(CurrentTime, saved.CreatedAt);
             Assert.Equal(saved.Id, created.Id);
             Assert.Equal("LG", created.Initials);
             Assert.True(created.IsMine);
@@ -56,7 +56,7 @@ namespace ZonaMatch.Tests.UseCases.Questions
         {
             await Assert.ThrowsAsync<NotFoundException>(
                 () => _useCase.ExecuteAsync("otra-zona", _question.Id, _luis, new CreateAnswerRequest("Hola")));
-            Assert.Empty(_question.Respuestas);
+            Assert.Empty(_question.Answers);
         }
     }
 }

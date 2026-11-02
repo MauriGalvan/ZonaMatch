@@ -4,63 +4,63 @@ namespace ZonaMatch.Tests.Domain
 {
     public class ContributionTests
     {
-        private static readonly DateTimeOffset Ahora = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
+        private static readonly DateTimeOffset Now = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
-        private static void Votar(Contribution aporte, int cantidad, bool confirma)
+        private static void Vote(Contribution contribution, int count, bool confirms)
         {
-            for (var i = 0; i < cantidad; i++)
-                aporte.Validar(Guid.NewGuid(), confirma, Ahora);
+            for (var i = 0; i < count; i++)
+                contribution.RecordVote(Guid.NewGuid(), confirms, Now);
         }
 
         [Fact]
-        public void Tres_confirmaciones_aprueban_el_aporte()
+        public void Three_confirmations_approve_the_contribution()
         {
-            var aporte = new Contribution();
+            var contribution = new Contribution();
 
-            Votar(aporte, 2, confirma: true);
-            Assert.Equal(ContributionStatus.Pendiente, aporte.Estado);
+            Vote(contribution, 2, confirms: true);
+            Assert.Equal(ContributionStatus.Pending, contribution.Status);
 
-            Votar(aporte, 1, confirma: true);
-            Assert.Equal(ContributionStatus.Aprobado, aporte.Estado);
-            Assert.Equal(Ahora, aporte.FechaResolucion);
+            Vote(contribution, 1, confirms: true);
+            Assert.Equal(ContributionStatus.Approved, contribution.Status);
+            Assert.Equal(Now, contribution.ResolvedAt);
         }
 
         [Fact]
-        public void Un_rechazo_compensa_una_confirmacion()
+        public void One_rejection_offsets_one_confirmation()
         {
-            var aporte = new Contribution();
+            var contribution = new Contribution();
 
-            Votar(aporte, 1, confirma: false);
-            Votar(aporte, 3, confirma: true);
-            Assert.Equal(ContributionStatus.Pendiente, aporte.Estado);
+            Vote(contribution, 1, confirms: false);
+            Vote(contribution, 3, confirms: true);
+            Assert.Equal(ContributionStatus.Pending, contribution.Status);
 
-            Votar(aporte, 1, confirma: true);
-            Assert.Equal(ContributionStatus.Aprobado, aporte.Estado);
+            Vote(contribution, 1, confirms: true);
+            Assert.Equal(ContributionStatus.Approved, contribution.Status);
         }
 
         [Fact]
-        public void Tres_rechazos_de_diferencia_rechazan_el_aporte()
+        public void Three_vote_difference_rejects_the_contribution()
         {
-            var aporte = new Contribution();
+            var contribution = new Contribution();
 
-            Votar(aporte, 3, confirma: false);
+            Vote(contribution, 3, confirms: false);
 
-            Assert.Equal(ContributionStatus.Rechazado, aporte.Estado);
+            Assert.Equal(ContributionStatus.Rejected, contribution.Status);
         }
 
         [Fact]
-        public void Votar_de_nuevo_cambia_el_voto_sin_sumar_otro()
+        public void Voting_again_changes_the_vote_without_adding_another()
         {
-            var aporte = new Contribution();
-            var usuario = Guid.NewGuid();
+            var contribution = new Contribution();
+            var user = Guid.NewGuid();
 
-            aporte.Validar(usuario, confirma: true, Ahora);
-            aporte.Validar(usuario, confirma: false, Ahora);
+            contribution.RecordVote(user, confirms: true, Now);
+            contribution.RecordVote(user, confirms: false, Now);
 
-            var voto = Assert.Single(aporte.Validaciones);
-            Assert.False(voto.Confirma);
-            Assert.Equal(0, aporte.Confirmaciones);
-            Assert.Equal(1, aporte.Rechazos);
+            var vote = Assert.Single(contribution.Votes);
+            Assert.False(vote.Confirms);
+            Assert.Equal(0, contribution.Confirmations);
+            Assert.Equal(1, contribution.Rejections);
         }
     }
 }

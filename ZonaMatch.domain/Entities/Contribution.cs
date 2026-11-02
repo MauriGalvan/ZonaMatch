@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using NetTopologySuite.Geometries;
 
 namespace ZonaMatch.Domain.Entities
@@ -5,25 +6,42 @@ namespace ZonaMatch.Domain.Entities
     public enum ContributionType
     {
         // A place missing from the map.
-        PuntoNuevo,
+        [JsonStringEnumMemberName("punto-nuevo")]
+        NewPoint,
+
         // Something is wrong with a place on the map.
-        Correccion
+        [JsonStringEnumMemberName("correccion")]
+        Correction
     }
 
     public enum ContributionStatus
     {
-        Pendiente,
-        Aprobado,
-        Rechazado
+        [JsonStringEnumMemberName("pendiente")]
+        Pending,
+
+        [JsonStringEnumMemberName("aprobado")]
+        Approved,
+
+        [JsonStringEnumMemberName("rechazado")]
+        Rejected
     }
 
     public enum CorrectionReason
     {
-        Cerro,
-        Nombre,
-        Ubicacion,
-        Categoria,
-        Otro
+        [JsonStringEnumMemberName("cerro")]
+        Closed,
+
+        [JsonStringEnumMemberName("nombre")]
+        Name,
+
+        [JsonStringEnumMemberName("ubicacion")]
+        Location,
+
+        [JsonStringEnumMemberName("categoria")]
+        Category,
+
+        [JsonStringEnumMemberName("otro")]
+        Other
     }
 
     // A community contribution to a zone map (app.aportes table). It remains pending until other community
@@ -31,63 +49,63 @@ namespace ZonaMatch.Domain.Entities
     public class Contribution
     {
         // Difference between confirmations and rejections needed to resolve a pending contribution.
-        public const int DiferenciaParaResolver = 3;
+        public const int VoteDifferenceToResolve = 3;
 
         public Guid Id { get; set; } = Guid.CreateVersion7();
 
-        public string ZonaSlug { get; set; } = string.Empty;
+        public string ZoneSlug { get; set; } = string.Empty;
 
-        public Guid UsuarioId { get; set; }
+        public Guid UserId { get; set; }
         public User? User { get; set; }
 
-        public ContributionType Tipo { get; set; }
-        public ContributionStatus Estado { get; set; } = ContributionStatus.Pendiente;
+        public ContributionType Type { get; set; }
+        public ContributionStatus Status { get; set; } = ContributionStatus.Pending;
 
         // For a new point, its data. For a correction, the proposed value (Name, Category, or Location, based on Reason).
-        public string? Nombre { get; set; }
-        public string? Categoria { get; set; }
-        public Point? Ubicacion { get; set; }
+        public string? Name { get; set; }
+        public string? Category { get; set; }
+        public Point? Location { get; set; }
 
         // Used only for a new point.
-        public string? Horario { get; set; }
-        public string? Direccion { get; set; }
-        public bool ViveOTrabajaEnZona { get; set; }
+        public string? OpeningHours { get; set; }
+        public string? Address { get; set; }
+        public bool LivesOrWorksInZone { get; set; }
 
         // Used only for a correction: the corrected place (an OSM ID such as "n123", or "a<id>" for a community point).
-        public string? PuntoInteresId { get; set; }
-        public string? PuntoInteresNombre { get; set; }
-        public CorrectionReason? Motivo { get; set; }
-        public string? Comentario { get; set; }
+        public string? PointOfInterestId { get; set; }
+        public string? PointOfInterestName { get; set; }
+        public CorrectionReason? Reason { get; set; }
+        public string? Comment { get; set; }
 
-        public DateTimeOffset FechaCreacion { get; set; }
-        public DateTimeOffset? FechaResolucion { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset? ResolvedAt { get; set; }
 
-        // Site administrator who resolved it directly; null when the community votes resolved it
-        public Guid? ResueltoPorId { get; set; }
+        // Site administrator who resolved it directly; null when the community votes resolved it.
+        public Guid? ResolvedByUserId { get; set; }
 
-        public List<ContributionVote> Validaciones { get; set; } = [];
+        public List<ContributionVote> Votes { get; set; } = [];
 
-        public int Confirmaciones => Validaciones.Count(v => v.Confirma);
-        public int Rechazos => Validaciones.Count(v => !v.Confirma);
+        public int Confirmations => Votes.Count(vote => vote.Confirms);
+        public int Rejections => Votes.Count(vote => !vote.Confirms);
 
         // Record or change a user's vote and resolve the contribution when the vote threshold is reached.
         // The caller verifies that the contribution is pending and the voter is not its author.
-        public void Validar(Guid usuarioId, bool confirma, DateTimeOffset ahora)
+        public void RecordVote(Guid userId, bool confirms, DateTimeOffset timestamp)
         {
-            var existente = Validaciones.FirstOrDefault(v => v.UsuarioId == usuarioId);
-            if (existente is null)
-                Validaciones.Add(new ContributionVote { AporteId = Id, UsuarioId = usuarioId, Confirma = confirma, Fecha = ahora });
+            var existingVote = Votes.FirstOrDefault(vote => vote.UserId == userId);
+            if (existingVote is null)
+                Votes.Add(new ContributionVote { ContributionId = Id, UserId = userId, Confirms = confirms, CreatedAt = timestamp });
             else
             {
-                existente.Confirma = confirma;
-                existente.Fecha = ahora;
+                existingVote.Confirms = confirms;
+                existingVote.CreatedAt = timestamp;
             }
 
-            var diferencia = Confirmaciones - Rechazos;
-            if (Math.Abs(diferencia) >= DiferenciaParaResolver)
+            var difference = Confirmations - Rejections;
+            if (Math.Abs(difference) >= VoteDifferenceToResolve)
             {
-                Estado = diferencia > 0 ? ContributionStatus.Aprobado : ContributionStatus.Rechazado;
-                FechaResolucion = ahora;
+                Status = difference > 0 ? ContributionStatus.Approved : ContributionStatus.Rejected;
+                ResolvedAt = timestamp;
             }
         }
 
@@ -95,18 +113,18 @@ namespace ZonaMatch.Domain.Entities
         // The caller checks that the contribution is pending.
         public void Resolve(Guid administratorId, bool approve, DateTimeOffset now)
         {
-            Estado = approve ? ContributionStatus.Aprobado : ContributionStatus.Rechazado;
-            FechaResolucion = now;
-            ResueltoPorId = administratorId;
+            Status = approve ? ContributionStatus.Approved : ContributionStatus.Rejected;
+            ResolvedAt = now;
+            ResolvedByUserId = administratorId;
         }
     }
 
     // A community member's vote on a contribution (app.aportes_validaciones table).
     public class ContributionVote
     {
-        public Guid AporteId { get; set; }
-        public Guid UsuarioId { get; set; }
-        public bool Confirma { get; set; }
-        public DateTimeOffset Fecha { get; set; }
+        public Guid ContributionId { get; set; }
+        public Guid UserId { get; set; }
+        public bool Confirms { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
     }
 }

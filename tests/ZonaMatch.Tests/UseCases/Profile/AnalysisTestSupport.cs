@@ -10,9 +10,9 @@ internal sealed class FakeCriterionRepository : ICriterionRepository
     public Task<IReadOnlyList<Criterion>> ListAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Criterion>>(
         [
-            new Criterion { Id = "seguridad", Nombre = "Seguridad", Activo = true },
-            new Criterion { Id = "salud", Nombre = "Salud", Activo = true },
-            new Criterion { Id = "transporte", Nombre = "Transporte", Activo = false },
+            new Criterion { Id = "seguridad", Name = "Seguridad", IsActive = true },
+            new Criterion { Id = "salud", Name = "Salud", IsActive = true },
+            new Criterion { Id = "transporte", Name = "Transporte", IsActive = false },
         ]);
 }
 
@@ -22,13 +22,13 @@ internal sealed class FakeProfileRepository : IProfileRepository
     public int SaveCount { get; private set; }
 
     public Task<Context?> GetByUserAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Profiles.FirstOrDefault(profile => profile.UsuarioId == usuarioId));
+        Task.FromResult(Profiles.FirstOrDefault(profile => profile.UserId == usuarioId));
 
     public Task<IReadOnlyList<Context>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> usuarioIds,
         CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Context>>(
-            Profiles.Where(profile => usuarioIds.Contains(profile.UsuarioId)).ToList());
+            Profiles.Where(profile => usuarioIds.Contains(profile.UserId)).ToList());
 
     public void Add(Context perfil) => Profiles.Add(perfil);
 
@@ -46,14 +46,14 @@ internal sealed class FakeAnalysisRepository : IAnalysisRepository
 
     public Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Analysis>>(
-            Analyses.Where(analysis => analysis.UsuarioId == usuarioId).OrderByDescending(analysis => analysis.FechaActualizacion).ToList());
+            Analyses.Where(analysis => analysis.UserId == usuarioId).OrderByDescending(analysis => analysis.UpdatedAt).ToList());
 
     public Task<Analysis?> GetAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Analyses.FirstOrDefault(analysis => analysis.Id == id && analysis.UsuarioId == usuarioId));
+        Task.FromResult(Analyses.FirstOrDefault(analysis => analysis.Id == id && analysis.UserId == usuarioId));
 
     public Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Analysis>>(
-            Analyses.Where(analysis => analysis.AnalisisOrigenId == analisisOrigenId).OrderBy(analysis => analysis.FechaCreacion).ToList());
+            Analyses.Where(analysis => analysis.OriginalAnalysisId == analisisOrigenId).OrderBy(analysis => analysis.CreatedAt).ToList());
 
     public void Add(Analysis analisis) => Analyses.Add(analisis);
 
@@ -86,6 +86,6 @@ internal static class TestRequests
         Points = new AnalysisPointsRequest { RentLimit = rentLimit, Places = places ?? [] },
     };
 
-    public static AnalysisZoneRequest AnalysisZone(string slug = FakeZonaRepository.Zona, bool isInitial = false) =>
+    public static AnalysisZoneRequest AnalysisZone(string slug = FakeZoneRepository.ZoneSlug, bool isInitial = false) =>
         new() { Slug = slug, Name = "Villa Luro, CABA", IsInitial = isInitial };
 }

@@ -24,32 +24,32 @@ namespace ZonaMatch.Tests.UseCases.Zones
 
             var result = await _useCase.ExecuteAsync("villa-luro");
 
-            Assert.Equal(90.0, result.Conectividad.PorcentajeHogaresInternet);
-            var safety = Assert.IsType<ZoneSafetyResponse>(result.Seguridad);
-            Assert.Equal(38.0, safety.DelitosCada1000Habitantes);
-            Assert.Equal(100, safety.Robos);
-            Assert.Equal(0, safety.Homicidios);
-            Assert.Equal("CABA", safety.Referencia!.Ambito);
-            Assert.Equal(46.9, safety.Referencia.Valor);
-            Assert.Equal(2, result.Fuentes.Count);
+            Assert.Equal(90.0, result.Connectivity.HouseholdsWithInternetPercentage);
+            var safety = Assert.IsType<ZoneSafetyResponse>(result.Safety);
+            Assert.Equal(38.0, safety.CrimesPer1000Residents);
+            Assert.Equal(100, safety.Robberies);
+            Assert.Equal(0, safety.Homicides);
+            Assert.Equal("CABA", safety.Reference!.Scope);
+            Assert.Equal(46.9, safety.Reference.Value);
+            Assert.Equal(2, result.Sources.Count);
         }
 
         [Fact]
         public async Task GetZoneIndicators_WhenZoneIsInProvince_ReturnsDistrictCrimesWithoutCityReference()
         {
-            _repository.Zones.Add(Zone("castelar", 8, crimeCount: 241, dataSource: ZoneIndicators.FuenteSnic, jurisdiction: "Morón"));
+            _repository.Zones.Add(Zone("castelar", 8, crimeCount: 241, dataSource: ZoneIndicators.SnicSource, jurisdiction: "Morón"));
             _repository.CityReference = Zone("caba", 4, crimeCount: 469);
 
             var result = await _useCase.ExecuteAsync("castelar");
 
-            var safety = Assert.IsType<ZoneSafetyResponse>(result.Seguridad);
-            Assert.Equal("snic", safety.Fuente);
-            Assert.Equal("Morón", safety.Ambito);
-            Assert.Equal(2025, safety.Anio);
-            Assert.Equal(24.1, safety.DelitosCada1000Habitantes);
-            Assert.Null(safety.Referencia);
-            Assert.Null(result.Conectividad.Referencia);
-            Assert.Contains(result.Fuentes, source => source.Nivel == "Partido" && source.Anio == 2025);
+            var safety = Assert.IsType<ZoneSafetyResponse>(result.Safety);
+            Assert.Equal("snic", safety.Source);
+            Assert.Equal("Morón", safety.Scope);
+            Assert.Equal(2025, safety.Year);
+            Assert.Equal(24.1, safety.CrimesPer1000Residents);
+            Assert.Null(safety.Reference);
+            Assert.Null(result.Connectivity.Reference);
+            Assert.Contains(result.Sources, source => source.Level == "Partido" && source.Year == 2025);
             Assert.False(_repository.DidLoadCityReference);
         }
 
@@ -61,9 +61,9 @@ namespace ZonaMatch.Tests.UseCases.Zones
 
             var result = await _useCase.ExecuteAsync("villa-luzuriaga");
 
-            Assert.Null(result.Seguridad);
-            Assert.Null(result.Conectividad.Referencia);
-            Assert.Single(result.Fuentes);
+            Assert.Null(result.Safety);
+            Assert.Null(result.Connectivity.Reference);
+            Assert.Single(result.Sources);
             Assert.False(_repository.DidLoadCityReference);
         }
 
@@ -76,8 +76,8 @@ namespace ZonaMatch.Tests.UseCases.Zones
 
             var result = await _useCase.ExecuteAsync("ciudad-autonoma-de-buenos-aires");
 
-            Assert.Null(result.Seguridad!.Referencia);
-            Assert.Null(result.Conectividad.Referencia);
+            Assert.Null(result.Safety!.Reference);
+            Assert.Null(result.Connectivity.Reference);
         }
 
         [Fact]
@@ -90,21 +90,21 @@ namespace ZonaMatch.Tests.UseCases.Zones
             string slug,
             int administrativeLevel,
             int? crimeCount,
-            string dataSource = ZoneIndicators.FuenteMapaDelito,
+            string dataSource = ZoneIndicators.CrimeMapSource,
             string? jurisdiction = null) => new()
         {
             Slug = slug,
-            Nombre = slug,
-            Nivel = administrativeLevel,
-            SuperficieKm2 = 2.5,
-            Poblacion = 10000,
-            Hogares = 4000,
-            HogaresInternet = 3600,
-            Delitos = crimeCount,
-            Robos = crimeCount is null ? null : 100,
-            DelitosFuente = crimeCount is null ? null : dataSource,
-            DelitosPeriodo = crimeCount is null ? null : dataSource == ZoneIndicators.FuenteSnic ? 2025 : 2024,
-            DelitosAmbito = jurisdiction,
+            Name = slug,
+            Level = administrativeLevel,
+            AreaKm2 = 2.5,
+            Population = 10000,
+            Households = 4000,
+            HouseholdsWithInternet = 3600,
+            CrimeCount = crimeCount,
+            Robberies = crimeCount is null ? null : 100,
+            CrimeDataSource = crimeCount is null ? null : dataSource,
+            CrimeDataYear = crimeCount is null ? null : dataSource == ZoneIndicators.SnicSource ? 2025 : 2024,
+            CrimeDataCoverage = jurisdiction,
         };
 
         private sealed class FakeZoneIndicatorsRepository : IZoneIndicatorsRepository

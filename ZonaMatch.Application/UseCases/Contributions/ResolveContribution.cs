@@ -26,7 +26,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
             var contribution = await _contributions.GetAsync(zoneSlug, contributionId, cancellationToken)
                 ?? throw new NotFoundException("El aporte no existe.");
 
-            if (contribution.Estado != ContributionStatus.Pendiente)
+            if (contribution.Status != ContributionStatus.Pending)
                 throw new ConflictException("El aporte ya fue resuelto.");
 
             var now = _clock.GetUtcNow();

@@ -1,61 +1,66 @@
 using ZonaMatch.Domain.Entities;
 
-namespace ZonaMatch.Tests.Domain
+namespace ZonaMatch.Tests.Domain;
+
+public class ZoneIndicatorsTests
 {
-    public class ZoneIndicatorsTests
+    [Theory]
+    [InlineData(907, 1000, 90.7)]
+    [InlineData(1, 3, 33.3)]
+    [InlineData(0, 10, 0.0)]
+    public void Percentage_IsRoundedToOneDecimalPlace(int part, int total, double expected)
     {
-        [Theory]
-        [InlineData(907, 1000, 90.7)]
-        [InlineData(1, 3, 33.3)]
-        [InlineData(0, 10, 0.0)]
-        public void El_porcentaje_tiene_un_decimal(int parte, int total, double esperado)
+        Assert.Equal(expected, ZoneIndicators.Percentage(part, total));
+    }
+
+    [Fact]
+    public void Percentage_IsNullWhenThereIsNoDenominator()
+    {
+        var zone = new ZoneIndicators { Households = 0, HouseholdsWithInternet = 0 };
+
+        Assert.Null(zone.HouseholdsWithInternetPercentage);
+        Assert.Null(zone.ResidentsUnder15Percentage);
+    }
+
+    [Fact]
+    public void PopulationDensity_IsRoundedResidentsPerSquareKilometer()
+    {
+        var zone = new ZoneIndicators { Population = 34645, AreaKm2 = 2.566 };
+
+        Assert.Equal(13502, zone.PopulationDensityPerKm2);
+    }
+
+    [Fact]
+    public void CrimeRate_IsCrimesPerThousandResidents()
+    {
+        var zone = new ZoneIndicators { Population = 34645, CrimeCount = 1323 };
+
+        Assert.True(zone.HasCrimeData);
+        Assert.Equal(38.2, zone.CrimesPerThousandResidents);
+    }
+
+    [Fact]
+    public void CrimeRate_IsNullWhenCrimeDataIsMissing()
+    {
+        var zone = new ZoneIndicators { Population = 84410, CrimeCount = null };
+
+        Assert.False(zone.HasCrimeData);
+        Assert.Null(zone.CrimesPerThousandResidents);
+    }
+
+    [Fact]
+    public void AgePercentages_UseResidentsWithReportedAgeAsTheDenominator()
+    {
+        var zone = new ZoneIndicators
         {
-            Assert.Equal(esperado, ZoneIndicators.Porcentaje(parte, total));
-        }
+            Population = 1000,
+            ResidentsAged0To14 = 100,
+            ResidentsAged15To64 = 600,
+            ResidentsAged65Plus = 100
+        };
 
-        [Fact]
-        public void Sin_base_no_hay_porcentaje()
-        {
-            var zona = new ZoneIndicators { Hogares = 0, HogaresInternet = 0 };
-
-            Assert.Null(zona.PorcentajeHogaresInternet);
-            Assert.Null(zona.PorcentajeMenores15);
-        }
-
-        [Fact]
-        public void La_densidad_es_habitantes_por_km2_redondeada()
-        {
-            var zona = new ZoneIndicators { Poblacion = 34645, SuperficieKm2 = 2.566 };
-
-            Assert.Equal(13502, zona.DensidadHabitantesKm2);
-        }
-
-        [Fact]
-        public void La_tasa_de_delitos_es_cada_1000_habitantes()
-        {
-            var zona = new ZoneIndicators { Poblacion = 34645, Delitos = 1323 };
-
-            Assert.True(zona.TieneDelitos);
-            Assert.Equal(38.2, zona.DelitosCada1000Habitantes);
-        }
-
-        [Fact]
-        public void Sin_delitos_cargados_no_hay_tasa()
-        {
-            var zona = new ZoneIndicators { Poblacion = 84410, Delitos = null };
-
-            Assert.False(zona.TieneDelitos);
-            Assert.Null(zona.DelitosCada1000Habitantes);
-        }
-
-        [Fact]
-        public void La_edad_se_calcula_sobre_las_personas_con_edad_informada()
-        {
-            var zona = new ZoneIndicators { Poblacion = 1000, Personas0a14 = 100, Personas15a64 = 600, Personas65yMas = 100 };
-
-            Assert.Equal(12.5, zona.PorcentajeMenores15);
-            Assert.Equal(75.0, zona.Porcentaje15a64);
-            Assert.Equal(12.5, zona.Porcentaje65yMas);
-        }
+        Assert.Equal(12.5, zone.ResidentsUnder15Percentage);
+        Assert.Equal(75.0, zone.ResidentsAged15To64Percentage);
+        Assert.Equal(12.5, zone.ResidentsAged65PlusPercentage);
     }
 }

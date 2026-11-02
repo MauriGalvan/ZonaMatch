@@ -19,7 +19,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
         private readonly FakeProfileRepository _profiles = new();
         private readonly FakeAnalysisRepository _analyses = new();
         private readonly FakeCriterionRepository _criteria = new();
-        private readonly FakeZonaRepository _zonas = new();
+        private readonly FakeZoneRepository _zonas = new();
         private readonly FixedTimeProvider _clock = new(CurrentTime);
         private readonly FakeResultCalculator _results = new();
 
@@ -42,7 +42,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
 
             var dto = await Create.ExecuteAsync(UserId, AnalysisRequest());
 
-            Assert.Equal(81, Assert.Single(dto.Result!.Zonas).Puntaje);
+            Assert.Equal(81, Assert.Single(dto.Result!.Zones).Score);
             Assert.Equal(CurrentTime, dto.CalculatedAt);
         }
 
@@ -58,10 +58,10 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
 
             Assert.Equal(original.Id, recalculated.OriginAnalysisId);
             Assert.Equal("Cerca del trabajo · datos al 14/10", recalculated.Name);
-            Assert.Equal(74, Assert.Single(recalculated.Result!.Zonas).Puntaje);
+            Assert.Equal(74, Assert.Single(recalculated.Result!.Zones).Score);
             Assert.Equal(original.Criteria, recalculated.Criteria);
             var saved = _analyses.Analyses.Single(analysis => analysis.Id == original.Id);
-            Assert.Equal(81, AnalysisResultCalculator.Deserialize(saved.ResultadoJson)!.Zonas.Single().Puntaje);
+            Assert.Equal(81, AnalysisResultCalculator.Deserialize(saved.ResultJson)!.Zones.Single().Score);
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
         private static AnalysisZoneRequest ZonaConOrigen(double latitude) =>
             new()
             {
-                Slug = FakeZonaRepository.Zona, Name = "Villa Luro, CABA", IsInitial = true,
+                Slug = FakeZoneRepository.ZoneSlug, Name = "Villa Luro, CABA", IsInitial = true,
                 Origin = new AnalysisZoneOriginRequest { Latitude = latitude, Longitude = -58.5 }
             };
 
@@ -85,8 +85,8 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
             var dto = await Create.ExecuteAsync(UserId, AnalysisRequest("Con punto", ZonaConOrigen(-34.63)));
 
             Assert.Equal(new AnalysisZoneOriginResponse(-34.63, -58.5), Assert.Single(dto.Zones).Origin);
-            var calculated = Assert.Single(Assert.Single(_results.Calculations).Zonas);
-            Assert.Equal((-34.63, -58.5), (calculated.OrigenLatitud, calculated.OrigenLongitud));
+            var calculated = Assert.Single(Assert.Single(_results.Calculations).Zones);
+            Assert.Equal((-34.63, -58.5), (calculated.OriginLatitude, calculated.OriginLongitude));
         }
 
         [Fact]
@@ -121,7 +121,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
                 Calculations.Add(analysis);
                 return Task.FromResult<ScoresResponse?>(new ScoresResponse(
                     "transporte-publico",
-                    analysis.Zonas.Select(zone => new ScoredZoneResponse(zone.ZonaSlug, zone.Nombre, Score, [], [], [], null)).ToList(),
+                    analysis.Zones.Select(zone => new ScoredZoneResponse(zone.ZoneSlug, zone.Name, Score, [], [], [], null)).ToList(),
                     []));
             }
         }
@@ -143,14 +143,14 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
             var analysis = Assert.Single(_analyses.Analyses);
             var profile = Assert.Single(_profiles.Profiles);
             Assert.NotSame(profile, analysis.Context);
-            Assert.Equal(ContextType.Analysis, analysis.Context.Tipo);
-            Assert.Null(analysis.AnalisisOrigenId);
+            Assert.Equal(ContextType.Analysis, analysis.Context.Type);
+            Assert.Null(analysis.OriginalAnalysisId);
             Assert.Equal("alta", dto.Criteria["seguridad"]);
             Assert.True(Assert.Single(dto.Zones).IsInitial);
 
             await WithProfile("salud", "baja");
 
-            Assert.Equal("seguridad", Assert.Single(analysis.Context.Criterios).CriterioId);
+            Assert.Equal("seguridad", Assert.Single(analysis.Context.Criteria).CriterionId);
         }
 
         [Fact]
@@ -188,10 +188,10 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
             Assert.Equal("Cerca del trabajo (2)", version.Name);
             Assert.Equal("alta", version.Criteria["salud"]);
             // When the request has no zones, compare the same zones as the original.
-            Assert.Equal(FakeZonaRepository.Zona, Assert.Single(version.Zones).Slug);
+            Assert.Equal(FakeZoneRepository.ZoneSlug, Assert.Single(version.Zones).Slug);
             // The original remains unchanged.
             var saved = _analyses.Analyses.Single(analysis => analysis.Id == original.Id);
-            Assert.Equal("seguridad", Assert.Single(saved.Context.Criterios).CriterioId);
+            Assert.Equal("seguridad", Assert.Single(saved.Context.Criteria).CriterionId);
         }
 
         [Fact]
@@ -269,8 +269,8 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
             await useCase.ExecuteAsync(original.Id, UserId, true);
             var saved = _analyses.Analyses.Single(analysis => analysis.Id == original.Id);
 
-            Assert.True(saved.EsFavorito);
-            Assert.Equal(original.UpdatedAt, saved.FechaActualizacion);
+            Assert.True(saved.IsFavorite);
+            Assert.Equal(original.UpdatedAt, saved.UpdatedAt);
             await Assert.ThrowsAsync<NotFoundException>(() => useCase.ExecuteAsync(original.Id, Guid.NewGuid(), true));
         }
 

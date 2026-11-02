@@ -7,10 +7,10 @@ namespace ZonaMatch.Tests.UseCases.Reviews
 {
     public class ListZoneReviewsTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
         private static readonly DateTimeOffset CurrentTime = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
-        private readonly FakeResenaRepository _reviews = new();
+        private readonly FakeReviewRepository _reviews = new();
         private readonly ListZoneReviews _useCase;
         private readonly User _ana = new() { Id = Guid.NewGuid(), Email = "ana@example.com" };
         private readonly Guid _luis = Guid.NewGuid();
@@ -25,16 +25,16 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         {
             var resena = new Review
             {
-                ZonaSlug = zone,
-                UsuarioId = author.Id,
+                ZoneSlug = zone,
+                UserId = author.Id,
                 User = author,
-                PuntajeSeguridad = safety,
-                PuntajeTransporte = 5,
-                PuntajeConectividad = 4,
-                PuntajeComercios = 4,
-                PuntajeEspaciosVerdes = 2,
-                Texto = "Barrio tranquilo y bien conectado con el centro.",
-                FechaCreacion = CurrentTime
+                SafetyScore = safety,
+                TransitScore = 5,
+                ConnectivityScore = 4,
+                CommerceScore = 4,
+                GreenSpaceScore = 2,
+                Text = "Barrio tranquilo y bien conectado con el centro.",
+                CreatedAt = CurrentTime
             };
             _reviews.Add(resena);
             return resena;
@@ -72,7 +72,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         public async Task List_WithCurrentUser_IndicatesOwnershipAndHelpfulVotes()
         {
             var review = Add(_ana);
-            review.VotosUtil.Add(new ReviewHelpfulVote { ResenaId = review.Id, UsuarioId = _luis, Fecha = CurrentTime });
+            review.HelpfulVotes.Add(new ReviewHelpfulVote { ReviewId = review.Id, UserId = _luis, CreatedAt = CurrentTime });
 
             var forLuis = Assert.Single((await _useCase.ExecuteAsync(Zone, _luis)).Reviews);
             var forAna = Assert.Single((await _useCase.ExecuteAsync(Zone, _ana.Id)).Reviews);

@@ -5,10 +5,10 @@ namespace ZonaMatch.Tests.UseCases.Contributions
 {
     public class ListPendingContributionsTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
         private static readonly DateTimeOffset Now = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
-        private readonly FakeAporteRepository _contributions = new();
+        private readonly FakeContributionRepository _contributions = new();
         private readonly ListPendingContributions _useCase;
         private readonly User _author = new() { Email = "ana.perez@example.com" };
         private readonly Guid _neighborId = Guid.NewGuid();
@@ -18,32 +18,32 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             _useCase = new ListPendingContributions(_contributions);
         }
 
-        private Contribution Add(ContributionStatus estado = ContributionStatus.Pendiente)
+        private Contribution Add(ContributionStatus status = ContributionStatus.Pending)
         {
-            var aporte = new Contribution
+            var contribution = new Contribution
             {
-                ZonaSlug = Zone,
-                UsuarioId = _author.Id,
+                ZoneSlug = Zone,
+                UserId = _author.Id,
                 User = _author,
-                Tipo = ContributionType.PuntoNuevo,
-                Estado = estado,
-                Nombre = "Farmacia Nueva",
-                FechaCreacion = Now
+                Type = ContributionType.NewPoint,
+                Status = status,
+                Name = "Farmacia Nueva",
+                CreatedAt = Now
             };
-            _contributions.Add(aporte);
-            return aporte;
+            _contributions.Add(contribution);
+            return contribution;
         }
 
         [Fact]
         public async Task ListPending_WhenUserHasVoted_ReturnsPendingItemsWithTheirVote()
         {
-            var pendiente = Add();
-            pendiente.Validar(_neighborId, confirma: false, Now);
-            Add(ContributionStatus.Aprobado);
+            var pendingContribution = Add();
+            pendingContribution.RecordVote(_neighborId, confirms: false, Now);
+            Add(ContributionStatus.Approved);
 
             var item = Assert.Single(await _useCase.ExecuteAsync(Zone, _neighborId));
 
-            Assert.Equal(pendiente.Id, item.Id);
+            Assert.Equal(pendingContribution.Id, item.Id);
             Assert.False(item.MyVote);
             Assert.False(item.IsMine);
             Assert.Equal("AP", item.AuthorInitials);

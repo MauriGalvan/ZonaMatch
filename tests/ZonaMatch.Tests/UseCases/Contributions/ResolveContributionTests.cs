@@ -7,10 +7,10 @@ namespace ZonaMatch.Tests.UseCases.Contributions
 {
     public class ResolveContributionTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
         private static readonly DateTimeOffset Now = new(2026, 10, 25, 12, 0, 0, TimeSpan.Zero);
 
-        private readonly FakeAporteRepository _contributions = new();
+        private readonly FakeContributionRepository _contributions = new();
         private readonly FakeCommunityPoiRepository _pois = new();
         private readonly ResolveContribution _useCase;
         private readonly Guid _administrator = Guid.NewGuid();
@@ -22,30 +22,30 @@ namespace ZonaMatch.Tests.UseCases.Contributions
 
         private Contribution Add(Contribution contribution)
         {
-            contribution.ZonaSlug = Zone;
-            contribution.UsuarioId = Guid.NewGuid();
+            contribution.ZoneSlug = Zone;
+            contribution.UserId = Guid.NewGuid();
             _contributions.Add(contribution);
             return contribution;
         }
 
         private Contribution Correction(string poiId, CorrectionReason reason) =>
-            Add(new Contribution { Tipo = ContributionType.Correccion, PuntoInteresId = poiId, PuntoInteresNombre = "Kiosco", Motivo = reason });
+            Add(new Contribution { Type = ContributionType.Correction, PointOfInterestId = poiId, PointOfInterestName = "Kiosco", Reason = reason });
 
         [Fact]
         public async Task Execute_WhenApprovingANewPoint_PersistsItWithoutWaitingForVotes()
         {
             var contribution = Add(new Contribution
             {
-                Tipo = ContributionType.PuntoNuevo, Nombre = "Club Social", Categoria = "deporte",
-                Ubicacion = new Point(-58.5, -34.63) { SRID = 4326 }
+                Type = ContributionType.NewPoint, Name = "Club Social", Category = "deporte",
+                Location = new Point(-58.5, -34.63) { SRID = 4326 }
             });
 
             var result = await _useCase.ExecuteAsync(Zone, contribution.Id, _administrator, approve: true);
 
-            Assert.Equal(ContributionStatus.Aprobado, result.Status);
-            Assert.Equal(_administrator, contribution.ResueltoPorId);
-            Assert.Equal(Now, contribution.FechaResolucion);
-            Assert.Equal(1, _contributions.Guardados);
+            Assert.Equal(ContributionStatus.Approved, result.Status);
+            Assert.Equal(_administrator, contribution.ResolvedByUserId);
+            Assert.Equal(Now, contribution.ResolvedAt);
+            Assert.Equal(1, _contributions.SaveCount);
             var poi = Assert.Single(_pois.Pois);
             Assert.Equal("Club Social", poi.Name);
             Assert.Equal(contribution.Id, poi.LastContributionId);
@@ -54,21 +54,21 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Execute_WhenRejecting_DoesNotPersistAPoint()
         {
-            var contribution = Add(new Contribution { Tipo = ContributionType.PuntoNuevo, Nombre = "Club", Categoria = "deporte" });
+            var contribution = Add(new Contribution { Type = ContributionType.NewPoint, Name = "Club", Category = "deporte" });
 
             var result = await _useCase.ExecuteAsync(Zone, contribution.Id, _administrator, approve: false);
 
-            Assert.Equal(ContributionStatus.Rechazado, result.Status);
+            Assert.Equal(ContributionStatus.Rejected, result.Status);
             Assert.Empty(_pois.Pois);
         }
 
         [Fact]
         public async Task Execute_WhenApprovingCorrectionsToAnOsmPoint_KeepsEveryChangeOnTheSamePoint()
         {
-            var rename = Correction("n123", CorrectionReason.Nombre);
-            rename.Nombre = "Kiosco El Sol";
-            var move = Correction("n123", CorrectionReason.Ubicacion);
-            move.Ubicacion = new Point(-58.51, -34.64) { SRID = 4326 };
+            var rename = Correction("n123", CorrectionReason.Name);
+            rename.Name = "Kiosco El Sol";
+            var move = Correction("n123", CorrectionReason.Location);
+            move.Location = new Point(-58.51, -34.64) { SRID = 4326 };
 
             await _useCase.ExecuteAsync(Zone, rename.Id, _administrator, approve: true);
             await _useCase.ExecuteAsync(Zone, move.Id, _administrator, approve: true);
@@ -77,7 +77,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             Assert.Equal("n123", poi.Id);
             Assert.False(poi.IsNew);
             Assert.Equal("Kiosco El Sol", poi.Name);
-            Assert.Equal(move.Ubicacion, poi.Location);
+            Assert.Equal(move.Location, poi.Location);
             Assert.Null(poi.Category);
             Assert.False(poi.Removed);
         }
@@ -85,7 +85,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Execute_WhenApprovingThatAPlaceClosed_RemovesIt()
         {
-            var closed = Correction("w45", CorrectionReason.Cerro);
+            var closed = Correction("w45", CorrectionReason.Closed);
 
             await _useCase.ExecuteAsync(Zone, closed.Id, _administrator, approve: true);
 
@@ -95,8 +95,8 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Execute_WhenApprovingAnInformativeCorrection_ChangesNoPoint()
         {
-            var other = Correction("n9", CorrectionReason.Otro);
-            other.Comentario = "Abre solo de tarde";
+            var other = Correction("n9", CorrectionReason.Other);
+            other.Comment = "Abre solo de tarde";
 
             await _useCase.ExecuteAsync(Zone, other.Id, _administrator, approve: true);
 
@@ -106,7 +106,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Execute_WhenAlreadyResolved_ThrowsConflictException()
         {
-            var contribution = Add(new Contribution { Tipo = ContributionType.PuntoNuevo, Estado = ContributionStatus.Aprobado });
+            var contribution = Add(new Contribution { Type = ContributionType.NewPoint, Status = ContributionStatus.Approved });
 
             await Assert.ThrowsAsync<ConflictException>(
                 () => _useCase.ExecuteAsync(Zone, contribution.Id, _administrator, approve: false));

@@ -6,9 +6,9 @@ namespace ZonaMatch.Tests.UseCases.Reviews
 {
     public class DeleteMyReviewTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
 
-        private readonly FakeResenaRepository _reviews = new();
+        private readonly FakeReviewRepository _reviews = new();
         private readonly DeleteMyReview _useCase;
         private readonly Guid _ana = Guid.NewGuid();
         private readonly Guid _luis = Guid.NewGuid();
@@ -21,23 +21,23 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         [Fact]
         public async Task Delete_RemovesOnlyTheCurrentUsersReview()
         {
-            _reviews.Add(new Review { ZonaSlug = Zone, UsuarioId = _ana });
-            var luisReview = new Review { ZonaSlug = Zone, UsuarioId = _luis };
+            _reviews.Add(new Review { ZoneSlug = Zone, UserId = _ana });
+            var luisReview = new Review { ZoneSlug = Zone, UserId = _luis };
             _reviews.Add(luisReview);
 
             await _useCase.ExecuteAsync(Zone, _ana);
 
-            Assert.Same(luisReview, Assert.Single(_reviews.Resenas));
-            Assert.Equal(1, _reviews.Guardados);
+            Assert.Same(luisReview, Assert.Single(_reviews.Reviews));
+            Assert.Equal(1, _reviews.SaveCount);
         }
 
         [Fact]
         public async Task Delete_WhenReviewDoesNotExist_ThrowsNotFound()
         {
-            _reviews.Add(new Review { ZonaSlug = Zone, UsuarioId = _luis });
+            _reviews.Add(new Review { ZoneSlug = Zone, UserId = _luis });
 
             await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync(Zone, _ana));
-            Assert.Single(_reviews.Resenas);
+            Assert.Single(_reviews.Reviews);
         }
     }
 }

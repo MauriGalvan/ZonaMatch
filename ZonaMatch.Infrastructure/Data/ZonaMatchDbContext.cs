@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Infrastructure.Data.Converters;
 
 namespace ZonaMatch.Infrastructure.Data
 {
@@ -23,8 +24,8 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<ReviewHelpfulVote> ReviewHelpfulVotes => Set<ReviewHelpfulVote>();
         public DbSet<Question> Questions => Set<Question>();
         public DbSet<Answer> Answers => Set<Answer>();
-        public DbSet<Contribution> Aportes => Set<Contribution>();
-        public DbSet<ContributionVote> AportesValidaciones => Set<ContributionVote>();
+        public DbSet<Contribution> Contributions => Set<Contribution>();
+        public DbSet<ContributionVote> ContributionVotes => Set<ContributionVote>();
         public DbSet<CommunityPoi> CommunityPois => Set<CommunityPoi>();
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
@@ -414,35 +415,41 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("aportes");
                 e.HasKey(x => x.Id);
-                e.Property(x => x.ZonaSlug).HasMaxLength(200);
-                e.HasIndex(x => new { x.ZonaSlug, x.Estado });
+                e.Property(x => x.ZoneSlug).HasColumnName("zona_slug").HasMaxLength(200);
+                e.HasIndex(x => new { x.ZoneSlug, x.Status });
                 // Point-of-interest queries look up approved corrections by place.
-                e.HasIndex(x => new { x.PuntoInteresId, x.Estado });
+                e.HasIndex(x => new { x.PointOfInterestId, x.Status });
                 // Store enums as text so they remain readable in the database and usable by map SQL queries.
-                e.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(20);
-                e.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
-                e.Property(x => x.Motivo).HasConversion<string>().HasMaxLength(20);
-                e.Property(x => x.Nombre).HasMaxLength(TextLimits.PlaceName);
-                e.Property(x => x.Categoria).HasMaxLength(40);
-                e.Property(x => x.Ubicacion).HasColumnType("geometry(Point,4326)");
-                e.Property(x => x.Horario).HasMaxLength(TextLimits.OpeningHours);
-                e.Property(x => x.Direccion).HasMaxLength(TextLimits.Address);
-                e.Property(x => x.PuntoInteresId).HasMaxLength(40);
-                e.Property(x => x.PuntoInteresNombre).HasMaxLength(TextLimits.Address);
-                e.Property(x => x.Comentario).HasMaxLength(TextLimits.Comment);
-                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
-                e.Property(x => x.FechaResolucion).HasColumnType("timestamptz");
-                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
-                e.HasOne<User>().WithMany().HasForeignKey(x => x.ResueltoPorId).OnDelete(DeleteBehavior.SetNull);
-                e.HasMany(x => x.Validaciones).WithOne().HasForeignKey(x => x.AporteId).OnDelete(DeleteBehavior.Cascade);
+                e.Property(x => x.Type).HasColumnName("tipo").HasConversion(new ContributionTypeValueConverter()).HasMaxLength(20);
+                e.Property(x => x.Status).HasColumnName("estado").HasConversion(new ContributionStatusValueConverter()).HasMaxLength(20);
+                e.Property(x => x.Reason).HasColumnName("motivo").HasConversion(new CorrectionReasonValueConverter()).HasMaxLength(20);
+                e.Property(x => x.UserId).HasColumnName("usuario_id");
+                e.Property(x => x.Name).HasColumnName("nombre").HasMaxLength(TextLimits.PlaceName);
+                e.Property(x => x.Category).HasColumnName("categoria").HasMaxLength(40);
+                e.Property(x => x.Location).HasColumnName("ubicacion").HasColumnType("geometry(Point,4326)");
+                e.Property(x => x.OpeningHours).HasColumnName("horario").HasMaxLength(TextLimits.OpeningHours);
+                e.Property(x => x.Address).HasColumnName("direccion").HasMaxLength(TextLimits.Address);
+                e.Property(x => x.LivesOrWorksInZone).HasColumnName("vive_o_trabaja_en_zona");
+                e.Property(x => x.PointOfInterestId).HasColumnName("punto_interes_id").HasMaxLength(40);
+                e.Property(x => x.PointOfInterestName).HasColumnName("punto_interes_nombre").HasMaxLength(TextLimits.Address);
+                e.Property(x => x.Comment).HasColumnName("comentario").HasMaxLength(TextLimits.Comment);
+                e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
+                e.Property(x => x.ResolvedAt).HasColumnName("fecha_resolucion").HasColumnType("timestamptz");
+                e.Property(x => x.ResolvedByUserId).HasColumnName("resuelto_por_id");
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.ResolvedByUserId).OnDelete(DeleteBehavior.SetNull);
+                e.HasMany(x => x.Votes).WithOne().HasForeignKey(x => x.ContributionId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<ContributionVote>(e =>
             {
                 e.ToTable("aportes_validaciones");
-                e.HasKey(x => new { x.AporteId, x.UsuarioId });
-                e.Property(x => x.Fecha).HasColumnType("timestamptz");
-                e.HasOne<User>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+                e.HasKey(x => new { x.ContributionId, x.UserId });
+                e.Property(x => x.ContributionId).HasColumnName("aporte_id");
+                e.Property(x => x.UserId).HasColumnName("usuario_id");
+                e.Property(x => x.Confirms).HasColumnName("confirma");
+                e.Property(x => x.CreatedAt).HasColumnName("fecha").HasColumnType("timestamptz");
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
             // Approved contributions persisted as points of interest, read by the map queries over OSM

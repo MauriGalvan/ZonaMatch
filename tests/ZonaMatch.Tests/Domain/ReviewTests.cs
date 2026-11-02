@@ -13,14 +13,14 @@ namespace ZonaMatch.Tests.Domain
         {
             var resena = new Review
             {
-                PuntajeSeguridad = seguridad,
-                PuntajeTransporte = transporte,
-                PuntajeConectividad = conectividad,
-                PuntajeComercios = comercios,
-                PuntajeEspaciosVerdes = espaciosVerdes
+                SafetyScore = seguridad,
+                TransitScore = transporte,
+                ConnectivityScore = conectividad,
+                CommerceScore = comercios,
+                GreenSpaceScore = espaciosVerdes
             };
 
-            Assert.Equal(esperado, resena.Puntaje);
+            Assert.Equal(esperado, resena.OverallScore);
         }
 
         [Fact]
@@ -28,16 +28,16 @@ namespace ZonaMatch.Tests.Domain
         {
             var resena = new Review
             {
-                PuntajeSeguridad = 4,
-                PuntajeTransporte = 4,
-                PuntajeConectividad = 4,
-                PuntajeComercios = 4,
-                PuntajeEspaciosVerdes = 4
+                SafetyScore = 4,
+                TransitScore = 4,
+                ConnectivityScore = 4,
+                CommerceScore = 4,
+                GreenSpaceScore = 4
             };
 
-            resena.PuntajeSeguridad = 1;
+            resena.SafetyScore = 1;
 
-            Assert.Equal(3.4, resena.Puntaje);
+            Assert.Equal(3.4, resena.OverallScore);
         }
     }
 }

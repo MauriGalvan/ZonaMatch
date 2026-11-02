@@ -22,8 +22,8 @@ public class MotisRoutingClientTests
 
         var (viaje, _) = await ConsultarAsync(json);
 
-        Assert.Equal(10, viaje!.Minutos);
-        Assert.Equal(3.5, viaje.DistanciaKm!.Value, 3);
+        Assert.Equal(10, viaje!.Minutes);
+        Assert.Equal(3.5, viaje.DistanceKm!.Value, 3);
     }
 
     [Fact]
@@ -45,8 +45,8 @@ public class MotisRoutingClientTests
 
         var (viaje, _) = await ConsultarAsync(json, TravelMode.PublicTransit);
 
-        Assert.Equal(30, viaje!.Minutos);
-        Assert.InRange(viaje.DistanciaKm!.Value, 111.69, 111.70);
+        Assert.Equal(30, viaje!.Minutes);
+        Assert.InRange(viaje.DistanceKm!.Value, 111.69, 111.70);
     }
 
     [Theory]
@@ -61,8 +61,8 @@ public class MotisRoutingClientTests
 
         var (viaje, _) = await ConsultarAsync(json);
 
-        Assert.Equal(30, viaje!.Minutos);
-        Assert.Null(viaje.DistanciaKm);
+        Assert.Equal(30, viaje!.Minutes);
+        Assert.Null(viaje.DistanceKm);
     }
 
     [Theory]
@@ -73,8 +73,8 @@ public class MotisRoutingClientTests
         var (viaje, _) = await ConsultarAsync(json);
 
         Assert.NotNull(viaje);
-        Assert.Null(viaje.Minutos);
-        Assert.Null(viaje.DistanciaKm);
+        Assert.Null(viaje.Minutes);
+        Assert.Null(viaje.DistanceKm);
     }
 
     [Fact]
@@ -83,8 +83,8 @@ public class MotisRoutingClientTests
         var (viaje, _) = await ConsultarAsync(
             """{"direct":[{"duration":0,"legs":[{"distance":0}]}]}""");
 
-        Assert.Equal(0, viaje!.Minutos);
-        Assert.Equal(0.0, viaje.DistanciaKm!.Value);
+        Assert.Equal(0, viaje!.Minutes);
+        Assert.Equal(0.0, viaje.DistanceKm!.Value);
     }
 
     [Theory]

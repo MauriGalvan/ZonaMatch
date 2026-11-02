@@ -15,14 +15,14 @@ public class CompareAnalysisDistanceTests
         var userId = Guid.NewGuid();
         var analyses = Enumerable.Range(1, 2).Select(number => new Analysis
         {
-            UsuarioId = userId,
-            Nombre = $"Busqueda {number}",
-            Zonas = [new AnalysisZone { ZonaSlug = "recoleta", Nombre = "Recoleta", Orden = 1 }],
+            UserId = userId,
+            Name = $"Busqueda {number}",
+            Zones = [new AnalysisZone { ZoneSlug = "recoleta", Name = "Recoleta", Order = 1 }],
             Context = new Context
             {
-                UsuarioId = userId,
-                Movilidad = ["vehiculo"],
-                Puntos = [new ContextPlace { Nombre = "Trabajo", Latitude = -34.6, Longitude = -58.4, TiempoMax = "45 min" }]
+                UserId = userId,
+                Mobility = ["vehiculo"],
+                Places = [new ContextPlace { Name = "Trabajo", Latitude = -34.6, Longitude = -58.4, MaximumTravelTime = "45 min" }]
             }
         }).ToArray();
 

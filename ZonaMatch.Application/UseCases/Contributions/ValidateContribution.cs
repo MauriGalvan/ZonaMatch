@@ -28,14 +28,14 @@ namespace ZonaMatch.Application.UseCases.Contributions
             var contribution = await _contributions.GetAsync(zoneSlug, contributionId, cancellationToken)
                 ?? throw new NotFoundException("El aporte no existe.");
 
-            if (contribution.Estado != ContributionStatus.Pendiente)
+            if (contribution.Status != ContributionStatus.Pending)
                 throw new ConflictException("El aporte ya fue resuelto por otros vecinos.");
 
-            if (contribution.UsuarioId == userId)
+            if (contribution.UserId == userId)
                 throw new ConflictException("No podes validar tu propio aporte.");
 
             var now = _clock.GetUtcNow();
-            contribution.Validar(userId, confirms, now);
+            contribution.RecordVote(userId, confirms, now);
             await _poiUpdater.ApplyAsync(contribution, now, cancellationToken);
             await _contributions.SaveChangesAsync(cancellationToken);
 

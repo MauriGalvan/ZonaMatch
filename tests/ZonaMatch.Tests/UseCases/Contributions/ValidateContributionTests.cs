@@ -7,10 +7,10 @@ namespace ZonaMatch.Tests.UseCases.Contributions
 {
     public class ValidateContributionTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
         private static readonly DateTimeOffset Now = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
-        private readonly FakeAporteRepository _contributions = new();
+        private readonly FakeContributionRepository _contributions = new();
         private readonly FakeCommunityPoiRepository _pois = new();
         private readonly ValidateContribution _useCase;
         private readonly Guid _authorId = Guid.NewGuid();
@@ -21,12 +21,12 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             _useCase = new ValidateContribution(_contributions, new CommunityPoiUpdater(_pois), new FixedTimeProvider(Now));
             _contribution = new Contribution
             {
-                ZonaSlug = Zone,
-                UsuarioId = _authorId,
+                ZoneSlug = Zone,
+                UserId = _authorId,
                 User = new User { Id = _authorId, Email = "ana.perez@example.com" },
-                Tipo = ContributionType.PuntoNuevo,
-                Categoria = "salud",
-                Nombre = "Farmacia Nueva"
+                Type = ContributionType.NewPoint,
+                Category = "salud",
+                Name = "Farmacia Nueva"
             };
             _contributions.Add(_contribution);
         }
@@ -38,18 +38,18 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         {
             await Assert.ThrowsAsync<ConflictException>(
                 () => _useCase.ExecuteAsync(Zone, _contribution.Id, _authorId, Vote(confirm: true)));
-            Assert.Empty(_contribution.Validaciones);
+            Assert.Empty(_contribution.Votes);
         }
 
         [Fact]
         public async Task Validate_WhenEnoughNeighborsConfirm_ApprovesAndRejectsFurtherVotes()
         {
-            for (var i = 0; i < Contribution.DiferenciaParaResolver; i++)
+            for (var i = 0; i < Contribution.VoteDifferenceToResolve; i++)
                 await _useCase.ExecuteAsync(Zone, _contribution.Id, Guid.NewGuid(), Vote(confirm: true));
 
-            Assert.Equal(ContributionStatus.Aprobado, _contribution.Estado);
-            Assert.Equal(Now, _contribution.FechaResolucion);
-            Assert.Equal(Contribution.DiferenciaParaResolver, _contributions.Guardados);
+            Assert.Equal(ContributionStatus.Approved, _contribution.Status);
+            Assert.Equal(Now, _contribution.ResolvedAt);
+            Assert.Equal(Contribution.VoteDifferenceToResolve, _contributions.SaveCount);
             await Assert.ThrowsAsync<ConflictException>(
                 () => _useCase.ExecuteAsync(Zone, _contribution.Id, Guid.NewGuid(), Vote(confirm: false)));
         }
@@ -57,9 +57,9 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Validate_WhenTheVotesApproveANewPoint_PersistsItAsAPointOfInterest()
         {
-            _contribution.Ubicacion = new NetTopologySuite.Geometries.Point(-58.5, -34.63) { SRID = 4326 };
+            _contribution.Location = new NetTopologySuite.Geometries.Point(-58.5, -34.63) { SRID = 4326 };
 
-            for (var i = 0; i < Contribution.DiferenciaParaResolver; i++)
+            for (var i = 0; i < Contribution.VoteDifferenceToResolve; i++)
             {
                 Assert.Empty(_pois.Pois);
                 await _useCase.ExecuteAsync(Zone, _contribution.Id, Guid.NewGuid(), Vote(confirm: true));
@@ -70,16 +70,16 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             Assert.True(poi.IsNew);
             Assert.Equal("Farmacia Nueva", poi.Name);
             Assert.Equal("salud", poi.Category);
-            Assert.Equal(_contribution.Ubicacion, poi.Location);
+            Assert.Equal(_contribution.Location, poi.Location);
         }
 
         [Fact]
         public async Task Validate_WhenTheVotesReject_DoesNotPersistAnything()
         {
-            for (var i = 0; i < Contribution.DiferenciaParaResolver; i++)
+            for (var i = 0; i < Contribution.VoteDifferenceToResolve; i++)
                 await _useCase.ExecuteAsync(Zone, _contribution.Id, Guid.NewGuid(), Vote(confirm: false));
 
-            Assert.Equal(ContributionStatus.Rechazado, _contribution.Estado);
+            Assert.Equal(ContributionStatus.Rejected, _contribution.Status);
             Assert.Empty(_pois.Pois);
         }
 

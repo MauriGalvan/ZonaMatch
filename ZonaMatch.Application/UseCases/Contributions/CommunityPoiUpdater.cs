@@ -17,23 +17,23 @@ namespace ZonaMatch.Application.UseCases.Contributions
 
         public async Task ApplyAsync(Contribution contribution, DateTimeOffset now, CancellationToken cancellationToken = default)
         {
-            if (contribution.Estado != ContributionStatus.Aprobado)
+            if (contribution.Status != ContributionStatus.Approved)
                 return;
 
-            if (contribution.Tipo == ContributionType.PuntoNuevo)
+            if (contribution.Type == ContributionType.NewPoint)
             {
                 if (await _pois.GetAsync(CommunityPoi.NewPointId(contribution.Id), cancellationToken) is null)
                     _pois.Add(CommunityPoi.FromNewPoint(contribution, now));
                 return;
             }
 
-            if (contribution.PuntoInteresId is not { } poiId || contribution.Motivo == CorrectionReason.Otro)
+            if (contribution.PointOfInterestId is not { } poiId || contribution.Reason == CorrectionReason.Other)
                 return;
 
             var poi = await _pois.GetAsync(poiId, cancellationToken);
             if (poi is null)
             {
-                poi = CommunityPoi.ForOsmPoint(poiId, contribution.ZonaSlug);
+                poi = CommunityPoi.ForOsmPoint(poiId, contribution.ZoneSlug);
                 _pois.Add(poi);
             }
 

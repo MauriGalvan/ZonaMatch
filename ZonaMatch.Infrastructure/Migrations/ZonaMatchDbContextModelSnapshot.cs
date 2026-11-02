@@ -481,83 +481,83 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Categoria")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("categoria");
-
-                    b.Property<string>("Comentario")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("comentario");
-
-                    b.Property<string>("Direccion")
+                    b.Property<string>("Address")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("direccion");
 
-                    b.Property<string>("Estado")
+                    b.Property<string>("Category")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("categoria");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("comentario");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<bool>("LivesOrWorksInZone")
+                        .HasColumnType("boolean")
+                        .HasColumnName("vive_o_trabaja_en_zona");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geometry(Point,4326)")
+                        .HasColumnName("ubicacion");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nombre");
+
+                    b.Property<string>("OpeningHours")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("horario");
+
+                    b.Property<string>("PointOfInterestId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("punto_interes_id");
+
+                    b.Property<string>("PointOfInterestName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("punto_interes_nombre");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("motivo");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_resolucion");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resuelto_por_id");
+
+                    b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("estado");
 
-                    b.Property<DateTimeOffset>("FechaCreacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_creacion");
-
-                    b.Property<DateTimeOffset?>("FechaResolucion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_resolucion");
-
-                    b.Property<string>("Horario")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("horario");
-
-                    b.Property<string>("Motivo")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("motivo");
-
-                    b.Property<string>("Nombre")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("nombre");
-
-                    b.Property<string>("PuntoInteresId")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("punto_interes_id");
-
-                    b.Property<string>("PuntoInteresNombre")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("punto_interes_nombre");
-
-                    b.Property<Guid?>("ResueltoPorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("resuelto_por_id");
-
-                    b.Property<string>("Tipo")
+                    b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("tipo");
 
-                    b.Property<Point>("Ubicacion")
-                        .HasColumnType("geometry(Point,4326)")
-                        .HasColumnName("ubicacion");
-
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("usuario_id");
 
-                    b.Property<bool>("ViveOTrabajaEnZona")
-                        .HasColumnType("boolean")
-                        .HasColumnName("vive_o_trabaja_en_zona");
-
-                    b.Property<string>("ZonaSlug")
+                    b.Property<string>("ZoneSlug")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -565,38 +565,38 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ResueltoPorId");
+                    b.HasIndex("ResolvedByUserId");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UserId");
 
-                    b.HasIndex("PuntoInteresId", "Estado");
+                    b.HasIndex("PointOfInterestId", "Status");
 
-                    b.HasIndex("ZonaSlug", "Estado");
+                    b.HasIndex("ZoneSlug", "Status");
 
                     b.ToTable("aportes", "app");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.ContributionVote", b =>
                 {
-                    b.Property<Guid>("AporteId")
+                    b.Property<Guid>("ContributionId")
                         .HasColumnType("uuid")
                         .HasColumnName("aporte_id");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("usuario_id");
 
-                    b.Property<bool>("Confirma")
+                    b.Property<bool>("Confirms")
                         .HasColumnType("boolean")
                         .HasColumnName("confirma");
 
-                    b.Property<DateTimeOffset>("Fecha")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha");
 
-                    b.HasKey("AporteId", "UsuarioId");
+                    b.HasKey("ContributionId", "UserId");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("aportes_validaciones", "app");
                 });
@@ -1520,12 +1520,12 @@ namespace ZonaMatch.Infrastructure.Migrations
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
-                        .HasForeignKey("ResueltoPorId")
+                        .HasForeignKey("ResolvedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("ZonaMatch.Domain.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1535,14 +1535,14 @@ namespace ZonaMatch.Infrastructure.Migrations
             modelBuilder.Entity("ZonaMatch.Domain.Entities.ContributionVote", b =>
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.Contribution", null)
-                        .WithMany("Validaciones")
-                        .HasForeignKey("AporteId")
+                        .WithMany("Votes")
+                        .HasForeignKey("ContributionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1679,7 +1679,7 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Contribution", b =>
                 {
-                    b.Navigation("Validaciones");
+                    b.Navigation("Votes");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.District", b =>

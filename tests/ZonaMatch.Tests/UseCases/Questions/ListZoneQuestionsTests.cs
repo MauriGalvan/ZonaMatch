@@ -5,10 +5,10 @@ namespace ZonaMatch.Tests.UseCases.Questions
 {
     public class ListZoneQuestionsTests
     {
-        private const string Zone = FakeZonaRepository.Zona;
+        private const string Zone = FakeZoneRepository.ZoneSlug;
         private static readonly DateTimeOffset CurrentTime = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
-        private readonly FakePreguntaRepository _questions = new();
+        private readonly FakeQuestionRepository _questions = new();
         private readonly ListZoneQuestions _useCase;
         private readonly User _ana = new() { Email = "ana@example.com" };
         private readonly User _luis = new() { Email = "luis.gomez@example.com" };
@@ -19,16 +19,16 @@ namespace ZonaMatch.Tests.UseCases.Questions
         }
 
         private Answer Answer(Question question, string text, DateTimeOffset createdAt) =>
-            new() { PreguntaId = question.Id, UsuarioId = _luis.Id, User = _luis, Texto = text, FechaCreacion = createdAt };
+            new() { QuestionId = question.Id, UserId = _luis.Id, User = _luis, Text = text, CreatedAt = createdAt };
 
         [Fact]
         public async Task List_IndicatesOwnershipAndOrdersAnswersFromOldest()
         {
-            var question = new Question { ZonaSlug = Zone, UsuarioId = _ana.Id, User = _ana, Texto = "¿Hay verdulerias?", FechaCreacion = CurrentTime };
+            var question = new Question { ZoneSlug = Zone, UserId = _ana.Id, User = _ana, Text = "¿Hay verdulerias?", CreatedAt = CurrentTime };
             _questions.Add(question);
             _questions.Add(Answer(question, "Segunda", CurrentTime.AddHours(2)));
             _questions.Add(Answer(question, "Primera", CurrentTime.AddHours(1)));
-            _questions.Add(new Question { ZonaSlug = "otra-zona", UsuarioId = _ana.Id, Texto = "¿Y aca?" });
+            _questions.Add(new Question { ZoneSlug = "otra-zona", UserId = _ana.Id, Text = "¿Y aca?" });
 
             var list = await _useCase.ExecuteAsync(Zone, _ana.Id);
 
@@ -46,7 +46,7 @@ namespace ZonaMatch.Tests.UseCases.Questions
         [Fact]
         public async Task List_WithoutSession_NoItemsAreOwnedByCurrentUser()
         {
-            _questions.Add(new Question { ZonaSlug = Zone, UsuarioId = _ana.Id, User = _ana, Texto = "¿Hay verdulerias?" });
+            _questions.Add(new Question { ZoneSlug = Zone, UserId = _ana.Id, User = _ana, Text = "¿Hay verdulerias?" });
 
             var item = Assert.Single(await _useCase.ExecuteAsync(Zone, currentUserId: null));
 

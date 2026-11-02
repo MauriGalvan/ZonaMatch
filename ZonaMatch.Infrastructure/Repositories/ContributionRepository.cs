@@ -16,36 +16,36 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<(int Aprobados, int Pendientes)> CountAsync(string zonaSlug, CancellationToken cancellationToken = default)
+        public async Task<(int ApprovedCount, int PendingCount)> CountAsync(string zoneSlug, CancellationToken cancellationToken = default)
         {
-            var cantidades = await _dbContext.Aportes
-                .Where(a => a.ZonaSlug == zonaSlug && a.Estado != ContributionStatus.Rechazado)
-                .GroupBy(a => a.Estado)
-                .Select(g => new { Estado = g.Key, Cantidad = g.Count() })
+            var counts = await _dbContext.Contributions
+                .Where(contribution => contribution.ZoneSlug == zoneSlug && contribution.Status != ContributionStatus.Rejected)
+                .GroupBy(contribution => contribution.Status)
+                .Select(group => new { Status = group.Key, Count = group.Count() })
                 .ToListAsync(cancellationToken);
 
-            int Cantidad(ContributionStatus estado) => cantidades.FirstOrDefault(c => c.Estado == estado)?.Cantidad ?? 0;
+            int CountByStatus(ContributionStatus status) => counts.FirstOrDefault(count => count.Status == status)?.Count ?? 0;
 
-            return (Cantidad(ContributionStatus.Aprobado), Cantidad(ContributionStatus.Pendiente));
+            return (CountByStatus(ContributionStatus.Approved), CountByStatus(ContributionStatus.Pending));
         }
 
-        public async Task<IReadOnlyList<Contribution>> ListPendingAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
-            await _dbContext.Aportes
+        public async Task<IReadOnlyList<Contribution>> ListPendingAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
+            await _dbContext.Contributions
                 .AsNoTracking()
                 .AsSplitQuery()
-                .Include(a => a.User)
-                .Include(a => a.Validaciones)
-                .Where(a => a.ZonaSlug == zonaSlug && a.Estado == ContributionStatus.Pendiente)
-                .OrderBy(a => a.FechaCreacion)
+                .Include(contribution => contribution.User)
+                .Include(contribution => contribution.Votes)
+                .Where(contribution => contribution.ZoneSlug == zoneSlug && contribution.Status == ContributionStatus.Pending)
+                .OrderBy(contribution => contribution.CreatedAt)
                 .ToListAsync(cancellationToken);
 
-        public Task<Contribution?> GetAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
-            _dbContext.Aportes
-                .Include(a => a.User)
-                .Include(a => a.Validaciones)
-                .FirstOrDefaultAsync(a => a.ZonaSlug == zonaSlug && a.Id == id, cancellationToken);
+        public Task<Contribution?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
+            _dbContext.Contributions
+                .Include(contribution => contribution.User)
+                .Include(contribution => contribution.Votes)
+                .FirstOrDefaultAsync(contribution => contribution.ZoneSlug == zoneSlug && contribution.Id == id, cancellationToken);
 
-        public void Add(Contribution aporte) => _dbContext.Aportes.Add(aporte);
+        public void Add(Contribution contribution) => _dbContext.Contributions.Add(contribution);
 
         public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {

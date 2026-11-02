@@ -29,16 +29,16 @@ namespace ZonaMatch.Application.UseCases.Contributions
 
             var contribution = new Contribution
             {
-                ZonaSlug = zoneSlug,
-                UsuarioId = currentUser.Id,
-                Tipo = ContributionType.PuntoNuevo,
-                Categoria = category,
-                Nombre = request.Name.Trim(),
-                Ubicacion = ContributionMapper.CreatePoint(request.Latitude, request.Longitude),
-                Horario = ContributionMapper.Normalize(request.Schedule),
-                Direccion = ContributionMapper.Normalize(request.Address),
-                ViveOTrabajaEnZona = request.LivesOrWorksInZone,
-                FechaCreacion = _clock.GetUtcNow()
+                ZoneSlug = zoneSlug,
+                UserId = currentUser.Id,
+                Type = ContributionType.NewPoint,
+                Category = category,
+                Name = request.Name.Trim(),
+                Location = ContributionMapper.CreatePoint(request.Latitude, request.Longitude),
+                OpeningHours = ContributionMapper.Normalize(request.Schedule),
+                Address = ContributionMapper.Normalize(request.Address),
+                LivesOrWorksInZone = request.LivesOrWorksInZone,
+                CreatedAt = _clock.GetUtcNow()
             };
 
             _contributions.Add(contribution);

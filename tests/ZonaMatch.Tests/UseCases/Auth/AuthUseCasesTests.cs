@@ -38,7 +38,7 @@ public sealed class AuthUseCasesTests
         Assert.Equal(savedUser.Id, response.Id);
         Assert.Equal("ana@example.com", response.Email);
         Assert.Equal(new DateOnly(1990, 5, 31), response.BirthDate);
-        Assert.Equal(CurrentTime, savedUser.FechaCreacion);
+        Assert.Equal(CurrentTime, savedUser.CreatedAt);
     }
 
     [Fact]
