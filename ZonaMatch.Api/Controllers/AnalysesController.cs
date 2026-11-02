@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Api.Authentication;
-using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.UseCases.SavedAnalyses;

@@ -1,5 +1,5 @@
 using Moq;
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.SavedAnalyses;
 using ZonaMatch.Domain.Entities;

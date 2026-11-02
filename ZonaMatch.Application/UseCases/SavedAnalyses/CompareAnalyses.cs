@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Text.Json;
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Analysis.Requests;
+using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 using ZonaMatch.Application.DTOs.Scoring.Responses;
 using ZonaMatch.Application.Exceptions;
