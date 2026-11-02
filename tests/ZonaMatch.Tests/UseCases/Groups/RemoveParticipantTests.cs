@@ -10,14 +10,14 @@ using ZonaMatch.Application.UseCases.Groups;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
 
-namespace ZonaMatch.Tests.Application.UseCases.GroupTest;
+namespace ZonaMatch.Tests.UseCases.Groups;
 
-public class RemoveParticipantTest
+public class RemoveParticipantTests
 {
     private readonly Mock<IGroupRepository> _groupRepositoryMock;
     private readonly RemoveParticipant _useCase;
 
-    public RemoveParticipantTest()
+    public RemoveParticipantTests()
     {
         _groupRepositoryMock = new Mock<IGroupRepository>();
         _useCase = new RemoveParticipant(_groupRepositoryMock.Object);
