@@ -2,13 +2,13 @@ using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Application.Interfaces
 {
-    // Repositorio para entidades representadas por un area (poligono/multipoligono)
+    // Repository for entities represented by an area (polygon or multipolygon).
     public interface IPolygonRepository<T> : IRepository<T> where T : class, IPolygonLocation
     {
-        // La entidad cuya area contiene el punto dado (ej: el barrio al que pertenece una direccion)
-        Task<T?> GetContainingPointAsync(double latitud, double longitud);
+        // The entity whose area contains the given point (for example, the district containing an address).
+        Task<T?> GetContainingPointAsync(double latitude, double longitude);
 
-        // Entidades cuya area se encuentra (aproximadamente) dentro del radio dado, en metros, desde el punto
-        Task<IReadOnlyList<T>> GetNearbyAsync(double latitud, double longitud, double radioMetros);
+        // Entities whose area is approximately within the given radius in meters from the point.
+        Task<IReadOnlyList<T>> GetNearbyAsync(double latitude, double longitude, double radiusMeters);
     }
 }

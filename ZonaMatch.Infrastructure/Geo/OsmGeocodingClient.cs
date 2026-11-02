@@ -17,53 +17,53 @@ namespace ZonaMatch.Infrastructure.Geo
     {
         private const string Schema = ZonaMatchDbOptions.OsmSchema;
         // Web Mercator meters are stretched by 1/cos(lat), so metric radii are scaled by k
-        private const string Sql = $"""
-            WITH p AS (
-                SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@lon, @lat), 4326), 3857) AS g,
-                       1 / cos(radians(@lat)) AS k
+        private const string ReverseGeocodingSql = $"""
+            WITH input_point AS (
+                SELECT ST_Transform(ST_SetSRID(ST_MakePoint(@lon, @lat), 4326), 3857) AS geometry,
+                       1 / cos(radians(@lat)) AS latitude_scale
             )
-            SELECT lugar.name AS "Nombre",
-                   lugar.altura AS "Altura",
-                   calle.name AS "Calle",
-                   loc.name AS "Localidad"
-            FROM p
+            SELECT place.name AS "Name",
+                   place.house_number AS "StreetNumber",
+                   street.name AS "Street",
+                   locality.name AS "Locality"
+            FROM input_point point
             LEFT JOIN LATERAL (
-                SELECT t.name, t."addr:housenumber" AS altura
+                SELECT feature.name, feature."addr:housenumber" AS house_number
                 FROM (
-                    SELECT name, "addr:housenumber", way, way_area AS area, amenity, shop, tourism, leisure, office
+                    SELECT name, "addr:housenumber", way, way_area AS feature_area, amenity, shop, tourism, leisure, office
                     FROM {Schema}.planet_osm_polygon
                     UNION ALL
                     SELECT name, "addr:housenumber", way, 0::real, amenity, shop, tourism, leisure, office
                     FROM {Schema}.planet_osm_point
-                ) t
-                WHERE ST_DWithin(t.way, p.g, 30 * p.k)
-                  AND ((t.name IS NOT NULL
-                        AND (t.amenity IS NOT NULL OR t.shop IS NOT NULL OR t.tourism IS NOT NULL
-                             OR t.leisure IS NOT NULL OR t.office IS NOT NULL))
-                       OR t."addr:housenumber" IS NOT NULL)
-                ORDER BY ST_Distance(t.way, p.g), t.area
+                ) feature
+                WHERE ST_DWithin(feature.way, point.geometry, 30 * point.latitude_scale)
+                  AND ((feature.name IS NOT NULL
+                        AND (feature.amenity IS NOT NULL OR feature.shop IS NOT NULL OR feature.tourism IS NOT NULL
+                             OR feature.leisure IS NOT NULL OR feature.office IS NOT NULL))
+                       OR feature."addr:housenumber" IS NOT NULL)
+                ORDER BY ST_Distance(feature.way, point.geometry), feature.feature_area
                 LIMIT 1
-            ) lugar ON true
+            ) place ON true
             LEFT JOIN LATERAL (
-                SELECT l.name
-                FROM {Schema}.planet_osm_line l
-                WHERE l.highway IS NOT NULL
-                  AND l.highway NOT IN ('footway', 'path', 'steps', 'cycleway', 'track')
-                  AND l.name IS NOT NULL
-                  AND ST_DWithin(l.way, p.g, 100 * p.k)
-                ORDER BY ST_Distance(l.way, p.g)
+                SELECT road.name
+                FROM {Schema}.planet_osm_line road
+                WHERE road.highway IS NOT NULL
+                  AND road.highway NOT IN ('footway', 'path', 'steps', 'cycleway', 'track')
+                  AND road.name IS NOT NULL
+                  AND ST_DWithin(road.way, point.geometry, 100 * point.latitude_scale)
+                ORDER BY ST_Distance(road.way, point.geometry)
                 LIMIT 1
-            ) calle ON true
+            ) street ON true
             LEFT JOIN LATERAL (
-                SELECT a.name
-                FROM {Schema}.planet_osm_polygon a
-                WHERE a.name IS NOT NULL
-                  AND ST_Intersects(a.way, p.g)
-                  AND (a.place IN ('suburb', 'town', 'village', 'city', 'neighbourhood', 'locality')
-                       OR (a.boundary = 'administrative' AND a.admin_level IN ('8', '9', '10')))
-                ORDER BY a.way_area
+                SELECT area.name
+                FROM {Schema}.planet_osm_polygon area
+                WHERE area.name IS NOT NULL
+                  AND ST_Intersects(area.way, point.geometry)
+                  AND (area.place IN ('suburb', 'town', 'village', 'city', 'neighbourhood', 'locality')
+                       OR (area.boundary = 'administrative' AND area.admin_level IN ('8', '9', '10')))
+                ORDER BY area.way_area
                 LIMIT 1
-            ) loc ON true
+            ) locality ON true
             """;
 
         private readonly ZonaMatchDbContext _dbContext;
@@ -74,36 +74,36 @@ namespace ZonaMatch.Infrastructure.Geo
         }
 
         public async Task<GeocodedAddress?> ReverseAsync(
-            double latitud, double longitud, CancellationToken cancellationToken = default)
+            double latitude, double longitude, CancellationToken cancellationToken = default)
         {
-            var fila = await _dbContext.Database
-                .SqlQueryRaw<OsmFila>(Sql, new NpgsqlParameter("lat", latitud), new NpgsqlParameter("lon", longitud))
+            var row = await _dbContext.Database
+                .SqlQueryRaw<OsmAddressRow>(ReverseGeocodingSql, new NpgsqlParameter("lat", latitude), new NpgsqlParameter("lon", longitude))
                 .SingleAsync(cancellationToken);
 
-            if (fila.Nombre is null && fila.Calle is null && fila.Altura is null && fila.Localidad is null)
+            if (row.Name is null && row.Street is null && row.StreetNumber is null && row.Locality is null)
                 return null;
 
-            var calleYAltura = string.Join(' ', new[] { fila.Calle, fila.Altura }.Where(s => !string.IsNullOrWhiteSpace(s)));
-            var completa = string.Join(", ",
-                new[] { fila.Nombre, calleYAltura, fila.Localidad }.Where(s => !string.IsNullOrWhiteSpace(s)));
+            var streetAddress = string.Join(' ', new[] { row.Street, row.StreetNumber }.Where(value => !string.IsNullOrWhiteSpace(value)));
+            var fullAddress = string.Join(", ",
+                new[] { row.Name, streetAddress, row.Locality }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
             return new GeocodedAddress(
-                Name: fila.Nombre,
-                Street: fila.Calle,
-                StreetNumber: fila.Altura,
-                Locality: fila.Localidad,
+                Name: row.Name,
+                Street: row.Street,
+                StreetNumber: row.StreetNumber,
+                Locality: row.Locality,
                 Province: null,
                 PostalCode: null,
-                FullAddress: completa.Length > 0 ? completa : null);
+                FullAddress: fullAddress.Length > 0 ? fullAddress : null);
         }
 
         // Keyless result of the query above; property names match the column aliases.
-        private sealed class OsmFila
+        private sealed class OsmAddressRow
         {
-            public string? Nombre { get; set; }
-            public string? Altura { get; set; }
-            public string? Calle { get; set; }
-            public string? Localidad { get; set; }
+            public string? Name { get; set; }
+            public string? StreetNumber { get; set; }
+            public string? Street { get; set; }
+            public string? Locality { get; set; }
         }
     }
 }

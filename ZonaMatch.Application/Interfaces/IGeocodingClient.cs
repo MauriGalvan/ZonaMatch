@@ -6,6 +6,6 @@ namespace ZonaMatch.Application.Interfaces
     public interface IGeocodingClient
     {
         // Returns null when the provider has nothing for that point; throws HttpRequestException when it is unreachable
-        Task<GeocodedAddress?> ReverseAsync(double latitud, double longitud, CancellationToken cancellationToken = default);
+        Task<GeocodedAddress?> ReverseAsync(double latitude, double longitude, CancellationToken cancellationToken = default);
     }
 }
