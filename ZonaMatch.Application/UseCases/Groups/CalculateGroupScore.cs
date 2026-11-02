@@ -132,7 +132,7 @@ public sealed partial class CalculateGroupScore
 
         var memberScores = await Task.WhenAll(calculations);
         var hasAnyRanking = zonesToCalculate.Any(zone => memberScores.Any(member =>
-            weights[member.Participant.Id] > 0 && member.Zones[zone.Slug].Resultado.Score is not null));
+            weights[member.Participant.Id] > 0 && member.Zones[zone.Slug].Result.Score is not null));
         if (!hasAnyRanking)
             throw new BadRequestException("Ningún participante con peso positivo tiene datos suficientes para puntuar las zonas disponibles.");
 
@@ -361,7 +361,7 @@ public sealed partial class CalculateGroupScore
             {
                 var score = scoresByParticipant.TryGetValue(participant.Id, out var calculation)
                     && calculation.Zones.TryGetValue(zone.Slug, out var zoneResult)
-                    ? zoneResult.Resultado.Score
+                    ? zoneResult.Result.Score
                     : null;
                 return (Participant: participant, Score: score, Weight: weights[participant.Id]);
             })
@@ -388,7 +388,7 @@ public sealed partial class CalculateGroupScore
 
         var componentGroups = memberScores
             .Where(member => member.Zones.ContainsKey(zone.Slug))
-            .SelectMany(member => member.Zones[zone.Slug].Resultado.Components
+            .SelectMany(member => member.Zones[zone.Slug].Result.Components
                 .Select(component => (Member: member, Component: component)))
             .GroupBy(entry => entry.Component.Criterion, StringComparer.Ordinal)
             .Select(group =>
@@ -425,7 +425,7 @@ public sealed partial class CalculateGroupScore
 
         var participantLimits = memberScores
             .Where(member => member.Zones.ContainsKey(zone.Slug))
-            .SelectMany(member => member.Zones[zone.Slug].Resultado.Limits.Select(limit =>
+            .SelectMany(member => member.Zones[zone.Slug].Result.Limits.Select(limit =>
                 new ScoreLimitResponse(
                     member.Participant.Id,
                     member.Participant.User.Email,
@@ -472,7 +472,7 @@ public sealed partial class CalculateGroupScore
         else if (weight == 0)
             reason = "Tiene un peso asignado de 0.";
         else if (!memberScores.Any(member => member.Participant.Id == participant.Id && selectedZones.Any(zone =>
-                     member.Zones.TryGetValue(zone.Slug, out var result) && result.Resultado.Score is not null)))
+                     member.Zones.TryGetValue(zone.Slug, out var result) && result.Result.Score is not null)))
             reason = "No obtuvo puntajes con los datos disponibles en las zonas del ranking.";
 
         return reason is null
@@ -494,6 +494,6 @@ public sealed partial class CalculateGroupScore
         IReadOnlyDictionary<string, MemberZoneResult> Zones);
 
     private sealed record MemberZoneResult(
-        ZoneScoreResult Resultado,
+        ZoneScoreResult Result,
         IReadOnlyList<ParticipantTripResponse> Places);
 }
