@@ -27,11 +27,11 @@ namespace ZonaMatch.Application.UseCases.Contributions
         {
             var reason = request.Reason!.Value; // Required by request validation.
 
-            var contribution = new Aporte
+            var contribution = new Contribution
             {
                 ZonaSlug = zoneSlug,
                 UsuarioId = currentUser.Id,
-                Tipo = TipoAporte.Correccion,
+                Tipo = ContributionType.Correccion,
                 PuntoInteresId = request.PointOfInterestId,
                 PuntoInteresNombre = request.PointOfInterestName.Trim(),
                 Motivo = reason,
@@ -42,28 +42,28 @@ namespace ZonaMatch.Application.UseCases.Contributions
             // Store only the value associated with the selected reason.
             switch (reason)
             {
-                case MotivoCorreccion.Nombre:
+                case CorrectionReason.Nombre:
                     contribution.Nombre = ContributionMapper.Normalize(request.ProposedName)
                         ?? throw new BadRequestException("Indica el nombre correcto del lugar.");
                     break;
 
-                case MotivoCorreccion.Categoria:
+                case CorrectionReason.Categoria:
                     contribution.Categoria = ContributionMapper.ValidateCategory(request.ProposedCategory);
                     break;
 
-                case MotivoCorreccion.Ubicacion:
+                case CorrectionReason.Ubicacion:
                     if (request.Latitude is not { } latitude || request.Longitude is not { } longitude)
                         throw new BadRequestException("Marca en el mapa la ubicacion correcta del lugar.");
                     await _zones.ValidarContienePuntoAsync(zoneSlug, latitude, longitude, cancellationToken);
                     contribution.Ubicacion = ContributionMapper.CreatePoint(latitude, longitude);
                     break;
 
-                case MotivoCorreccion.Otro when contribution.Comentario is null:
+                case CorrectionReason.Otro when contribution.Comentario is null:
                     throw new BadRequestException("Contanos que hay que corregir en el comentario.");
             }
 
             // Location validation above already checks the zone; other reasons are validated here.
-            if (reason != MotivoCorreccion.Ubicacion)
+            if (reason != CorrectionReason.Ubicacion)
                 await _zones.ValidarExisteAsync(zoneSlug, cancellationToken);
 
             _contributions.Agregar(contribution);

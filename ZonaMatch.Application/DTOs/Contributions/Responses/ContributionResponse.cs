@@ -4,8 +4,8 @@ namespace ZonaMatch.Application.DTOs.Contributions.Responses;
 
 public sealed record ContributionResponse(
     Guid Id,
-    TipoAporte Type,
-    EstadoAporte Status,
+    ContributionType Type,
+    ContributionStatus Status,
     string AuthorInitials,
     DateTimeOffset CreatedAt,
     bool IsMine,
@@ -20,5 +20,5 @@ public sealed record ContributionResponse(
     bool LivesOrWorksInZone,
     string? PointOfInterestId,
     string? PointOfInterestName,
-    MotivoCorreccion? Reason,
+    CorrectionReason? Reason,
     string? Comment);

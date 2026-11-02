@@ -11,7 +11,7 @@ namespace ZonaMatch.Tests.Domain
         public void El_puntaje_general_es_el_promedio_de_los_aspectos(
             int seguridad, int transporte, int conectividad, int comercios, int espaciosVerdes, double esperado)
         {
-            var resena = new Resena
+            var resena = new Review
             {
                 PuntajeSeguridad = seguridad,
                 PuntajeTransporte = transporte,
@@ -26,7 +26,7 @@ namespace ZonaMatch.Tests.Domain
         [Fact]
         public void El_puntaje_general_sigue_a_los_aspectos_al_editar()
         {
-            var resena = new Resena
+            var resena = new Review
             {
                 PuntajeSeguridad = 4,
                 PuntajeTransporte = 4,

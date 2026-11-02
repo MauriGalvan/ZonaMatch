@@ -36,7 +36,7 @@ namespace ZonaMatch.Tests.UseCases.Zones
         [Fact]
         public async Task GetZoneIndicators_WhenZoneIsInProvince_ReturnsDistrictCrimesWithoutCityReference()
         {
-            _repository.Zones.Add(Zone("castelar", 8, crimeCount: 241, dataSource: IndicadoresZona.FuenteSnic, jurisdiction: "Morón"));
+            _repository.Zones.Add(Zone("castelar", 8, crimeCount: 241, dataSource: ZoneIndicators.FuenteSnic, jurisdiction: "Morón"));
             _repository.CityReference = Zone("caba", 4, crimeCount: 469);
 
             var result = await _useCase.ExecuteAsync("castelar");
@@ -85,11 +85,11 @@ namespace ZonaMatch.Tests.UseCases.Zones
             await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync("no-existe"));
         }
 
-        private static IndicadoresZona Zone(
+        private static ZoneIndicators Zone(
             string slug,
             int administrativeLevel,
             int? crimeCount,
-            string dataSource = IndicadoresZona.FuenteMapaDelito,
+            string dataSource = ZoneIndicators.FuenteMapaDelito,
             string? jurisdiction = null) => new()
         {
             Slug = slug,
@@ -102,20 +102,20 @@ namespace ZonaMatch.Tests.UseCases.Zones
             Delitos = crimeCount,
             Robos = crimeCount is null ? null : 100,
             DelitosFuente = crimeCount is null ? null : dataSource,
-            DelitosPeriodo = crimeCount is null ? null : dataSource == IndicadoresZona.FuenteSnic ? 2025 : 2024,
+            DelitosPeriodo = crimeCount is null ? null : dataSource == ZoneIndicators.FuenteSnic ? 2025 : 2024,
             DelitosAmbito = jurisdiction,
         };
 
         private sealed class FakeZoneIndicatorsRepository : IIndicadoresZonaRepository
         {
-            public List<IndicadoresZona> Zones { get; } = [];
-            public IndicadoresZona? CityReference { get; set; }
+            public List<ZoneIndicators> Zones { get; } = [];
+            public ZoneIndicators? CityReference { get; set; }
             public bool DidLoadCityReference { get; private set; }
 
-            public Task<IndicadoresZona?> ObtenerPorSlugAsync(string slug, CancellationToken cancellationToken = default) =>
+            public Task<ZoneIndicators?> ObtenerPorSlugAsync(string slug, CancellationToken cancellationToken = default) =>
                 Task.FromResult(Zones.FirstOrDefault(zone => zone.Slug == slug));
 
-            public Task<IndicadoresZona?> ObtenerCabaAsync(CancellationToken cancellationToken = default)
+            public Task<ZoneIndicators?> ObtenerCabaAsync(CancellationToken cancellationToken = default)
             {
                 DidLoadCityReference = true;
                 return Task.FromResult(CityReference);

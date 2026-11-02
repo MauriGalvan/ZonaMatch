@@ -28,7 +28,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
             var contribution = await _contributions.ObtenerAsync(zoneSlug, contributionId, cancellationToken)
                 ?? throw new NotFoundException("El aporte no existe.");
 
-            if (contribution.Estado != EstadoAporte.Pendiente)
+            if (contribution.Estado != ContributionStatus.Pendiente)
                 throw new ConflictException("El aporte ya fue resuelto por otros vecinos.");
 
             if (contribution.UsuarioId == userId)
@@ -39,7 +39,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
             await _poiUpdater.ApplyAsync(contribution, now, cancellationToken);
             await _contributions.GuardarCambiosAsync(cancellationToken);
 
-            return ContributionMapper.ToResponse(contribution, contribution.Usuario?.Email, userId);
+            return ContributionMapper.ToResponse(contribution, contribution.User?.Email, userId);
         }
     }
 }

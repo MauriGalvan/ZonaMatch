@@ -12,10 +12,10 @@ public sealed class UserRepository(ZonaMatchDbContext dbContext) : IUserReposito
     public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) =>
         dbContext.Usuarios.AnyAsync(user => user.Email == email, cancellationToken);
 
-    public Task<Usuario?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         dbContext.Usuarios.AsNoTracking().FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
 
-    public async Task AddAsync(Usuario user, CancellationToken cancellationToken = default)
+    public async Task AddAsync(User user, CancellationToken cancellationToken = default)
     {
         dbContext.Usuarios.Add(user);
 

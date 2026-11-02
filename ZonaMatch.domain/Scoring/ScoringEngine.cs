@@ -40,7 +40,7 @@ namespace ZonaMatch.Domain.Scoring
         int? Puntaje,
         double? DistanciaKm = null);
 
-    public sealed record ScoreComponent(string Criterio, string Prioridad, int? Puntaje, string Detalle);
+    public sealed record ScoreComponent(string Criterion, string Prioridad, int? Puntaje, string Detalle);
     public sealed record LimitResult(string Tipo, bool? Cumple, string Detalle);
     public sealed record ZoneScoreResult(
         ZoneProfile Zona,
@@ -110,7 +110,7 @@ namespace ZonaMatch.Domain.Scoring
             };
 
         // Sorted indicator values by zone type (large or small), used to calculate percentiles.
-        private readonly Dictionary<(string Criterio, bool Grande), double[]> _distribuciones = [];
+        private readonly Dictionary<(string Criterion, bool Grande), double[]> _distribuciones = [];
 
         public ScoringEngine(IReadOnlyCollection<ZoneProfile> universo)
         {

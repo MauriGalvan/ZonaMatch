@@ -3,8 +3,8 @@ using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Domain.Entities
 {
-    // Partido of the province of Buenos Aires (table geo.partidos)
-    public class Partido : IPolygonLocation
+    // District of the province of Buenos Aires (table geo.partidos)
+    public class District : IPolygonLocation
     {
         public string Key { get; set; } = string.Empty;
         public int? MunicipioId { get; set; }
@@ -15,6 +15,6 @@ namespace ZonaMatch.Domain.Entities
         // Column "geom": geometry(MultiPolygon,4326)
         public Geometry Geometria { get; set; } = null!;
 
-        public ICollection<MunicipioAlias> Aliases { get; set; } = new List<MunicipioAlias>();
+        public ICollection<MunicipalityAlias> Aliases { get; set; } = new List<MunicipalityAlias>();
     }
 }

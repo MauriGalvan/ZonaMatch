@@ -19,7 +19,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
 
             return new ZoneReviewListResponse(
                 ReviewMapper.Summarize(reviews),
-                reviews.Select(review => ReviewMapper.ToResponse(review, review.Usuario?.Email, currentUserId)).ToList());
+                reviews.Select(review => ReviewMapper.ToResponse(review, review.User?.Email, currentUserId)).ToList());
         }
     }
 }

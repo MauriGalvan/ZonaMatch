@@ -35,7 +35,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                   AND {Nivel("j")} BETWEEN 4 AND z.nivel - 1
                   AND ST_Contains(j.way, ST_PointOnSurface(z.way))
                   -- a smaller boundary can also hold that point (a comuna inside the city "Buenos Aires");
-                  -- one of the same size counts (Comuna 14 is exactly Palermo)
+                  -- one of the same size counts (Commune 14 is exactly Palermo)
                   AND j.way_area >= 0.99 * z.way_area
             ),
             jurisdicciones AS (

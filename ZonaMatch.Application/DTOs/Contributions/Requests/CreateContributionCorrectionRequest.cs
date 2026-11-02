@@ -13,7 +13,7 @@ public sealed record CreateContributionCorrectionRequest(
     [StringLength(TextLimits.Address, ErrorMessage = "El nombre del lugar no puede superar los 200 caracteres.")]
     string PointOfInterestName,
     [Required(ErrorMessage = "Indica que hay que corregir.")]
-    MotivoCorreccion? Reason,
+    CorrectionReason? Reason,
     [StringLength(TextLimits.PlaceName, ErrorMessage = "El nombre propuesto no puede superar los 120 caracteres.")]
     string? ProposedName,
     string? ProposedCategory,

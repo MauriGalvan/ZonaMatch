@@ -29,7 +29,7 @@ namespace ZonaMatch.Domain.Entities
 
         public static string NewPointId(Guid contributionId) => "a" + contributionId;
 
-        public static CommunityPoi FromNewPoint(Aporte contribution, DateTimeOffset now) =>
+        public static CommunityPoi FromNewPoint(Contribution contribution, DateTimeOffset now) =>
             new()
             {
                 Id = NewPointId(contribution.Id),
@@ -47,20 +47,20 @@ namespace ZonaMatch.Domain.Entities
             new() { Id = poiId, IsNew = false, ZoneSlug = zoneSlug };
 
         // Applies an approved correction. "Otro" is informative only and changes nothing.
-        public void ApplyCorrection(Aporte correction, DateTimeOffset now)
+        public void ApplyCorrection(Contribution correction, DateTimeOffset now)
         {
             switch (correction.Motivo)
             {
-                case MotivoCorreccion.Cerro:
+                case CorrectionReason.Cerro:
                     Removed = true;
                     break;
-                case MotivoCorreccion.Nombre:
+                case CorrectionReason.Nombre:
                     Name = correction.Nombre;
                     break;
-                case MotivoCorreccion.Categoria:
+                case CorrectionReason.Categoria:
                     Category = correction.Categoria;
                     break;
-                case MotivoCorreccion.Ubicacion:
+                case CorrectionReason.Ubicacion:
                     Location = correction.Ubicacion;
                     break;
                 default:

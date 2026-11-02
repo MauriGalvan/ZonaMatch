@@ -24,7 +24,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
 
         public static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-        public static ContributionResponse ToResponse(Aporte contribution, string? authorEmail, Guid? currentUserId) =>
+        public static ContributionResponse ToResponse(Contribution contribution, string? authorEmail, Guid? currentUserId) =>
             new(
                 contribution.Id,
                 contribution.Tipo,

@@ -19,15 +19,15 @@ namespace ZonaMatch.Tests.UseCases.Zones
         }
 
         private void AddDepartures(string mode, string line, string timeWindow, int departures, int stops = 3) =>
-            _transitRepository.Departures.Add(new SalidasLineaZona
+            _transitRepository.Departures.Add(new TransitLineDepartures
                 { Modo = mode, Linea = line, Franja = timeWindow, Salidas = departures, Paradas = stops });
 
         [Fact]
         public async Task GetZoneTransit_ReturnsModesInDisplayOrder()
         {
             _transitRepository.Stops.AddRange([
-                new ParadasModoZona { Modo = "colectivo", Paradas = 90, Lineas = 25 },
-                new ParadasModoZona { Modo = "tren", Paradas = 1, Lineas = 1 },
+                new ZoneTransitModeStops { Modo = "colectivo", Paradas = 90, Lineas = 25 },
+                new ZoneTransitModeStops { Modo = "tren", Paradas = 1, Lineas = 1 },
             ]);
 
             var result = await _useCase.ExecuteAsync(ZoneSlug);
@@ -39,7 +39,7 @@ namespace ZonaMatch.Tests.UseCases.Zones
         [Fact]
         public async Task GetZoneTransit_SumsEachTimeWindowAndSortsLinesByPeakDepartures()
         {
-            _transitRepository.Stops.Add(new ParadasModoZona { Modo = "colectivo", Paradas = 90, Lineas = 2 });
+            _transitRepository.Stops.Add(new ZoneTransitModeStops { Modo = "colectivo", Paradas = 90, Lineas = 2 });
             AddDepartures("colectivo", "2", "manana", 30);
             AddDepartures("colectivo", "47", "manana", 45);
             AddDepartures("colectivo", "47", "noche", 0);
@@ -73,14 +73,14 @@ namespace ZonaMatch.Tests.UseCases.Zones
 
         private sealed class FakeTransitZoneRepository : ITransporteZonaRepository
         {
-            public List<ParadasModoZona> Stops { get; } = [];
-            public List<SalidasLineaZona> Departures { get; } = [];
+            public List<ZoneTransitModeStops> Stops { get; } = [];
+            public List<TransitLineDepartures> Departures { get; } = [];
 
-            public Task<IReadOnlyList<ParadasModoZona>> ListarParadasAsync(string slug, CancellationToken cancellationToken = default) =>
-                Task.FromResult<IReadOnlyList<ParadasModoZona>>(slug == ZoneSlug ? Stops : []);
+            public Task<IReadOnlyList<ZoneTransitModeStops>> ListarParadasAsync(string slug, CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<ZoneTransitModeStops>>(slug == ZoneSlug ? Stops : []);
 
-            public Task<IReadOnlyList<SalidasLineaZona>> ListarSalidasAsync(string slug, CancellationToken cancellationToken = default) =>
-                Task.FromResult<IReadOnlyList<SalidasLineaZona>>(slug == ZoneSlug ? Departures : []);
+            public Task<IReadOnlyList<TransitLineDepartures>> ListarSalidasAsync(string slug, CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<TransitLineDepartures>>(slug == ZoneSlug ? Departures : []);
         }
     }
 }

@@ -24,7 +24,7 @@ public sealed class RegisterUser(
         if (await users.EmailExistsAsync(normalizedEmail, cancellationToken))
             throw new ConflictException("El email ya esta registrado.");
 
-        var user = new Usuario
+        var user = new User
         {
             Email = normalizedEmail,
             PasswordHash = passwordHasher.Hash(request.Password),

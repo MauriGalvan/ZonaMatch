@@ -4,7 +4,7 @@ namespace ZonaMatch.Domain.Entities
     // etl/calcular_transporte.sql a partir de los GTFS).
 
     // Paradas y lineas de un modo (colectivo, tren, subte) dentro de la zona
-    public class ParadasModoZona
+    public class ZoneTransitModeStops
     {
         public string Modo { get; set; } = string.Empty;
         public int Paradas { get; set; }
@@ -12,7 +12,7 @@ namespace ZonaMatch.Domain.Entities
     }
 
     // Salidas de una linea en una franja, en la parada de la zona por donde mas pasa
-    public class SalidasLineaZona
+    public class TransitLineDepartures
     {
         public string Modo { get; set; } = string.Empty;
         public string Linea { get; set; } = string.Empty;

@@ -114,9 +114,9 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
             public int? Score { get; set; } = 50;
 
             // Analyses received, to check what the calculation used
-            public List<Analisis> Calculations { get; } = [];
+            public List<Analysis> Calculations { get; } = [];
 
-            public Task<ScoresResponse?> CalculateAsync(Analisis analysis, CancellationToken cancellationToken = default)
+            public Task<ScoresResponse?> CalculateAsync(Analysis analysis, CancellationToken cancellationToken = default)
             {
                 Calculations.Add(analysis);
                 return Task.FromResult<ScoresResponse?>(new ScoresResponse(
@@ -142,15 +142,15 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
 
             var analysis = Assert.Single(_analyses.Analyses);
             var profile = Assert.Single(_profiles.Profiles);
-            Assert.NotSame(profile, analysis.Contexto);
-            Assert.Equal(TipoContexto.Analisis, analysis.Contexto.Tipo);
+            Assert.NotSame(profile, analysis.Context);
+            Assert.Equal(ContextType.Analysis, analysis.Context.Tipo);
             Assert.Null(analysis.AnalisisOrigenId);
             Assert.Equal("alta", dto.Criteria["seguridad"]);
             Assert.True(Assert.Single(dto.Zones).IsInitial);
 
             await WithProfile("salud", "baja");
 
-            Assert.Equal("seguridad", Assert.Single(analysis.Contexto.Criterios).CriterioId);
+            Assert.Equal("seguridad", Assert.Single(analysis.Context.Criterios).CriterioId);
         }
 
         [Fact]
@@ -191,7 +191,7 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalyses
             Assert.Equal(FakeZonaRepository.Zona, Assert.Single(version.Zones).Slug);
             // The original remains unchanged.
             var saved = _analyses.Analyses.Single(analysis => analysis.Id == original.Id);
-            Assert.Equal("seguridad", Assert.Single(saved.Contexto.Criterios).CriterioId);
+            Assert.Equal("seguridad", Assert.Single(saved.Context.Criterios).CriterioId);
         }
 
         [Fact]

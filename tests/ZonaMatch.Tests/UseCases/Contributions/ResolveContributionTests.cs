@@ -20,7 +20,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             _useCase = new ResolveContribution(_contributions, new CommunityPoiUpdater(_pois), new FixedTimeProvider(Now));
         }
 
-        private Aporte Add(Aporte contribution)
+        private Contribution Add(Contribution contribution)
         {
             contribution.ZonaSlug = Zone;
             contribution.UsuarioId = Guid.NewGuid();
@@ -28,21 +28,21 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             return contribution;
         }
 
-        private Aporte Correction(string poiId, MotivoCorreccion reason) =>
-            Add(new Aporte { Tipo = TipoAporte.Correccion, PuntoInteresId = poiId, PuntoInteresNombre = "Kiosco", Motivo = reason });
+        private Contribution Correction(string poiId, CorrectionReason reason) =>
+            Add(new Contribution { Tipo = ContributionType.Correccion, PuntoInteresId = poiId, PuntoInteresNombre = "Kiosco", Motivo = reason });
 
         [Fact]
         public async Task Execute_WhenApprovingANewPoint_PersistsItWithoutWaitingForVotes()
         {
-            var contribution = Add(new Aporte
+            var contribution = Add(new Contribution
             {
-                Tipo = TipoAporte.PuntoNuevo, Nombre = "Club Social", Categoria = "deporte",
+                Tipo = ContributionType.PuntoNuevo, Nombre = "Club Social", Categoria = "deporte",
                 Ubicacion = new Point(-58.5, -34.63) { SRID = 4326 }
             });
 
             var result = await _useCase.ExecuteAsync(Zone, contribution.Id, _administrator, approve: true);
 
-            Assert.Equal(EstadoAporte.Aprobado, result.Status);
+            Assert.Equal(ContributionStatus.Aprobado, result.Status);
             Assert.Equal(_administrator, contribution.ResueltoPorId);
             Assert.Equal(Now, contribution.FechaResolucion);
             Assert.Equal(1, _contributions.Guardados);
@@ -54,20 +54,20 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Execute_WhenRejecting_DoesNotPersistAPoint()
         {
-            var contribution = Add(new Aporte { Tipo = TipoAporte.PuntoNuevo, Nombre = "Club", Categoria = "deporte" });
+            var contribution = Add(new Contribution { Tipo = ContributionType.PuntoNuevo, Nombre = "Club", Categoria = "deporte" });
 
             var result = await _useCase.ExecuteAsync(Zone, contribution.Id, _administrator, approve: false);
 
-            Assert.Equal(EstadoAporte.Rechazado, result.Status);
+            Assert.Equal(ContributionStatus.Rechazado, result.Status);
             Assert.Empty(_pois.Pois);
         }
 
         [Fact]
         public async Task Execute_WhenApprovingCorrectionsToAnOsmPoint_KeepsEveryChangeOnTheSamePoint()
         {
-            var rename = Correction("n123", MotivoCorreccion.Nombre);
+            var rename = Correction("n123", CorrectionReason.Nombre);
             rename.Nombre = "Kiosco El Sol";
-            var move = Correction("n123", MotivoCorreccion.Ubicacion);
+            var move = Correction("n123", CorrectionReason.Ubicacion);
             move.Ubicacion = new Point(-58.51, -34.64) { SRID = 4326 };
 
             await _useCase.ExecuteAsync(Zone, rename.Id, _administrator, approve: true);
@@ -85,7 +85,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Execute_WhenApprovingThatAPlaceClosed_RemovesIt()
         {
-            var closed = Correction("w45", MotivoCorreccion.Cerro);
+            var closed = Correction("w45", CorrectionReason.Cerro);
 
             await _useCase.ExecuteAsync(Zone, closed.Id, _administrator, approve: true);
 
@@ -95,7 +95,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Execute_WhenApprovingAnInformativeCorrection_ChangesNoPoint()
         {
-            var other = Correction("n9", MotivoCorreccion.Otro);
+            var other = Correction("n9", CorrectionReason.Otro);
             other.Comentario = "Abre solo de tarde";
 
             await _useCase.ExecuteAsync(Zone, other.Id, _administrator, approve: true);
@@ -106,7 +106,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Execute_WhenAlreadyResolved_ThrowsConflictException()
         {
-            var contribution = Add(new Aporte { Tipo = TipoAporte.PuntoNuevo, Estado = EstadoAporte.Aprobado });
+            var contribution = Add(new Contribution { Tipo = ContributionType.PuntoNuevo, Estado = ContributionStatus.Aprobado });
 
             await Assert.ThrowsAsync<ConflictException>(
                 () => _useCase.ExecuteAsync(Zone, contribution.Id, _administrator, approve: false));

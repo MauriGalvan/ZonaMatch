@@ -44,10 +44,10 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             var criteriaCatalog = await _criteriaRepository.ListarAsync(cancellationToken);
             var now = _clock.GetUtcNow();
 
-            var context = new Contexto
+            var context = new Context
             {
                 UsuarioId = userId,
-                Tipo = TipoContexto.Analisis,
+                Tipo = ContextType.Analysis,
                 FechaCreacion = now,
                 FechaActualizacion = now,
             };
@@ -62,13 +62,13 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
             var versions = await _analysisRepository.ListarVersionesAsync(original.Id, cancellationToken);
 
-            var version = new Analisis
+            var version = new Analysis
             {
                 UsuarioId = userId,
                 Nombre = string.IsNullOrWhiteSpace(request.Name)
                     ? BuildVersionName(original.Nombre, versions.Count + 2)
                     : request.Name.Trim(),
-                Contexto = context,
+                Context = context,
                 AnalisisOrigenId = original.Id,
                 FechaCreacion = now,
                 FechaActualizacion = now,

@@ -1,7 +1,7 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Resena de un vecino sobre una zona (tabla app.resenas). Una por usuario y zona; el autor puede editarla.
-    public class Resena
+    // Review de un vecino sobre una zona (tabla app.resenas). Una por usuario y zona; el autor puede editarla.
+    public class Review
     {
         public const int PuntajeMinimo = 1;
         public const int PuntajeMaximo = 5;
@@ -12,7 +12,7 @@ namespace ZonaMatch.Domain.Entities
         public string ZonaSlug { get; set; } = string.Empty;
 
         public Guid UsuarioId { get; set; }
-        public Usuario? Usuario { get; set; }
+        public User? User { get; set; }
 
         // Puntaje de cada aspecto (ReviewAspect), de 1 a 5
         public int PuntajeSeguridad { get; set; }
@@ -39,11 +39,11 @@ namespace ZonaMatch.Domain.Entities
         public DateTimeOffset FechaCreacion { get; set; }
         public DateTimeOffset FechaActualizacion { get; set; }
 
-        public List<ResenaVotoUtil> VotosUtil { get; set; } = [];
+        public List<ReviewHelpfulVote> VotosUtil { get; set; } = [];
     }
 
     // Marca de "util" de un usuario en una resena (tabla app.resenas_votos_util)
-    public class ResenaVotoUtil
+    public class ReviewHelpfulVote
     {
         public Guid ResenaId { get; set; }
         public Guid UsuarioId { get; set; }

@@ -2,7 +2,7 @@ namespace ZonaMatch.Domain.Entities
 {
     // Zona comparada en un analisis (tabla app.analisis_zonas). Las zonas no son una tabla:
     // se referencian por slug, como en la comunidad.
-    public class AnalisisZona
+    public class AnalysisZone
     {
         public Guid AnalisisId { get; set; }
 
@@ -28,7 +28,7 @@ namespace ZonaMatch.Domain.Entities
         public bool TieneOrigen => OrigenLatitud.HasValue && OrigenLongitud.HasValue;
 
         // Same zone for another analysis (a version or a recalculation)
-        public AnalisisZona Copiar() =>
+        public AnalysisZone Copiar() =>
             new()
             {
                 Orden = Orden,

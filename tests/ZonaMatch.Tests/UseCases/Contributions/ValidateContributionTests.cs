@@ -14,17 +14,17 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         private readonly FakeCommunityPoiRepository _pois = new();
         private readonly ValidateContribution _useCase;
         private readonly Guid _authorId = Guid.NewGuid();
-        private readonly Aporte _contribution;
+        private readonly Contribution _contribution;
 
         public ValidateContributionTests()
         {
             _useCase = new ValidateContribution(_contributions, new CommunityPoiUpdater(_pois), new FixedTimeProvider(Now));
-            _contribution = new Aporte
+            _contribution = new Contribution
             {
                 ZonaSlug = Zone,
                 UsuarioId = _authorId,
-                Usuario = new Usuario { Id = _authorId, Email = "ana.perez@example.com" },
-                Tipo = TipoAporte.PuntoNuevo,
+                User = new User { Id = _authorId, Email = "ana.perez@example.com" },
+                Tipo = ContributionType.PuntoNuevo,
                 Categoria = "salud",
                 Nombre = "Farmacia Nueva"
             };
@@ -44,12 +44,12 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Validate_WhenEnoughNeighborsConfirm_ApprovesAndRejectsFurtherVotes()
         {
-            for (var i = 0; i < Aporte.DiferenciaParaResolver; i++)
+            for (var i = 0; i < Contribution.DiferenciaParaResolver; i++)
                 await _useCase.ExecuteAsync(Zone, _contribution.Id, Guid.NewGuid(), Vote(confirm: true));
 
-            Assert.Equal(EstadoAporte.Aprobado, _contribution.Estado);
+            Assert.Equal(ContributionStatus.Aprobado, _contribution.Estado);
             Assert.Equal(Now, _contribution.FechaResolucion);
-            Assert.Equal(Aporte.DiferenciaParaResolver, _contributions.Guardados);
+            Assert.Equal(Contribution.DiferenciaParaResolver, _contributions.Guardados);
             await Assert.ThrowsAsync<ConflictException>(
                 () => _useCase.ExecuteAsync(Zone, _contribution.Id, Guid.NewGuid(), Vote(confirm: false)));
         }
@@ -59,7 +59,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         {
             _contribution.Ubicacion = new NetTopologySuite.Geometries.Point(-58.5, -34.63) { SRID = 4326 };
 
-            for (var i = 0; i < Aporte.DiferenciaParaResolver; i++)
+            for (var i = 0; i < Contribution.DiferenciaParaResolver; i++)
             {
                 Assert.Empty(_pois.Pois);
                 await _useCase.ExecuteAsync(Zone, _contribution.Id, Guid.NewGuid(), Vote(confirm: true));
@@ -76,10 +76,10 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task Validate_WhenTheVotesReject_DoesNotPersistAnything()
         {
-            for (var i = 0; i < Aporte.DiferenciaParaResolver; i++)
+            for (var i = 0; i < Contribution.DiferenciaParaResolver; i++)
                 await _useCase.ExecuteAsync(Zone, _contribution.Id, Guid.NewGuid(), Vote(confirm: false));
 
-            Assert.Equal(EstadoAporte.Rechazado, _contribution.Estado);
+            Assert.Equal(ContributionStatus.Rechazado, _contribution.Estado);
             Assert.Empty(_pois.Pois);
         }
 

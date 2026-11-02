@@ -13,16 +13,16 @@ public class CompareAnalysisDistanceTests
     public async Task Compare_PreservesDistanceForPlacesInEachPersonalAnalysis()
     {
         var userId = Guid.NewGuid();
-        var analyses = Enumerable.Range(1, 2).Select(number => new Analisis
+        var analyses = Enumerable.Range(1, 2).Select(number => new Analysis
         {
             UsuarioId = userId,
             Nombre = $"Busqueda {number}",
-            Zonas = [new AnalisisZona { ZonaSlug = "recoleta", Nombre = "Recoleta", Orden = 1 }],
-            Contexto = new Contexto
+            Zonas = [new AnalysisZone { ZonaSlug = "recoleta", Nombre = "Recoleta", Orden = 1 }],
+            Context = new Context
             {
                 UsuarioId = userId,
                 Movilidad = ["vehiculo"],
-                Puntos = [new PuntoDeInteres { Nombre = "Trabajo", Latitude = -34.6, Longitude = -58.4, TiempoMax = "45 min" }]
+                Puntos = [new ContextPlace { Nombre = "Trabajo", Latitude = -34.6, Longitude = -58.4, TiempoMax = "45 min" }]
             }
         }).ToArray();
 

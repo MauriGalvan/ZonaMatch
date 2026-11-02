@@ -15,19 +15,19 @@ namespace ZonaMatch.Application.UseCases.Contributions
             _pois = pois;
         }
 
-        public async Task ApplyAsync(Aporte contribution, DateTimeOffset now, CancellationToken cancellationToken = default)
+        public async Task ApplyAsync(Contribution contribution, DateTimeOffset now, CancellationToken cancellationToken = default)
         {
-            if (contribution.Estado != EstadoAporte.Aprobado)
+            if (contribution.Estado != ContributionStatus.Aprobado)
                 return;
 
-            if (contribution.Tipo == TipoAporte.PuntoNuevo)
+            if (contribution.Tipo == ContributionType.PuntoNuevo)
             {
                 if (await _pois.GetAsync(CommunityPoi.NewPointId(contribution.Id), cancellationToken) is null)
                     _pois.Add(CommunityPoi.FromNewPoint(contribution, now));
                 return;
             }
 
-            if (contribution.PuntoInteresId is not { } poiId || contribution.Motivo == MotivoCorreccion.Otro)
+            if (contribution.PuntoInteresId is not { } poiId || contribution.Motivo == CorrectionReason.Otro)
                 return;
 
             var poi = await _pois.GetAsync(poiId, cancellationToken);

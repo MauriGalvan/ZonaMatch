@@ -47,7 +47,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
 
             if (review is null)
             {
-                review = new Resena { ZonaSlug = zoneSlug, UsuarioId = currentUser.Id, FechaCreacion = now };
+                review = new Review { ZonaSlug = zoneSlug, UsuarioId = currentUser.Id, FechaCreacion = now };
                 _reviews.Agregar(review);
             }
 

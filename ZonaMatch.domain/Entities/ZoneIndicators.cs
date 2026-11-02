@@ -4,7 +4,7 @@ namespace ZonaMatch.Domain.Entities
     // Censo 2022 de los radios que caen en la zona y delitos (Mapa del Delito en CABA, SNIC por partido en
     // provincia). Aca viven las reglas
     // que convierten esos conteos en indicadores (porcentajes, densidad, tasa de delitos).
-    public class IndicadoresZona
+    public class ZoneIndicators
     {
         public string Slug { get; set; } = string.Empty;
         public string Nombre { get; set; } = string.Empty;

@@ -15,7 +15,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
     {
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-        public static AnalysisResponse ToResponse(Analisis analysis, IEnumerable<Analisis>? versions = null) =>
+        public static AnalysisResponse ToResponse(Analysis analysis, IEnumerable<Analysis>? versions = null) =>
             new(
                 analysis.Id,
                 analysis.Nombre,
@@ -26,9 +26,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                         z.ZonaSlug, z.Nombre, z.EsInicial, z.EsAgregada,
                         z.TieneOrigen ? new AnalysisZoneOriginResponse(z.OrigenLatitud!.Value, z.OrigenLongitud!.Value) : null))
                     .ToList(),
-                AnalysisCriteriaBuilder.ToContextResponse(analysis.Contexto),
-                AnalysisCriteriaBuilder.ToCriteriaDictionary(analysis.Contexto),
-                AnalysisCriteriaBuilder.ToPointsResponse(analysis.Contexto),
+                AnalysisCriteriaBuilder.ToContextResponse(analysis.Context),
+                AnalysisCriteriaBuilder.ToCriteriaDictionary(analysis.Context),
+                AnalysisCriteriaBuilder.ToPointsResponse(analysis.Context),
                 analysis.FechaCreacion,
                 analysis.FechaActualizacion,
                 analysis.PuntajesEnGrupoJson is null
@@ -43,7 +43,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 analysis.EsFavorito);
 
         // Request zones must exist, be unique, and include at most one initial zone.
-        public static async Task<List<AnalisisZona>> BuildZonesAsync(
+        public static async Task<List<AnalysisZone>> BuildZonesAsync(
             IReadOnlyList<AnalysisZoneRequest> zones, IZonaRepository repository, CancellationToken cancellationToken)
         {
             if (zones.Count == 0)
@@ -65,7 +65,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             }
 
             return zones
-                .Select((zone, index) => new AnalisisZona
+                .Select((zone, index) => new AnalysisZone
                 {
                     Orden = index + 1,
                     ZonaSlug = zone.Slug,

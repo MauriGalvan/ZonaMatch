@@ -32,22 +32,22 @@ namespace ZonaMatch.Tests.UseCases
 
     internal sealed class FakeAporteRepository : IAporteRepository
     {
-        public List<Aporte> Aportes { get; } = [];
+        public List<Contribution> Aportes { get; } = [];
         public int Guardados { get; private set; }
 
         public Task<(int Aprobados, int Pendientes)> ContarAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
             Task.FromResult((
-                Aportes.Count(a => a.ZonaSlug == zonaSlug && a.Estado == EstadoAporte.Aprobado),
-                Aportes.Count(a => a.ZonaSlug == zonaSlug && a.Estado == EstadoAporte.Pendiente)));
+                Aportes.Count(a => a.ZonaSlug == zonaSlug && a.Estado == ContributionStatus.Aprobado),
+                Aportes.Count(a => a.ZonaSlug == zonaSlug && a.Estado == ContributionStatus.Pendiente)));
 
-        public Task<IReadOnlyList<Aporte>> ListarPendientesAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Aporte>>(
-                Aportes.Where(a => a.ZonaSlug == zonaSlug && a.Estado == EstadoAporte.Pendiente).ToList());
+        public Task<IReadOnlyList<Contribution>> ListarPendientesAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Contribution>>(
+                Aportes.Where(a => a.ZonaSlug == zonaSlug && a.Estado == ContributionStatus.Pendiente).ToList());
 
-        public Task<Aporte?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<Contribution?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Aportes.FirstOrDefault(a => a.ZonaSlug == zonaSlug && a.Id == id));
 
-        public void Agregar(Aporte aporte) => Aportes.Add(aporte);
+        public void Agregar(Contribution aporte) => Aportes.Add(aporte);
 
         public Task GuardarCambiosAsync(CancellationToken cancellationToken = default)
         {
@@ -68,22 +68,22 @@ namespace ZonaMatch.Tests.UseCases
 
     internal sealed class FakeResenaRepository : IResenaRepository
     {
-        public List<Resena> Resenas { get; } = [];
+        public List<Review> Resenas { get; } = [];
         public int Guardados { get; private set; }
 
-        public Task<IReadOnlyList<Resena>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Resena>>(
+        public Task<IReadOnlyList<Review>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Review>>(
                 Resenas.Where(r => r.ZonaSlug == zonaSlug).OrderByDescending(r => r.FechaCreacion).ToList());
 
-        public Task<Resena?> ObtenerDeUsuarioAsync(string zonaSlug, Guid usuarioId, CancellationToken cancellationToken = default) =>
+        public Task<Review?> ObtenerDeUsuarioAsync(string zonaSlug, Guid usuarioId, CancellationToken cancellationToken = default) =>
             Task.FromResult(Resenas.FirstOrDefault(r => r.ZonaSlug == zonaSlug && r.UsuarioId == usuarioId));
 
-        public Task<Resena?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<Review?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Resenas.FirstOrDefault(r => r.ZonaSlug == zonaSlug && r.Id == id));
 
-        public void Agregar(Resena resena) => Resenas.Add(resena);
+        public void Agregar(Review resena) => Resenas.Add(resena);
 
-        public void Eliminar(Resena resena) => Resenas.Remove(resena);
+        public void Eliminar(Review resena) => Resenas.Remove(resena);
 
         public Task GuardarCambiosAsync(CancellationToken cancellationToken = default)
         {
@@ -94,21 +94,21 @@ namespace ZonaMatch.Tests.UseCases
 
     internal sealed class FakePreguntaRepository : IPreguntaRepository
     {
-        public List<Pregunta> Preguntas { get; } = [];
+        public List<Question> Preguntas { get; } = [];
 
-        public Task<IReadOnlyList<Pregunta>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Pregunta>>(
+        public Task<IReadOnlyList<Question>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Question>>(
                 Preguntas.Where(p => p.ZonaSlug == zonaSlug).OrderByDescending(p => p.FechaCreacion).ToList());
 
         public Task<bool> ExisteAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Preguntas.Any(p => p.ZonaSlug == zonaSlug && p.Id == id));
 
-        public Task<Pregunta?> GetByIdAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<Question?> GetByIdAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Preguntas.FirstOrDefault(p => p.ZonaSlug == zonaSlug && p.Id == id));
 
-        public void Agregar(Pregunta pregunta) => Preguntas.Add(pregunta);
+        public void Agregar(Question pregunta) => Preguntas.Add(pregunta);
 
-        public void Agregar(Respuesta respuesta) =>
+        public void Agregar(Answer respuesta) =>
             Preguntas.Single(p => p.Id == respuesta.PreguntaId).Respuestas.Add(respuesta);
 
         public Task GuardarCambiosAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;

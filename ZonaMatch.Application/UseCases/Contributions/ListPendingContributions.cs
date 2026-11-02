@@ -17,7 +17,7 @@ namespace ZonaMatch.Application.UseCases.Contributions
             string zoneSlug, Guid? currentUserId, CancellationToken cancellationToken = default)
         {
             var contributions = await _contributions.ListarPendientesAsync(zoneSlug, cancellationToken);
-            return contributions.Select(item => ContributionMapper.ToResponse(item, item.Usuario?.Email, currentUserId)).ToList();
+            return contributions.Select(item => ContributionMapper.ToResponse(item, item.User?.Email, currentUserId)).ToList();
         }
     }
 }

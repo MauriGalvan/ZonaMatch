@@ -6,7 +6,7 @@ namespace ZonaMatch.Application.UseCases.Questions
 {
     internal static class QuestionMapper
     {
-        public static AnswerResponse ToResponse(Respuesta answer, string? authorEmail, Guid? currentUserId) =>
+        public static AnswerResponse ToResponse(Answer answer, string? authorEmail, Guid? currentUserId) =>
             new(answer.Id, answer.Texto, Autor.Iniciales(authorEmail), answer.FechaCreacion, answer.UsuarioId == currentUserId);
     }
 }

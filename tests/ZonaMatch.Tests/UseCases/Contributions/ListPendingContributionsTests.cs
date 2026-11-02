@@ -10,7 +10,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
 
         private readonly FakeAporteRepository _contributions = new();
         private readonly ListPendingContributions _useCase;
-        private readonly Usuario _author = new() { Email = "ana.perez@example.com" };
+        private readonly User _author = new() { Email = "ana.perez@example.com" };
         private readonly Guid _neighborId = Guid.NewGuid();
 
         public ListPendingContributionsTests()
@@ -18,14 +18,14 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             _useCase = new ListPendingContributions(_contributions);
         }
 
-        private Aporte Agregar(EstadoAporte estado = EstadoAporte.Pendiente)
+        private Contribution Agregar(ContributionStatus estado = ContributionStatus.Pendiente)
         {
-            var aporte = new Aporte
+            var aporte = new Contribution
             {
                 ZonaSlug = Zone,
                 UsuarioId = _author.Id,
-                Usuario = _author,
-                Tipo = TipoAporte.PuntoNuevo,
+                User = _author,
+                Tipo = ContributionType.PuntoNuevo,
                 Estado = estado,
                 Nombre = "Farmacia Nueva",
                 FechaCreacion = Now
@@ -39,7 +39,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         {
             var pendiente = Agregar();
             pendiente.Validar(_neighborId, confirma: false, Now);
-            Agregar(EstadoAporte.Aprobado);
+            Agregar(ContributionStatus.Aprobado);
 
             var item = Assert.Single(await _useCase.ExecuteAsync(Zone, _neighborId));
 

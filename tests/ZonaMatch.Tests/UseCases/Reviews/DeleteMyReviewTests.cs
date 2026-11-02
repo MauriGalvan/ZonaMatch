@@ -21,8 +21,8 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         [Fact]
         public async Task Delete_RemovesOnlyTheCurrentUsersReview()
         {
-            _reviews.Agregar(new Resena { ZonaSlug = Zone, UsuarioId = _ana });
-            var luisReview = new Resena { ZonaSlug = Zone, UsuarioId = _luis };
+            _reviews.Agregar(new Review { ZonaSlug = Zone, UsuarioId = _ana });
+            var luisReview = new Review { ZonaSlug = Zone, UsuarioId = _luis };
             _reviews.Agregar(luisReview);
 
             await _useCase.ExecuteAsync(Zone, _ana);
@@ -34,7 +34,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         [Fact]
         public async Task Delete_WhenReviewDoesNotExist_ThrowsNotFound()
         {
-            _reviews.Agregar(new Resena { ZonaSlug = Zone, UsuarioId = _luis });
+            _reviews.Agregar(new Review { ZonaSlug = Zone, UsuarioId = _luis });
 
             await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync(Zone, _ana));
             Assert.Single(_reviews.Resenas);

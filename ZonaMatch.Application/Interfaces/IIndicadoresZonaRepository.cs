@@ -7,9 +7,9 @@ namespace ZonaMatch.Application.Interfaces
     public interface IIndicadoresZonaRepository
     {
         // The same zone selection as GET /api/v1/zones/{slug} (the most specific match for duplicate names).
-        Task<IndicadoresZona?> ObtenerPorSlugAsync(string slug, CancellationToken cancellationToken = default);
+        Task<ZoneIndicators?> ObtenerPorSlugAsync(string slug, CancellationToken cancellationToken = default);
 
         // CABA entera, para comparar los barrios y las comunas
-        Task<IndicadoresZona?> ObtenerCabaAsync(CancellationToken cancellationToken = default);
+        Task<ZoneIndicators?> ObtenerCabaAsync(CancellationToken cancellationToken = default);
     }
 }

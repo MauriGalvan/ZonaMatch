@@ -1,24 +1,24 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Criterio de busqueda de un usuario (tabla app.contextos): su hogar, la prioridad de cada
-    // criterio, sus lugares y sus topes (alquilar o comprar). Hay dos tipos (ver TipoContexto):
+    // Criterion de busqueda de un usuario (tabla app.contextos): su hogar, la prioridad de cada
+    // criterio, sus lugares y sus topes (alquilar o comprar). Hay dos tipos (ver ContextType):
     // - perfil: el criterio base del usuario, uno por usuario, que usan todos sus analisis
     // - analisis: la copia con la que se calculo un analisis guardado (no cambia si despues se edita el perfil)
     // El detalle vive normalizado en personas, puntos_interes y contexto_criterios.
-    public class Contexto
+    public class Context
     {
         // UUIDv7: unique and time-ordered, so the primary key index stays compact
         public Guid Id { get; set; } = Guid.CreateVersion7();
 
         public Guid UsuarioId { get; set; }
 
-        // perfil | analisis (TipoContexto)
-        public string Tipo { get; set; } = TipoContexto.Perfil;
+        // perfil | analisis (ContextType)
+        public string Tipo { get; set; } = ContextType.Perfil;
 
         // Cantidad de personas del hogar (1..8); los rangos etarios viven en Integrantes
         public int Personas { get; set; }
 
-        // Mascotas marcadas: perro, gato, otras, ninguna (text[] como Resena.Temas)
+        // Mascotas marcadas: perro, gato, otras, ninguna (text[] como Review.Temas)
         public string[]? Mascotas { get; set; }
 
         // Movilidad habitual: a-pie, transporte-publico, vehiculo, bici.
@@ -46,19 +46,19 @@ namespace ZonaMatch.Domain.Entities
         public DateTimeOffset FechaActualizacion { get; set; }
 
         // Filas de app.personas: una por integrante, con su rango etario
-        public ICollection<Persona> Integrantes { get; set; } = new List<Persona>();
+        public ICollection<Person> Integrantes { get; set; } = new List<Person>();
 
         // Filas de app.puntos_interes: los lugares a los que va el usuario
-        public ICollection<PuntoDeInteres> Puntos { get; set; } = new List<PuntoDeInteres>();
+        public ICollection<ContextPlace> Puntos { get; set; } = new List<ContextPlace>();
 
         // Filas de app.contexto_criterios: criterio elegido + prioridad (baja|media|alta)
-        public ICollection<ContextoCriterio> Criterios { get; set; } = new List<ContextoCriterio>();
+        public ICollection<ContextCriterion> Criterios { get; set; } = new List<ContextCriterion>();
 
         // Copia completa para guardar junto a un analisis: el analisis queda fijo aunque el perfil cambie
-        public Contexto CopiarParaAnalisis(DateTimeOffset ahora) => new()
+        public Context CopiarParaAnalisis(DateTimeOffset ahora) => new()
         {
             UsuarioId = UsuarioId,
-            Tipo = TipoContexto.Analisis,
+            Tipo = ContextType.Analysis,
             Personas = Personas,
             Mascotas = Mascotas?.ToArray(),
             Movilidad = Movilidad?.ToArray(),
@@ -70,10 +70,10 @@ namespace ZonaMatch.Domain.Entities
             FechaCreacion = ahora,
             FechaActualizacion = ahora,
             Integrantes = Integrantes
-                .Select(p => new Persona { Orden = p.Orden, Nombre = p.Nombre, Edad = p.Edad })
+                .Select(p => new Person { Orden = p.Orden, Nombre = p.Nombre, Edad = p.Edad })
                 .ToList(),
             Puntos = Puntos
-                .Select(p => new PuntoDeInteres
+                .Select(p => new ContextPlace
                 {
                     Orden = p.Orden,
                     Nombre = p.Nombre,
@@ -88,15 +88,15 @@ namespace ZonaMatch.Domain.Entities
                 })
                 .ToList(),
             Criterios = Criterios
-                .Select(c => new ContextoCriterio { CriterioId = c.CriterioId, Prioridad = c.Prioridad })
+                .Select(c => new ContextCriterion { CriterioId = c.CriterioId, Prioridad = c.Prioridad })
                 .ToList(),
         };
     }
 
-    // Valores de Contexto.Tipo
-    public static class TipoContexto
+    // Valores de Context.Tipo
+    public static class ContextType
     {
         public const string Perfil = "perfil";
-        public const string Analisis = "analisis";
+        public const string Analysis = "analisis";
     }
 }

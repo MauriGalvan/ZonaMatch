@@ -1,13 +1,13 @@
 namespace ZonaMatch.Domain.Entities
 {
     // Integrante del hogar de un contexto (tabla app.personas), una fila por persona.
-    public class Persona
+    public class Person
     {
         public Guid Id { get; set; }
 
         public Guid ContextoId { get; set; }
 
-        public Contexto? Contexto { get; set; }
+        public Context? Context { get; set; }
 
         // Position in the profile wizard's household list.
         public int Orden { get; set; }

@@ -27,11 +27,11 @@ namespace ZonaMatch.Application.UseCases.Contributions
             var category = ContributionMapper.ValidateCategory(request.Category);
             await _zones.ValidarContienePuntoAsync(zoneSlug, request.Latitude, request.Longitude, cancellationToken);
 
-            var contribution = new Aporte
+            var contribution = new Contribution
             {
                 ZonaSlug = zoneSlug,
                 UsuarioId = currentUser.Id,
-                Tipo = TipoAporte.PuntoNuevo,
+                Tipo = ContributionType.PuntoNuevo,
                 Categoria = category,
                 Nombre = request.Name.Trim(),
                 Ubicacion = ContributionMapper.CreatePoint(request.Latitude, request.Longitude),

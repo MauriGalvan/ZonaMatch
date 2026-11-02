@@ -47,13 +47,13 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             ["estimadoUsd"] = "estimatedUsd",
         };
 
-        public async Task<ScoresResponse?> CalculateAsync(Analisis analysis, CancellationToken cancellationToken = default)
+        public async Task<ScoresResponse?> CalculateAsync(Analysis analysis, CancellationToken cancellationToken = default)
         {
             var zones = analysis.Zonas.OrderBy(zone => zone.Orden).ToList();
             if (zones.Count == 0)
                 return null;
 
-            var context = analysis.Contexto;
+            var context = analysis.Context;
             var request = new CalculateScoresRequest
             {
                 InitialZone = zones.FirstOrDefault(zone => zone.EsInicial)?.ZonaSlug,

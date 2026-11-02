@@ -39,8 +39,8 @@ public sealed class GetZoneTransit(
     }
 
     private static ModoTransporteDto BuildMode(
-        ParadasModoZona stops,
-        IReadOnlyList<SalidasLineaZona> departures)
+        ZoneTransitModeStops stops,
+        IReadOnlyList<TransitLineDepartures> departures)
     {
         var timeWindows = TimeWindow.All
             .Select(timeWindow =>

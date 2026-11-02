@@ -29,7 +29,7 @@ namespace ZonaMatch.Tests.UseCases.Profile
                 rentLimit: "800000"));
 
             var profile = Assert.Single(_profiles.Profiles);
-            Assert.Equal(TipoContexto.Perfil, profile.Tipo);
+            Assert.Equal(ContextType.Perfil, profile.Tipo);
             Assert.Equal(UserId, profile.UsuarioId);
             Assert.Equal(CurrentTime, profile.FechaCreacion);
             Assert.Equal(2, profile.Integrantes.Count);

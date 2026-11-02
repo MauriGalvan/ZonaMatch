@@ -12,7 +12,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
 
         private readonly FakeResenaRepository _reviews = new();
         private readonly ListZoneReviews _useCase;
-        private readonly Usuario _ana = new() { Id = Guid.NewGuid(), Email = "ana@example.com" };
+        private readonly User _ana = new() { Id = Guid.NewGuid(), Email = "ana@example.com" };
         private readonly Guid _luis = Guid.NewGuid();
 
         public ListZoneReviewsTests()
@@ -21,13 +21,13 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         }
 
         // With a safety score of 3, the overall score is (3 + 5 + 4 + 4 + 2) / 5 = 3.6.
-        private Resena Add(Usuario author, int safety = 3, string zone = Zone)
+        private Review Add(User author, int safety = 3, string zone = Zone)
         {
-            var resena = new Resena
+            var resena = new Review
             {
                 ZonaSlug = zone,
                 UsuarioId = author.Id,
-                Usuario = author,
+                User = author,
                 PuntajeSeguridad = safety,
                 PuntajeTransporte = 5,
                 PuntajeConectividad = 4,
@@ -44,8 +44,8 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         public async Task List_SummarizesAverageScoresByAspect()
         {
             Add(_ana, safety: 3);
-            Add(new Usuario { Id = _luis, Email = "luis@example.com" }, safety: 4);
-            Add(new Usuario { Email = "mara@example.com" }, safety: 4);
+            Add(new User { Id = _luis, Email = "luis@example.com" }, safety: 4);
+            Add(new User { Email = "mara@example.com" }, safety: 4);
             Add(_ana, safety: 1, zone: "otra-zona");
 
             var result = await _useCase.ExecuteAsync(Zone, currentUserId: null);
@@ -72,7 +72,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         public async Task List_WithCurrentUser_IndicatesOwnershipAndHelpfulVotes()
         {
             var review = Add(_ana);
-            review.VotosUtil.Add(new ResenaVotoUtil { ResenaId = review.Id, UsuarioId = _luis, Fecha = CurrentTime });
+            review.VotosUtil.Add(new ReviewHelpfulVote { ResenaId = review.Id, UsuarioId = _luis, Fecha = CurrentTime });
 
             var forLuis = Assert.Single((await _useCase.ExecuteAsync(Zone, _luis)).Reviews);
             var forAna = Assert.Single((await _useCase.ExecuteAsync(Zone, _ana.Id)).Reviews);

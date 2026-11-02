@@ -12,7 +12,7 @@ namespace ZonaMatch.Application.UseCases.Groups;
 public sealed record GroupHousingSuggestion(
     string Operation, decimal MonthlyBudget, decimal? MaxPurchaseUsd, string? PropertyType, int? SurfaceM2 = null)
 {
-    public static GroupHousingSuggestion From(IReadOnlyList<Contexto> profiles)
+    public static GroupHousingSuggestion From(IReadOnlyList<Context> profiles)
     {
         var operation = profiles.Count > 0 && profiles.All(profile => profile.Operacion == HousingOperations.Purchase)
             ? HousingOperations.Purchase

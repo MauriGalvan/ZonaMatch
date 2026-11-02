@@ -4,16 +4,16 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    public class EscuelaRepository : GeoPuntoRepository<Escuela>, IEscuelaRepository
+    public class EscuelaRepository : GeoPuntoRepository<School>, IEscuelaRepository
     {
         public EscuelaRepository(ZonaMatchDbContext dbContext) : base(dbContext)
         {
         }
 
-        public Task<IReadOnlyList<(Escuela Entidad, double DistanciaMetros)>> GetCercanasAsync(
+        public Task<IReadOnlyList<(School Entidad, double DistanciaMetros)>> GetCercanasAsync(
             double latitud, double longitud, double radioMetros, string? nivel, string? sector)
         {
-            IQueryable<Escuela> query = _dbContext.Set<Escuela>();
+            IQueryable<School> query = _dbContext.Set<School>();
 
             if (!string.IsNullOrWhiteSpace(nivel))
                 query = query.Where(e => e.Nivel == nivel);

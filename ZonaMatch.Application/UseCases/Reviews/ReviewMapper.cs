@@ -8,9 +8,9 @@ namespace ZonaMatch.Application.UseCases.Reviews
     // Maps domain reviews to API responses. The current user is null for anonymous requests.
     internal static class ReviewMapper
     {
-        public static ReviewSummaryResponse Summarize(IReadOnlyList<Resena> reviews)
+        public static ReviewSummaryResponse Summarize(IReadOnlyList<Review> reviews)
         {
-            static double Average(IReadOnlyList<Resena> items, Func<Resena, double> score) =>
+            static double Average(IReadOnlyList<Review> items, Func<Review, double> score) =>
                 items.Count == 0 ? 0 : Math.Round(items.Average(score), 1);
 
             return new ReviewSummaryResponse(
@@ -26,7 +26,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
                 ]);
         }
 
-        public static ReviewResponse ToResponse(Resena review, string? authorEmail, Guid? currentUserId) =>
+        public static ReviewResponse ToResponse(Review review, string? authorEmail, Guid? currentUserId) =>
             new(
                 review.Id,
                 Autor.Iniciales(authorEmail),

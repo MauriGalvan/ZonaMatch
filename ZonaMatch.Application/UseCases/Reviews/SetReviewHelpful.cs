@@ -29,7 +29,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
 
             // Idempotent: repeating either operation does not change the result.
             if (helpful && vote is null)
-                review.VotosUtil.Add(new ResenaVotoUtil { ResenaId = review.Id, UsuarioId = userId, Fecha = _clock.GetUtcNow() });
+                review.VotosUtil.Add(new ReviewHelpfulVote { ResenaId = review.Id, UsuarioId = userId, Fecha = _clock.GetUtcNow() });
             else if (!helpful && vote is not null)
                 review.VotosUtil.Remove(vote);
             else

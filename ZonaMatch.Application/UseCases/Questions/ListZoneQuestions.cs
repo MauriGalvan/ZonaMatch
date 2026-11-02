@@ -23,12 +23,12 @@ namespace ZonaMatch.Application.UseCases.Questions
                 .Select(question => new QuestionResponse(
                     question.Id,
                     question.Texto,
-                    Autor.Iniciales(question.Usuario?.Email),
+                    Autor.Iniciales(question.User?.Email),
                     question.FechaCreacion,
                     question.UsuarioId == currentUserId,
                     question.Respuestas
                         .OrderBy(answer => answer.FechaCreacion)
-                        .Select(answer => QuestionMapper.ToResponse(answer, answer.Usuario?.Email, currentUserId))
+                        .Select(answer => QuestionMapper.ToResponse(answer, answer.User?.Email, currentUserId))
                         .ToList()))
                 .ToList();
         }

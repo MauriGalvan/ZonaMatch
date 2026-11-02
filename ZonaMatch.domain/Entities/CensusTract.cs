@@ -4,14 +4,14 @@ using ZonaMatch.Domain.Common;
 namespace ZonaMatch.Domain.Entities
 {
     // Census tract, Censo 2022 (table geo.radios)
-    public class Radio : IPolygonLocation
+    public class CensusTract : IPolygonLocation
     {
         public string Id { get; set; } = string.Empty;
         public string Origen { get; set; } = string.Empty;
         public string? Depto { get; set; }
 
-        // Census comuna code (text), not a FK to Comuna
-        public string? Comuna { get; set; }
+        // Census comuna code (text), not a FK to Commune
+        public string? Commune { get; set; }
         public string? Fraccion { get; set; }
 
         // Column "radio" (a property cannot share the name of its enclosing type)

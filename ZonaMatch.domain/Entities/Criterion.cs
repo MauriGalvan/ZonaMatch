@@ -4,7 +4,7 @@ namespace ZonaMatch.Domain.Entities
     // Es dato compartido por todos los usuarios: define que criterios existen y como se muestran.
     // Las elecciones del usuario viven en contexto_criterios (prioridad por analisis),
     // punto_de_interes y las demas tablas normalizadas del contexto.
-    public class Criterio
+    public class Criterion
     {
         // Slug que viaja como FK en contexto_criterios y como clave en la API ("seguridad", "movilidad", ...)
         public string Id { get; set; } = string.Empty;

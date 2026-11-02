@@ -6,7 +6,7 @@ namespace ZonaMatch.Tests.UseCases.Groups;
 
 public class GroupHousingSuggestionTests
 {
-    private static Contexto Profile(string operation, string? monthly, decimal? purchase = null, string? type = null, int? surface = null) =>
+    private static Context Profile(string operation, string? monthly, decimal? purchase = null, string? type = null, int? surface = null) =>
         new() { Operacion = operation, AlquilerMaximo = monthly, CompraMaximaUsd = purchase, TipoVivienda = type, SuperficieM2 = surface };
 
     [Fact]

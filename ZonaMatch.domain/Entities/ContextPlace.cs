@@ -2,13 +2,13 @@ namespace ZonaMatch.Domain.Entities
 {
     // Lugar elegido en el wizard (tabla app.puntos_interes), no confundir con los POI
     // geograficos del dump: este pertenece a un contexto y desaparece con el.
-    public class PuntoDeInteres
+    public class ContextPlace
     {
         public Guid Id { get; set; }
 
         public Guid ContextoId { get; set; }
 
-        public Contexto? Contexto { get; set; }
+        public Context? Context { get; set; }
 
         // Orden en que el usuario los cargó en el mapa del wizard
         public int Orden { get; set; }

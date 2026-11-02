@@ -21,7 +21,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         }
 
         private static CreateContributionCorrectionRequest Correction(
-            MotivoCorreccion reason, string? proposedName = null, string? proposedCategory = null,
+            CorrectionReason reason, string? proposedName = null, string? proposedCategory = null,
             double? latitude = null, double? longitude = null, string? comment = null) =>
             new("n123", "Kiosco Pepe", reason, proposedName, proposedCategory, latitude, longitude, comment);
 
@@ -29,11 +29,11 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         public async Task CreateCorrection_WhenValid_SavesOnlyTheSelectedValue()
         {
             await _useCase.ExecuteAsync(Zone, _author,
-                Correction(MotivoCorreccion.Nombre, proposedName: "Kiosco Pepito", proposedCategory: "salud", latitude: -34.6, longitude: -58.5));
+                Correction(CorrectionReason.Nombre, proposedName: "Kiosco Pepito", proposedCategory: "salud", latitude: -34.6, longitude: -58.5));
 
             var guardado = Assert.Single(_contributions.Aportes);
-            Assert.Equal(TipoAporte.Correccion, guardado.Tipo);
-            Assert.Equal(EstadoAporte.Pendiente, guardado.Estado);
+            Assert.Equal(ContributionType.Correccion, guardado.Tipo);
+            Assert.Equal(ContributionStatus.Pendiente, guardado.Estado);
             Assert.Equal("n123", guardado.PuntoInteresId);
             Assert.Equal("Kiosco Pepito", guardado.Nombre);
             Assert.Null(guardado.Categoria);
@@ -43,7 +43,7 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         [Fact]
         public async Task CreateCorrection_WhenReasonIsLocation_SavesTheProposedPoint()
         {
-            await _useCase.ExecuteAsync(Zone, _author, Correction(MotivoCorreccion.Ubicacion, latitude: -34.6, longitude: -58.5));
+            await _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Ubicacion, latitude: -34.6, longitude: -58.5));
 
             var location = Assert.Single(_contributions.Aportes).Ubicacion!;
             Assert.Equal(-34.6, location.Y);
@@ -51,11 +51,11 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         }
 
         [Theory]
-        [InlineData(MotivoCorreccion.Nombre)]
-        [InlineData(MotivoCorreccion.Categoria)]
-        [InlineData(MotivoCorreccion.Ubicacion)]
-        [InlineData(MotivoCorreccion.Otro)]
-        public async Task CreateCorrection_WhenRequiredValueIsMissing_ThrowsBadRequestException(MotivoCorreccion reason)
+        [InlineData(CorrectionReason.Nombre)]
+        [InlineData(CorrectionReason.Categoria)]
+        [InlineData(CorrectionReason.Ubicacion)]
+        [InlineData(CorrectionReason.Otro)]
+        public async Task CreateCorrection_WhenRequiredValueIsMissing_ThrowsBadRequestException(CorrectionReason reason)
         {
             await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(Zone, _author, Correction(reason)));
             Assert.Empty(_contributions.Aportes);
@@ -65,23 +65,23 @@ namespace ZonaMatch.Tests.UseCases.Contributions
         public async Task CreateCorrection_WhenLocationIsOutsideZone_ThrowsBadRequestException()
         {
             await Assert.ThrowsAsync<BadRequestException>(
-                () => _useCase.ExecuteAsync(Zone, _author, Correction(MotivoCorreccion.Ubicacion, latitude: 10, longitude: -58.5)));
+                () => _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Ubicacion, latitude: 10, longitude: -58.5)));
             Assert.Empty(_contributions.Aportes);
         }
 
         [Fact]
         public async Task CreateCorrection_WhenReasonIsClosed_DoesNotRequireAdditionalValues()
         {
-            await _useCase.ExecuteAsync(Zone, _author, Correction(MotivoCorreccion.Cerro));
+            await _useCase.ExecuteAsync(Zone, _author, Correction(CorrectionReason.Cerro));
 
-            Assert.Equal(MotivoCorreccion.Cerro, Assert.Single(_contributions.Aportes).Motivo);
+            Assert.Equal(CorrectionReason.Cerro, Assert.Single(_contributions.Aportes).Motivo);
         }
 
         [Fact]
         public async Task CreateCorrection_WhenZoneDoesNotExist_ThrowsNotFoundException()
         {
             await Assert.ThrowsAsync<NotFoundException>(
-                () => _useCase.ExecuteAsync("no-existe", _author, Correction(MotivoCorreccion.Cerro)));
+                () => _useCase.ExecuteAsync("no-existe", _author, Correction(CorrectionReason.Cerro)));
             Assert.Empty(_contributions.Aportes);
         }
     }

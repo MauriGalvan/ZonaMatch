@@ -18,7 +18,7 @@ public static class AnalysisCriteriaBuilder
     };
 
     // Validate the complete request before mutating the context so invalid input cannot partially update it.
-    public static void Apply(Contexto context, AnalysisCriteriaRequest request, IReadOnlyList<Criterio> catalog)
+    public static void Apply(Context context, AnalysisCriteriaRequest request, IReadOnlyList<Criterion> catalog)
     {
         var householdMembers = BuildHouseholdMembers(request.Context);
         var criteria = BuildCriteria(request.Criteria, catalog);
@@ -41,7 +41,7 @@ public static class AnalysisCriteriaBuilder
         Replace(context.Puntos, places);
     }
 
-    private static List<Persona> BuildHouseholdMembers(AnalysisContextRequest? request)
+    private static List<Person> BuildHouseholdMembers(AnalysisContextRequest? request)
     {
         if (request is null)
             throw new BadRequestException("El contexto es obligatorio.");
@@ -71,7 +71,7 @@ public static class AnalysisCriteriaBuilder
             throw new BadRequestException("Un rango etario no puede superar 40 caracteres.");
 
         return Enumerable.Range(1, request.PeopleCount)
-            .Select(order => new Persona
+            .Select(order => new Person
             {
                 Orden = order,
                 Nombre = request.PersonNames.Count == 0
@@ -82,14 +82,14 @@ public static class AnalysisCriteriaBuilder
             .ToList();
     }
 
-    private static List<ContextoCriterio> BuildCriteria(
-        Dictionary<string, string?>? criteria, IReadOnlyList<Criterio> catalog)
+    private static List<ContextCriterion> BuildCriteria(
+        Dictionary<string, string?>? criteria, IReadOnlyList<Criterion> catalog)
     {
         if (criteria is null)
             throw new BadRequestException("Los criterios deben ser un objeto.");
 
         var criteriaById = catalog.ToDictionary(criterion => criterion.Id, StringComparer.Ordinal);
-        var rows = new List<ContextoCriterio>(criteria.Count);
+        var rows = new List<ContextCriterion>(criteria.Count);
 
         foreach (var (id, priority) in criteria)
         {
@@ -102,13 +102,13 @@ public static class AnalysisCriteriaBuilder
             if (priority is null || !ValidPriorities.Contains(priority))
                 throw new BadRequestException($"Prioridad inválida para el criterio {id}.");
 
-            rows.Add(new ContextoCriterio { CriterioId = id, Prioridad = priority });
+            rows.Add(new ContextCriterion { CriterioId = id, Prioridad = priority });
         }
 
         return rows;
     }
 
-    private static List<PuntoDeInteres> BuildPlaces(AnalysisPointsRequest? request)
+    private static List<ContextPlace> BuildPlaces(AnalysisPointsRequest? request)
     {
         if (request is null)
             throw new BadRequestException("Los puntos son obligatorios.");
@@ -122,7 +122,7 @@ public static class AnalysisCriteriaBuilder
         MandatoryScoringLimits.Validate(
             request.RentLimit, request.Operation, request.PurchaseLimitUsd, request.Places.Select(place => place.MaximumTravelTime));
 
-        var places = new List<PuntoDeInteres>(request.Places.Count);
+        var places = new List<ContextPlace>(request.Places.Count);
 
         for (var index = 0; index < request.Places.Count; index++)
         {
@@ -131,7 +131,7 @@ public static class AnalysisCriteriaBuilder
             if (name.Length == 0)
                 throw new BadRequestException($"El nombre del lugar {index + 1} es obligatorio.");
 
-            places.Add(new PuntoDeInteres
+            places.Add(new ContextPlace
             {
                 Orden = index + 1,
                 Nombre = name,
@@ -156,7 +156,7 @@ public static class AnalysisCriteriaBuilder
             currentItems.Add(item);
     }
 
-    public static AnalysisContextResponse ToContextResponse(Contexto context) =>
+    public static AnalysisContextResponse ToContextResponse(Context context) =>
         new(
             context.Personas,
             context.Integrantes
@@ -167,10 +167,10 @@ public static class AnalysisCriteriaBuilder
             context.Movilidad?.ToList() ?? [],
             context.Mascotas?.ToList() ?? []);
 
-    public static Dictionary<string, string> ToCriteriaDictionary(Contexto context) =>
+    public static Dictionary<string, string> ToCriteriaDictionary(Context context) =>
         context.Criterios.ToDictionary(criterion => criterion.CriterioId, criterion => criterion.Prioridad, StringComparer.Ordinal);
 
-    public static AnalysisPointsResponse ToPointsResponse(Contexto context) =>
+    public static AnalysisPointsResponse ToPointsResponse(Context context) =>
         new(
             context.AlquilerMaximo,
             context.Puntos

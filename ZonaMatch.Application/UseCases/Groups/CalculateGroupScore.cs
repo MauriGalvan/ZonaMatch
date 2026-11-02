@@ -194,7 +194,7 @@ public sealed partial class CalculateGroupScore
             surface);
     }
 
-    private static GroupProfileRecommendationsResponse BuildProfileRecommendations(IReadOnlyList<Contexto> profiles)
+    private static GroupProfileRecommendationsResponse BuildProfileRecommendations(IReadOnlyList<Context> profiles)
     {
         var ageRanges = profiles
             .SelectMany(profile => profile.Integrantes)
@@ -234,7 +234,7 @@ public sealed partial class CalculateGroupScore
         };
     }
 
-    private static bool HasMobility(Contexto profile, string mobility) =>
+    private static bool HasMobility(Context profile, string mobility) =>
         profile.Movilidad?.Any(value => string.Equals(value.Trim(), mobility, StringComparison.OrdinalIgnoreCase)) == true;
 
     private static IReadOnlyDictionary<Guid, decimal> ValidateWeights(
@@ -296,7 +296,7 @@ public sealed partial class CalculateGroupScore
         return results.ToDictionary(result => result.Slug, result => (IReadOnlyList<TravelTime?>)result.Times, StringComparer.Ordinal);
     }
 
-    private static ScoringRequest BuildRequest(Contexto profile, decimal? sharedRentLimit)
+    private static ScoringRequest BuildRequest(Context profile, decimal? sharedRentLimit)
     {
         var criteria = profile.Criterios
             .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterioId)
@@ -390,7 +390,7 @@ public sealed partial class CalculateGroupScore
             .Where(member => member.Zones.ContainsKey(zone.Slug))
             .SelectMany(member => member.Zones[zone.Slug].Resultado.Componentes
                 .Select(component => (Member: member, Component: component)))
-            .GroupBy(entry => entry.Component.Criterio, StringComparer.Ordinal)
+            .GroupBy(entry => entry.Component.Criterion, StringComparer.Ordinal)
             .Select(group =>
             {
                 var withScore = group
@@ -462,7 +462,7 @@ public sealed partial class CalculateGroupScore
     private static ExcludedParticipantResponse? Exclusion(
         Participant participant,
         decimal weight,
-        IReadOnlyDictionary<Guid, Contexto> profilesByUserId,
+        IReadOnlyDictionary<Guid, Context> profilesByUserId,
         IReadOnlyList<ZoneProfile> selectedZones,
         IReadOnlyList<MemberCalculation> memberScores)
     {
@@ -487,7 +487,7 @@ public sealed partial class CalculateGroupScore
         Participant Participant,
         ScoringRequest Request,
         TravelMode Mode,
-        IReadOnlyList<PuntoDeInteres> Points);
+        IReadOnlyList<ContextPlace> Points);
 
     private sealed record MemberCalculation(
         Participant Participant,

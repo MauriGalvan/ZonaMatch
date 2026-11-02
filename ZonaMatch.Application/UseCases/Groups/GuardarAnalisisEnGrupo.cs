@@ -60,21 +60,21 @@ public sealed class GuardarAnalisisEnGrupo
             cancellationToken);
 
         var profile = await _profiles.ObtenerDeUsuarioAsync(currentUserId, cancellationToken);
-        var context = profile?.CopiarParaAnalisis(now) ?? new Contexto
+        var context = profile?.CopiarParaAnalisis(now) ?? new Context
         {
             UsuarioId = currentUserId,
-            Tipo = TipoContexto.Analisis,
+            Tipo = ContextType.Analysis,
             Personas = 1,
             FechaCreacion = now,
             FechaActualizacion = now,
         };
         var zones = await AnalysisMapping.BuildZonesAsync(request.Zones, _zones, cancellationToken);
 
-        var analysis = new Analisis
+        var analysis = new Analysis
         {
             UsuarioId = currentUserId,
             Nombre = name,
-            Contexto = context,
+            Context = context,
             FechaCreacion = now,
             FechaActualizacion = now,
             Zonas = zones,

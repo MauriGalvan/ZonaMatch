@@ -3,8 +3,8 @@ using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Domain.Entities
 {
-    // Comuna of CABA (table geo.comunas)
-    public class Comuna : IPolygonLocation
+    // Commune of CABA (table geo.comunas)
+    public class Commune : IPolygonLocation
     {
         public string Key { get; set; } = string.Empty;
         public string? CabaId { get; set; }

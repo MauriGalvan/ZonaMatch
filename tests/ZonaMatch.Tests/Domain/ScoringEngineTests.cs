@@ -306,7 +306,7 @@ namespace ZonaMatch.Tests.Domain
                 [new TravelTime(30, false), new TravelTime(50, false), null]);
 
             var componente = Assert.Single(resultado.Componentes);
-            Assert.Equal(ScoringEngine.Lugares, componente.Criterio);
+            Assert.Equal(ScoringEngine.Lugares, componente.Criterion);
             // Work scores 87 (weight 4); Club is 67% over its limit and scores 6 (weight 1).
             Assert.Equal(71, componente.Puntaje);
             var limite = Assert.Single(resultado.Limites);

@@ -58,14 +58,14 @@ public sealed class GetZoneIndicators(IIndicadoresZonaRepository indicatorsRepos
             BuildSources(zone));
     }
 
-    private static SeguridadZonaDto? BuildSafety(IndicadoresZona zone, IndicadoresZona? cityReference)
+    private static SeguridadZonaDto? BuildSafety(ZoneIndicators zone, ZoneIndicators? cityReference)
     {
         if (zone.Delitos is not { } crimes || zone.DelitosPeriodo is not { } year)
             return null;
 
         return new SeguridadZonaDto(
             year,
-            zone.DelitosFuente ?? IndicadoresZona.FuenteMapaDelito,
+            zone.DelitosFuente ?? ZoneIndicators.FuenteMapaDelito,
             zone.DelitosAmbito,
             crimes,
             zone.DelitosCada1000Habitantes,
@@ -80,7 +80,7 @@ public sealed class GetZoneIndicators(IIndicadoresZonaRepository indicatorsRepos
                 : new ReferenciaDto(BuenosAiresCity, cityReference.DelitosCada1000Habitantes));
     }
 
-    private static IReadOnlyList<FuenteDatoDto> BuildSources(IndicadoresZona zone)
+    private static IReadOnlyList<FuenteDatoDto> BuildSources(ZoneIndicators zone)
     {
         var sources = new List<FuenteDatoDto>
         {
@@ -97,6 +97,6 @@ public sealed class GetZoneIndicators(IIndicadoresZonaRepository indicatorsRepos
         return sources;
     }
 
-    private static bool IsBuenosAiresCity(IndicadoresZona zone) =>
+    private static bool IsBuenosAiresCity(ZoneIndicators zone) =>
         zone.Nivel == BuenosAiresCityAdminLevel;
 }

@@ -16,17 +16,17 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             _useCase = new GetContributionSummary(_contributions);
         }
 
-        private void Add(EstadoAporte status, string zone = Zone) =>
-            _contributions.Agregar(new Aporte { ZonaSlug = zone, UsuarioId = Guid.NewGuid(), Estado = status });
+        private void Add(ContributionStatus status, string zone = Zone) =>
+            _contributions.Agregar(new Contribution { ZonaSlug = zone, UsuarioId = Guid.NewGuid(), Estado = status });
 
         [Fact]
         public async Task GetSummary_CountsApprovedAndPendingButNotRejectedContributions()
         {
-            Add(EstadoAporte.Aprobado);
-            Add(EstadoAporte.Pendiente);
-            Add(EstadoAporte.Pendiente);
-            Add(EstadoAporte.Rechazado);
-            Add(EstadoAporte.Aprobado, zone: "other-zone");
+            Add(ContributionStatus.Aprobado);
+            Add(ContributionStatus.Pendiente);
+            Add(ContributionStatus.Pendiente);
+            Add(ContributionStatus.Rechazado);
+            Add(ContributionStatus.Aprobado, zone: "other-zone");
 
             Assert.Equal(new ContributionSummaryResponse(3, 1, 2), await _useCase.ExecuteAsync(Zone));
         }

@@ -227,7 +227,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 result.Zona.Slug,
                 result.Zona.Nombre,
                 result.Puntaje,
-                result.Componentes.Select(component => new ScoreComponentResponse(component.Criterio, component.Prioridad, component.Puntaje, component.Detalle)).ToList(),
+                result.Componentes.Select(component => new ScoreComponentResponse(component.Criterion, component.Prioridad, component.Puntaje, component.Detalle)).ToList(),
                 result.Limites.Select(limit => new ScoreLimitResponse(limit.Tipo, limit.Cumple, limit.Detalle)).ToList(),
                 result.Lugares.Select(place => new PlaceTravelTimeResponse(
                     place.Nombre, place.Minutos, place.MaximoMinutos, place.Estimado, place.DistanciaKm)).ToList(),

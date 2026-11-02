@@ -102,7 +102,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                         saved.TravelMode,
                         saved.Zonas.Select(ToComparedZone).ToArray());
 
-                var context = analysis.Contexto;
+                var context = analysis.Context;
                 var request = BuildRequest(context);
                 var mode = TravelModes.FromMobility(context.Movilidad ?? []);
                 var analysisZones = analysis.Zonas
@@ -131,7 +131,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             return new AnalysisComparisonResponse(calculations);
         }
 
-        private static ComparedAnalysisResponse FromGroupSnapshot(Analisis analysis, string serializedRanking)
+        private static ComparedAnalysisResponse FromGroupSnapshot(Analysis analysis, string serializedRanking)
         {
             GroupRankingResponse? snapshot;
             try
@@ -214,7 +214,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 StringComparer.Ordinal);
         }
 
-        private static ScoringRequest BuildRequest(Contexto context)
+        private static ScoringRequest BuildRequest(Context context)
         {
             var criteria = context.Criterios
                 .Where(criterion => ScoringEngine.EsCriterioConocido(criterion.CriterioId)
@@ -257,7 +257,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 result.Puntaje,
                 result.Componentes
                     .Select(component => new ScoreComponentResponse(
-                        component.Criterio, component.Prioridad, component.Puntaje, component.Detalle))
+                        component.Criterion, component.Prioridad, component.Puntaje, component.Detalle))
                     .ToArray(),
                 result.Limites
                     .Select(limit => new ScoreLimitResponse(limit.Tipo, limit.Cumple, limit.Detalle))

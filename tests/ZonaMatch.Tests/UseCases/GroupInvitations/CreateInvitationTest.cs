@@ -84,7 +84,7 @@ public class CreateInvitationTests
             .ReturnsAsync(group);
         _userRepositoryMock
             .Setup(repo => repo.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Usuario?)null);
+            .ReturnsAsync((User?)null);
 
         // Act
         Func<Task> action = async () => await _useCase.ExecuteAsync(request, currentUserId, CancellationToken.None);

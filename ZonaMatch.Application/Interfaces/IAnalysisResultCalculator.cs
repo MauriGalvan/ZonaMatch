@@ -7,6 +7,6 @@ namespace ZonaMatch.Application.Interfaces
     public interface IAnalysisResultCalculator
     {
         // Null when the zones cannot be scored (no data loaded for them): the analysis is saved without a result.
-        Task<ScoresResponse?> CalculateAsync(Analisis analysis, CancellationToken cancellationToken = default);
+        Task<ScoresResponse?> CalculateAsync(Analysis analysis, CancellationToken cancellationToken = default);
     }
 }

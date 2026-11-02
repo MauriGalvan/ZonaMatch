@@ -1,7 +1,7 @@
 namespace ZonaMatch.Domain.Entities
 {
     // Registered user of the site (table app.usuarios)
-    public class Usuario
+    public class User
     {
         // UUIDv7: unique and time-ordered, so the primary key index stays compact
         public Guid Id { get; set; } = Guid.CreateVersion7();

@@ -35,7 +35,7 @@ namespace ZonaMatch.Application.UseCases.Questions
         {
             await _zones.ValidarExisteAsync(zoneSlug, cancellationToken);
 
-            var question = new Pregunta
+            var question = new Question
             {
                 ZonaSlug = zoneSlug,
                 UsuarioId = currentUser.Id,

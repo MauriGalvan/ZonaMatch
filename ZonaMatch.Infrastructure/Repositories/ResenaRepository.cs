@@ -16,29 +16,29 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<Resena>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
+        public async Task<IReadOnlyList<Review>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
             await _dbContext.Resenas
                 .AsNoTracking()
                 .AsSplitQuery()
-                .Include(r => r.Usuario)
+                .Include(r => r.User)
                 .Include(r => r.VotosUtil)
                 .Where(r => r.ZonaSlug == zonaSlug)
                 .OrderByDescending(r => r.FechaCreacion)
                 .ToListAsync(cancellationToken);
 
-        public Task<Resena?> ObtenerDeUsuarioAsync(string zonaSlug, Guid usuarioId, CancellationToken cancellationToken = default) =>
+        public Task<Review?> ObtenerDeUsuarioAsync(string zonaSlug, Guid usuarioId, CancellationToken cancellationToken = default) =>
             _dbContext.Resenas
                 .Include(r => r.VotosUtil)
                 .FirstOrDefaultAsync(r => r.ZonaSlug == zonaSlug && r.UsuarioId == usuarioId, cancellationToken);
 
-        public Task<Resena?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<Review?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Resenas
                 .Include(r => r.VotosUtil)
                 .FirstOrDefaultAsync(r => r.ZonaSlug == zonaSlug && r.Id == id, cancellationToken);
 
-        public void Agregar(Resena resena) => _dbContext.Resenas.Add(resena);
+        public void Agregar(Review resena) => _dbContext.Resenas.Add(resena);
 
-        public void Eliminar(Resena resena) => _dbContext.Resenas.Remove(resena);
+        public void Eliminar(Review resena) => _dbContext.Resenas.Remove(resena);
 
         public async Task GuardarCambiosAsync(CancellationToken cancellationToken = default)
         {

@@ -16,7 +16,7 @@ namespace ZonaMatch.Tests.UseCases.Questions
         private readonly FakePreguntaRepository _questions = new();
         private readonly AnswerQuestion _useCase;
         private readonly AuthenticatedUserContext _luis = new(Guid.NewGuid(), "luis.gomez@example.com");
-        private readonly Pregunta _question = new() { ZonaSlug = Zone, UsuarioId = Guid.NewGuid(), Texto = "¿Hay verdulerias?" };
+        private readonly Question _question = new() { ZonaSlug = Zone, UsuarioId = Guid.NewGuid(), Texto = "¿Hay verdulerias?" };
 
         public AnswerQuestionTests()
         {

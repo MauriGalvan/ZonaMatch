@@ -7,12 +7,12 @@ namespace ZonaMatch.Application.Interfaces
         Task<(int Aprobados, int Pendientes)> ContarAsync(string zonaSlug, CancellationToken cancellationToken = default);
 
         // Aportes pendientes de la zona con su autor y sus votos, el mas viejo primero (solo lectura)
-        Task<IReadOnlyList<Aporte>> ListarPendientesAsync(string zonaSlug, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<Contribution>> ListarPendientesAsync(string zonaSlug, CancellationToken cancellationToken = default);
 
         // Con seguimiento de cambios, con sus votos
-        Task<Aporte?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default);
+        Task<Contribution?> ObtenerAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default);
 
-        void Agregar(Aporte aporte);
+        void Agregar(Contribution aporte);
 
         Task GuardarCambiosAsync(CancellationToken cancellationToken = default);
     }

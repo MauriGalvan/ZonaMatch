@@ -4,7 +4,7 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    public class ComunaRepository : GeoPoligonoRepository<Comuna>, IComunaRepository
+    public class ComunaRepository : GeoPoligonoRepository<Commune>, IComunaRepository
     {
         public ComunaRepository(ZonaMatchDbContext dbContext) : base(dbContext)
         {

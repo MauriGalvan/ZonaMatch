@@ -37,11 +37,11 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             var zones = await AnalysisMapping.BuildZonesAsync(request.Zones, _zoneRepository, cancellationToken);
             var now = _clock.GetUtcNow();
 
-            var analysis = new Analisis
+            var analysis = new Analysis
             {
                 UsuarioId = userId,
                 Nombre = request.Name.Trim(),
-                Contexto = profile.CopiarParaAnalisis(now),
+                Context = profile.CopiarParaAnalisis(now),
                 FechaCreacion = now,
                 FechaActualizacion = now,
                 Zonas = zones,

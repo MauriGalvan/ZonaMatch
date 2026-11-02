@@ -13,12 +13,12 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         private readonly SetReviewHelpful _useCase;
         private readonly Guid _ana = Guid.NewGuid();
         private readonly Guid _luis = Guid.NewGuid();
-        private readonly Resena _anaReview;
+        private readonly Review _anaReview;
 
         public SetReviewHelpfulTests()
         {
             _useCase = new SetReviewHelpful(_reviews, new FixedTimeProvider(CurrentTime));
-            _anaReview = new Resena { ZonaSlug = Zone, UsuarioId = _ana, FechaCreacion = CurrentTime };
+            _anaReview = new Review { ZonaSlug = Zone, UsuarioId = _ana, FechaCreacion = CurrentTime };
             _reviews.Agregar(_anaReview);
         }
 
@@ -37,7 +37,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
         [Fact]
         public async Task UnmarkHelpful_RemovesVoteAndIsIdempotent()
         {
-            _anaReview.VotosUtil.Add(new ResenaVotoUtil { ResenaId = _anaReview.Id, UsuarioId = _luis, Fecha = CurrentTime });
+            _anaReview.VotosUtil.Add(new ReviewHelpfulVote { ResenaId = _anaReview.Id, UsuarioId = _luis, Fecha = CurrentTime });
 
             await _useCase.ExecuteAsync(Zone, _anaReview.Id, _luis, helpful: false);
             await _useCase.ExecuteAsync(Zone, _anaReview.Id, _luis, helpful: false);

@@ -41,7 +41,7 @@ namespace ZonaMatch.Application.UseCases.Questions
             var question = await _questions.GetByIdAsync(zoneSlug, questionId, cancellationToken)
                 ?? throw new NotFoundException("Question not found.");
 
-            var answer = new Respuesta
+            var answer = new Answer
             {
                 PreguntaId = questionId,
                 UsuarioId = currentUser.Id,
@@ -69,12 +69,12 @@ namespace ZonaMatch.Application.UseCases.Questions
 
             await _questions.GuardarCambiosAsync(cancellationToken);
 
-            if (shouldNotifyAuthor && !string.IsNullOrWhiteSpace(question.Usuario?.Email))
+            if (shouldNotifyAuthor && !string.IsNullOrWhiteSpace(question.User?.Email))
             {
                 try
                 {
                     await _emailService.SendEmailAsync(
-                        question.Usuario.Email,
+                        question.User.Email,
                         "Nueva respuesta a tu pregunta en ZonaMatch",
                         BrandEmail.Render(new BrandEmailContent(
                             Preheader: "Alguien respondió una pregunta que publicaste.",

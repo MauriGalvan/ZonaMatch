@@ -14,7 +14,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IReadOnlyList<Criterio>> ListarAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Criterion>> ListarAsync(CancellationToken cancellationToken = default)
         {
             return await _context.Criterios
                 .OrderBy(c => c.Orden)

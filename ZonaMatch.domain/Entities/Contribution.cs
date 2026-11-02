@@ -2,7 +2,7 @@ using NetTopologySuite.Geometries;
 
 namespace ZonaMatch.Domain.Entities
 {
-    public enum TipoAporte
+    public enum ContributionType
     {
         // Un lugar que falta en el mapa
         PuntoNuevo,
@@ -10,14 +10,14 @@ namespace ZonaMatch.Domain.Entities
         Correccion
     }
 
-    public enum EstadoAporte
+    public enum ContributionStatus
     {
         Pendiente,
         Aprobado,
         Rechazado
     }
 
-    public enum MotivoCorreccion
+    public enum CorrectionReason
     {
         Cerro,
         Nombre,
@@ -26,9 +26,9 @@ namespace ZonaMatch.Domain.Entities
         Otro
     }
 
-    // Aporte de un vecino al mapa de una zona (tabla app.aportes). Queda pendiente hasta que otros vecinos
+    // Contribution de un vecino al mapa de una zona (tabla app.aportes). Queda pendiente hasta que otros vecinos
     // lo validan: los puntos y correcciones aprobados se aplican a los puntos de interes.
-    public class Aporte
+    public class Contribution
     {
         // Diferencia entre confirmaciones y rechazos que resuelve un aporte pendiente
         public const int DiferenciaParaResolver = 3;
@@ -38,10 +38,10 @@ namespace ZonaMatch.Domain.Entities
         public string ZonaSlug { get; set; } = string.Empty;
 
         public Guid UsuarioId { get; set; }
-        public Usuario? Usuario { get; set; }
+        public User? User { get; set; }
 
-        public TipoAporte Tipo { get; set; }
-        public EstadoAporte Estado { get; set; } = EstadoAporte.Pendiente;
+        public ContributionType Tipo { get; set; }
+        public ContributionStatus Estado { get; set; } = ContributionStatus.Pendiente;
 
         // Punto nuevo: sus datos. Correccion: el valor propuesto (Nombre, Categoria o Ubicacion, segun el Motivo).
         public string? Nombre { get; set; }
@@ -56,7 +56,7 @@ namespace ZonaMatch.Domain.Entities
         // Solo correccion: el lugar corregido (id de OSM como "n123", o "a<id>" para un punto de vecinos)
         public string? PuntoInteresId { get; set; }
         public string? PuntoInteresNombre { get; set; }
-        public MotivoCorreccion? Motivo { get; set; }
+        public CorrectionReason? Motivo { get; set; }
         public string? Comentario { get; set; }
 
         public DateTimeOffset FechaCreacion { get; set; }
@@ -65,7 +65,7 @@ namespace ZonaMatch.Domain.Entities
         // Site administrator who resolved it directly; null when the community votes resolved it
         public Guid? ResueltoPorId { get; set; }
 
-        public List<AporteValidacion> Validaciones { get; set; } = [];
+        public List<ContributionVote> Validaciones { get; set; } = [];
 
         public int Confirmaciones => Validaciones.Count(v => v.Confirma);
         public int Rechazos => Validaciones.Count(v => !v.Confirma);
@@ -76,7 +76,7 @@ namespace ZonaMatch.Domain.Entities
         {
             var existente = Validaciones.FirstOrDefault(v => v.UsuarioId == usuarioId);
             if (existente is null)
-                Validaciones.Add(new AporteValidacion { AporteId = Id, UsuarioId = usuarioId, Confirma = confirma, Fecha = ahora });
+                Validaciones.Add(new ContributionVote { AporteId = Id, UsuarioId = usuarioId, Confirma = confirma, Fecha = ahora });
             else
             {
                 existente.Confirma = confirma;
@@ -86,7 +86,7 @@ namespace ZonaMatch.Domain.Entities
             var diferencia = Confirmaciones - Rechazos;
             if (Math.Abs(diferencia) >= DiferenciaParaResolver)
             {
-                Estado = diferencia > 0 ? EstadoAporte.Aprobado : EstadoAporte.Rechazado;
+                Estado = diferencia > 0 ? ContributionStatus.Aprobado : ContributionStatus.Rechazado;
                 FechaResolucion = ahora;
             }
         }
@@ -95,14 +95,14 @@ namespace ZonaMatch.Domain.Entities
         // The caller checks that the contribution is pending.
         public void Resolve(Guid administratorId, bool approve, DateTimeOffset now)
         {
-            Estado = approve ? EstadoAporte.Aprobado : EstadoAporte.Rechazado;
+            Estado = approve ? ContributionStatus.Aprobado : ContributionStatus.Rechazado;
             FechaResolucion = now;
             ResueltoPorId = administratorId;
         }
     }
 
     // Voto de un vecino sobre un aporte (tabla app.aportes_validaciones)
-    public class AporteValidacion
+    public class ContributionVote
     {
         public Guid AporteId { get; set; }
         public Guid UsuarioId { get; set; }

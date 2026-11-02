@@ -179,16 +179,16 @@ public sealed class AuthUseCasesTests
 
     private sealed class FakeUserRepository : IUserRepository
     {
-        public List<Usuario> SavedUsers { get; } = [];
+        public List<User> SavedUsers { get; } = [];
         public bool ThrowConflictOnAdd { get; set; }
 
         public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) =>
             Task.FromResult(SavedUsers.Any(user => user.Email == email));
 
-        public Task<Usuario?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
+        public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
             Task.FromResult(SavedUsers.FirstOrDefault(user => user.Email == email));
 
-        public Task AddAsync(Usuario user, CancellationToken cancellationToken = default)
+        public Task AddAsync(User user, CancellationToken cancellationToken = default)
         {
             if (ThrowConflictOnAdd)
                 throw new ConflictException("El email ya esta registrado.");
@@ -211,7 +211,7 @@ public sealed class AuthUseCasesTests
     {
         public const string TokenPrefix = "token:";
 
-        public (string Token, DateTimeOffset ExpiresAt) Generate(Usuario user) =>
+        public (string Token, DateTimeOffset ExpiresAt) Generate(User user) =>
             (TokenPrefix + user.Id, CurrentTime.AddHours(1));
     }
 

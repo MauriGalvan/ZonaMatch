@@ -7,8 +7,8 @@ namespace ZonaMatch.Application.Interfaces
     public interface ITransporteZonaRepository
     {
         // The same zone selection as GET /api/v1/zones/{slug}.
-        Task<IReadOnlyList<ParadasModoZona>> ListarParadasAsync(string slug, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<ZoneTransitModeStops>> ListarParadasAsync(string slug, CancellationToken cancellationToken = default);
 
-        Task<IReadOnlyList<SalidasLineaZona>> ListarSalidasAsync(string slug, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<TransitLineDepartures>> ListarSalidasAsync(string slug, CancellationToken cancellationToken = default);
     }
 }

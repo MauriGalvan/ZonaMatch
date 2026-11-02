@@ -40,8 +40,8 @@ public sealed class ReverseGeocode(
             Calle: geocodedAddress?.Calle,
             Altura: geocodedAddress?.Altura,
             Localidad: geocodedAddress?.Localidad,
-            Partido: district?.Nombre,
-            Comuna: commune?.Nombre,
+            District: district?.Nombre,
+            Commune: commune?.Nombre,
             Provincia: district?.Provincia ?? geocodedAddress?.Provincia,
             CodigoPostal: geocodedAddress?.CodigoPostal,
             DireccionCompleta: geocodedAddress?.DireccionCompleta);

@@ -22,7 +22,7 @@ namespace ZonaMatch.Api.Authentication
             _credentials = new SigningCredentials(_options.CreateSigningKey(), SecurityAlgorithms.HmacSha256);
         }
 
-        public (string Token, DateTimeOffset ExpiresAt) Generate(Usuario user)
+        public (string Token, DateTimeOffset ExpiresAt) Generate(User user)
         {
             var issuedAt = _timeProvider.GetUtcNow();
             var expiresAt = issuedAt.AddMinutes(_options.ExpirationMinutes);

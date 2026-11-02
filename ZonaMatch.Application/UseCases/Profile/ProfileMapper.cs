@@ -6,7 +6,7 @@ namespace ZonaMatch.Application.UseCases.Profile;
 
 internal static class ProfileMapper
 {
-    public static ProfileResponse ToResponse(Contexto profile) =>
+    public static ProfileResponse ToResponse(Context profile) =>
         new(
             AnalysisCriteriaBuilder.ToContextResponse(profile),
             AnalysisCriteriaBuilder.ToCriteriaDictionary(profile),

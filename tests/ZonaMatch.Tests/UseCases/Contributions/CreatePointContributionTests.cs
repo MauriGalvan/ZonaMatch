@@ -29,8 +29,8 @@ namespace ZonaMatch.Tests.UseCases.Contributions
             var response = await _useCase.ExecuteAsync(Zone, _author, Point(category: " Salud "));
 
             var guardado = Assert.Single(_contributions.Aportes);
-            Assert.Equal(TipoAporte.PuntoNuevo, guardado.Tipo);
-            Assert.Equal(EstadoAporte.Pendiente, guardado.Estado);
+            Assert.Equal(ContributionType.PuntoNuevo, guardado.Tipo);
+            Assert.Equal(ContributionStatus.Pendiente, guardado.Estado);
             Assert.Equal("salud", guardado.Categoria);
             Assert.Equal("Farmacia Nueva", guardado.Nombre);
             Assert.Null(guardado.Direccion);

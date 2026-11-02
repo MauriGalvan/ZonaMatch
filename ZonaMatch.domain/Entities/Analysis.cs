@@ -1,9 +1,9 @@
 namespace ZonaMatch.Domain.Entities
 {
-    // Analisis guardado de un usuario (tabla app.analisis): las zonas que comparo y el criterio con el que
+    // Analysis guardado de un usuario (tabla app.analisis): las zonas que comparo y el criterio con el que
     // se calculo, copiado del perfil al guardarlo. Una version es un analisis derivado de otro, con el
     // criterio ajustado solo para ese caso: AnalisisOrigenId apunta al original.
-    public class Analisis
+    public class Analysis
     {
         // UUIDv7: unique and time-ordered, so the primary key index stays compact
         public Guid Id { get; set; } = Guid.CreateVersion7();
@@ -13,10 +13,10 @@ namespace ZonaMatch.Domain.Entities
         // Nombre que el usuario ve en su listado, ej: "Cerca del trabajo"
         public string Nombre { get; set; } = string.Empty;
 
-        // Criterio con el que se calculo (Contexto de tipo analisis, propio de este analisis)
+        // Criterion con el que se calculo (Context de tipo analisis, propio de este analisis)
         public Guid ContextoId { get; set; }
 
-        public Contexto Contexto { get; set; } = null!;
+        public Context Context { get; set; } = null!;
 
         // Snapshot del resultado ponderado cuando el análisis se generó desde un grupo.
         public string? PuntajesEnGrupoJson { get; set; }
@@ -39,6 +39,6 @@ namespace ZonaMatch.Domain.Entities
         public DateTimeOffset FechaActualizacion { get; set; }
 
         // Filas de app.analisis_zonas, en el orden en que el usuario las eligio
-        public ICollection<AnalisisZona> Zonas { get; set; } = new List<AnalisisZona>();
+        public ICollection<AnalysisZone> Zonas { get; set; } = new List<AnalysisZone>();
     }
 }

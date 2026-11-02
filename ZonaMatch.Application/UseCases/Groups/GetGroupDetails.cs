@@ -96,9 +96,9 @@ public sealed class GetGroupDetails
     }
 
     private static GroupRestrictionsResponse BuildRestrictions(
-        IReadOnlyList<Contexto> profiles,
+        IReadOnlyList<Context> profiles,
         IReadOnlyList<GroupParticipantResponse> participants,
-        IReadOnlyDictionary<Guid, Contexto> profilesByUserId)
+        IReadOnlyDictionary<Guid, Context> profilesByUserId)
     {
         var housing = GroupHousingSuggestion.From(profiles);
         return new GroupRestrictionsResponse(
@@ -111,7 +111,7 @@ public sealed class GetGroupDetails
             housing.SurfaceM2);
     }
 
-    private static int CountRestrictions(Contexto? profile)
+    private static int CountRestrictions(Context? profile)
     {
         if (profile is null)
             return 0;
@@ -124,7 +124,7 @@ public sealed class GetGroupDetails
         return rentLimit + purchaseLimit + mobility + pets + travelTimeLimits;
     }
 
-    private static string GetTravelTimesText(IReadOnlyList<Contexto> profiles)
+    private static string GetTravelTimesText(IReadOnlyList<Context> profiles)
     {
         var hasTravelTimeLimits = profiles.Any(profile =>
             profile.Puntos.Any(point => !string.IsNullOrWhiteSpace(point.TiempoMax)));
@@ -136,7 +136,7 @@ public sealed class GetGroupDetails
 
     private static string GetPoiText(
         IReadOnlyList<GroupParticipantResponse> participants,
-        IReadOnlyDictionary<Guid, Contexto> profilesByUserId)
+        IReadOnlyDictionary<Guid, Context> profilesByUserId)
     {
         var summaries = participants
             .Select(participant => new

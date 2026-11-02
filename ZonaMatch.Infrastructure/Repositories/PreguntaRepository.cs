@@ -14,12 +14,12 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<Pregunta>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
+        public async Task<IReadOnlyList<Question>> ListarPorZonaAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
             await _dbContext.Preguntas
                 .AsNoTracking()
                 .AsSplitQuery()
-                .Include(p => p.Usuario)
-                .Include(p => p.Respuestas).ThenInclude(r => r.Usuario)
+                .Include(p => p.User)
+                .Include(p => p.Respuestas).ThenInclude(r => r.User)
                 .Where(p => p.ZonaSlug == zonaSlug)
                 .OrderByDescending(p => p.FechaCreacion)
                 .ToListAsync(cancellationToken);
@@ -27,14 +27,14 @@ namespace ZonaMatch.Infrastructure.Repositories
         public Task<bool> ExisteAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Preguntas.AnyAsync(p => p.ZonaSlug == zonaSlug && p.Id == id, cancellationToken);
 
-        public Task<Pregunta?> GetByIdAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<Question?> GetByIdAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Preguntas
-                .Include(question => question.Usuario)
+                .Include(question => question.User)
                 .FirstOrDefaultAsync(question => question.ZonaSlug == zonaSlug && question.Id == id, cancellationToken);
 
-        public void Agregar(Pregunta pregunta) => _dbContext.Preguntas.Add(pregunta);
+        public void Agregar(Question pregunta) => _dbContext.Preguntas.Add(pregunta);
 
-        public void Agregar(Respuesta respuesta) => _dbContext.Respuestas.Add(respuesta);
+        public void Agregar(Answer respuesta) => _dbContext.Respuestas.Add(respuesta);
 
         public Task GuardarCambiosAsync(CancellationToken cancellationToken = default) =>
             _dbContext.SaveChangesAsync(cancellationToken);

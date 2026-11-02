@@ -9,7 +9,7 @@ namespace ZonaMatch.Infrastructure.Repositories
 {
     // Lee geo.zonas y geo.zona_indicadores, que arma etl/calcular_zonas.sql a partir del censo, los delitos (Mapa
     // del Delito y SNIC) y
-    // los limites de OSM. Solo lectura: los conteos se convierten en indicadores en IndicadoresZona.
+    // los limites de OSM. Solo lectura: los conteos se convierten en indicadores en ZoneIndicators.
     public class IndicadoresZonaRepository : IIndicadoresZonaRepository
     {
         private const string Schema = ZonaMatchDbOptions.GeoSchema;
@@ -50,19 +50,19 @@ namespace ZonaMatch.Infrastructure.Repositories
             _logger = logger;
         }
 
-        public Task<IndicadoresZona?> ObtenerPorSlugAsync(string slug, CancellationToken cancellationToken = default) =>
+        public Task<ZoneIndicators?> ObtenerPorSlugAsync(string slug, CancellationToken cancellationToken = default) =>
             PrimeraAsync(SqlPorSlug, cancellationToken, new NpgsqlParameter("slug", slug));
 
-        public Task<IndicadoresZona?> ObtenerCabaAsync(CancellationToken cancellationToken = default) =>
+        public Task<ZoneIndicators?> ObtenerCabaAsync(CancellationToken cancellationToken = default) =>
             PrimeraAsync(SqlCaba, cancellationToken);
 
-        private async Task<IndicadoresZona?> PrimeraAsync(
+        private async Task<ZoneIndicators?> PrimeraAsync(
             string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
         {
             try
             {
                 var filas = await _dbContext.Database
-                    .SqlQueryRaw<IndicadoresZona>(sql, parametros)
+                    .SqlQueryRaw<ZoneIndicators>(sql, parametros)
                     .ToListAsync(cancellationToken);
 
                 return filas.FirstOrDefault();
