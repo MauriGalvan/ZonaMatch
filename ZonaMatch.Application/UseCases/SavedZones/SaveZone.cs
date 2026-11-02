@@ -1,5 +1,5 @@
-using ZonaMatch.Application.DTOs.SavedZones.Requests;
-using ZonaMatch.Application.DTOs.SavedZones.Responses;
+﻿using ZonaMatch.Application.DTOs.SavedZone.Requests;
+using ZonaMatch.Application.DTOs.SavedZone.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
@@ -10,10 +10,10 @@ namespace ZonaMatch.Application.UseCases.SavedZones
     public class SaveZone
     {
         private readonly ISavedZoneRepository _savedZones;
-        private readonly IZonaRepository _zones;
+        private readonly IZoneRepository _zones;
         private readonly TimeProvider _timeProvider;
 
-        public SaveZone(ISavedZoneRepository savedZones, IZonaRepository zones, TimeProvider timeProvider)
+        public SaveZone(ISavedZoneRepository savedZones, IZoneRepository zones, TimeProvider timeProvider)
         {
             _savedZones = savedZones;
             _zones = zones;

@@ -9,7 +9,7 @@ public interface IGroupInvitationRepository
 {
     Task AddAsync(GroupInvitation invitation, CancellationToken cancellationToken);
 
-    // Busca la invitación privada usando el token del mail
+    // Finds a private invitation by its email token.
     Task<GroupInvitation?> GetByTokenAsync(Guid token, CancellationToken cancellationToken);
 
     Task UpdateAsync(GroupInvitation invitation, CancellationToken cancellationToken);

@@ -1,16 +1,16 @@
 """
-Downloads the crime statistics by partido of the Sistema Nacional de Informacion Criminal (SNIC, Ministerio de
-Seguridad de la Nacion) and keeps what the zone detail and the scoring use: CABA and Buenos Aires province, the
+Downloads crime statistics by district from the Sistema Nacional de Informacion Criminal (SNIC, Argentina's
+Ministry of Security) and keeps the data used by zone details and scoring: CABA and Buenos Aires province, the
 latest year, and the same crime groups as the CABA Mapa del Delito.
 
 Source: https://datos.gob.ar/dataset/snic-departamental-estadisticas-criminales-en-la-republica-argentina-por-departamentos
-These are crimes reported to the police, aggregated by partido (comuna in CABA); there is no finer location.
-etl/calcular_zonas.sql spreads them over the localidades of each partido by population.
+These are crimes reported to the police, aggregated by district (commune in CABA); there is no finer location.
+etl/calculate_zones.sql distributes them across the localities of each district by population.
 
 Output: datos/snic_departamentos.csv with year, department_id (INDEC code, as in the census radios),
 department_name, crime_group, events and rate_per_100k (rate on the population projected for that year). The
-group "homicides_5y" is the yearly average of the last five years of homicides: homicides are almost always
-recorded, so etl/calcular_zonas.sql uses them to correct the differences in reporting between partidos.
+group "homicides_5y" is the yearly average of the last five years of homicides. Homicides are almost always
+recorded, so etl/calculate_zones.sql uses them to correct reporting differences between districts.
 
 Usage: python etl/download_snic.py   (from backend/ZonaMatch). No dependencies beyond the standard library.
 """
@@ -28,7 +28,7 @@ SNIC_URL = "https://cloud-snic.minseg.gob.ar/Bases/SNIC/snic-departamentos-anual
 OUTPUT = Path(__file__).resolve().parent.parent / "datos" / "snic_departamentos.csv"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZonaMatch-ETL/1.0"
 
-# Years of homicides averaged into "homicides_5y": a single year has few homicides per partido or comuna
+# Years of homicides averaged into "homicides_5y": one year has few homicides per district or commune.
 HOMICIDE_YEARS = 5
 HOMICIDE_CODE = "1"
 
@@ -38,17 +38,17 @@ PROVINCES = {"02", "06"}
 # SNIC crime codes per group, attempts included. The first five add up to the crime total of a zone, as the
 # Robo, Hurto, Lesiones, Homicidios and Amenazas types of the Mapa del Delito do; "road" is reported apart.
 CRIME_GROUPS = {
-    "1": "homicides",      # Homicidios dolosos
-    "5": "injuries",       # Lesiones dolosas
-    "13": "threats",       # Amenazas
-    "15": "robberies",     # Robos
-    "16": "robberies",     # Tentativas de robo
-    "17": "robberies",     # Robos agravados por el resultado de lesiones y/o muertes
-    "18": "robberies",     # Tentativas de robo agravado
-    "19": "thefts",        # Hurtos
-    "20": "thefts",        # Tentativas de hurto
-    "3": "road",           # Muertes en accidentes viales
-    "6": "road",           # Lesiones culposas en accidentes viales
+    "1": "homicides",      # Intentional homicides.
+    "5": "injuries",       # Intentional injuries.
+    "13": "threats",       # Threats.
+    "15": "robberies",     # Robberies.
+    "16": "robberies",     # Attempted robberies.
+    "17": "robberies",     # Robberies aggravated by injuries or deaths.
+    "18": "robberies",     # Attempted aggravated robberies.
+    "19": "thefts",        # Thefts.
+    "20": "thefts",        # Attempted thefts.
+    "3": "road",           # Deaths in road accidents.
+    "6": "road",           # Negligent injuries in road accidents.
 }
 
 
@@ -71,12 +71,12 @@ def download():
         except (urllib.error.URLError, ConnectionError, TimeoutError) as error:
             if attempt == 3:
                 raise
-            print(f"  Fallo la descarga ({error}); reintentando...")
+            print(f"  Download failed ({error}); retrying...")
             time.sleep(10 * attempt)
 
 
 def main():
-    print("Estadisticas criminales por partido (SNIC, Ministerio de Seguridad), unos 70 MB...")
+    print("Crime statistics by department (SNIC, Ministry of Security), about 70 MB...")
     rows = [row for row in csv.DictReader(io.StringIO(download().decode("utf-8")), delimiter=";")
             if row["provincia_id"] in PROVINCES and row["codigo_delito_snic_id"] in CRIME_GROUPS]
 
@@ -108,7 +108,7 @@ def main():
         for (department_id, group), (events, rate) in sorted(totals.items()):
             writer.writerow([year, department_id, names[department_id], group, round(events), round(rate, 2)])
 
-    print(f"  Anio {year}: {len(names)} partidos y comunas en {OUTPUT}")
+    print(f"  Year {year}: {len(names)} departments and communes in {OUTPUT}")
     return 0
 
 

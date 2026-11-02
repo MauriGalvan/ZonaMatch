@@ -10,14 +10,14 @@ namespace ZonaMatch.Infrastructure.Repositories;
 public sealed class UserRepository(ZonaMatchDbContext dbContext) : IUserRepository
 {
     public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) =>
-        dbContext.Usuarios.AnyAsync(user => user.Email == email, cancellationToken);
+        dbContext.Users.AnyAsync(user => user.Email == email, cancellationToken);
 
-    public Task<Usuario?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
-        dbContext.Usuarios.AsNoTracking().FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
+        dbContext.Users.AsNoTracking().FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
 
-    public async Task AddAsync(Usuario user, CancellationToken cancellationToken = default)
+    public async Task AddAsync(User user, CancellationToken cancellationToken = default)
     {
-        dbContext.Usuarios.Add(user);
+        dbContext.Users.Add(user);
 
         try
         {

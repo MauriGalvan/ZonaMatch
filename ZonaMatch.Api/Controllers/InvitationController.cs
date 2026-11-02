@@ -2,15 +2,16 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using ZonaMatch.Application.DTOs.GroupInvitation;
-using ZonaMatch.Application.DTOs.GroupLink;
+using ZonaMatch.Application.DTOs.GroupInvitation.Requests;
+using ZonaMatch.Application.DTOs.GroupInvitation.Responses;
+using ZonaMatch.Application.DTOs.GroupLink.Responses;
 using ZonaMatch.Application.UseCases.GroupInvitations;
 using ZonaMatch.Application.UseCases.GroupLinks;
 
 namespace ZonaMatch.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/v1/group-invitations")]
 public class InvitationsController : ControllerBase
 {
     private Guid GetCurrentUserId()
@@ -20,17 +21,17 @@ public class InvitationsController : ControllerBase
     }
 
     // ==========================================
-    // INVITACIONES POR CORREO ELECTRÓNICO
+    // EMAIL INVITATIONS
     // ==========================================
 
     [Authorize]
-    [HttpPost("Email")]
+    [HttpPost("email")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CreateEmailInvitation(
+    public async Task<IActionResult> CreateEmailInvitationAsync(
         [FromBody] CreateInvitationRequest request,
         [FromServices] CreateInvitation createInvitation,
         [FromServices] IConfiguration configuration,
@@ -57,10 +58,10 @@ public class InvitationsController : ControllerBase
         return Ok(new { Message = "Invitación enviada por correo exitosamente." });
     }
 
-    [HttpGet("Email/{token:guid}")]
+    [HttpGet("email/{token:guid}")]
     [ProducesResponseType(typeof(InvitationDetailsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetEmailInvitationDetails(
+    public async Task<IActionResult> GetEmailInvitationDetailsAsync(
         [FromRoute] Guid token,
         [FromServices] GetInvitationByToken getInvitation,
         CancellationToken cancellationToken)
@@ -70,13 +71,13 @@ public class InvitationsController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("Email/{token:guid}/Accept")]
+    [HttpPost("email/{token:guid}/acceptances")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> AcceptEmailInvitation(
+    public async Task<IActionResult> AcceptEmailInvitationAsync(
         [FromRoute] Guid token,
         [FromServices] AcceptInvitation acceptInvitation,
         CancellationToken cancellationToken)
@@ -86,16 +87,16 @@ public class InvitationsController : ControllerBase
     }
 
     // ==========================================
-    // INVITACIONES POR LINK PÚBLICO (ESTILO WHATSAPP)
+    // PUBLIC LINK INVITATIONS (WHATSAPP-STYLE)
     // ==========================================
 
     [Authorize]
-    [HttpGet("Link/Group/{groupId:guid}")]
+    [HttpGet("~/api/v1/groups/{groupId:guid}/invitation-link")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCurrentGroupInviteLink(
+    public async Task<IActionResult> GetCurrentGroupInviteLinkAsync(
         [FromRoute] Guid groupId,
         [FromServices] GetGroupInviteLink getGroupInviteLink,
         CancellationToken cancellationToken)
@@ -104,10 +105,10 @@ public class InvitationsController : ControllerBase
         return Ok(new { InviteToken = token });
     }
 
-    [HttpGet("Link/{token:guid}")]
+    [HttpGet("~/api/v1/group-invitation-links/{token:guid}")]
     [ProducesResponseType(typeof(GroupLinkDetailsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetLinkInvitationDetails(
+    public async Task<IActionResult> GetLinkInvitationDetailsAsync(
         [FromRoute] Guid token,
         [FromServices] GetGroupByLink getGroupByLink,
         CancellationToken cancellationToken)
@@ -117,12 +118,12 @@ public class InvitationsController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("Link/{token:guid}/Accept")]
+    [HttpPost("~/api/v1/group-invitation-links/{token:guid}/acceptances")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> JoinByLink(
+    public async Task<IActionResult> JoinByLinkAsync(
         [FromRoute] Guid token,
         [FromServices] JoinGroupByLink joinGroupByLink,
         CancellationToken cancellationToken)
@@ -132,12 +133,12 @@ public class InvitationsController : ControllerBase
     }
 
     [Authorize]
-    [HttpPut("Link/Group/{groupId:guid}/Revoke")]
+    [HttpPut("~/api/v1/groups/{groupId:guid}/invitation-link")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RevokeLink(
+    public async Task<IActionResult> RevokeLinkAsync(
         [FromRoute] Guid groupId,
         [FromServices] RevokeInviteLink revokeInviteLink,
         CancellationToken cancellationToken)

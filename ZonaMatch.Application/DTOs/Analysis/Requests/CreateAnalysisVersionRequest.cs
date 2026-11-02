@@ -1,6 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using ZonaMatch.Application.DTOs;
-
 namespace ZonaMatch.Application.DTOs.Analysis.Requests;
 
 public sealed class CreateAnalysisVersionRequest
@@ -9,7 +7,7 @@ public sealed class CreateAnalysisVersionRequest
     public string? Name { get; set; }
 
     [Required(ErrorMessage = "El criterio es obligatorio.")]
-    public CriterioUsuarioRequest Criterion { get; set; } = null!;
+    public AnalysisCriteriaRequest Criterion { get; set; } = null!;
 
     public List<AnalysisZoneRequest>? Zones { get; set; }
 }

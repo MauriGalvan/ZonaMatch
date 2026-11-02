@@ -10,17 +10,17 @@ using ZonaMatch.Application.UseCases.Auth;
 namespace ZonaMatch.Api.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/auth")]
     public class AuthController : ControllerBase
     {
-        // POST /Auth/registro. The route is retained for existing clients.
+        // POST /api/v1/auth/register.
         // Body: { "email": "", "password": "", "confirmPassword": "", "birthDate": "1990-05-31" }
-        [HttpPost("registro")]
+        [HttpPost("register")]
         [ProducesResponseType<UserResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> Register(
+        public async Task<IActionResult> RegisterAsync(
             [FromServices] RegisterUser registerUser,
             [FromBody] RegisterRequest request,
             CancellationToken cancellationToken)
@@ -29,7 +29,7 @@ namespace ZonaMatch.Api.Controllers
             return StatusCode(StatusCodes.Status201Created, user);
         }
 
-        // POST /Auth/login
+        // POST /api/v1/auth/login
         // Body: { "email": "", "password": "" }
         // The access token is returned as an HttpOnly cookie.
         [HttpPost("login")]
@@ -39,7 +39,7 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-        public async Task<IActionResult> Login(
+        public async Task<IActionResult> LoginAsync(
             [FromServices] LoginUser loginUser,
             [FromBody] LoginRequest request,
             CancellationToken cancellationToken)
@@ -53,7 +53,7 @@ namespace ZonaMatch.Api.Controllers
             return Ok(new LoginResponse(loginResult.ExpiresAt, loginResult.User));
         }
 
-        // GET /Auth/me (authenticated by the HttpOnly cookie or an Authorization bearer token)
+        // GET /api/v1/auth/me (authenticated by the HttpOnly cookie or an Authorization bearer token)
         [Authorize]
         [HttpGet("me")]
         [ProducesResponseType<CurrentSessionResponse>(StatusCodes.Status200OK)]

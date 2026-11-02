@@ -25,7 +25,7 @@ public class GroupInvitationRepository : IGroupInvitationRepository
 
     public async Task<GroupInvitation?> GetByTokenAsync(Guid token, CancellationToken cancellationToken)
     {
-        // El .Include(i => i.Group) es clave para traer los datos del grupo y mostrar su nombre en el Frontend
+        // Include the group so the frontend can display its name.
         return await _context.GroupInvitations
             .Include(i => i.Group)
             .FirstOrDefaultAsync(i => i.Token == token, cancellationToken);

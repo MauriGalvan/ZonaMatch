@@ -13,7 +13,7 @@ namespace ZonaMatch.Infrastructure.Security
         // OWASP recommendation for PBKDF2-HMAC-SHA512
         private const int IterationCount = 210_000;
 
-        private readonly PasswordHasher<Usuario> _hasher =
+        private readonly PasswordHasher<User> _hasher =
             new(Options.Create(new PasswordHasherOptions { IterationCount = IterationCount }));
 
         // Valid hash of a random password, used to spend the same time when the user does not exist

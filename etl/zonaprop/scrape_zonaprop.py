@@ -1,17 +1,17 @@
 """
 Scrapes Zonaprop listing pages to measure the real estate market of each ZonaMatch zone.
 
-For every zone in datos/zonaprop/zones.csv (exported by target_zones.sql) and every combination of operation
-(venta, alquiler) and property type (departamentos, casas, ph) it reads:
+For every zone in datos/zonaprop/zones.csv (exported by target_zones.sql), and every combination of operation
+(the URL segments `venta`, `alquiler`) and property type (`departamentos`, `casas`, `ph`), it reads:
   - the total number of active listings Zonaprop reports for that location, and
   - a sample of the most recent listings (price, currency, expenses, surface, coordinates).
 
 Zonaprop resolves its location URLs by slug, which usually matches ours ("villa-crespo", "adrogue"). An unknown
 slug falls back to a wider search and an ambiguous one may land in another province, so every response is
-checked against the expected location (its name, in CABA or in an AMBA partido) before it is used. Names repeated
-elsewhere in the country are tried again with the partido ("castelar-moron"). Zones that still do not match are
-logged in datos/zonaprop/unmatched.csv; slug_overrides.csv maps them by hand (a Zonaprop slug, or the partido of
-zones that geo.zonas does not place in one).
+checked against the expected location (its name, in CABA or an AMBA district) before it is used. Names repeated
+elsewhere in the country are tried again with the district ("castelar-moron"). Zones that still do not match are
+logged in datos/zonaprop/unmatched.csv; slug_overrides.csv maps them by hand (a Zonaprop slug, or the district of
+zones that geo.zonas does not assign to one).
 
 Outputs (in datos/zonaprop/):
   totals.csv    zone_slug, operation, property_type, listings, zonaprop_location, zonaprop_slug, url, scraped_at
@@ -19,9 +19,9 @@ Outputs (in datos/zonaprop/):
 Statistics per zone are computed in SQL (etl/zonaprop/calculate_market.sql), which also drops listings whose
 coordinates fall far from the zone.
 
-The scraper is deliberately slow: one request every few seconds. When Zonaprop answers with a challenge or an
-error it waits and retries a few times, and then stops. Every response is cached, so running it again resumes
-where it stopped.
+The scraper is deliberately slow: one request every few seconds. When Zonaprop responds with a challenge or an
+error, it waits and retries a few times before stopping. Every response is cached, so a later run resumes where
+the previous run stopped.
 
 Usage (from backend/ZonaMatch):
   python etl/zonaprop/scrape_zonaprop.py                 scrape everything still missing
@@ -67,7 +67,7 @@ TITLE_PATTERN = re.compile(r"<title>\s*([^<]*?)\s*</title>", re.S)
 LOCATION_PATTERN = re.compile(r" en (?:venta|alquiler) en (.+?)(?: - P[aá]gina \d+)? - Zonaprop$")
 
 
-# Parents Zonaprop shows for AMBA locations outside CABA: the partidos and its GBA regions
+# Parent locations Zonaprop shows for AMBA locations outside CABA: the districts and GBA regions.
 AMBA_PARENTS = {
     "almirante brown", "avellaneda", "berazategui", "berisso", "canuelas", "ensenada", "escobar",
     "esteban echeverria", "exaltacion de la cruz", "ezeiza", "florencio varela", "general rodriguez",
@@ -76,12 +76,12 @@ AMBA_PARENTS = {
     "presidente peron", "quilmes", "san fernando", "san isidro", "san miguel", "san vicente", "tigre",
     "tres de febrero", "vicente lopez", "general las heras", "gba norte", "gba sur", "gba oeste",
 }
-# Zonaprop also nests some barrios in a localidad ("Villa La Florida, Bernal Oeste"): read_zones adds our zone names
+# Zonaprop also nests some neighborhoods in a locality ("Villa La Florida, Bernal Oeste"): read_zones adds our zone names.
 KNOWN_PARENTS = set(AMBA_PARENTS)
 
 
 class Blocked(Exception):
-    """Zonaprop answered with a challenge or an error page instead of the listing."""
+    """Zonaprop returned a challenge or an error page instead of the listing."""
 
 
 class NotFound(Exception):
@@ -177,12 +177,12 @@ def parse_posting(posting):
 
 
 def location_matches(title, zone):
-    """True when the page title names the zone we asked for, in CABA or in an AMBA partido.
+    """True when the page title names the requested zone, in CABA or an AMBA district.
 
-    The partido is not compared with ours: Zonaprop places some localidades in the neighboring partido (Loma
-    Hermosa, Villa Adelina) and answers with the whole partido for the cabeceras ("Morón, GBA Oeste").
-    calculate_market.sql checks the coordinates of the listings, which catches a same-named place elsewhere in the
-    AMBA (Villanueva in Tigre instead of Moreno) and scales a partido total down to the zone.
+    The district is not compared with ours: Zonaprop places some localities in a neighboring district (Loma
+    Hermosa, Villa Adelina) and returns the whole district for its main localities ("Morón, GBA Oeste").
+    calculate_market.sql checks listing coordinates, which catches a same-named place elsewhere in the AMBA
+    (Villanueva in Tigre instead of Moreno) and scales district totals down to the zone.
     """
     match = LOCATION_PATTERN.search(title)
     if not match:
@@ -237,7 +237,7 @@ class Scraper:
             except Blocked as error:
                 if attempt == len(waits):
                     raise
-                print(f"    Zonaprop no respondio ({error}); esperando {waits[attempt]} s...", flush=True)
+                print(f"    Zonaprop did not respond ({error}); waiting {waits[attempt]} s...", flush=True)
                 time.sleep(waits[attempt])
         self.requests += 1
         page = parse_page(html)
@@ -286,8 +286,8 @@ def slugify(text):
 def read_zones(only):
     file = DATA_DIR / "zones.csv"
     if not file.exists():
-        sys.exit(f"Falta {file}: exportarlo con etl/zonaprop/target_zones.sql (ver MERCADO-ZONAS-DOCKER.bat).")
-    # zonaprop_slug: the slug to use; partido: for zones without a partido in geo.zonas, to build the fallback
+        sys.exit(f"Missing {file}: export it with etl/zonaprop/target_zones.sql (see ZONE-MARKET-DOCKER.bat).")
+    # zonaprop_slug: slug to use; partido: parent district for zones without one in geo.zonas, used for fallback.
     overrides = {}
     if OVERRIDES_FILE.exists():
         with OVERRIDES_FILE.open(encoding="utf-8") as handle:
@@ -308,7 +308,7 @@ def read_zones(only):
             if row["manual_slug"]:
                 row["candidates"] = [row["manual_slug"]]
             else:
-                # Names repeated elsewhere in the country carry the partido in Zonaprop ("castelar-moron")
+                # Names repeated elsewhere in the country include their district in Zonaprop ("castelar-moron").
                 row["candidates"] = [row["slug"]]
                 if row["parent_name"] and not row["in_caba"]:
                     row["candidates"].append(f"{row['slug']}-{slugify(row['parent_name'])}")
@@ -325,7 +325,7 @@ def usd_rate(override):
         with urllib.request.urlopen(request, timeout=30) as response:
             return float(json.loads(response.read())["venta"])
     except (urllib.error.URLError, TimeoutError, KeyError, ValueError) as error:
-        sys.exit(f"No se pudo obtener la cotizacion del dolar ({error}); pasarla con --usd-ars.")
+        sys.exit(f"Could not retrieve the exchange rate ({error}); provide it with --usd-ars.")
 
 
 def export(zones, pages, usd_ars):
@@ -371,8 +371,8 @@ def export(zones, pages, usd_ars):
               listing_rows)
     write_csv("unmatched.csv", ["zone_slug", "name", "parent_name", "zonaprop_answer"], unmatched_rows)
     matched = len({row[0] for row in totals_rows})
-    print(f"Exportado: {matched} zonas con datos, {len(listing_rows)} avisos de muestra, "
-          f"{len(unmatched_rows)} zonas sin equivalente en Zonaprop (unmatched.csv). Dolar: {usd_ars}.")
+    print(f"Exported: {matched} zones with data, {len(listing_rows)} sample listings, "
+          f"{len(unmatched_rows)} zones without a Zonaprop match (unmatched.csv). USD/ARS: {usd_ars}.")
 
 
 def write_csv(name, header, rows):
@@ -383,13 +383,13 @@ def write_csv(name, header, rows):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Scraper de publicaciones de Zonaprop por zona")
-    parser.add_argument("--pages", type=int, default=2, help="paginas de 30 avisos por combinacion (muestra)")
-    parser.add_argument("--delay", type=float, default=4.0, help="segundos promedio entre pedidos")
-    parser.add_argument("--max-age-days", type=float, default=14, help="antiguedad maxima de la cache")
-    parser.add_argument("--only", default="", help="slugs separados por coma")
-    parser.add_argument("--usd-ars", type=float, help="pesos por dolar (por defecto, el MEP del dia)")
-    parser.add_argument("--export-only", action="store_true", help="solo reconstruir los CSV desde la cache")
+    parser = argparse.ArgumentParser(description="Scrape Zonaprop listings by zone")
+    parser.add_argument("--pages", type=int, default=2, help="pages of 30 listings per combination (sample size)")
+    parser.add_argument("--delay", type=float, default=4.0, help="average delay between requests, in seconds")
+    parser.add_argument("--max-age-days", type=float, default=14, help="maximum cache age")
+    parser.add_argument("--only", default="", help="comma-separated zone slugs")
+    parser.add_argument("--usd-ars", type=float, help="pesos per US dollar (defaults to today's MEP rate)")
+    parser.add_argument("--export-only", action="store_true", help="rebuild CSV files from the cache only")
     args = parser.parse_args()
 
     only = {slug.strip() for slug in args.only.split(",") if slug.strip()}
@@ -400,14 +400,14 @@ def main():
         try:
             for index, zone in enumerate(zones, 1):
                 matched, location = scraper.scrape_zone(zone, args.pages)
-                status = f"ok ({location})" if matched else f"sin equivalente ({location or 'otra ubicacion'})"
+                status = f"matched ({location})" if matched else f"no match ({location or 'another location'})"
                 minutes = (time.time() - started) / 60
                 print(f"[{index}/{len(zones)}] {zone['slug']}: {status} - {scraper.requests} pedidos, "
                       f"{minutes:.0f} min", flush=True)
         except Blocked as error:
-            print(f"Zonaprop sigue bloqueando ({error}). Se corta aca; volver a ejecutar mas tarde para retomar.")
+                print(f"Zonaprop is still blocking requests ({error}). Stopping; run again later to resume.")
         except KeyboardInterrupt:
-            print("Interrumpido; volver a ejecutar para retomar.")
+            print("Interrupted; run again to resume.")
     export(zones, args.pages, usd_rate(args.usd_ars))
 
 

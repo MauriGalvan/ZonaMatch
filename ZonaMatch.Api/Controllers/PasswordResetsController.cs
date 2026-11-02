@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using ZonaMatch.Application.DTOs.PasswordResets.Requests;
+using ZonaMatch.Application.DTOs.PasswordReset.Requests;
 using ZonaMatch.Application.UseCases.PasswordResets;
 
 namespace ZonaMatch.Api.Controllers;
@@ -17,7 +17,7 @@ public sealed class PasswordResetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> Create(
+    public async Task<IActionResult> CreateAsync(
         [FromBody] RequestPasswordResetRequest request,
         [FromServices] RequestPasswordReset requestPasswordReset,
         CancellationToken cancellationToken)
@@ -31,7 +31,7 @@ public sealed class PasswordResetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> Confirm(
+    public async Task<IActionResult> ConfirmAsync(
         [FromBody] CompletePasswordResetRequest request,
         [FromServices] CompletePasswordReset completePasswordReset,
         CancellationToken cancellationToken)

@@ -11,7 +11,7 @@ services:
       - db_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
 
-  # Motor de ruteo (a pie, bici, auto y transporte público).
+  # Routing engine (walking, cycling, driving, and public transit).
   motis:
     image: ghcr.io/motis-project/motis:2.11.3
     volumes:
@@ -23,7 +23,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        if [ ! -f /data/importacion-ok ]; then echo "MOTIS: faltan los datos de ruteo, correr DATOS-ZONAS-DOCKER.bat"; fi
+        if [ ! -f /data/importacion-ok ]; then echo "MOTIS: routing data is missing; run ZONE-DATA-DOCKER.bat"; fi
         until [ -f /data/importacion-ok ]; do sleep 15; done
         exec /motis server -d /data
 

@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
-using ZonaMatch.Application.DTOs.Routes.Requests;
-using ZonaMatch.Application.DTOs.Routes.Responses;
+﻿using Microsoft.AspNetCore.Mvc;
+using ZonaMatch.Application.DTOs.Route.Requests;
+using ZonaMatch.Application.DTOs.Route.Responses;
 using ZonaMatch.Application.UseCases.Routes;
 
 namespace ZonaMatch.Api.Controllers
