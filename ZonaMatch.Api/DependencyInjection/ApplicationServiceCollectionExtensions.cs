@@ -6,7 +6,7 @@ using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Aportes;
 using ZonaMatch.Application.UseCases.Auth;
-using ZonaMatch.Application.UseCases.Contacto;
+using ZonaMatch.Application.UseCases.Contact;
 using ZonaMatch.Application.UseCases.Criterios;
 using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Application.UseCases.GuestReports;
@@ -106,8 +106,11 @@ public static class ApplicationServiceCollectionExtensions
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(new FrontendLinks(configuration["Frontend:BaseUrl"] ?? "http://localhost:5173"));
-        services.AddSingleton(new ContactoOpciones(configuration["Contacto:Destinatario"] ?? "zonamatchtpi@gmail.com"));
-        services.AddScoped<EnviarFormularioContacto>();
+        services.AddSingleton(new ContactOptions(
+            configuration["Contact:RecipientEmail"]
+                ?? configuration["Contacto:Destinatario"]
+                ?? "zonamatchtpi@gmail.com"));
+        services.AddScoped<SendContactMessage>();
         services.AddSingleton<GuestReportQuota>();
         services.AddScoped<SendGuestReport>();
 

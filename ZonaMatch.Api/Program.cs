@@ -67,7 +67,7 @@ builder.Services.AddRateLimiter(options =>
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
     // The public contact form sends an email per submission: 5 requests per 10 minutes per IP.
-    options.AddPolicy("contacto", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+    options.AddPolicy("contact", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10) }));
     // Password recovery: 5 requests per 15 minutes per IP, for both the email and the new password.
