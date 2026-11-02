@@ -124,8 +124,8 @@ public class RemoveParticipantTest
             Id = groupId,
             Participants = new List<Participant>
             {
-                participantToRemove, // El que va a ser expulsado (Guest)
-                new Participant { UserId = currentUserId, Role = GroupRole.Owner } // El que expulsa (Owner)
+                participantToRemove, // The participant being removed (Guest).
+                new Participant { UserId = currentUserId, Role = GroupRole.Owner } // The participant doing the removal (Owner).
             }
         };
 
