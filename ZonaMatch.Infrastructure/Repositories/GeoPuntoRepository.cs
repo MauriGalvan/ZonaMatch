@@ -7,7 +7,7 @@ using ZonaMatch.Infrastructure.Geo;
 namespace ZonaMatch.Infrastructure.Repositories
 {
     // Base repository for entities located by a point (column "geom": geometry(Point,4326), units in degrees)
-    public class GeoPuntoRepository<T> : Repository<T>, IGeoPuntoRepository<T> where T : class, IUbicacionPunto
+    public class GeoPuntoRepository<T> : Repository<T>, IGeoPuntoRepository<T> where T : class, IPointLocation
     {
         public GeoPuntoRepository(ZonaMatchDbContext dbContext) : base(dbContext)
         {

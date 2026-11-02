@@ -53,7 +53,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
             // Overall scores 3.6 + 3.8 + 3.8 = 11.2 / 3 = 3.73...
             Assert.Equal(3.7, result.Summary.Average);
             Assert.Equal(3, result.Summary.Total);
-            Assert.Equal(new ReviewAspectRatingResponse(AspectoZona.Seguridad, 3.7), result.Summary.Aspects[0]);
+            Assert.Equal(new ReviewAspectRatingResponse(ReviewAspect.Safety, 3.7), result.Summary.Aspects[0]);
             Assert.Equal([3.6, 3.8, 3.8], result.Reviews.Select(review => review.Rating).Order());
             Assert.All(result.Reviews, review => Assert.False(review.IsMine));
         }
@@ -64,7 +64,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
             var result = await _useCase.ExecuteAsync(Zone, currentUserId: null);
 
             Assert.Equal(0, result.Summary.Average);
-            Assert.Equal(AspectoZona.Todos.Count, result.Summary.Aspects.Count);
+            Assert.Equal(ReviewAspect.All.Count, result.Summary.Aspects.Count);
             Assert.Empty(result.Reviews);
         }
 

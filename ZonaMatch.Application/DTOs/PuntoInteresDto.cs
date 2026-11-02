@@ -1,6 +1,6 @@
 namespace ZonaMatch.Application.DTOs
 {
-    // Un punto de interes clasificado en una de las categorias de la app (CategoriaPuntoInteres).
+    // Un punto de interes clasificado en una de las categorias de la app (PointOfInterestCategory).
     // Id es el id estable de OSM: n<id> nodo, w<id> way, r<id> relation; o a<id> para un punto agregado por vecinos.
     // Tipo is the raw OSM value that classified it (bus_stop, school, pharmacy...); Nombre may be missing (e.g. bus stops).
     // Fuente: "osm", o "vecinos" para un punto agregado por vecinos (aportes aprobados)

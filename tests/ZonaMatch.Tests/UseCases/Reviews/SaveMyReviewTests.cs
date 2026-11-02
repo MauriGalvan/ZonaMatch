@@ -38,7 +38,7 @@ namespace ZonaMatch.Tests.UseCases.Reviews
             Assert.Equal(1, savedReview.PuntajeSeguridad);
             Assert.Equal(5, savedReview.PuntajeTransporte);
             Assert.Equal("Barrio tranquilo y bien conectado con el centro.", savedReview.Texto);
-            Assert.Equal([AspectoZona.Seguridad, AspectoZona.Transporte], savedReview.Temas);
+            Assert.Equal([ReviewAspect.Safety, ReviewAspect.PublicTransport], savedReview.Temas);
             Assert.Equal(CurrentTime, savedReview.FechaCreacion);
             Assert.True(second.IsMine);
             Assert.Equal("AN", second.Initials);

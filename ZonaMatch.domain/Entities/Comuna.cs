@@ -4,7 +4,7 @@ using ZonaMatch.Domain.Common;
 namespace ZonaMatch.Domain.Entities
 {
     // Comuna of CABA (table geo.comunas)
-    public class Comuna : IUbicacionPoligono
+    public class Comuna : IPolygonLocation
     {
         public string Key { get; set; } = string.Empty;
         public string? CabaId { get; set; }

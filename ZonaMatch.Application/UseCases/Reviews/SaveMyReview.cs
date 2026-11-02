@@ -38,7 +38,7 @@ namespace ZonaMatch.Application.UseCases.Reviews
         {
             await _zones.ValidarExisteAsync(zoneSlug, cancellationToken);
 
-            if (!AspectoZona.TryNormalizar(request.Topics, out var topics, out var error))
+            if (!ReviewAspect.TryNormalize(request.Topics, out var topics, out var error))
                 throw new BadRequestException(error);
 
             var now = _clock.GetUtcNow();

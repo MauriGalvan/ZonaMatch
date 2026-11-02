@@ -4,7 +4,7 @@ using ZonaMatch.Domain.Common;
 namespace ZonaMatch.Domain.Entities
 {
     // Census tract, Censo 2022 (table geo.radios)
-    public class Radio : IUbicacionPoligono
+    public class Radio : IPolygonLocation
     {
         public string Id { get; set; } = string.Empty;
         public string Origen { get; set; } = string.Empty;

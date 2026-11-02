@@ -7,7 +7,7 @@ public sealed record SaveReviewRequest(
     [Required(ErrorMessage = "Indica el puntaje de cada aspecto.")]
     ReviewAspectScoresRequest? Aspects,
     [Required(ErrorMessage = "El texto de la reseña es obligatorio.")]
-    [StringLength(Longitudes.TextoResena, MinimumLength = Longitudes.TextoResenaMinimo,
+    [StringLength(TextLimits.ReviewText, MinimumLength = TextLimits.ReviewTextMinimum,
         ErrorMessage = "La reseña debe tener entre 20 y 1000 caracteres.")]
     string Text,
     [Range(0, 100, ErrorMessage = "Los años en la zona deben estar entre 0 y 100.")]

@@ -8,7 +8,7 @@ using ZonaMatch.Infrastructure.Geo;
 namespace ZonaMatch.Infrastructure.Repositories
 {
     // Repositorio base para entidades geo-localizadas mediante un area (columna "geometry")
-    public class GeoPoligonoRepository<T> : Repository<T>, IGeoPoligonoRepository<T> where T : class, IUbicacionPoligono
+    public class GeoPoligonoRepository<T> : Repository<T>, IGeoPoligonoRepository<T> where T : class, IPolygonLocation
     {
         // 1 grado de latitud ~ 111.320 metros: aproximacion para el radio de busqueda sobre
         // columnas "geometry" en SRID 4326 (que trabajan en grados, no en metros).

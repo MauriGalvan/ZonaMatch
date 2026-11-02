@@ -2,7 +2,7 @@ using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Tests.Domain
 {
-    public class SlugZonaTests
+    public class ZoneSlugTests
     {
         [Theory]
         [InlineData("Villa Luro", "villa-luro")]
@@ -10,9 +10,9 @@ namespace ZonaMatch.Tests.Domain
         [InlineData("Villa Gral. Mitre", "villa-gral-mitre")]
         [InlineData("  San José (Almirante Brown) ", "san-jose-almirante-brown")]
         [InlineData("Comuna 10", "comuna-10")]
-        public void Genera_minusculas_sin_acentos_separadas_por_guiones(string nombre, string esperado)
+        public void Create_ReturnsLowercaseAccentFreeHyphenatedSlug(string name, string expected)
         {
-            Assert.Equal(esperado, SlugZona.Generar(nombre));
+            Assert.Equal(expected, ZoneSlug.Create(name));
         }
 
         [Theory]
@@ -24,9 +24,9 @@ namespace ZonaMatch.Tests.Domain
         [InlineData("villa luro", false)]
         [InlineData("", false)]
         [InlineData(null, false)]
-        public void Valida_el_formato(string? slug, bool esperado)
+        public void IsValid_ReturnsExpectedResult(string? slug, bool expected)
         {
-            Assert.Equal(esperado, SlugZona.EsValido(slug));
+            Assert.Equal(expected, ZoneSlug.IsValid(slug));
         }
     }
 }

@@ -18,7 +18,7 @@ public sealed class GetZonePointsOfInterest(
     {
         ZoneQueryPolicy.ValidateSlug(slug);
 
-        if (!CategoriaPuntoInteres.TryParseLista(categories, out var categoryCodes, out var error))
+        if (!PointOfInterestCategory.TryParseList(categories, out var categoryCodes, out var error))
             throw new BadRequestException(error);
 
         // One extra row indicates whether the result was truncated.

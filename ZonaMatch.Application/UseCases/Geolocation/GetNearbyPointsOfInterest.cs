@@ -21,7 +21,7 @@ public sealed class GetNearbyPointsOfInterest(
         GeolocationRequestValidator.ValidateCoordinates(latitude, longitude, radiusMeters);
         GeolocationRequestValidator.ValidatePointOfInterestRadius(radiusMeters);
 
-        if (!CategoriaPuntoInteres.TryParseLista(categories, out var categoryCodes, out var error))
+        if (!PointOfInterestCategory.TryParseList(categories, out var categoryCodes, out var error))
             throw new BadRequestException(error);
 
         var points = await pointOfInterestRepository.GetCercanosAsync(

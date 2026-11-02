@@ -23,7 +23,7 @@ public sealed class PointOfInterestResponseBuilder
         new(radiusMeters, BuildCategories(counts));
 
     private static IReadOnlyList<ResumenCategoriaDto> BuildCategories(IReadOnlyList<CantidadPorTipo> counts) =>
-        CategoriaPuntoInteres.Todas
+        PointOfInterestCategory.All
             .Select(category =>
             {
                 var types = counts

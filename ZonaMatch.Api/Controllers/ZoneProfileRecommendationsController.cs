@@ -20,7 +20,7 @@ public sealed class ZoneProfileRecommendationsController : ControllerBase
         [FromServices] GetZoneProfileRecommendations useCase,
         CancellationToken cancellationToken)
     {
-        if (!SlugZona.EsValido(slug))
+        if (!ZoneSlug.IsValid(slug))
             return Problem(statusCode: StatusCodes.Status400BadRequest, detail: "The zone slug is not valid.");
 
         return Ok(await useCase.ExecuteAsync(slug, request, cancellationToken));

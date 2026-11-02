@@ -22,16 +22,16 @@ namespace ZonaMatch.Infrastructure.Repositories
                 WHEN railway IN ('station', 'halt', 'tram_stop', 'subway_entrance')
                      OR public_transport = 'station'
                      OR amenity = 'bus_station'
-                     OR highway = 'bus_stop' THEN '{CategoriaPuntoInteres.Transporte}'
-                WHEN amenity IN ('kindergarten', 'school', 'college', 'university') THEN '{CategoriaPuntoInteres.Educacion}'
-                WHEN amenity IN ('hospital', 'clinic', 'doctors', 'dentist') THEN '{CategoriaPuntoInteres.Salud}'
+                     OR highway = 'bus_stop' THEN '{PointOfInterestCategory.PublicTransport}'
+                WHEN amenity IN ('kindergarten', 'school', 'college', 'university') THEN '{PointOfInterestCategory.Education}'
+                WHEN amenity IN ('hospital', 'clinic', 'doctors', 'dentist') THEN '{PointOfInterestCategory.Healthcare}'
                 WHEN shop IS NOT NULL
-                     OR amenity IN ('pharmacy', 'bank', 'marketplace', 'post_office') THEN '{CategoriaPuntoInteres.Comercios}'
-                WHEN leisure IN ('sports_centre', 'fitness_centre', 'stadium', 'swimming_pool') THEN '{CategoriaPuntoInteres.Deporte}'
-                WHEN leisure IN ('park', 'garden', 'nature_reserve') THEN '{CategoriaPuntoInteres.EspaciosVerdes}'
+                     OR amenity IN ('pharmacy', 'bank', 'marketplace', 'post_office') THEN '{PointOfInterestCategory.Shopping}'
+                WHEN leisure IN ('sports_centre', 'fitness_centre', 'stadium', 'swimming_pool') THEN '{PointOfInterestCategory.Sports}'
+                WHEN leisure IN ('park', 'garden', 'nature_reserve') THEN '{PointOfInterestCategory.GreenSpaces}'
                 WHEN amenity IN ('restaurant', 'cafe', 'bar', 'pub', 'fast_food', 'ice_cream',
                                  'theatre', 'cinema', 'arts_centre', 'library')
-                     OR tourism IN ('museum', 'gallery') THEN '{CategoriaPuntoInteres.Cultura}'
+                     OR tourism IN ('museum', 'gallery') THEN '{PointOfInterestCategory.Culture}'
             END
             """;
 

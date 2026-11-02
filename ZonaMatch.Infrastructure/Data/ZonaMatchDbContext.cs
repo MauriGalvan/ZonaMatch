@@ -332,7 +332,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasKey(x => x.Id);
                 e.Property(x => x.ZonaSlug).HasMaxLength(200);
                 e.HasIndex(x => new { x.ZonaSlug, x.UsuarioId }).IsUnique();
-                e.Property(x => x.Texto).HasMaxLength(Longitudes.TextoResena);
+                e.Property(x => x.Texto).HasMaxLength(TextLimits.ReviewText);
                 e.Property(x => x.Temas).HasColumnType("text[]");
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
@@ -354,7 +354,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasKey(x => x.Id);
                 e.Property(x => x.ZonaSlug).HasMaxLength(200);
                 e.HasIndex(x => x.ZonaSlug);
-                e.Property(x => x.Texto).HasMaxLength(Longitudes.TextoPregunta);
+                e.Property(x => x.Texto).HasMaxLength(TextLimits.QuestionText);
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
                 e.HasMany(x => x.Respuestas).WithOne().HasForeignKey(x => x.PreguntaId).OnDelete(DeleteBehavior.Cascade);
@@ -364,7 +364,7 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("respuestas");
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Texto).HasMaxLength(Longitudes.TextoRespuesta);
+                e.Property(x => x.Texto).HasMaxLength(TextLimits.AnswerText);
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
             });
@@ -381,14 +381,14 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(20);
                 e.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
                 e.Property(x => x.Motivo).HasConversion<string>().HasMaxLength(20);
-                e.Property(x => x.Nombre).HasMaxLength(Longitudes.NombreLugar);
+                e.Property(x => x.Nombre).HasMaxLength(TextLimits.PlaceName);
                 e.Property(x => x.Categoria).HasMaxLength(40);
                 e.Property(x => x.Ubicacion).HasColumnType("geometry(Point,4326)");
-                e.Property(x => x.Horario).HasMaxLength(Longitudes.Horario);
-                e.Property(x => x.Direccion).HasMaxLength(Longitudes.Direccion);
+                e.Property(x => x.Horario).HasMaxLength(TextLimits.OpeningHours);
+                e.Property(x => x.Direccion).HasMaxLength(TextLimits.Address);
                 e.Property(x => x.PuntoInteresId).HasMaxLength(40);
-                e.Property(x => x.PuntoInteresNombre).HasMaxLength(Longitudes.Direccion);
-                e.Property(x => x.Comentario).HasMaxLength(Longitudes.Comentario);
+                e.Property(x => x.PuntoInteresNombre).HasMaxLength(TextLimits.Address);
+                e.Property(x => x.Comentario).HasMaxLength(TextLimits.Comment);
                 e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
                 e.Property(x => x.FechaResolucion).HasColumnType("timestamptz");
                 e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
@@ -411,7 +411,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Id).HasMaxLength(40);
                 e.Property(x => x.ZoneSlug).HasMaxLength(200);
-                e.Property(x => x.Name).HasMaxLength(Longitudes.NombreLugar);
+                e.Property(x => x.Name).HasMaxLength(TextLimits.PlaceName);
                 e.Property(x => x.Category).HasMaxLength(40);
                 e.Property(x => x.Location).HasColumnType("geometry(Point,4326)");
                 e.Property(x => x.UpdatedAt).HasColumnType("timestamptz");

@@ -4,7 +4,7 @@ using ZonaMatch.Domain.Common;
 namespace ZonaMatch.Domain.Entities
 {
     // School from the education registry (table geo.escuelas, loaded from the dump)
-    public class Escuela : IUbicacionPunto
+    public class Escuela : IPointLocation
     {
         public string ClaveNatural { get; set; } = string.Empty;
         public string? Fuente { get; set; }

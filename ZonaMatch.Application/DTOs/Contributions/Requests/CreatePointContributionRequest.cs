@@ -7,11 +7,11 @@ public sealed record CreatePointContributionRequest(
     [Required(ErrorMessage = "La categoria es obligatoria.")]
     string Category,
     [Required(ErrorMessage = "El nombre es obligatorio.")]
-    [StringLength(Longitudes.NombreLugar, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre 2 y 120 caracteres.")]
+    [StringLength(TextLimits.PlaceName, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre 2 y 120 caracteres.")]
     string Name,
-    [StringLength(Longitudes.Horario, ErrorMessage = "El horario no puede superar los 120 caracteres.")]
+    [StringLength(TextLimits.OpeningHours, ErrorMessage = "El horario no puede superar los 120 caracteres.")]
     string? Schedule,
-    [StringLength(Longitudes.Direccion, ErrorMessage = "La direccion no puede superar los 200 caracteres.")]
+    [StringLength(TextLimits.Address, ErrorMessage = "La direccion no puede superar los 200 caracteres.")]
     string? Address,
     [Range(-90, 90, ErrorMessage = "La latitud debe estar entre -90 y 90.")]
     double Latitude,

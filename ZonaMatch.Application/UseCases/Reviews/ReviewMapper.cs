@@ -18,11 +18,11 @@ namespace ZonaMatch.Application.UseCases.Reviews
                 reviews.Count,
                 reviews.Count(review => review.Verificada),
                 [
-                    new ReviewAspectRatingResponse(AspectoZona.Seguridad, Average(reviews, review => review.PuntajeSeguridad)),
-                    new ReviewAspectRatingResponse(AspectoZona.Transporte, Average(reviews, review => review.PuntajeTransporte)),
-                    new ReviewAspectRatingResponse(AspectoZona.Conectividad, Average(reviews, review => review.PuntajeConectividad)),
-                    new ReviewAspectRatingResponse(AspectoZona.Comercios, Average(reviews, review => review.PuntajeComercios)),
-                    new ReviewAspectRatingResponse(AspectoZona.EspaciosVerdes, Average(reviews, review => review.PuntajeEspaciosVerdes)),
+                    new ReviewAspectRatingResponse(ReviewAspect.Safety, Average(reviews, review => review.PuntajeSeguridad)),
+                    new ReviewAspectRatingResponse(ReviewAspect.PublicTransport, Average(reviews, review => review.PuntajeTransporte)),
+                    new ReviewAspectRatingResponse(ReviewAspect.Connectivity, Average(reviews, review => review.PuntajeConectividad)),
+                    new ReviewAspectRatingResponse(ReviewAspect.Shopping, Average(reviews, review => review.PuntajeComercios)),
+                    new ReviewAspectRatingResponse(ReviewAspect.GreenSpaces, Average(reviews, review => review.PuntajeEspaciosVerdes)),
                 ]);
         }
 

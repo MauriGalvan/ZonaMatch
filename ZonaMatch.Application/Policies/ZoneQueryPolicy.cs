@@ -14,7 +14,7 @@ public static class ZoneQueryPolicy
         string slug,
         string errorMessage = "El identificador de zona debe tener minusculas sin acentos separadas por guiones (p. ej. villa-luro).")
     {
-        if (!SlugZona.EsValido(slug))
+        if (!ZoneSlug.IsValid(slug))
             throw new BadRequestException(errorMessage);
     }
 

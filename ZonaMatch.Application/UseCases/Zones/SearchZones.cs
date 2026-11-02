@@ -20,7 +20,7 @@ public sealed class SearchZones(IZonaRepository zoneRepository)
             throw new BadRequestException(
                 $"El limite debe estar entre 1 y {ZoneQueryPolicy.MaximumSearchResults}.");
 
-        var fragment = SlugZona.Generar(search);
+        var fragment = ZoneSlug.Create(search);
         if (fragment.Length < ZoneQueryPolicy.MinimumSearchCharacters)
             return [];
 

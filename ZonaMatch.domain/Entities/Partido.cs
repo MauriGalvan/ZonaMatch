@@ -4,7 +4,7 @@ using ZonaMatch.Domain.Common;
 namespace ZonaMatch.Domain.Entities
 {
     // Partido of the province of Buenos Aires (table geo.partidos)
-    public class Partido : IUbicacionPoligono
+    public class Partido : IPolygonLocation
     {
         public string Key { get; set; } = string.Empty;
         public int? MunicipioId { get; set; }

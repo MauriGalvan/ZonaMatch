@@ -42,18 +42,18 @@ public sealed class GetZoneTransit(
         ParadasModoZona stops,
         IReadOnlyList<SalidasLineaZona> departures)
     {
-        var timeWindows = FranjaHoraria.Todas
-            .Select(window =>
+        var timeWindows = TimeWindow.All
+            .Select(timeWindow =>
             {
                 var windowDepartures = departures
-                    .Where(departure => departure.Franja == window.Codigo && departure.Salidas > 0)
+                    .Where(departure => departure.Franja == timeWindow.Code && departure.Salidas > 0)
                     .ToList();
                 return new FranjaTransporteDto(
-                    window.Codigo,
-                    window.Desde,
-                    window.Hasta,
+                    timeWindow.Code,
+                    timeWindow.StartHour,
+                    timeWindow.EndHour,
                     windowDepartures.Select(departure => departure.Linea).Distinct().Count(),
-                    window.SalidasPorHora(windowDepartures.Sum(departure => departure.Salidas)));
+                    timeWindow.DeparturesPerHour(windowDepartures.Sum(departure => departure.Salidas)));
             })
             .ToList();
 
@@ -64,18 +64,18 @@ public sealed class GetZoneTransit(
                 Name = line.Key,
                 Stops = line.Max(departure => departure.Paradas),
                 MorningPeak = line
-                    .Where(departure => departure.Franja == FranjaHoraria.Manana.Codigo)
+                    .Where(departure => departure.Franja == TimeWindow.Morning.Code)
                     .Sum(departure => departure.Salidas),
-                TimeWindows = FranjaHoraria.Todas
-                    .Select(window =>
+                TimeWindows = TimeWindow.All
+                    .Select(timeWindow =>
                     {
                         var count = line
-                            .Where(departure => departure.Franja == window.Codigo)
+                            .Where(departure => departure.Franja == timeWindow.Code)
                             .Sum(departure => departure.Salidas);
                         return new FrecuenciaLineaDto(
-                            window.Codigo,
-                            window.SalidasPorHora(count),
-                            window.MinutosEntreSalidas(count));
+                            timeWindow.Code,
+                            timeWindow.DeparturesPerHour(count),
+                            timeWindow.MinutesBetweenDepartures(count));
                     })
                     .ToList(),
             })

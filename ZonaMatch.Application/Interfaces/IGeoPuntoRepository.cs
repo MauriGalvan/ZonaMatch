@@ -3,7 +3,7 @@
 namespace ZonaMatch.Application.Interfaces
 {
     // Repositorio para entidades geo-localizadas mediante un punto (latitud/longitud)
-    public interface IGeoPuntoRepository<T> : IRepository<T> where T : class, IUbicacionPunto
+    public interface IGeoPuntoRepository<T> : IRepository<T> where T : class, IPointLocation
     {
         // Entidades dentro de un radio (en metros) desde el punto dado, ordenadas por distancia ascendente
         Task<IReadOnlyList<(T Entidad, double DistanciaMetros)>> GetCercanosAsync(double latitud, double longitud, double radioMetros);

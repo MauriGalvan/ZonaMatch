@@ -10,16 +10,16 @@ public sealed record CreateContributionCorrectionRequest(
         ErrorMessage = "El identificador del lugar no es valido.")]
     string PointOfInterestId,
     [Required(ErrorMessage = "Indica el nombre del lugar a corregir.")]
-    [StringLength(Longitudes.Direccion, ErrorMessage = "El nombre del lugar no puede superar los 200 caracteres.")]
+    [StringLength(TextLimits.Address, ErrorMessage = "El nombre del lugar no puede superar los 200 caracteres.")]
     string PointOfInterestName,
     [Required(ErrorMessage = "Indica que hay que corregir.")]
     MotivoCorreccion? Reason,
-    [StringLength(Longitudes.NombreLugar, ErrorMessage = "El nombre propuesto no puede superar los 120 caracteres.")]
+    [StringLength(TextLimits.PlaceName, ErrorMessage = "El nombre propuesto no puede superar los 120 caracteres.")]
     string? ProposedName,
     string? ProposedCategory,
     [Range(-90, 90, ErrorMessage = "La latitud debe estar entre -90 y 90.")]
     double? Latitude,
     [Range(-180, 180, ErrorMessage = "La longitud debe estar entre -180 y 180.")]
     double? Longitude,
-    [StringLength(Longitudes.Comentario, ErrorMessage = "El comentario no puede superar los 500 caracteres.")]
+    [StringLength(TextLimits.Comment, ErrorMessage = "El comentario no puede superar los 500 caracteres.")]
     string? Comment);

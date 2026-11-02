@@ -13,9 +13,9 @@ namespace ZonaMatch.Application.UseCases.Contributions
         public static string ValidateCategory(string? category)
         {
             var code = category?.Trim().ToLowerInvariant();
-            if (code is null || !CategoriaPuntoInteres.Todas.Contains(code))
+            if (code is null || !PointOfInterestCategory.All.Contains(code))
                 throw new BadRequestException(
-                    $"Categoria desconocida. Validas: {string.Join(", ", CategoriaPuntoInteres.Todas)}.");
+                    $"Categoria desconocida. Validas: {string.Join(", ", PointOfInterestCategory.All)}.");
 
             return code;
         }

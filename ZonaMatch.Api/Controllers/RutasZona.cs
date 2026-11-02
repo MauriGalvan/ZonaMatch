@@ -1,6 +1,6 @@
 namespace ZonaMatch.Api.Controllers
 {
-    // Restriccion de ruta del slug de una zona (mismo formato que SlugZona.EsValido): un slug mal formado da 404.
+    // Restriccion de ruta del slug de una zona (mismo formato que ZoneSlug.IsValid): un slug mal formado da 404.
     // Los corchetes van duplicados porque son especiales en las plantillas de rutas.
     internal static class RutasZona
     {

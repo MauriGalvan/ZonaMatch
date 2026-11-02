@@ -3,7 +3,7 @@
 namespace ZonaMatch.Application.Interfaces
 {
     // Repositorio para entidades representadas por un area (poligono/multipoligono)
-    public interface IGeoPoligonoRepository<T> : IRepository<T> where T : class, IUbicacionPoligono
+    public interface IGeoPoligonoRepository<T> : IRepository<T> where T : class, IPolygonLocation
     {
         // La entidad cuya area contiene el punto dado (ej: el barrio al que pertenece una direccion)
         Task<T?> GetQueContienePuntoAsync(double latitud, double longitud);
