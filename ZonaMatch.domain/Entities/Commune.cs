@@ -8,11 +8,11 @@ namespace ZonaMatch.Domain.Entities
     {
         public string Key { get; set; } = string.Empty;
         public string? CabaId { get; set; }
-        public string Nombre { get; set; } = string.Empty;
-        public string Provincia { get; set; } = "CIUDAD AUTONOMA DE BUENOS AIRES";
-        public string? CensoCodigo { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Province { get; set; } = "CIUDAD AUTONOMA DE BUENOS AIRES";
+        public string? CensusCode { get; set; }
 
         // Column "geom": geometry(MultiPolygon,4326)
-        public Geometry Geometria { get; set; } = null!;
+        public Geometry Geometry { get; set; } = null!;
     }
 }

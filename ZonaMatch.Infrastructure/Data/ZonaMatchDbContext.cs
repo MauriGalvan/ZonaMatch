@@ -13,11 +13,11 @@ namespace ZonaMatch.Infrastructure.Data
         {
         }
 
-        public DbSet<School> Escuelas => Set<School>();
-        public DbSet<District> Partidos => Set<District>();
-        public DbSet<Commune> Comunas => Set<Commune>();
-        public DbSet<CensusTract> Radios => Set<CensusTract>();
-        public DbSet<MunicipalityAlias> MunicipiosAlias => Set<MunicipalityAlias>();
+        public DbSet<School> Schools => Set<School>();
+        public DbSet<District> Districts => Set<District>();
+        public DbSet<Commune> Communes => Set<Commune>();
+        public DbSet<CensusTract> CensusTracts => Set<CensusTract>();
+        public DbSet<MunicipalityAlias> MunicipalityAliases => Set<MunicipalityAlias>();
         public DbSet<User> Usuarios => Set<User>();
         public DbSet<Review> Resenas => Set<Review>();
         public DbSet<ReviewHelpfulVote> ResenasVotosUtil => Set<ReviewHelpfulVote>();
@@ -61,32 +61,46 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("partidos", ZonaMatchDbOptions.GeoSchema, t => t.ExcludeFromMigrations());
                 e.HasKey(x => x.Key);
-                e.Property(x => x.Geometria).HasColumnName("geom").HasColumnType("geometry(MultiPolygon,4326)");
+                e.Property(x => x.MunicipalityId).HasColumnName("municipio_id");
+                e.Property(x => x.Name).HasColumnName("nombre");
+                e.Property(x => x.Province).HasColumnName("provincia");
+                e.Property(x => x.CensusCode).HasColumnName("censo_codigo");
+                e.Property(x => x.Geometry).HasColumnName("geom").HasColumnType("geometry(MultiPolygon,4326)");
             });
 
             modelBuilder.Entity<Commune>(e =>
             {
                 e.ToTable("comunas", ZonaMatchDbOptions.GeoSchema, t => t.ExcludeFromMigrations());
                 e.HasKey(x => x.Key);
-                e.Property(x => x.Geometria).HasColumnName("geom").HasColumnType("geometry(MultiPolygon,4326)");
+                e.Property(x => x.CabaId).HasColumnName("caba_id");
+                e.Property(x => x.Name).HasColumnName("nombre");
+                e.Property(x => x.Province).HasColumnName("provincia");
+                e.Property(x => x.CensusCode).HasColumnName("censo_codigo");
+                e.Property(x => x.Geometry).HasColumnName("geom").HasColumnType("geometry(MultiPolygon,4326)");
             });
 
             modelBuilder.Entity<CensusTract>(e =>
             {
                 e.ToTable("radios", ZonaMatchDbOptions.GeoSchema, t => t.ExcludeFromMigrations());
                 e.HasKey(x => x.Id);
-                e.Property(x => x.NroRadio).HasColumnName("radio");
-                e.Property(x => x.Geometria).HasColumnName("geom").HasColumnType("geometry(MultiPolygon,4326)");
+                e.Property(x => x.Source).HasColumnName("origen");
+                e.Property(x => x.DepartmentCode).HasColumnName("depto");
+                e.Property(x => x.CommuneCode).HasColumnName("comuna");
+                e.Property(x => x.FractionCode).HasColumnName("fraccion");
+                e.Property(x => x.RadioNumber).HasColumnName("radio");
+                e.Property(x => x.Geometry).HasColumnName("geom").HasColumnType("geometry(MultiPolygon,4326)");
             });
 
             modelBuilder.Entity<MunicipalityAlias>(e =>
             {
                 e.ToTable("municipio_alias", ZonaMatchDbOptions.GeoSchema, t => t.ExcludeFromMigrations());
-                e.HasKey(x => x.MunicipioNombre);
+                e.HasKey(x => x.MunicipalityName);
+                e.Property(x => x.MunicipalityName).HasColumnName("municipio_nombre");
+                e.Property(x => x.DistrictKey).HasColumnName("partido_key");
 
                 e.HasOne(x => x.District)
                     .WithMany(p => p.Aliases)
-                    .HasForeignKey(x => x.PartidoKey);
+                    .HasForeignKey(x => x.DistrictKey);
             });
 
             // Application model: created by migrations in the "app" schema

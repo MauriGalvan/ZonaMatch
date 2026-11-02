@@ -7,13 +7,13 @@ namespace ZonaMatch.Domain.Entities
     public class District : IPolygonLocation
     {
         public string Key { get; set; } = string.Empty;
-        public int? MunicipioId { get; set; }
-        public string Nombre { get; set; } = string.Empty;
-        public string Provincia { get; set; } = "BUENOS AIRES";
-        public string? CensoCodigo { get; set; }
+        public int? MunicipalityId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Province { get; set; } = "BUENOS AIRES";
+        public string? CensusCode { get; set; }
 
         // Column "geom": geometry(MultiPolygon,4326)
-        public Geometry Geometria { get; set; } = null!;
+        public Geometry Geometry { get; set; } = null!;
 
         public ICollection<MunicipalityAlias> Aliases { get; set; } = new List<MunicipalityAlias>();
     }

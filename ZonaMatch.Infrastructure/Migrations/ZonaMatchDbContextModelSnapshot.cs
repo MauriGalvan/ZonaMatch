@@ -174,28 +174,28 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("id");
 
-                    b.Property<string>("Commune")
+                    b.Property<string>("CommuneCode")
                         .HasColumnType("text")
-                        .HasColumnName("commune");
+                        .HasColumnName("comuna");
 
-                    b.Property<string>("Depto")
+                    b.Property<string>("DepartmentCode")
                         .HasColumnType("text")
                         .HasColumnName("depto");
 
-                    b.Property<string>("Fraccion")
+                    b.Property<string>("FractionCode")
                         .HasColumnType("text")
                         .HasColumnName("fraccion");
 
-                    b.Property<Geometry>("Geometria")
+                    b.Property<Geometry>("Geometry")
                         .IsRequired()
                         .HasColumnType("geometry(MultiPolygon,4326)")
                         .HasColumnName("geom");
 
-                    b.Property<string>("NroRadio")
+                    b.Property<string>("RadioNumber")
                         .HasColumnType("text")
                         .HasColumnName("radio");
 
-                    b.Property<string>("Origen")
+                    b.Property<string>("Source")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("origen");
@@ -218,21 +218,21 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("caba_id");
 
-                    b.Property<string>("CensoCodigo")
+                    b.Property<string>("CensusCode")
                         .HasColumnType("text")
                         .HasColumnName("censo_codigo");
 
-                    b.Property<Geometry>("Geometria")
+                    b.Property<Geometry>("Geometry")
                         .IsRequired()
                         .HasColumnType("geometry(MultiPolygon,4326)")
                         .HasColumnName("geom");
 
-                    b.Property<string>("Nombre")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("nombre");
 
-                    b.Property<string>("Provincia")
+                    b.Property<string>("Province")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("provincia");
@@ -647,25 +647,25 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("key");
 
-                    b.Property<string>("CensoCodigo")
+                    b.Property<string>("CensusCode")
                         .HasColumnType("text")
                         .HasColumnName("censo_codigo");
 
-                    b.Property<Geometry>("Geometria")
+                    b.Property<Geometry>("Geometry")
                         .IsRequired()
                         .HasColumnType("geometry(MultiPolygon,4326)")
                         .HasColumnName("geom");
 
-                    b.Property<int?>("MunicipioId")
+                    b.Property<int?>("MunicipalityId")
                         .HasColumnType("integer")
                         .HasColumnName("municipio_id");
 
-                    b.Property<string>("Nombre")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("nombre");
 
-                    b.Property<string>("Provincia")
+                    b.Property<string>("Province")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("provincia");
@@ -745,18 +745,18 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipalityAlias", b =>
                 {
-                    b.Property<string>("MunicipioNombre")
+                    b.Property<string>("MunicipalityName")
                         .HasColumnType("text")
                         .HasColumnName("municipio_nombre");
 
-                    b.Property<string>("PartidoKey")
+                    b.Property<string>("DistrictKey")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("partido_key");
 
-                    b.HasKey("MunicipioNombre");
+                    b.HasKey("MunicipalityName");
 
-                    b.HasIndex("PartidoKey");
+                    b.HasIndex("DistrictKey");
 
                     b.ToTable("municipio_alias", "geo", t =>
                         {
@@ -1562,7 +1562,7 @@ namespace ZonaMatch.Infrastructure.Migrations
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.District", "District")
                         .WithMany("Aliases")
-                        .HasForeignKey("PartidoKey")
+                        .HasForeignKey("DistrictKey")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

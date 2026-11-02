@@ -25,7 +25,7 @@ public class PolygonRepository<T> : Repository<T>, IPolygonRepository<T> where T
         try
         {
             return await _dbContext.Set<T>()
-                .FirstOrDefaultAsync(entity => entity.Geometria.Contains(point));
+                .FirstOrDefaultAsync(entity => entity.Geometry.Contains(point));
         }
         catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UndefinedTable)
         {
@@ -40,7 +40,7 @@ public class PolygonRepository<T> : Repository<T>, IPolygonRepository<T> where T
         var radiusDegrees = radiusMeters / MetersPerDegree;
 
         return await _dbContext.Set<T>()
-            .Where(entity => entity.Geometria.IsWithinDistance(point, radiusDegrees))
+            .Where(entity => entity.Geometry.IsWithinDistance(point, radiusDegrees))
             .ToListAsync();
     }
 }
