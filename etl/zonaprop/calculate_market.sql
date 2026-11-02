@@ -105,17 +105,21 @@ FROM geo.load_zonaprop_totals t
 WHERE coalesce(t.filter, '') = '' AND t.property_type <> 'all'
   AND t.zone_slug NOT IN (SELECT zone_slug FROM rejected);
 
-ALTER TABLE counts ADD COLUMN share numeric;
+-- The shares are computed once per zone (and type) and joined: with every listing scraped, a subquery per row would
+-- read the whole sample for each of them.
+ALTER TABLE counts ADD COLUMN share numeric NOT NULL DEFAULT 1;
 UPDATE counts c
-SET share = coalesce(
-    (SELECT avg(inside::int) FROM sample s
-     WHERE s.zone_slug = c.zone_slug AND s.operation = c.operation AND s.property_type = c.property_type
-       AND s.inside IS NOT NULL
-     HAVING count(*) >= 10),
-    (SELECT avg(inside::int) FROM sample s
-     WHERE s.zone_slug = c.zone_slug AND s.inside IS NOT NULL
-     HAVING count(*) >= 10),
-    1);
+SET share = z.share
+FROM (SELECT zone_slug, avg(inside::int) AS share
+      FROM sample WHERE inside IS NOT NULL
+      GROUP BY zone_slug HAVING count(*) >= 10) z
+WHERE z.zone_slug = c.zone_slug;
+UPDATE counts c
+SET share = t.share
+FROM (SELECT zone_slug, operation, property_type, avg(inside::int) AS share
+      FROM sample WHERE inside IS NOT NULL
+      GROUP BY zone_slug, operation, property_type HAVING count(*) >= 10) t
+WHERE t.zone_slug = c.zone_slug AND t.operation = c.operation AND t.property_type = c.property_type;
 
 DELETE FROM sample WHERE near = false OR zone_slug IN (SELECT zone_slug FROM rejected);
 
