@@ -6,7 +6,7 @@ using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Comunidad;
-using ZonaMatch.Application.UseCases.Perfil;
+using ZonaMatch.Application.Services;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.SavedAnalyses
@@ -26,9 +26,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                         z.ZonaSlug, z.Nombre, z.EsInicial, z.EsAgregada,
                         z.TieneOrigen ? new AnalysisZoneOriginResponse(z.OrigenLatitud!.Value, z.OrigenLongitud!.Value) : null))
                     .ToList(),
-                CriterioUsuario.ContextoADto(analysis.Contexto),
-                CriterioUsuario.CriteriosADto(analysis.Contexto),
-                CriterioUsuario.PuntosADto(analysis.Contexto),
+                AnalysisCriteriaBuilder.ToContextResponse(analysis.Contexto),
+                AnalysisCriteriaBuilder.ToCriteriaDictionary(analysis.Contexto),
+                AnalysisCriteriaBuilder.ToPointsResponse(analysis.Contexto),
                 analysis.FechaCreacion,
                 analysis.FechaActualizacion,
                 analysis.PuntajesEnGrupoJson is null

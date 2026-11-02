@@ -3,7 +3,7 @@ using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.Perfil;
+using ZonaMatch.Application.Services;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.SavedAnalyses
@@ -51,7 +51,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 FechaCreacion = now,
                 FechaActualizacion = now,
             };
-            CriterioUsuario.Aplicar(context, request.Criterion, criteriaCatalog);
+            AnalysisCriteriaBuilder.Apply(context, request.Criterion, criteriaCatalog);
 
             var zones = request.Zones is { } requestedZones
                 ? await AnalysisMapping.BuildZonesAsync(requestedZones, _zoneRepository, cancellationToken)

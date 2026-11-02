@@ -1,0 +1,18 @@
+using Microsoft.AspNetCore.Mvc;
+using ZonaMatch.Application.DTOs.Criteria.Responses;
+using ZonaMatch.Application.UseCases.Criteria;
+
+namespace ZonaMatch.Api.Controllers;
+
+// Public catalog of criteria used by the detailed and guest analysis wizards.
+[ApiController]
+[Route("api/v1/criteria")]
+public sealed class CriteriaController : ControllerBase
+{
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyList<CriterionResponse>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<CriterionResponse>>> List(
+        [FromServices] ListCriteria listCriteria,
+        CancellationToken cancellationToken) =>
+        Ok(await listCriteria.ExecuteAsync(cancellationToken));
+}

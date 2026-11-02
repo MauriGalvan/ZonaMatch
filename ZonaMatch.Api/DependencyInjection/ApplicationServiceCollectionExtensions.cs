@@ -7,7 +7,7 @@ using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Contributions;
 using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.UseCases.Contact;
-using ZonaMatch.Application.UseCases.Criterios;
+using ZonaMatch.Application.UseCases.Criteria;
 using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Application.UseCases.GuestReports;
 using ZonaMatch.Application.UseCases.GroupInvitations;
@@ -15,7 +15,7 @@ using ZonaMatch.Application.UseCases.GroupLinks;
 using ZonaMatch.Application.UseCases.Groups;
 using ZonaMatch.Application.UseCases.Notifications;
 using ZonaMatch.Application.UseCases.PasswordResets;
-using ZonaMatch.Application.UseCases.Perfil;
+using ZonaMatch.Application.UseCases.Profile;
 using ZonaMatch.Application.UseCases.Questions;
 using ZonaMatch.Application.UseCases.Puntajes;
 using ZonaMatch.Application.UseCases.Reviews;
@@ -81,9 +81,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<CommunityPoiUpdater>();
         services.AddScoped<ResolveContribution>();
 
-        services.AddScoped<ListarCriterios>();
-        services.AddScoped<ObtenerMiPerfil>();
-        services.AddScoped<GuardarMiPerfil>();
+        services.AddScoped<ListCriteria>();
+        services.AddScoped<GetMyProfile>();
+        services.AddScoped<SaveMyProfile>();
 
         services.AddScoped<ListMyAnalyses>();
         services.AddScoped<GetAnalysisById>();
