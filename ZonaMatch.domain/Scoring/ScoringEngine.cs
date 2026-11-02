@@ -24,11 +24,11 @@ namespace ZonaMatch.Domain.Scoring
         public bool TieneUbicacion => Latitud is not null && Longitud is not null;
     }
 
-    // Trip duration; Minutos is null when unreachable or when no route is available. Estimated when routing did not calculate it.
+    // Trip duration; minutes are null when no route is available. Estimated when routing did not calculate it.
     public sealed record TravelTime(
-        int? Minutos,
-        bool Estimado,
-        double? DistanciaKm = null);
+        int? Minutes,
+        bool IsEstimated,
+        double? DistanceKm = null);
 
     // Route distance in kilometers; null when only travel time could be estimated.
     public sealed record PlaceScoreResult(
@@ -243,11 +243,11 @@ namespace ZonaMatch.Domain.Scoring
                 resultados.Add(new PlaceScoreResult(
                     lugar.Nombre,
                     lugar.Prioridad,
-                    tiempo.Minutos,
+                    tiempo.Minutes,
                     lugar.TiempoMaximoMinutos,
-                    tiempo.Estimado,
-                    PuntajeViaje(tiempo.Minutos, lugar.TiempoMaximoMinutos),
-                    tiempo.DistanciaKm));
+                    tiempo.IsEstimated,
+                    PuntajeViaje(tiempo.Minutes, lugar.TiempoMaximoMinutos),
+                    tiempo.DistanceKm));
             }
 
             return resultados;

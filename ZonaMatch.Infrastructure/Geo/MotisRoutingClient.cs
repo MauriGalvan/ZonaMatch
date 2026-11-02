@@ -75,11 +75,11 @@ namespace ZonaMatch.Infrastructure.Geo
                     .Where(i => i.Duracion is >= 0)
                     .MinBy(i => i.Duracion!.Value);
                 var tiempo = itinerario is null
-                    ? new TravelTime(null, Estimado: false)
+                    ? new TravelTime(null, IsEstimated: false)
                     : new TravelTime(
                         (int)Math.Round(itinerario.Duracion!.Value / 60.0),
-                        Estimado: false,
-                        DistanciaKm: CalcularDistanciaKm(itinerario));
+                        IsEstimated: false,
+                        DistanceKm: CalcularDistanciaKm(itinerario));
 
                 _cache.Set(clave, tiempo, VigenciaViaje);
                 return tiempo;

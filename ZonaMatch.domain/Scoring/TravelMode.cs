@@ -77,7 +77,7 @@ namespace ZonaMatch.Domain.Scoring
                 _ => 10 + distanceKm * 4,
             };
 
-            return new TravelTime((int)Math.Round(minutes), Estimado: true);
+            return new TravelTime((int)Math.Round(minutes), IsEstimated: true);
         }
 
         // Haversine distance in kilometers.

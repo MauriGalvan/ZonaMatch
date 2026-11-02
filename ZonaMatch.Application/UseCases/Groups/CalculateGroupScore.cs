@@ -340,10 +340,10 @@ public sealed partial class CalculateGroupScore
                 point.Type,
                 point.Priority,
                 TravelModes.ToCode(member.Mode),
-                time?.Minutos,
+                time?.Minutes,
                 maximumMinutes,
-                time?.Estimado ?? false,
-                time is null ? null : ScoringEngine.PuntajeViaje(time.Minutos, maximumMinutes));
+                time?.IsEstimated ?? false,
+                time is null ? null : ScoringEngine.PuntajeViaje(time.Minutes, maximumMinutes));
         })
         .ToArray();
 
