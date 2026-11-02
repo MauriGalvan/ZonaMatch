@@ -21,15 +21,15 @@
 --   owner_share            share of the listings published by the owner ("dueño directo")
 --   pets_allowed_share     share of the rentals that accept pets
 --
--- The sample is stratified by rooms: when a type has more than 30 listings the scraper reads the 30 newest of each
--- room group, so every listing weighs the listings of its group it stands for (group total / group sample). The
--- figures for every room count are therefore weighted by the real mix of the zone, not by what was published last.
+-- The scraper reads every published listing (stratum 0), so each one weighs 1. Older scrapes sampled the 30 newest
+-- of each room group (stratum 1 to 5): those listings weigh the listings of their group they stand for (group total /
+-- group sample), so the figures are still weighted by the real mix of the zone.
 -- Averages are trimmed means: the cheapest and most expensive 10 % (by weight) are left out when there are at least
 -- 10 listings. Medians are weighted too.
 --
 -- source: 'zonaprop' measured for the zone; 'zonaprop-inherited' the zone has no Zonaprop location of its own and
--- takes the values of the smallest measured zone around it (listings stays empty); 'zonaprop-sum' partidos and
--- comunas, adding up the zones they contain. Previous Zonaprop rows are replaced and estimated rents
+-- takes the values of the smallest measured zone around it (listings stays empty); 'zonaprop-sum' partidos,
+-- comunas and the whole city, adding up the zones they contain. Previous Zonaprop rows are replaced and estimated rents
 -- (source 'estimated') are overwritten where there is real data now.
 
 \set ON_ERROR_STOP on
@@ -329,7 +329,7 @@ JOIN market m ON m.osm_id = p.osm_id
 WHERE c.elegida AND c.nivel > 5
   AND NOT EXISTS (SELECT 1 FROM market x WHERE x.osm_id = c.osm_id);
 
--- 4. Partidos and comunas add up the outermost measured zones inside them (a measured zone inside another measured
+-- 4. Partidos, comunas and the whole city add up the outermost measured zones inside them (a measured zone inside another measured
 -- zone is already counted by it). Their price distribution averages the members' at every tenth, weighted by listings.
 DROP TABLE IF EXISTS pg_temp.parent_members;
 CREATE TEMP TABLE parent_members AS
@@ -344,7 +344,10 @@ members AS (
     FROM geo.zonas p
     -- <= because some barrios are a whole comuna (Palermo is Comuna 14)
     JOIN measured z ON z.osm_id <> p.osm_id AND z.superficie_km2 <= p.superficie_km2 AND ST_Contains(p.geom, z.point)
-    WHERE p.elegida AND p.nivel = 5
+    -- Buenos Aires (the whole city) is not scraped, it would repeat every barrio: it adds up its barrios too (older
+    -- runs measured it)
+    WHERE p.elegida
+      AND (p.nivel = 5 OR (p.slug = 'buenos-aires' AND NOT EXISTS (SELECT 1 FROM measured x WHERE x.osm_id = p.osm_id)))
       AND NOT EXISTS (
           SELECT 1 FROM measured y
           WHERE y.osm_id <> z.osm_id AND y.superficie_km2 > z.superficie_km2 AND y.superficie_km2 <= p.superficie_km2

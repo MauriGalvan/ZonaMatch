@@ -1,6 +1,6 @@
 """
 Tests of the Zonaprop scraper that need no network: URLs, title matching and how the cached pages become the rows of
-totals.csv and listings.csv (stratified by rooms). Run from backend/ZonaMatch:
+totals.csv and listings.csv (every page of each type). Run from backend/ZonaMatch:
   python -m unittest discover -s etl/zonaprop -p "test_*.py"
 """
 
@@ -41,6 +41,14 @@ class ListingPathTests(unittest.TestCase):
             "/departamentos-casas-ph-venta-palermo-con-apto-credito.html",
             scraper.listing_path(scraper.ALL_TYPES, "venta", "palermo", "con-apto-credito", sort=False))
 
+    def test_price_band_segment_and_split(self):
+        self.assertEqual("50000-99999-dolar", scraper.price_segment("venta", 50_000, 99_999))
+        self.assertEqual(70_710, scraper.split_point(50_000, 99_999))
+        self.assertEqual(7, scraper.split_point(7, 8))
+        # The median of the prices seen in the band, ignoring the ones outside it
+        self.assertEqual(60_000, scraper.split_point(50_000, 99_999, [55_000, 60_000, 90_000, 400_000]))
+        self.assertEqual(99_998, scraper.split_point(50_000, 99_999, [99_999]))
+
     def test_room_group_caps_at_five(self):
         self.assertEqual([None, 1, 3, 5, 5], [scraper.room_group(r) for r in (None, 1.0, 3.0, 5.0, 8.0)])
 
@@ -58,20 +66,22 @@ class LocationTests(unittest.TestCase):
 
 
 class ZoneRowsTests(unittest.TestCase):
-    """A zone with 95 apartments for sale (stratified) and 2 houses for sale (page 1 is the whole market)."""
+    """A zone with 65 apartments for sale in 3 pages and 2 houses for sale (one page)."""
 
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.cache = Path(self.folder.name)
         self.zone = {"slug": "palermo", "name": "Palermo", "in_caba": True, "manual_slug": "", "parent_name": "",
                      "candidates": ["palermo"]}
-        title = "95 Departamentos más recientes en venta en Palermo, CABA - Zonaprop"
+        title = "65 Departamentos más recientes en venta en Palermo, CABA - Zonaprop"
         self.write(scraper.listing_path("departamentos", "venta", "palermo"),
-                   page(95, [posting(i, 2.0) for i in range(30)], title))
-        for rooms, segment in scraper.ROOM_GROUPS.items():
-            postings = [posting(1000 * rooms + i, float(rooms)) for i in range(3)] if rooms <= 2 else []
-            self.write(scraper.listing_path("departamentos", "venta", "palermo", segment),
-                       page(60 if rooms == 1 else 35 if rooms == 2 else 0, postings))
+                   page(65, [posting(i, 2.0) for i in range(30)], title))
+        # Page 2 repeats the last listing of page 1 (it moved while reading) and has one without a price
+        second = [posting(i, 3.0 if i < 40 else 1.0) for i in range(29, 59)]
+        second[-1]["operations"] = {}
+        self.write(scraper.listing_path("departamentos", "venta", "palermo", page=2), page(65, second))
+        self.write(scraper.listing_path("departamentos", "venta", "palermo", page=3),
+                   page(65, [posting(i, None) for i in range(59, 64)]))
         self.write(scraper.listing_path("casas", "venta", "palermo"),
                    page(2, [posting(9001, 4.0, type_name="Casas"), posting(9002, None, type_name="Casas")]))
         self.write(scraper.listing_path("ph", "venta", "palermo"), page(0, []))
@@ -92,17 +102,44 @@ class ZoneRowsTests(unittest.TestCase):
         reader = scraper.Scraper(self.cache, 0, download=False)
         return scraper.zone_rows(reader, self.zone, 1500)[0]
 
-    def test_stratified_type_uses_the_room_pages_as_sample(self):
+    def test_every_page_is_read_and_repeated_listings_count_once(self):
         _, listings = self.rows()
         apartments = [row for row in listings if row[2] == "departamentos"]
-        # 3 + 3 from the room pages; page 1 is left out because it is not the whole market
-        self.assertEqual([1, 1, 1, 2, 2, 2], [row[3] for row in apartments])
+        # 64 different listings, one of them without a price
+        self.assertEqual(63, len(apartments))
+        self.assertEqual({0}, {row[3] for row in apartments})
 
-    def test_type_with_few_listings_counts_its_room_groups_from_page_one(self):
-        totals, listings = self.rows()
-        houses = [row for row in totals if row[1] == "venta" and row[2] == "casas"]
-        self.assertEqual([(0, 2), (4, 1)], [(row[3], row[5]) for row in houses])
-        self.assertEqual({0}, {row[3] for row in listings if row[2] == "casas"})
+    def test_room_groups_are_counted_from_the_listings(self):
+        totals, _ = self.rows()
+        apartments = {row[3]: row[5] for row in totals if row[1] == "venta" and row[2] == "departamentos"}
+        self.assertEqual({0: 65, 1: 19, 2: 30, 3: 10}, apartments)
+        houses = [(row[3], row[5]) for row in totals if row[1] == "venta" and row[2] == "casas"]
+        self.assertEqual([(0, 2), (4, 1)], houses)
+
+    def test_a_page_sent_back_to_the_first_one_ends_the_type(self):
+        moved = page(65, [posting(500, 2.0)])
+        moved["final_url"] = scraper.BASE_URL + scraper.listing_path("departamentos", "venta", "palermo")
+        self.write(scraper.listing_path("departamentos", "venta", "palermo", page=2), moved)
+        _, listings = self.rows()
+        self.assertEqual(30, len([row for row in listings if row[2] == "departamentos"]))
+
+    def test_a_type_larger_than_one_search_is_read_by_price_bands(self):
+        def band(low, high, total, ids):
+            path = scraper.listing_path("ph", "venta", "palermo", scraper.price_segment("venta", low, high))
+            self.write(path, page(total, [posting(i, 3.0, type_name="PH") for i in ids]))
+
+        self.write(scraper.listing_path("ph", "venta", "palermo"),
+                   page(300, [posting(i, 3.0, type_name="PH") for i in range(5000, 5030)]))
+        # The first band has more than one search shows: it is split in two (its own listings repeat in the halves)
+        # Its newest listings cost 100.000 (posting()), outside the band: it is split halfway on a log scale
+        band(1, 49_999, 280, range(7000, 7003))
+        band(1, 223, 10, range(7000, 7010))
+        band(224, 49_999, 20, range(7010, 7030))
+        band(50_000, 99_999, 5, range(7030, 7035))
+        _, listings = self.rows()
+        ids = {row[4] for row in listings if row[2] == "ph"}
+        # page 1 of the type plus the bands, each listing once
+        self.assertEqual(30 + 35, len(ids))
 
     def test_filter_totals_only_for_operations_with_listings(self):
         totals, _ = self.rows()

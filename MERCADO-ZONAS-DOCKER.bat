@@ -7,12 +7,13 @@ REM precio por m2, superficie tipica, y que parte es apta credito, de duenio dir
 REM Requiere la base con las zonas calculadas (DATOS-ZONAS-DOCKER.bat), las migraciones aplicadas
 REM (AddListingFeaturesToZoneMarket y AddZoneMarketByRooms) y Python 3 (sin paquetes extra).
 REM
-REM El scraping es lento a proposito (un pedido cada 3 o 4 segundos, unas 6 horas para todas las zonas). Si Zonaprop
+REM El scraping es lento a proposito (un pedido cada 3 o 4 segundos, unas 15 horas para todas las zonas). Si Zonaprop
 REM bloquea, espera y reintenta; si sigue, se corta: volver a ejecutar retoma donde quedo, porque cada pagina queda
 REM en datos\zonaprop\cache\AAAA-MM-DD (fecha de la corrida).
 REM Resultado: tablas app.zone_market y app.zone_market_rooms (las que lee la API), su copia en CSV
 REM (datos\zonaprop\market_by_zone.csv) y los slugs del enlace a Zonaprop para la SPA (datos\zonaprop\zonaprop-slugs.json,
-REM que se copia a frontend\ZonaMatchSPA\src\features\zone-detail\data\).
+REM que se copia solo a frontend\ZonaMatchSPA\src\features\zone-detail\data\ cuando la SPA esta al lado del back,
+REM en ..\..\frontend\ZonaMatchSPA; si esta en otro lado: set FRONT_DIR=ruta\de\ZonaMatchSPA antes de ejecutar).
 REM
 REM Opciones (se pasan al scraper): MERCADO-ZONAS-DOCKER.bat --only palermo,adrogue   solo esas zonas
 REM                                 MERCADO-ZONAS-DOCKER.bat --export-only  recalcular sin descargar nada
@@ -68,6 +69,15 @@ if errorlevel 1 goto :err_calc
 if errorlevel 1 goto :err_calc
 %PSQL% -At < etl\zonaprop\export_front_slugs.sql > datos\zonaprop\zonaprop-slugs.json
 if errorlevel 1 goto :err_calc
+rem Slugs a la SPA, si esta al lado del back (o en FRONT_DIR)
+if not defined FRONT_DIR set FRONT_DIR=..\..\frontend\ZonaMatchSPA
+set FRONT_SLUGS=%FRONT_DIR%\src\features\zone-detail\data\zonaprop-slugs.json
+if exist "%FRONT_SLUGS%" (
+    copy /Y datos\zonaprop\zonaprop-slugs.json "%FRONT_SLUGS%" > nul
+    echo Slugs copiados a %FRONT_SLUGS%
+) else (
+    echo No se encontro la SPA en %FRONT_DIR%: copiar datos\zonaprop\zonaprop-slugs.json a mano.
+)
 
 echo.
 echo ==========================================
