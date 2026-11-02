@@ -73,6 +73,17 @@ public class SendContactMessageTests
         Assert.IsType<InvalidOperationException>(error.InnerException);
     }
 
+    [Fact]
+    public async Task Execute_WhenEmailSendIsCanceled_PropagatesCancellation()
+    {
+        _emailService.Failure = new OperationCanceledException("Email send canceled.");
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => _useCase.ExecuteAsync(new SendContactMessageRequest("ana@example.com", null, null, null)));
+
+        Assert.Empty(_emailService.SentEmails);
+    }
+
     private sealed class FakeEmailService : IEmailService
     {
         public List<(string Recipient, string Subject, string Body)> SentEmails { get; } = [];

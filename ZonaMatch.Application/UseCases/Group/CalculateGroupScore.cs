@@ -1,0 +1,499 @@
+using System.Text.RegularExpressions;
+using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
+using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
+using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.UseCases.Scoring;
+using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Scoring;
+
+namespace ZonaMatch.Application.UseCases.Group;
+
+/// <summary>
+/// Scores zones containing group members' places and their contiguous neighbors, then combines the results using the configured weights.
+/// </summary>
+public sealed partial class CalculateGroupScore
+{
+    private const int ConcurrentTrips = 6;
+    private const int RecommendationsReturned = 4;
+    private const int AutomaticTopZones = 5;
+    private static readonly string[] RecommendationAgeRangeOrder = ["0-2", "3-5", "6-11", "12-17"];
+
+    private readonly IGroupRepository _groups;
+    private readonly IProfileRepository _profiles;
+    private readonly IZoneProfilesRepository _zoneProfiles;
+    private readonly IRoutingClient _routing;
+
+    public CalculateGroupScore(
+        IGroupRepository groups,
+        IProfileRepository profiles,
+        IZoneProfilesRepository zoneProfiles,
+        IRoutingClient routing)
+    {
+        _groups = groups;
+        _profiles = profiles;
+        _zoneProfiles = zoneProfiles;
+        _routing = routing;
+    }
+
+    public async Task<GroupRankingResponse> ExecuteAsync(
+        Guid groupId,
+        Guid currentUserId,
+        CalculateGroupScoreRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var group = await _groups.GetDetailsByIdAsync(groupId, cancellationToken)
+            ?? throw new NotFoundException("No se encontró el grupo.");
+
+        if (!group.Participants.Any(participant => participant.UserId == currentUserId))
+            throw new ForbiddenException("No pertenecés a este grupo.");
+
+        var (operation, maximumPurchase, propertyType) = HousingScoring.Validate(
+            request.Operation, request.MaximumPurchaseUsd, request.PropertyType);
+        var surface = HousingScoring.ValidateSurface(request.SurfaceM2);
+        var participantIds = group.Participants.Select(participant => participant.Id).ToHashSet();
+        var weights = ValidateWeights(request.ParticipantWeights, participantIds);
+        var slugs = (request.AddedZones ?? [])
+            .Select(slug => slug?.Trim() ?? string.Empty)
+            .Where(slug => slug.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var universe = await _zoneProfiles.ListAsync(cancellationToken);
+        var zonesBySlug = universe.ToDictionary(zone => zone.Slug, StringComparer.Ordinal);
+        var addedZones = slugs.Where(zonesBySlug.ContainsKey).Select(slug => zonesBySlug[slug]).ToArray();
+        if (addedZones.Length != slugs.Length)
+            throw new NotFoundException("No se encontraron una o más zonas agregadas al análisis.");
+
+        var profiles = await _profiles.GetByUserIdsAsync(
+            group.Participants.Select(participant => participant.UserId).Distinct().ToArray(),
+            cancellationToken);
+        var profilesByUserId = profiles.ToDictionary(profile => profile.UserId);
+        var engine = new ScoringEngine(universe);
+        using var routeLimit = new SemaphoreSlim(ConcurrentTrips);
+
+        var members = group.Participants
+            .Where(participant => profilesByUserId.ContainsKey(participant.UserId))
+            .Select(participant =>
+            {
+                var profile = profilesByUserId[participant.UserId];
+                return new MemberInput(
+                    participant,
+                    BuildRequest(profile, request.MaximumRent) with
+                    {
+                        Operation = operation,
+                        MaximumPurchasePriceUsd = maximumPurchase,
+                        HousingType = propertyType,
+                        AreaM2 = surface,
+                    },
+                    TravelModes.FromMobility(profile.Mobility ?? []),
+                    profile.Places.OrderBy(point => point.Order).ToArray());
+            })
+            .ToArray();
+
+        var locations = members
+            .Where(member => weights[member.Participant.Id] > 0)
+            .SelectMany(member => member.Request.Places)
+            .Where(place => place.HasLocation)
+            .Select(place => (Latitude: place.Latitude!.Value, Longitude: place.Longitude!.Value))
+            .ToArray();
+        var nearbySlugs = locations.Length == 0
+            ? universe.Select(zone => zone.Slug).ToArray()
+            : await _zoneProfiles.ListNearbyZoneSlugsAsync(locations, cancellationToken);
+        var nearbyZones = nearbySlugs
+            .Where(zonesBySlug.ContainsKey)
+            .Select(slug => zonesBySlug[slug])
+            .ToArray();
+        if (locations.Length > 0 && nearbyZones.Length == 0)
+            throw new BadRequestException("No se encontraron zonas del catálogo que contengan los puntos de interés de los participantes.");
+
+        var zonesToCalculate = nearbyZones
+            .Concat(addedZones)
+            .DistinctBy(zone => zone.Slug, StringComparer.Ordinal)
+            .ToArray();
+        var calculations = members
+            .Select(async member =>
+            {
+                var travelTimes = await MeasureTripsAsync(zonesToCalculate, member.Request.Places, member.Mode, routeLimit, cancellationToken);
+                var results = zonesToCalculate.ToDictionary(
+                    zone => zone.Slug,
+                    zone =>
+                    {
+                        var times = travelTimes[zone.Slug];
+                        var result = engine.Calculate(zone, member.Request, times);
+                        return new MemberZoneResult(result, BuildPlaceDetails(member, times));
+                    },
+                    StringComparer.Ordinal);
+
+                return new MemberCalculation(member.Participant, results);
+            })
+            .ToArray();
+
+        var memberScores = await Task.WhenAll(calculations);
+        var hasAnyRanking = zonesToCalculate.Any(zone => memberScores.Any(member =>
+            weights[member.Participant.Id] > 0 && member.Zones[zone.Slug].Result.Score is not null));
+        if (!hasAnyRanking)
+            throw new BadRequestException("Ningún participante con peso positivo tiene datos suficientes para puntuar las zonas disponibles.");
+
+        var rankedCandidates = zonesToCalculate
+            .Select(zone => BuildZoneResult(zone, group.Participants, weights, memberScores, propertyType, surface))
+            .OrderByDescending(zone => zone.Score.HasValue)
+            .ThenByDescending(zone => zone.Score)
+            .ThenBy(zone => zone.Name, StringComparer.CurrentCulture)
+            .ToArray();
+
+        var rankedZones = rankedCandidates
+            .Take(AutomaticTopZones)
+            .Concat(addedZones.Select(zone => rankedCandidates.Single(result => result.Slug == zone.Slug)))
+            .DistinctBy(zone => zone.Slug, StringComparer.Ordinal)
+            .OrderByDescending(zone => zone.Score.HasValue)
+            .ThenByDescending(zone => zone.Score)
+            .ThenBy(zone => zone.Name, StringComparer.CurrentCulture)
+            .ToArray();
+        var zonesForExclusion = rankedZones.Select(zone => zonesBySlug[zone.Slug]).ToArray();
+        var excluded = group.Participants
+            .Select(participant => Exclusion(participant, weights[participant.Id], profilesByUserId, zonesForExclusion, memberScores))
+            .Where(exclusion => exclusion is not null)
+            .Select(exclusion => exclusion!)
+            .ToArray();
+
+        var includedSlugs = rankedZones.Select(zone => zone.Slug).ToHashSet(StringComparer.Ordinal);
+        var nearby = rankedCandidates
+            .Where(zone => !includedSlugs.Contains(zone.Slug) && zone.Score is not null)
+            .Take(RecommendationsReturned)
+            .ToArray();
+
+        var groupPoints = group.Participants
+            .Where(participant => profilesByUserId.ContainsKey(participant.UserId))
+            .SelectMany(participant => profilesByUserId[participant.UserId].Places
+                .OrderBy(point => point.Order)
+                .Select(point => new GroupPointOfInterestResponse(
+                    point.Id,
+                    participant.Id,
+                    participant.User.Email,
+                    point.Name,
+                    point.Address,
+                    point.Latitude,
+                    point.Longitude,
+                    point.Type,
+                    point.Priority,
+                    point.MaximumTravelTime)))
+            .ToArray();
+
+        return new GroupRankingResponse(
+            rankedZones,
+            excluded,
+            groupPoints,
+            request.MaximumRent,
+            nearby,
+            operation,
+            maximumPurchase,
+            propertyType,
+            BuildProfileRecommendations(profiles),
+            surface);
+    }
+
+    private static GroupProfileRecommendationsResponse BuildProfileRecommendations(IReadOnlyList<Context> profiles)
+    {
+        var ageRanges = profiles
+            .SelectMany(profile => profile.People)
+            .Select(person => NormalizeRecommendationAgeRange(person.AgeRange))
+            .Where(ageRange => ageRange is not null)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var hasPets = profiles.Any(profile => profile.Pets?.Any(pet =>
+            !string.IsNullOrWhiteSpace(pet) && !string.Equals(pet.Trim(), "ninguna", StringComparison.OrdinalIgnoreCase)) == true);
+        var hasVehicle = profiles.Any(profile => HasMobility(profile, "vehiculo") || HasMobility(profile, "auto"));
+        var hasBicycle = profiles.Any(profile => HasMobility(profile, "bici"));
+
+        return new GroupProfileRecommendationsResponse(
+            RecommendationAgeRangeOrder.Where(ageRanges.Contains).ToArray(),
+            hasPets,
+            hasVehicle,
+            hasBicycle);
+    }
+
+    private static string? NormalizeRecommendationAgeRange(string? value)
+    {
+        var normalized = value?
+            .Trim()
+            .ToLowerInvariant()
+            .Replace("años", string.Empty, StringComparison.Ordinal)
+            .Replace('–', '-')
+            .Replace('—', '-')
+            .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        return normalized switch
+        {
+            "0-2" or "0-1" => "0-2",
+            "3-5" or "2-5" => "3-5",
+            "6-11" => "6-11",
+            "12-17" => "12-17",
+            _ => null,
+        };
+    }
+
+    private static bool HasMobility(Context profile, string mobility) =>
+        profile.Mobility?.Any(value => string.Equals(value.Trim(), mobility, StringComparison.OrdinalIgnoreCase)) == true;
+
+    private static IReadOnlyDictionary<Guid, decimal> ValidateWeights(
+        IReadOnlyList<ParticipantWeightRequest> requestedWeights,
+        IReadOnlySet<Guid> groupParticipantIds)
+    {
+        if (requestedWeights.Count != groupParticipantIds.Count)
+            throw new BadRequestException("Indicá un peso para cada participante del grupo.");
+
+        var weights = new Dictionary<Guid, decimal>();
+        foreach (var entry in requestedWeights)
+        {
+            if (!groupParticipantIds.Contains(entry.ParticipantId))
+                throw new BadRequestException("El pedido incluye a alguien que no pertenece al grupo.");
+            if (entry.Weight is < 0 or > 100)
+                throw new BadRequestException("Cada peso debe estar entre 0 y 100.");
+            if (!weights.TryAdd(entry.ParticipantId, entry.Weight))
+                throw new BadRequestException("Hay participantes repetidos en la configuración de pesos.");
+        }
+
+        if (weights.Keys.Count != groupParticipantIds.Count || weights.Values.All(weight => weight == 0))
+            throw new BadRequestException("Asigná un peso mayor a cero a por lo menos un participante.");
+
+        return weights;
+    }
+
+    private async Task<Dictionary<string, IReadOnlyList<TravelTime?>>> MeasureTripsAsync(
+        IReadOnlyList<ZoneProfile> zones,
+        IReadOnlyList<UserPlace> places,
+        TravelMode mode,
+        SemaphoreSlim limiter,
+        CancellationToken cancellationToken)
+    {
+        async Task<TravelTime?> MeasureAsync(ZoneProfile zone, UserPlace place)
+        {
+            if (!place.HasLocation)
+                return null;
+
+            await limiter.WaitAsync(cancellationToken);
+            try
+            {
+                return await _routing.GetTravelTimeAsync(
+                           zone.Latitude, zone.Longitude,
+                           place.Latitude!.Value, place.Longitude!.Value,
+                           mode, cancellationToken)
+                       ?? TravelModes.Estimate(
+                           mode, zone.Latitude, zone.Longitude,
+                           place.Latitude!.Value, place.Longitude!.Value);
+            }
+            finally
+            {
+                limiter.Release();
+            }
+        }
+
+        var zoneTasks = zones.Select(async zone =>
+            (zone.Slug, Times: await Task.WhenAll(places.Select(place => MeasureAsync(zone, place)))));
+        var results = await Task.WhenAll(zoneTasks);
+        return results.ToDictionary(result => result.Slug, result => (IReadOnlyList<TravelTime?>)result.Times, StringComparer.Ordinal);
+    }
+
+    private static ScoringRequest BuildRequest(Context profile, decimal? sharedRentLimit)
+    {
+        var criteria = profile.Criteria
+            .Where(criterion => ScoringEngine.IsKnownCriterion(criterion.CriterionId)
+                                && criterion.Priority is "baja" or "media" or "alta")
+            .ToDictionary(criterion => criterion.CriterionId, criterion => criterion.Priority, StringComparer.Ordinal);
+
+        var places = profile.Places
+            .OrderBy(point => point.Order)
+            .Select(point => new UserPlace(
+                point.Name,
+                point.Latitude,
+                point.Longitude,
+                point.Priority,
+                ParseMinutes(point.MaximumTravelTime)))
+            .ToArray();
+
+        return new ScoringRequest(criteria, places, sharedRentLimit is > 0 ? sharedRentLimit : null);
+    }
+
+    private static int ParseMinutes(string? value)
+    {
+        var match = MinutesRegex().Match(value ?? string.Empty);
+        return match.Success && int.TryParse(match.Value, out var minutes) && minutes > 0
+            ? minutes
+            : 45;
+    }
+
+    private static IReadOnlyList<ParticipantTripResponse> BuildPlaceDetails(
+        MemberInput member,
+        IReadOnlyList<TravelTime?> times) => member.Points
+        .Select((point, index) =>
+        {
+            var maximumMinutes = ParseMinutes(point.MaximumTravelTime);
+            var time = index < times.Count ? times[index] : null;
+            return new ParticipantTripResponse(
+                point.Id,
+                member.Participant.Id,
+                member.Participant.User.Email,
+                point.Name,
+                point.Address,
+                point.Type,
+                point.Priority,
+                TravelModes.ToCode(member.Mode),
+                time?.Minutes,
+                maximumMinutes,
+                time?.IsEstimated ?? false,
+                time is null ? null : ScoringEngine.TravelScore(time.Minutes, maximumMinutes));
+        })
+        .ToArray();
+
+    private static RankedZoneResponse BuildZoneResult(
+        ZoneProfile zone,
+        IEnumerable<Participant> participants,
+        IReadOnlyDictionary<Guid, decimal> weights,
+        IReadOnlyList<MemberCalculation> memberScores,
+        string? propertyType,
+        int? surface)
+    {
+        var scoresByParticipant = memberScores.ToDictionary(member => member.Participant.Id);
+        var available = participants
+            .Select(participant =>
+            {
+                var score = scoresByParticipant.TryGetValue(participant.Id, out var calculation)
+                    && calculation.Zones.TryGetValue(zone.Slug, out var zoneResult)
+                    ? zoneResult.Result.Score
+                    : null;
+                return (Participant: participant, Score: score, Weight: weights[participant.Id]);
+            })
+            .ToArray();
+        var scored = available.Where(entry => entry.Score is not null && entry.Weight > 0).ToArray();
+        var totalWeight = scored.Sum(entry => entry.Weight);
+        int? groupScore = totalWeight > 0
+            ? (int)Math.Clamp(decimal.Round(
+                scored.Sum(entry => entry.Score!.Value * entry.Weight) / totalWeight,
+                0, MidpointRounding.AwayFromZero), 0, 100)
+            : null;
+
+        var breakdown = available
+            .Select(entry => new ParticipantScoreResponse(
+                entry.Participant.Id,
+                entry.Participant.User.Email,
+                entry.Weight,
+                entry.Score is not null && entry.Weight > 0 && totalWeight > 0
+                    ? decimal.Round(entry.Weight / totalWeight * 100, 2, MidpointRounding.AwayFromZero)
+                    : 0,
+                entry.Score))
+            .ToArray();
+        var normalizedWeights = breakdown.ToDictionary(item => item.ParticipantId, item => item.NormalizedWeight);
+
+        var componentGroups = memberScores
+            .Where(member => member.Zones.ContainsKey(zone.Slug))
+            .SelectMany(member => member.Zones[zone.Slug].Result.Components
+                .Select(component => (Member: member, Component: component)))
+            .GroupBy(entry => entry.Component.Criterion, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var withScore = group
+                    .Where(entry => entry.Component.Score is not null && weights[entry.Member.Participant.Id] > 0)
+                    .ToArray();
+                var componentWeight = withScore.Sum(entry => weights[entry.Member.Participant.Id]);
+                int? componentScore = componentWeight > 0
+                    ? (int)Math.Clamp(decimal.Round(
+                        withScore.Sum(entry => entry.Component.Score!.Value * weights[entry.Member.Participant.Id]) / componentWeight,
+                        0, MidpointRounding.AwayFromZero), 0, 100)
+                    : null;
+                var componentParticipants = group
+                    .Select(entry => new ParticipantScoreComponentResponse(
+                        entry.Member.Participant.Id,
+                        entry.Member.Participant.User.Email,
+                        entry.Component.Score is not null && weights[entry.Member.Participant.Id] > 0 && componentWeight > 0
+                            ? decimal.Round(weights[entry.Member.Participant.Id] / componentWeight * 100, 2, MidpointRounding.AwayFromZero)
+                            : 0,
+                        entry.Component.Priority,
+                        entry.Component.Score,
+                        entry.Component.Details))
+                    .ToArray();
+                var details = group.Select(entry => entry.Component.Details).Where(detail => !string.IsNullOrWhiteSpace(detail)).Distinct().ToArray();
+                var detail = group.Key == ScoringEngine.Places
+                    ? "Promedio ponderado de los viajes individuales con datos disponibles."
+                    : string.Join(" · ", details);
+
+                return new GroupScoreComponentResponse(group.Key, componentScore, detail, componentParticipants);
+            })
+            .OrderBy(component => component.Criterion, StringComparer.Ordinal)
+            .ToArray();
+
+        var participantLimits = memberScores
+            .Where(member => member.Zones.ContainsKey(zone.Slug))
+            .SelectMany(member => member.Zones[zone.Slug].Result.Limits.Select(limit =>
+                new ScoreLimitResponse(
+                    member.Participant.Id,
+                    member.Participant.User.Email,
+                    normalizedWeights.GetValueOrDefault(member.Participant.Id),
+                    limit.Type,
+                    limit.IsSatisfied,
+                    limit.Details)))
+            .ToArray();
+        // The budget is the group's: its limits are the same for everyone, so they are shown once
+        var limits = participantLimits
+            .Where(limit => ScoringEngine.IsBudgetLimit(limit.Type))
+            .DistinctBy(limit => limit.Type)
+            .Select(limit => limit with { ParticipantId = Guid.Empty, ParticipantName = "Grupo", NormalizedWeight = 100 })
+            .Concat(participantLimits.Where(limit => !ScoringEngine.IsBudgetLimit(limit.Type)))
+            .ToArray();
+        var places = memberScores
+            .Where(member => member.Zones.ContainsKey(zone.Slug))
+            .SelectMany(member => member.Zones[zone.Slug].Places)
+            .ToArray();
+        var rent = HousingScoring.Rent(zone, propertyType, surface) is { } zoneRent
+            ? new ZoneRentResponse(
+                zoneRent.Average, zoneRent.AvailableProperties, zoneRent.Expenses, zoneRent.MonthlyCost,
+                zoneRent.PricePerM2, zoneRent.SurfaceM2, zoneRent.Estimated)
+            : null;
+        var sale = HousingScoring.Sale(zone, propertyType, surface) is { } zoneSale
+            ? new ZoneSaleResponse(
+                zoneSale.AverageUsd, zoneSale.AvailableProperties, zoneSale.Expenses,
+                zoneSale.PricePerM2Usd, zoneSale.SurfaceM2, zoneSale.EstimatedUsd)
+            : null;
+
+        return new RankedZoneResponse(zone.Slug, zone.Name, groupScore, breakdown, componentGroups, limits, places, rent, sale);
+    }
+
+    private static ExcludedParticipantResponse? Exclusion(
+        Participant participant,
+        decimal weight,
+        IReadOnlyDictionary<Guid, Context> profilesByUserId,
+        IReadOnlyList<ZoneProfile> selectedZones,
+        IReadOnlyList<MemberCalculation> memberScores)
+    {
+        string? reason = null;
+        if (!profilesByUserId.ContainsKey(participant.UserId))
+            reason = "No tiene un perfil guardado.";
+        else if (weight == 0)
+            reason = "Tiene un peso asignado de 0.";
+        else if (!memberScores.Any(member => member.Participant.Id == participant.Id && selectedZones.Any(zone =>
+                     member.Zones.TryGetValue(zone.Slug, out var result) && result.Result.Score is not null)))
+            reason = "No obtuvo puntajes con los datos disponibles en las zonas del ranking.";
+
+        return reason is null
+            ? null
+            : new ExcludedParticipantResponse(participant.Id, participant.User.Email, reason);
+    }
+
+    [GeneratedRegex(@"\d+")]
+    private static partial Regex MinutesRegex();
+
+    private sealed record MemberInput(
+        Participant Participant,
+        ScoringRequest Request,
+        TravelMode Mode,
+        IReadOnlyList<ContextPlace> Points);
+
+    private sealed record MemberCalculation(
+        Participant Participant,
+        IReadOnlyDictionary<string, MemberZoneResult> Zones);
+
+    private sealed record MemberZoneResult(
+        ZoneScoreResult Result,
+        IReadOnlyList<ParticipantTripResponse> Places);
+}

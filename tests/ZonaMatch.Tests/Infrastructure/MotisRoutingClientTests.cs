@@ -1,3 +1,4 @@
+using FluentAssertions;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
@@ -11,7 +12,7 @@ namespace ZonaMatch.Tests.Infrastructure;
 public class MotisRoutingClientTests
 {
     [Fact]
-    public async Task UsesTimeAndDistanceFromTheSameItinerary()
+    public async Task GetTravelTimeAsync_WhenMultipleItinerariesExist_UsesTimeAndDistanceFromTheSameItinerary()
     {
         const string json = """
             {
@@ -22,12 +23,12 @@ public class MotisRoutingClientTests
 
         var (travelTime, _) = await QueryAsync(json);
 
-        Assert.Equal(10, travelTime!.Minutes);
-        Assert.Equal(3.5, travelTime.DistanceKm!.Value, 3);
+        travelTime!.Minutes.Should().Be(10);
+        travelTime.DistanceKm!.Value.Should().BeApproximately(3.5, 0.001);
     }
 
     [Fact]
-    public async Task AddsWalkingSegmentsAndTransitGeometry()
+    public async Task GetTravelTimeAsync_WhenTransitGeometryIsProvided_IncludesWalkingSegmentsAndGeometry()
     {
         const string json = """
             {
@@ -45,15 +46,15 @@ public class MotisRoutingClientTests
 
         var (travelTime, _) = await QueryAsync(json, TravelMode.PublicTransit);
 
-        Assert.Equal(30, travelTime!.Minutes);
-        Assert.InRange(travelTime.DistanceKm!.Value, 111.69, 111.70);
+        travelTime!.Minutes.Should().Be(30);
+        travelTime.DistanceKm!.Value.Should().BeInRange(111.69, 111.70);
     }
 
     [Theory]
     [InlineData("{}")]
     [InlineData("{\"distance\": -1}")]
     [InlineData("{\"legGeometry\": {\"points\": \"_\", \"precision\": 7}}")]
-    public async Task DoesNotReturnPartialDistanceWhenALegCannotBeMeasured(string legJson)
+    public async Task GetTravelTimeAsync_WhenALegCannotBeMeasured_ReturnsTimeWithoutPartialDistance(string legJson)
     {
         var json = $$"""
             {"itineraries": [{"duration": 1800, "legs": [{"distance": 300}, {{legJson}}]}]}
@@ -61,30 +62,30 @@ public class MotisRoutingClientTests
 
         var (travelTime, _) = await QueryAsync(json);
 
-        Assert.Equal(30, travelTime!.Minutes);
-        Assert.Null(travelTime.DistanceKm);
+        travelTime!.Minutes.Should().Be(30);
+        travelTime.DistanceKm.Should().BeNull();
     }
 
     [Theory]
     [InlineData("{\"itineraries\":[],\"direct\":[]}")]
     [InlineData("{\"direct\":[{\"legs\":[{\"distance\":1000}]}]}")]
-    public async Task ReturnsNoTimeOrDistanceWhenNoItineraryHasDuration(string json)
+    public async Task GetTravelTimeAsync_WhenNoItineraryHasDuration_ReturnsNoTimeOrDistance(string json)
     {
         var (travelTime, _) = await QueryAsync(json);
 
-        Assert.NotNull(travelTime);
-        Assert.Null(travelTime.Minutes);
-        Assert.Null(travelTime.DistanceKm);
+        travelTime.Should().NotBeNull();
+        travelTime!.Minutes.Should().BeNull();
+        travelTime.DistanceKm.Should().BeNull();
     }
 
     [Fact]
-    public async Task AcceptsAZeroMeterRoute()
+    public async Task GetTravelTimeAsync_WhenRouteHasZeroMeters_AcceptsZeroTimeAndDistance()
     {
         var (travelTime, _) = await QueryAsync(
             """{"direct":[{"duration":0,"legs":[{"distance":0}]}]}""");
 
-        Assert.Equal(0, travelTime!.Minutes);
-        Assert.Equal(0.0, travelTime.DistanceKm!.Value);
+        travelTime!.Minutes.Should().Be(0);
+        travelTime.DistanceKm!.Value.Should().Be(0.0);
     }
 
     [Theory]
@@ -92,26 +93,26 @@ public class MotisRoutingClientTests
     [InlineData(TravelMode.Bicycle, "directModes=BIKE")]
     [InlineData(TravelMode.Walking, "directModes=WALK")]
     [InlineData(TravelMode.PublicTransit, "transitModes=TRANSIT")]
-    public async Task RequestsTheSelectedTravelMode(TravelMode mode, string parameter)
+    public async Task GetTravelTimeAsync_WhenTravelModeIsSelected_UsesItsRequestParameters(TravelMode mode, string parameter)
     {
         var (_, query) = await QueryAsync(
             """{"direct":[{"duration":600,"legs":[{"distance":1000}]}]}""", mode);
 
-        Assert.Contains(parameter, query);
-        Assert.Contains("detailedLegs=true", query);
-        Assert.Contains("detailedTransfers=true", query);
-        Assert.Contains("useRoutedTransfers=true", query);
+        query.Should().Contain(parameter);
+        query.Should().Contain("detailedLegs=true");
+        query.Should().Contain("detailedTransfers=true");
+        query.Should().Contain("useRoutedTransfers=true");
     }
 
     [Theory]
     [InlineData("{\"error\":\"sin servicio\"}")]
     [InlineData("{\"error\":{\"message\":\"sin servicio\"}}")]
     [InlineData("JSON invalido")]
-    public async Task InvalidResponseOrErrorAllowsTheExistingEstimateToBeUsed(string json)
+    public async Task GetTravelTimeAsync_WhenResponseIsInvalidOrContainsAnError_ReturnsNoTravelTime(string json)
     {
         var (travelTime, _) = await QueryAsync(json);
 
-        Assert.Null(travelTime);
+        travelTime.Should().BeNull();
     }
 
     private static async Task<(TravelTime? TravelTime, string Query)> QueryAsync(

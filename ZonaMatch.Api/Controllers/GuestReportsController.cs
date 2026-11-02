@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.RateLimiting;
 using ZonaMatch.Application.DTOs.GuestReport.Requests;
 using ZonaMatch.Application.Exceptions;
-using ZonaMatch.Application.UseCases.GuestReports;
+using ZonaMatch.Application.UseCases.GuestReport;
 
 namespace ZonaMatch.Api.Controllers;
 

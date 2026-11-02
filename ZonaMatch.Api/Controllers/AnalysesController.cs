@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.DTOs.Analysis.Responses;
-using ZonaMatch.Application.UseCases.SavedAnalyses;
+using ZonaMatch.Application.UseCases.SavedAnalysis;
 
 namespace ZonaMatch.Api.Controllers
 {

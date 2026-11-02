@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Scoring;
 
@@ -8,8 +9,13 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         [Fact]
         public void Validate_WhenAllRequiredLimitsAreProvided_DoesNotThrow()
         {
-            MandatoryScoringLimits.Validate("$ 600.000", "alquiler", null, ["45 min", "30"]);
-            MandatoryScoringLimits.Validate("80000", "compra", 120_000, ["45 min"]);
+            Action act = () =>
+            {
+                MandatoryScoringLimits.Validate("$ 600.000", "alquiler", null, ["45 min", "30"]);
+                MandatoryScoringLimits.Validate("80000", "compra", 120_000, ["45 min"]);
+            };
+
+            act.Should().NotThrow();
         }
 
         [Theory]
@@ -18,8 +24,9 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         [InlineData("$ 0")]
         public void Validate_WhenMonthlyBudgetIsMissing_ThrowsBadRequestException(string? monthlyBudget)
         {
-            var error = Assert.Throws<BadRequestException>(() => MandatoryScoringLimits.Validate(monthlyBudget, "alquiler", null, ["45 min"]));
-            Assert.Contains("gasto", error.Message);
+            Action act = () => MandatoryScoringLimits.Validate(monthlyBudget, "alquiler", null, ["45 min"]);
+
+            act.Should().Throw<BadRequestException>().Which.Message.Should().Contain("gasto");
         }
 
         [Theory]
@@ -27,14 +34,17 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         [InlineData("0")]
         public void Validate_WhenBuying_ExpensesLimitIsOptional(string? expensesLimit)
         {
-            MandatoryScoringLimits.Validate(expensesLimit, "compra", 120_000, ["45 min"]);
+            Action act = () => MandatoryScoringLimits.Validate(expensesLimit, "compra", 120_000, ["45 min"]);
+
+            act.Should().NotThrow();
         }
 
         [Fact]
         public void Validate_WhenBuyingWithoutPurchasePrice_ThrowsBadRequestException()
         {
-            var error = Assert.Throws<BadRequestException>(() => MandatoryScoringLimits.Validate("80000", "compra", null, ["45 min"]));
-            Assert.Contains("compra", error.Message);
+            Action act = () => MandatoryScoringLimits.Validate("80000", "compra", null, ["45 min"]);
+
+            act.Should().Throw<BadRequestException>().Which.Message.Should().Contain("compra");
         }
 
         [Theory]
@@ -43,8 +53,9 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         [InlineData("min")]
         public void Validate_WhenPlaceHasNoTravelTime_ThrowsBadRequestException(string? travelTime)
         {
-            var error = Assert.Throws<BadRequestException>(() => MandatoryScoringLimits.Validate("600000", "alquiler", null, ["45 min", travelTime]));
-            Assert.Contains("tiempo", error.Message);
+            Action act = () => MandatoryScoringLimits.Validate("600000", "alquiler", null, ["45 min", travelTime]);
+
+            act.Should().Throw<BadRequestException>().Which.Message.Should().Contain("tiempo");
         }
     }
 }

@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Tests.Domain
@@ -8,7 +9,7 @@ namespace ZonaMatch.Tests.Domain
         [InlineData(3, 5, 4, 4, 2, 3.6)]
         [InlineData(5, 5, 5, 5, 5, 5.0)]
         [InlineData(1, 1, 1, 1, 2, 1.2)]
-        public void OverallScoreIsTheAverageOfAllAspects(
+        public void OverallScore_WhenReviewIsCreated_IsAverageOfAllAspects(
             int safety, int transit, int connectivity, int commerce, int greenSpaces, double expected)
         {
             var review = new Review
@@ -20,11 +21,11 @@ namespace ZonaMatch.Tests.Domain
                 GreenSpaceScore = greenSpaces
             };
 
-            Assert.Equal(expected, review.OverallScore);
+            review.OverallScore.Should().Be(expected);
         }
 
         [Fact]
-        public void OverallScoreUpdatesWhenAnAspectIsEdited()
+        public void OverallScore_WhenAnAspectIsEdited_RecalculatesAverage()
         {
             var review = new Review
             {
@@ -37,7 +38,7 @@ namespace ZonaMatch.Tests.Domain
 
             review.SafetyScore = 1;
 
-            Assert.Equal(3.4, review.OverallScore);
+            review.OverallScore.Should().Be(3.4);
         }
     }
 }

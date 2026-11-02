@@ -5,8 +5,8 @@ using System.Security.Claims;
 using ZonaMatch.Application.DTOs.GroupInvitation.Requests;
 using ZonaMatch.Application.DTOs.GroupInvitation.Responses;
 using ZonaMatch.Application.DTOs.GroupLink.Responses;
-using ZonaMatch.Application.UseCases.GroupInvitations;
-using ZonaMatch.Application.UseCases.GroupLinks;
+using ZonaMatch.Application.UseCases.GroupInvitation;
+using ZonaMatch.Application.UseCases.GroupLink;
 
 namespace ZonaMatch.Api.Controllers;
 

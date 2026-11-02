@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs.Criterion.Responses;
-using ZonaMatch.Application.UseCases.Criteria;
+using ZonaMatch.Application.UseCases.Criterion;
 
 namespace ZonaMatch.Api.Controllers;
 

@@ -55,6 +55,84 @@ namespace ZonaMatch.Tests.UseCases.Profile
             Assert.Equal("salud", criterion.CriterionId);
         }
 
+        [Fact]
+        public async Task Save_WhenPersonNamesAreProvided_TrimsAndReturnsThemInOrder()
+        {
+            var request = TestRequests.AnalysisCriteria(peopleCount: 2, ageRanges: ["6-11", "12-17"]);
+            request.Context.PersonNames = [" Ana ", " Lautaro "];
+
+            var response = await _useCase.ExecuteAsync(UserId, request);
+
+            var profile = Assert.Single(_profiles.Profiles);
+            Assert.Equal(["Ana", "Lautaro"], profile.People.OrderBy(person => person.Order).Select(person => person.Name));
+            Assert.Equal(["Ana", "Lautaro"], response.Context.PersonNames);
+            Assert.Equal(["6-11", "12-17"], response.Context.AgeRanges);
+        }
+
+        [Fact]
+        public async Task Save_WhenPersonNameCountDoesNotMatchPeopleCount_ThrowsAndDoesNotSave()
+        {
+            var request = TestRequests.AnalysisCriteria(peopleCount: 2);
+            request.Context.PersonNames = ["Ana"];
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(UserId, request));
+
+            Assert.Empty(_profiles.Profiles);
+        }
+
+        [Fact]
+        public async Task Save_WhenPersonNamesAreNull_ThrowsAndDoesNotSave()
+        {
+            var request = TestRequests.AnalysisCriteria();
+            request.Context.PersonNames = null!;
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(UserId, request));
+
+            Assert.Empty(_profiles.Profiles);
+        }
+
+        [Fact]
+        public async Task Save_WhenPersonNameIsBlank_ThrowsAndDoesNotSave()
+        {
+            var request = TestRequests.AnalysisCriteria();
+            request.Context.PersonNames = ["  "];
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(UserId, request));
+
+            Assert.Empty(_profiles.Profiles);
+        }
+
+        [Fact]
+        public async Task Save_WhenPersonNameExceedsFiftyCharacters_ThrowsAndDoesNotSave()
+        {
+            var request = TestRequests.AnalysisCriteria();
+            request.Context.PersonNames = [new string('A', 51)];
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(UserId, request));
+
+            Assert.Empty(_profiles.Profiles);
+        }
+
+        [Fact]
+        public async Task Save_WhenThereAreMoreAgeRangesThanPeople_ThrowsAndDoesNotSave()
+        {
+            var request = TestRequests.AnalysisCriteria(peopleCount: 1, ageRanges: ["6-11", "12-17"]);
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(UserId, request));
+
+            Assert.Empty(_profiles.Profiles);
+        }
+
+        [Fact]
+        public async Task Save_WhenAgeRangeExceedsFortyCharacters_ThrowsAndDoesNotSave()
+        {
+            var request = TestRequests.AnalysisCriteria(ageRanges: [new string('A', 41)]);
+
+            await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(UserId, request));
+
+            Assert.Empty(_profiles.Profiles);
+        }
+
         [Theory]
         [InlineData("turismo", "alta", "Criterio desconocido")]
         [InlineData("transporte", "alta", "Criterio no disponible")]
@@ -109,6 +187,54 @@ namespace ZonaMatch.Tests.UseCases.Profile
         public async Task GetMyProfile_WhenProfileDoesNotExist_ReturnsNull()
         {
             Assert.Null(await new GetMyProfile(_profiles).ExecuteAsync(UserId));
+        }
+
+        [Fact]
+        public async Task GetMyProfile_WhenProfileExists_ReturnsMappedProfileDetails()
+        {
+            var profile = new Context
+            {
+                UserId = UserId,
+                Type = ContextType.Profile,
+                PeopleCount = 2,
+                People =
+                [
+                    new Person { Order = 2, Name = " Mara ", AgeRange = "6-11" },
+                    new Person { Order = 1, Name = " Ana ", AgeRange = "26–35 años" }
+                ],
+                Mobility = ["bici", "auto"],
+                Pets = ["gato"],
+                MaximumRent = "800000",
+                Operation = "compra",
+                MaximumPurchasePriceUsd = 120000,
+                HousingType = "ph",
+                AreaM2 = 75,
+                UpdatedAt = CurrentTime,
+                Criteria = [new ContextCriterion { CriterionId = "seguridad", Priority = "alta" }],
+                Places =
+                [
+                    new ContextPlace { Order = 2, Name = "Trabajo", Type = "Trabajo", WhoGoes = "Ana", MaximumTravelTime = "45 min" },
+                    new ContextPlace { Order = 1, Name = "Universidad", Type = "Estudio", WhoGoes = "Mara", MaximumTravelTime = "30 min" }
+                ]
+            };
+            _profiles.Profiles.Add(profile);
+
+            var response = await new GetMyProfile(_profiles).ExecuteAsync(UserId);
+
+            Assert.NotNull(response);
+            Assert.Equal(2, response.Context.PeopleCount);
+            Assert.Equal(["Ana", "Mara"], response.Context.PersonNames);
+            Assert.Equal(["26–35 años", "6-11"], response.Context.AgeRanges);
+            Assert.Equal(["bici", "auto"], response.Context.Mobility);
+            Assert.Equal(["gato"], response.Context.Pets);
+            Assert.Equal("alta", response.Criteria["seguridad"]);
+            Assert.Equal("800000", response.Points.RentLimit);
+            Assert.Equal("compra", response.Points.Operation);
+            Assert.Equal(120000m, response.Points.PurchaseLimitUsd);
+            Assert.Equal("ph", response.Points.PropertyType);
+            Assert.Equal(75, response.Points.AreaM2);
+            Assert.Equal(["Universidad", "Trabajo"], response.Points.Places.Select(place => place.Name));
+            Assert.Equal(CurrentTime, response.UpdatedAt);
         }
     }
 }
