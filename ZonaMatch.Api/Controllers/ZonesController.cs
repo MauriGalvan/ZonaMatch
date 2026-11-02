@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
 using ZonaMatch.Application.DTOs.Transit.Responses;
+using ZonaMatch.Application.DTOs.Zones.Responses;
 using ZonaMatch.Application.DTOs.ZoneIndicators.Responses;
 using ZonaMatch.Application.UseCases.Zones;
 
@@ -14,26 +15,28 @@ public sealed class ZonesController : ControllerBase
 {
     private const string GeoJson = "application/geo+json";
 
-    // GET /api/v1/zones?buscar=villa l&limite=10
+    // GET /api/v1/zones?search=villa l&limit=10
     // Matching is accent-insensitive; names that start with the query are returned first.
     [HttpGet]
-    public async Task<IActionResult> SearchZones(
-        [FromQuery(Name = "buscar")] string? search,
+    [ProducesResponseType(typeof(IReadOnlyList<ZoneSearchResultResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<ZoneSearchResultResponse>>> SearchZones(
+        [FromQuery] string? search,
         [FromServices] SearchZones searchZones,
-        [FromQuery(Name = "limite")] int limit = 10,
+        [FromQuery] int limit = 10,
         CancellationToken cancellationToken = default)
     {
         var zones = await searchZones.ExecuteAsync(search, limit, cancellationToken);
         return Ok(zones);
     }
 
-    // GET /api/v1/zones/villa-luro?tolerancia=0.00015
+    // GET /api/v1/zones/villa-luro?tolerance=0.00015
     // Returns a GeoJSON Feature with the zone geometry and its administrative properties.
     [HttpGet("{slug}")]
     [ResponseCache(Duration = 3600)]
     public async Task<IActionResult> GetZone(
         [FromRoute] string slug,
-        [FromQuery(Name = "tolerancia")] double? tolerance,
+        [FromQuery] double? tolerance,
         [FromServices] GetZone getZone,
         CancellationToken cancellationToken)
     {

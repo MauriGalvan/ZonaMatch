@@ -13,8 +13,8 @@ namespace ZonaMatch.Infrastructure.Repositories
         private const string Schema = ZonaMatchDbOptions.OsmSchema;
         private const string Geo = ZonaMatchDbOptions.GeoSchema;
 
-        // ~1 m precision, keeps the payload small
-        private const int Decimales = 5;
+        // Around one-meter precision keeps the payload small.
+        private const int GeoJsonCoordinatePrecision = 5;
 
         private static string GetAdministrativeLevel(string alias) => ZoneSql.GetAdministrativeLevel(alias);
 
@@ -58,13 +58,13 @@ namespace ZonaMatch.Infrastructure.Repositories
                         FROM jurisdicciones j),
                     'superficieKm2', round((ST_Area(z.geom::geography) / 1e6)::numeric, 2),
                     'centro', json_build_object('latitud', ST_Y(c.punto), 'longitud', ST_X(c.punto))),
-                'geometry', ST_AsGeoJSON(ST_SimplifyPreserveTopology(z.geom, @tol), {Decimales})::json)::text AS "Value"
+                'geometry', ST_AsGeoJSON(ST_SimplifyPreserveTopology(z.geom, @simplificationTolerance), {GeoJsonCoordinatePrecision})::json)::text AS "Value"
             FROM zona z, centro c
             """;
 
-        // The zones of geo.zonas, like SqlPorSlug, so every result opens the zone it shows: places that share a name
-        // come once each, with their own slug ("villa-sarmiento" and "villa-sarmiento-moron") and jurisdicciones.
-        // Jurisdicciones come as two parallel arrays (names and levels).
+        // Search the same selected zones as SqlPorSlug so each result opens its own zone. Places that share a name
+        // appear separately with their own slug and jurisdictions. Jurisdictions are returned as parallel name and
+        // administrative-level arrays.
         private static readonly string SqlBuscar = $"""
             WITH zonas AS (
                 SELECT g.slug, g.nombre AS name, g.nivel,
@@ -73,21 +73,21 @@ namespace ZonaMatch.Infrastructure.Repositories
                        ST_PointOnSurface((array_agg(t.way ORDER BY t.way_area DESC))[1]) AS punto
                 FROM {Geo}.zonas g
                 JOIN {Schema}.planet_osm_polygon t ON t.osm_id = g.osm_id AND t.boundary = 'administrative'
-                WHERE g.elegida AND g.slug LIKE '%' || @fragmento || '%'
+                WHERE g.elegida AND g.slug LIKE '%' || @searchFragment || '%'
                 GROUP BY g.slug, g.nombre, g.nivel
             ),
             elegidas AS (
-                SELECT *, slug LIKE @fragmento || '%' AS empieza
+                SELECT *, slug LIKE @searchFragment || '%' AS starts_with_search
                 FROM zonas
-                ORDER BY empieza DESC, length(slug), slug
-                LIMIT @limite
+                ORDER BY starts_with_search DESC, length(slug), slug
+                LIMIT @resultLimit
             )
             SELECT e.slug AS "Slug",
-                   e.name AS "Nombre",
-                   e.nivel AS "NivelAdministrativo",
-                   round((e.metros2 / 1e6)::numeric, 2)::float8 AS "SuperficieKm2",
-                   COALESCE(j.nombres, ARRAY[]::text[]) AS "JurisdiccionNombres",
-                   COALESCE(j.niveles, ARRAY[]::int[]) AS "JurisdiccionNiveles"
+                   e.name AS "Name",
+                   e.nivel AS "AdministrativeLevel",
+                   round((e.metros2 / 1e6)::numeric, 2)::float8 AS "AreaKm2",
+                   COALESCE(j.names, ARRAY[]::text[]) AS "JurisdictionNames",
+                   COALESCE(j.administrative_levels, ARRAY[]::int[]) AS "JurisdictionAdministrativeLevels"
             FROM elegidas e
             LEFT JOIN LATERAL (
                 WITH contenedores AS (
@@ -98,14 +98,14 @@ namespace ZonaMatch.Infrastructure.Repositories
                       AND ST_Contains(c.way, e.punto)
                       AND c.way_area >= 0.99 * e.way_area
                 )
-                SELECT array_agg(c.name ORDER BY c.nivel DESC) AS nombres,
-                       array_agg(c.nivel ORDER BY c.nivel DESC) AS niveles
+                SELECT array_agg(c.name ORDER BY c.nivel DESC) AS names,
+                       array_agg(c.nivel ORDER BY c.nivel DESC) AS administrative_levels
                 FROM contenedores c
                 WHERE NOT EXISTS (
                     SELECT 1 FROM contenedores w
                     WHERE w.nivel < c.nivel AND abs(w.way_area - c.way_area) < 0.01 * w.way_area)
             ) j ON true
-            ORDER BY e.empieza DESC, length(e.slug), e.slug
+            ORDER BY e.starts_with_search DESC, length(e.slug), e.slug
             """;
 
         private readonly ZonaMatchDbContext _dbContext;
@@ -132,53 +132,54 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .SqlQueryRaw<bool>(SqlExiste, new NpgsqlParameter("slug", slug))
                 .SingleAsync(cancellationToken);
 
-        public Task<bool> ContainsPointAsync(string slug, double latitud, double longitud, CancellationToken cancellationToken = default) =>
+        public Task<bool> ContainsPointAsync(string slug, double latitude, double longitude, CancellationToken cancellationToken = default) =>
             _dbContext.Database
                 .SqlQueryRaw<bool>(SqlContienePunto,
                     new NpgsqlParameter("slug", slug),
-                    new NpgsqlParameter("lat", latitud),
-                    new NpgsqlParameter("lon", longitud))
+                    new NpgsqlParameter("lat", latitude),
+                    new NpgsqlParameter("lon", longitude))
                 .SingleAsync(cancellationToken);
 
-        public async Task<string?> GetBySlugAsync(string slug, double tolerancia, CancellationToken cancellationToken = default)
+        public async Task<string?> GetBySlugAsync(string slug, double simplificationTolerance, CancellationToken cancellationToken = default)
         {
             var filas = await _dbContext.Database
                 .SqlQueryRaw<string>(SqlPorSlug,
                     new NpgsqlParameter("slug", slug),
-                    new NpgsqlParameter("tol", tolerancia))
+                    new NpgsqlParameter("simplificationTolerance", simplificationTolerance))
                 .ToListAsync(cancellationToken);
 
             return filas.SingleOrDefault();
         }
 
         public async Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(
-            string fragmento, int limite, CancellationToken cancellationToken = default)
+            string searchFragment, int resultLimit, CancellationToken cancellationToken = default)
         {
             var filas = await _dbContext.Database
-                .SqlQueryRaw<ZonaFila>(SqlBuscar,
-                    new NpgsqlParameter("fragmento", fragmento),
-                    new NpgsqlParameter("limite", limite))
+                .SqlQueryRaw<ZoneSearchRow>(SqlBuscar,
+                    new NpgsqlParameter("searchFragment", searchFragment),
+                    new NpgsqlParameter("resultLimit", resultLimit))
                 .ToListAsync(cancellationToken);
 
             return filas
                 .Select(f => new ZoneSearchResultResponse(
                     f.Slug,
-                    f.Nombre,
-                    f.NivelAdministrativo,
-                    f.JurisdiccionNombres.Zip(f.JurisdiccionNiveles, (nombre, nivel) => new JurisdictionResponse(nombre, nivel)).ToList(),
-                    f.SuperficieKm2))
+                    f.Name,
+                    f.AdministrativeLevel,
+                    f.JurisdictionNames.Zip(f.JurisdictionAdministrativeLevels,
+                        (name, administrativeLevel) => new JurisdictionResponse(name, administrativeLevel)).ToList(),
+                    f.AreaKm2))
                 .ToList();
         }
 
-        // Keyless result of SqlBuscar; property names match the column aliases
-        private sealed class ZonaFila
+        // Keyless result type for SqlBuscar; property names match the SQL column aliases.
+        private sealed class ZoneSearchRow
         {
             public string Slug { get; set; } = string.Empty;
-            public string Nombre { get; set; } = string.Empty;
-            public int NivelAdministrativo { get; set; }
-            public double SuperficieKm2 { get; set; }
-            public string[] JurisdiccionNombres { get; set; } = [];
-            public int[] JurisdiccionNiveles { get; set; } = [];
+            public string Name { get; set; } = string.Empty;
+            public int AdministrativeLevel { get; set; }
+            public double AreaKm2 { get; set; }
+            public string[] JurisdictionNames { get; set; } = [];
+            public int[] JurisdictionAdministrativeLevels { get; set; } = [];
         }
     }
 }
