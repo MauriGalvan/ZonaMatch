@@ -1,12 +1,14 @@
+using FluentAssertions;
+
 namespace ZonaMatch.Tests
 {
     // Smoke test to ensure the Development CI pipeline has a test to run.
     public class DummyTests
     {
         [Fact]
-        public void TheTestPipelineWorks()
+        public void TestPipeline_WhenSmokeTestRuns_CompletesSuccessfully()
         {
-            Assert.True(true);
+            true.Should().BeTrue();
         }
     }
 }
