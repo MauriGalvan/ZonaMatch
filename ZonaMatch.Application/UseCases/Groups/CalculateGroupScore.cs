@@ -70,7 +70,7 @@ public sealed partial class CalculateGroupScore
             group.Participants.Select(participant => participant.UserId).Distinct().ToArray(),
             cancellationToken);
         var profilesByUserId = profiles.ToDictionary(profile => profile.UserId);
-        var motor = new ScoringEngine(universe);
+        var engine = new ScoringEngine(universe);
         using var routeLimit = new SemaphoreSlim(ConcurrentTrips);
 
         var members = group.Participants
@@ -121,7 +121,7 @@ public sealed partial class CalculateGroupScore
                     zone =>
                     {
                         var times = travelTimes[zone.Slug];
-                        var result = motor.Calculate(zone, member.Request, times);
+                        var result = engine.Calculate(zone, member.Request, times);
                         return new MemberZoneResult(result, BuildPlaceDetails(member, times));
                     },
                     StringComparer.Ordinal);

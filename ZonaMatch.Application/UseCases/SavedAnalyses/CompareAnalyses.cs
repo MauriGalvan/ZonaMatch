@@ -74,7 +74,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 .ToArray();
 
             var zonesBySlug = new Dictionary<string, ZoneProfile>(StringComparer.Ordinal);
-            ScoringEngine? motor = null;
+            ScoringEngine? engine = null;
             if (personalAnalyses.Length > 0)
             {
                 var universe = await _zoneProfilesRepository.ListAsync(cancellationToken);
@@ -86,7 +86,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 if (unavailableZones.Length > 0)
                     throw new BadRequestException($"No hay datos para calcular estas zonas: {string.Join(", ", unavailableZones)}.");
 
-                motor = new ScoringEngine(universe);
+                engine = new ScoringEngine(universe);
             }
 
             using var routeLimit = new SemaphoreSlim(ParallelTrips);
@@ -112,7 +112,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                     .ToArray();
                 var travelTimes = await MeasureTripsAsync(analysisZones, request.Places, mode, routeLimit, cancellationToken);
                 var rankedZones = analysisZones
-                    .Select(zone => ToDto(motor!.Calculate(zone, request, travelTimes[zone.Slug]), request))
+                    .Select(zone => ToDto(engine!.Calculate(zone, request, travelTimes[zone.Slug]), request))
                     .OrderByDescending(zone => zone.Score.HasValue)
                     .ThenByDescending(zone => zone.Score)
                     .ThenBy(zone => zone.Name, StringComparer.CurrentCulture)
