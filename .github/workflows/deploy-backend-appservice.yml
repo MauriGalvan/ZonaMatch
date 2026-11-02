@@ -20,7 +20,7 @@ name: Deploy backend (App Service)
 
 on:
   push:
-    branches: [Development]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
