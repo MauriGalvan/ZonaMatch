@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Policies;
 using ZonaMatch.Application.Services;
@@ -9,7 +9,7 @@ public sealed class GetPointsOfInterestSummary(
     IPointOfInterestRepository pointOfInterestRepository,
     PointOfInterestResponseBuilder responseBuilder)
 {
-    public async Task<ResumenPuntosInteresDto> ExecuteAsync(
+    public async Task<PointsOfInterestSummaryResponse> ExecuteAsync(
         double latitude,
         double longitude,
         double radiusMeters,

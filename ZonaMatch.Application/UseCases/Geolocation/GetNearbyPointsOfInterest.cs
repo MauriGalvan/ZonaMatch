@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Policies;
@@ -11,7 +11,7 @@ public sealed class GetNearbyPointsOfInterest(
     IPointOfInterestRepository pointOfInterestRepository,
     PointOfInterestResponseBuilder responseBuilder)
 {
-    public async Task<PuntosInteresCercanosDto> ExecuteAsync(
+    public async Task<NearbyPointsOfInterestResponse> ExecuteAsync(
         double latitude,
         double longitude,
         double radiusMeters,

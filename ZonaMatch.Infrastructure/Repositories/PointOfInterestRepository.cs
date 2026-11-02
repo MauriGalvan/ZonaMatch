@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using NpgsqlTypes;
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.PointsOfInterest.Responses;
 using ZonaMatch.Application.DTOs.ZoneRecommendations;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models.PointsOfInterest;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Infrastructure.Data;
 
@@ -253,7 +254,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public Task<IReadOnlyList<PuntoInteresDto>> GetNearbyAsync(
+        public Task<IReadOnlyList<PointOfInterestResponse>> GetNearbyAsync(
             double latitud, double longitud, double radioMetros, IReadOnlyCollection<string> categorias, int limite,
             CancellationToken cancellationToken = default) =>
             ListAsync(SqlCercanos, cancellationToken,
@@ -263,21 +264,21 @@ namespace ZonaMatch.Infrastructure.Repositories
                 new NpgsqlParameter("categorias", categorias.ToArray()),
                 new NpgsqlParameter("limite", limite));
 
-        public Task<IReadOnlyList<CantidadPorTipo>> CountByTypeAsync(
+        public Task<IReadOnlyList<PointOfInterestCount>> CountByTypeAsync(
             double latitud, double longitud, double radioMetros, CancellationToken cancellationToken = default) =>
             CountAsync(SqlResumen, cancellationToken,
                 new NpgsqlParameter("lat", latitud),
                 new NpgsqlParameter("lon", longitud),
                 new NpgsqlParameter("radio", radioMetros));
 
-        public Task<IReadOnlyList<PuntoInteresDto>> GetEnZonaAsync(
+        public Task<IReadOnlyList<PointOfInterestResponse>> GetInZoneAsync(
             string slug, IReadOnlyCollection<string> categorias, int limite, CancellationToken cancellationToken = default) =>
             ListAsync(SqlEnZona, cancellationToken,
                 new NpgsqlParameter("slug", slug),
                 new NpgsqlParameter("categorias", categorias.ToArray()),
                 new NpgsqlParameter("limite", limite));
 
-        public Task<IReadOnlyList<CantidadPorTipo>> CountByTypeInZoneAsync(
+        public Task<IReadOnlyList<PointOfInterestCount>> CountByTypeInZoneAsync(
             string slug, CancellationToken cancellationToken = default) =>
             CountAsync(SqlResumenZona, cancellationToken, new NpgsqlParameter("slug", slug));
 
@@ -299,7 +300,7 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        private async Task<IReadOnlyList<PuntoInteresDto>> ListAsync(
+        private async Task<IReadOnlyList<PointOfInterestResponse>> ListAsync(
             string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
         {
             var filas = await _dbContext.Database
@@ -307,19 +308,19 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
 
             return filas
-                .Select(f => new PuntoInteresDto(
+                .Select(f => new PointOfInterestResponse(
                     f.Id, f.Nombre, f.Categoria, f.Tipo, f.Operador, f.Latitud, f.Longitud, f.DistanciaMetros, f.Fuente))
                 .ToList();
         }
 
-        private async Task<IReadOnlyList<CantidadPorTipo>> CountAsync(
+        private async Task<IReadOnlyList<PointOfInterestCount>> CountAsync(
             string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parametros)
         {
             var filas = await _dbContext.Database
                 .SqlQueryRaw<CantidadFila>(sql, parametros)
                 .ToListAsync(cancellationToken);
 
-            return filas.Select(f => new CantidadPorTipo(f.Categoria, f.Tipo, f.Cantidad)).ToList();
+            return filas.Select(f => new PointOfInterestCount(f.Categoria, f.Tipo, f.Cantidad)).ToList();
         }
 
         // Keyless results of the queries above; property names match the column aliases
