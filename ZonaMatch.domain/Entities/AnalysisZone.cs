@@ -4,40 +4,40 @@ namespace ZonaMatch.Domain.Entities
     // as they are in community features; they are not stored in an application table.
     public class AnalysisZone
     {
-        public Guid AnalisisId { get; set; }
+        public Guid AnalysisId { get; set; }
 
         // Position in the user's list (1, 2, ...).
-        public int Orden { get; set; }
+        public int Order { get; set; }
 
-        public string ZonaSlug { get; set; } = string.Empty;
+        public string ZoneSlug { get; set; } = string.Empty;
 
         // Name displayed when the user selected it ("Villa Luro, CABA"), so it can be listed without querying zones.
-        public string Nombre { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         // Starting zone selected in the wizard.
-        public bool EsInicial { get; set; }
+        public bool IsInitial { get; set; }
 
         // Zone manually added to the automatic ranking.
-        public bool EsAgregada { get; set; }
+        public bool IsAdded { get; set; }
 
         // Starting point the user marked inside the zone; null = the center of the zone.
         // Trips to the places are measured from here, so it changes the score.
-        public double? OrigenLatitud { get; set; }
-        public double? OrigenLongitud { get; set; }
+        public double? OriginLatitude { get; set; }
+        public double? OriginLongitude { get; set; }
 
-        public bool TieneOrigen => OrigenLatitud.HasValue && OrigenLongitud.HasValue;
+        public bool HasOrigin => OriginLatitude.HasValue && OriginLongitude.HasValue;
 
         // Same zone for another analysis (a version or a recalculation)
-        public AnalysisZone Copiar() =>
+        public AnalysisZone Copy() =>
             new()
             {
-                Orden = Orden,
-                ZonaSlug = ZonaSlug,
-                Nombre = Nombre,
-                EsInicial = EsInicial,
-                EsAgregada = EsAgregada,
-                OrigenLatitud = OrigenLatitud,
-                OrigenLongitud = OrigenLongitud,
+                Order = Order,
+                ZoneSlug = ZoneSlug,
+                Name = Name,
+                IsInitial = IsInitial,
+                IsAdded = IsAdded,
+                OriginLatitude = OriginLatitude,
+                OriginLongitude = OriginLongitude,
             };
     }
 }

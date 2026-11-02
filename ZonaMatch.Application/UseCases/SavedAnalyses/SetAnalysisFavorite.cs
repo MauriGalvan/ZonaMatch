@@ -19,10 +19,10 @@ public sealed class SetAnalysisFavorite
         var analysis = await _analyses.GetAsync(id, userId, cancellationToken)
             ?? throw new NotFoundException("El análisis no existe.");
 
-        if (analysis.EsFavorito == isFavorite)
+        if (analysis.IsFavorite == isFavorite)
             return;
 
-        analysis.EsFavorito = isFavorite;
+        analysis.IsFavorite = isFavorite;
         await _analyses.SaveChangesAsync(cancellationToken);
     }
 }

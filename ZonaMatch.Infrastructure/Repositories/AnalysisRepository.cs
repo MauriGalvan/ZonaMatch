@@ -16,36 +16,36 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         // Always load an analysis with its zones and complete criteria (members, places, and
         // preferences). Split queries avoid multiplying rows when loading several collections at once.
-        private IQueryable<Analysis> ConDetalle =>
+        private IQueryable<Analysis> WithDetails =>
             _context.Analysis
-                .Include(a => a.Zonas)
+                .Include(a => a.Zones)
                 .Include(a => a.Context).ThenInclude(c => c.Integrantes)
                 .Include(a => a.Context).ThenInclude(c => c.Puntos)
                 .Include(a => a.Context).ThenInclude(c => c.Criterios)
                 .AsSplitQuery();
 
-        public async Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid usuarioId, CancellationToken cancellationToken = default) =>
-            await ConDetalle
-                .Where(a => a.UsuarioId == usuarioId)
-                .OrderByDescending(a => a.FechaActualizacion)
+        public async Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            await WithDetails
+                .Where(a => a.UserId == userId)
+                .OrderByDescending(a => a.UpdatedAt)
                 .ToListAsync(cancellationToken);
 
-        public async Task<Analysis?> GetAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default) =>
-            await ConDetalle.FirstOrDefaultAsync(a => a.Id == id && a.UsuarioId == usuarioId, cancellationToken);
+        public async Task<Analysis?> GetAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
+            await WithDetails.FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId, cancellationToken);
 
-        public async Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default) =>
-            await ConDetalle
-                .Where(a => a.AnalisisOrigenId == analisisOrigenId)
-                .OrderBy(a => a.FechaCreacion)
+        public async Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid originalAnalysisId, CancellationToken cancellationToken = default) =>
+            await WithDetails
+                .Where(a => a.OriginalAnalysisId == originalAnalysisId)
+                .OrderBy(a => a.CreatedAt)
                 .ToListAsync(cancellationToken);
 
-        public void Add(Analysis analisis) => _context.Analysis.Add(analisis);
+        public void Add(Analysis analysis) => _context.Analysis.Add(analysis);
 
-        public void Delete(Analysis analisis)
+        public void Delete(Analysis analysis)
         {
-            _context.Analysis.Remove(analisis);
+            _context.Analysis.Remove(analysis);
             // The criteria snapshot belongs only to this analysis.
-            _context.Contextos.Remove(analisis.Context);
+            _context.Contextos.Remove(analysis.Context);
         }
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>

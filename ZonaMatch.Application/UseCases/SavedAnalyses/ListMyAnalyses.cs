@@ -19,21 +19,21 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
         {
             var allAnalyses = await _analysisRepository.GetForUserAsync(userId, cancellationToken);
             var versionsByOriginalId = allAnalyses
-                .Where(a => a.AnalisisOrigenId is not null)
-                .ToLookup(a => a.AnalisisOrigenId!.Value);
+                .Where(a => a.OriginalAnalysisId is not null)
+                .ToLookup(a => a.OriginalAnalysisId!.Value);
 
             return allAnalyses
-                .Where(a => a.AnalisisOrigenId is null)
+                .Where(a => a.OriginalAnalysisId is null)
                 .Select(original => new
                 {
                     Original = original,
-                    Versiones = versionsByOriginalId[original.Id].ToList(),
+                    Versions = versionsByOriginalId[original.Id].ToList(),
                 })
-                .OrderByDescending(x => x.Versiones
-                    .Select(v => v.FechaActualizacion)
-                    .Append(x.Original.FechaActualizacion)
+                .OrderByDescending(x => x.Versions
+                    .Select(v => v.UpdatedAt)
+                    .Append(x.Original.UpdatedAt)
                     .Max())
-                .Select(x => AnalysisMapping.ToResponse(x.Original, x.Versiones))
+                .Select(x => AnalysisMapping.ToResponse(x.Original, x.Versions))
                 .ToList();
         }
     }

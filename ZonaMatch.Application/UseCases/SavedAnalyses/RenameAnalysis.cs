@@ -24,11 +24,11 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             var analysis = await _analysisRepository.GetAsync(id, userId, cancellationToken)
                 ?? throw new NotFoundException("El análisis no existe.");
 
-            analysis.Nombre = request.Name.Trim();
-            analysis.FechaActualizacion = _clock.GetUtcNow();
+            analysis.Name = request.Name.Trim();
+            analysis.UpdatedAt = _clock.GetUtcNow();
             await _analysisRepository.SaveChangesAsync(cancellationToken);
 
-            var versions = analysis.AnalisisOrigenId is null
+            var versions = analysis.OriginalAnalysisId is null
                 ? await _analysisRepository.ListVersionsAsync(analysis.Id, cancellationToken)
                 : [];
 

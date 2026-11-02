@@ -72,13 +72,13 @@ public sealed class SaveGroupAnalysis
 
         var analysis = new Analysis
         {
-            UsuarioId = currentUserId,
-            Nombre = name,
+            UserId = currentUserId,
+            Name = name,
             Context = context,
-            FechaCreacion = now,
-            FechaActualizacion = now,
-            Zonas = zones,
-            PuntajesEnGrupoJson = JsonSerializer.Serialize(ranked, JsonOptions),
+            CreatedAt = now,
+            UpdatedAt = now,
+            Zones = zones,
+            GroupScoresJson = JsonSerializer.Serialize(ranked, JsonOptions),
         };
 
         _analyses.Add(analysis);

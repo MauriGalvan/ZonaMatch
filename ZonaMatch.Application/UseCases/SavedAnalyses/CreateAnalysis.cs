@@ -39,19 +39,19 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
             var analysis = new Analysis
             {
-                UsuarioId = userId,
-                Nombre = request.Name.Trim(),
+                UserId = userId,
+                Name = request.Name.Trim(),
                 Context = profile.CopiarParaAnalisis(now),
-                FechaCreacion = now,
-                FechaActualizacion = now,
-                Zonas = zones,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Zones = zones,
             };
 
             // The result shown when it is opened again, until the user recalculates it
             if (await _resultCalculator.CalculateAsync(analysis, cancellationToken) is { } result)
             {
-                analysis.ResultadoJson = AnalysisResultCalculator.Serialize(result);
-                analysis.FechaResultado = now;
+                analysis.ResultJson = AnalysisResultCalculator.Serialize(result);
+                analysis.ResultGeneratedAt = now;
             }
 
             _analysisRepository.Add(analysis);

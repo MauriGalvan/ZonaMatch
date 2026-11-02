@@ -49,23 +49,23 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
         public async Task<ScoresResponse?> CalculateAsync(Analysis analysis, CancellationToken cancellationToken = default)
         {
-            var zones = analysis.Zonas.OrderBy(zone => zone.Orden).ToList();
+            var zones = analysis.Zones.OrderBy(zone => zone.Order).ToList();
             if (zones.Count == 0)
                 return null;
 
             var context = analysis.Context;
             var request = new CalculateScoresRequest
             {
-                InitialZone = zones.FirstOrDefault(zone => zone.EsInicial)?.ZonaSlug,
-                AddedZones = zones.Where(zone => !zone.EsInicial).Select(zone => zone.ZonaSlug).ToList(),
+                InitialZone = zones.FirstOrDefault(zone => zone.IsInitial)?.ZoneSlug,
+                AddedZones = zones.Where(zone => !zone.IsInitial).Select(zone => zone.ZoneSlug).ToList(),
                 // Trips from the starting points the user marked, as when the analysis was shown
                 ZoneOrigins = zones
-                    .Where(zone => zone.TieneOrigen)
+                    .Where(zone => zone.HasOrigin)
                     .Select(zone => new ZoneOriginRequest
                     {
-                        Slug = zone.ZonaSlug,
-                        Latitude = zone.OrigenLatitud!.Value,
-                        Longitude = zone.OrigenLongitud!.Value,
+                        Slug = zone.ZoneSlug,
+                        Latitude = zone.OriginLatitude!.Value,
+                        Longitude = zone.OriginLongitude!.Value,
                     })
                     .ToList(),
                 Criteria = context.Criterios.ToDictionary(c => c.CriterioId, c => (string?)c.Prioridad),
@@ -100,7 +100,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             }
 
             // The saved zones in score order (the automatic top may bring others), and the rest as recommendations
-            var saved = zones.Select(zone => zone.ZonaSlug).ToHashSet(StringComparer.Ordinal);
+            var saved = zones.Select(zone => zone.ZoneSlug).ToHashSet(StringComparer.Ordinal);
             return result with
             {
                 Zones = result.Zones.Where(zone => saved.Contains(zone.Slug)).ToList(),

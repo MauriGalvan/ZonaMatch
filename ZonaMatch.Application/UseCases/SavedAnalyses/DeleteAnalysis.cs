@@ -18,7 +18,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             var analysis = await _analysisRepository.GetAsync(id, userId, cancellationToken)
                 ?? throw new NotFoundException("El análisis no existe.");
 
-            if (analysis.AnalisisOrigenId is null)
+            if (analysis.OriginalAnalysisId is null)
             {
                 foreach (var version in await _analysisRepository.ListVersionsAsync(analysis.Id, cancellationToken))
                     _analysisRepository.Delete(version);

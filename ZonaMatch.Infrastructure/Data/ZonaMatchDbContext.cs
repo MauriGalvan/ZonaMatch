@@ -30,7 +30,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
         public DbSet<Context> Contextos => Set<Context>();
         public DbSet<Analysis> Analysis => Set<Analysis>();
-        public DbSet<AnalysisZone> AnalisisZonas => Set<AnalysisZone>();
+        public DbSet<AnalysisZone> AnalysisZones => Set<AnalysisZone>();
         public DbSet<Person> Personas => Set<Person>();
         public DbSet<ContextPlace> PuntosInteres => Set<ContextPlace>();
         public DbSet<ContextCriterion> ContextoCriterios => Set<ContextCriterion>();
@@ -150,43 +150,51 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("analisis");
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Nombre).HasMaxLength(50).IsRequired();
-                e.Property(x => x.PuntajesEnGrupoJson).HasColumnType("jsonb");
-                e.Property(x => x.ResultadoJson).HasColumnType("jsonb");
-                e.Property(x => x.FechaResultado).HasColumnType("timestamptz");
-                e.Property(x => x.EsFavorito).HasDefaultValue(false);
-                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
-                e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
-                e.HasIndex(x => x.UsuarioId);
-                e.HasIndex(x => x.AnalisisOrigenId);
-                e.HasIndex(x => x.ContextoId).IsUnique();
+                e.Property(x => x.Name).HasColumnName("nombre").HasMaxLength(50).IsRequired();
+                e.Property(x => x.GroupScoresJson).HasColumnName("puntajes_en_grupo_json").HasColumnType("jsonb");
+                e.Property(x => x.ResultJson).HasColumnName("resultado_json").HasColumnType("jsonb");
+                e.Property(x => x.ResultGeneratedAt).HasColumnName("fecha_resultado").HasColumnType("timestamptz");
+                e.Property(x => x.IsFavorite).HasColumnName("es_favorito").HasDefaultValue(false);
+                e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
+                e.Property(x => x.UpdatedAt).HasColumnName("fecha_actualizacion").HasColumnType("timestamptz");
+                e.Property(x => x.UserId).HasColumnName("usuario_id");
+                e.Property(x => x.ContextId).HasColumnName("contexto_id");
+                e.Property(x => x.OriginalAnalysisId).HasColumnName("analisis_origen_id");
+                e.HasIndex(x => x.UserId);
+                e.HasIndex(x => x.OriginalAnalysisId);
+                e.HasIndex(x => x.ContextId).IsUnique();
                 e.HasOne<User>()
                     .WithMany()
-                    .HasForeignKey(x => x.UsuarioId)
+                    .HasForeignKey(x => x.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
                 // Each analysis has its own criteria snapshot; both are deleted together (see DeleteAnalysis).
                 e.HasOne(x => x.Context)
                     .WithMany()
-                    .HasForeignKey(x => x.ContextoId)
+                    .HasForeignKey(x => x.ContextId)
                     .OnDelete(DeleteBehavior.Cascade);
                 // Deleting an original analysis also deletes its versions.
                 e.HasOne<Analysis>()
                     .WithMany()
-                    .HasForeignKey(x => x.AnalisisOrigenId)
+                    .HasForeignKey(x => x.OriginalAnalysisId)
                     .OnDelete(DeleteBehavior.Cascade);
-                e.HasMany(x => x.Zonas)
+                e.HasMany(x => x.Zones)
                     .WithOne()
-                    .HasForeignKey(x => x.AnalisisId)
+                    .HasForeignKey(x => x.AnalysisId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<AnalysisZone>(e =>
             {
                 e.ToTable("analisis_zonas");
-                e.HasKey(x => new { x.AnalisisId, x.Orden });
-                e.Property(x => x.ZonaSlug).HasMaxLength(100).IsRequired();
-                e.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
-                e.Property(x => x.EsAgregada).HasDefaultValue(false);
+                e.HasKey(x => new { x.AnalysisId, x.Order });
+                e.Property(x => x.AnalysisId).HasColumnName("analisis_id");
+                e.Property(x => x.Order).HasColumnName("orden");
+                e.Property(x => x.ZoneSlug).HasColumnName("zona_slug").HasMaxLength(100).IsRequired();
+                e.Property(x => x.Name).HasColumnName("nombre").HasMaxLength(150).IsRequired();
+                e.Property(x => x.IsInitial).HasColumnName("es_inicial");
+                e.Property(x => x.IsAdded).HasColumnName("es_agregada").HasDefaultValue(false);
+                e.Property(x => x.OriginLatitude).HasColumnName("origen_latitud");
+                e.Property(x => x.OriginLongitude).HasColumnName("origen_longitud");
             });
 
             modelBuilder.Entity<SavedZone>(e =>

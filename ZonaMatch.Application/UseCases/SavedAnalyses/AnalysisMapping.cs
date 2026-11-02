@@ -18,29 +18,29 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
         public static AnalysisResponse ToResponse(Analysis analysis, IEnumerable<Analysis>? versions = null) =>
             new(
                 analysis.Id,
-                analysis.Nombre,
-                analysis.AnalisisOrigenId,
-                analysis.Zonas
-                    .OrderBy(z => z.Orden)
+                analysis.Name,
+                analysis.OriginalAnalysisId,
+                analysis.Zones
+                    .OrderBy(z => z.Order)
                     .Select(z => new AnalysisZoneResponse(
-                        z.ZonaSlug, z.Nombre, z.EsInicial, z.EsAgregada,
-                        z.TieneOrigen ? new AnalysisZoneOriginResponse(z.OrigenLatitud!.Value, z.OrigenLongitud!.Value) : null))
+                        z.ZoneSlug, z.Name, z.IsInitial, z.IsAdded,
+                        z.HasOrigin ? new AnalysisZoneOriginResponse(z.OriginLatitude!.Value, z.OriginLongitude!.Value) : null))
                     .ToList(),
                 AnalysisCriteriaBuilder.ToContextResponse(analysis.Context),
                 AnalysisCriteriaBuilder.ToCriteriaDictionary(analysis.Context),
                 AnalysisCriteriaBuilder.ToPointsResponse(analysis.Context),
-                analysis.FechaCreacion,
-                analysis.FechaActualizacion,
-                analysis.PuntajesEnGrupoJson is null
+                analysis.CreatedAt,
+                analysis.UpdatedAt,
+                analysis.GroupScoresJson is null
                     ? null
-                    : GroupRankingSnapshotJson.Deserialize(analysis.PuntajesEnGrupoJson, JsonOptions),
+                    : GroupRankingSnapshotJson.Deserialize(analysis.GroupScoresJson, JsonOptions),
                 (versions ?? [])
-                    .OrderBy(v => v.FechaCreacion)
+                    .OrderBy(v => v.CreatedAt)
                     .Select(v => ToResponse(v))
                     .ToList(),
-                AnalysisResultCalculator.Deserialize(analysis.ResultadoJson),
-                analysis.FechaResultado,
-                analysis.EsFavorito);
+                AnalysisResultCalculator.Deserialize(analysis.ResultJson),
+                analysis.ResultGeneratedAt,
+                analysis.IsFavorite);
 
         // Request zones must exist, be unique, and include at most one initial zone.
         public static async Task<List<AnalysisZone>> BuildZonesAsync(
@@ -67,13 +67,13 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             return zones
                 .Select((zone, index) => new AnalysisZone
                 {
-                    Orden = index + 1,
-                    ZonaSlug = zone.Slug,
-                    Nombre = zone.Name.Trim(),
-                    EsInicial = zone.IsInitial,
-                    EsAgregada = zone.IsAdded,
-                    OrigenLatitud = zone.Origin?.Latitude,
-                    OrigenLongitud = zone.Origin?.Longitude,
+                    Order = index + 1,
+                    ZoneSlug = zone.Slug,
+                    Name = zone.Name.Trim(),
+                    IsInitial = zone.IsInitial,
+                    IsAdded = zone.IsAdded,
+                    OriginLatitude = zone.Origin?.Latitude,
+                    OriginLongitude = zone.Origin?.Longitude,
                 })
                 .ToList();
         }

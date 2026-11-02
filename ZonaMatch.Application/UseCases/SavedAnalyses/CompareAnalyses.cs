@@ -55,21 +55,21 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 throw new NotFoundException("El análisis no existe.");
 
             var selectedAnalyses = request.AnalysisIds.Select(id => byId[id]).ToArray();
-            var analysesWithoutZones = selectedAnalyses.Where(analysis => analysis.Zonas.Count == 0).ToArray();
+            var analysesWithoutZones = selectedAnalyses.Where(analysis => analysis.Zones.Count == 0).ToArray();
             if (analysesWithoutZones.Length > 0)
                 throw new BadRequestException("Todos los análisis elegidos deben tener al menos una zona.");
 
-            var analysesWithTooManyZones = selectedAnalyses.Where(analysis => analysis.Zonas.Count > MaxZones).ToArray();
+            var analysesWithTooManyZones = selectedAnalyses.Where(analysis => analysis.Zones.Count > MaxZones).ToArray();
             if (analysesWithTooManyZones.Length > 0)
                 throw new BadRequestException("Cada análisis puede incluir hasta diez zonas en la comparación.");
 
             var personalAnalyses = selectedAnalyses
-                .Where(analysis => analysis.PuntajesEnGrupoJson is null
-                                   && AnalysisResultCalculator.Deserialize(analysis.ResultadoJson) is null)
+                .Where(analysis => analysis.GroupScoresJson is null
+                                   && AnalysisResultCalculator.Deserialize(analysis.ResultJson) is null)
                 .ToArray();
             var selectedPersonalZones = personalAnalyses
-                .SelectMany(analysis => analysis.Zonas)
-                .GroupBy(zone => zone.ZonaSlug, StringComparer.Ordinal)
+                .SelectMany(analysis => analysis.Zones)
+                .GroupBy(zone => zone.ZoneSlug, StringComparer.Ordinal)
                 .Select(group => group.First())
                 .ToArray();
 
@@ -80,8 +80,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 var universe = await _zoneProfilesRepository.ListAsync(cancellationToken);
                 zonesBySlug = universe.ToDictionary(zone => zone.Slug, StringComparer.Ordinal);
                 var unavailableZones = selectedPersonalZones
-                    .Where(zone => !zonesBySlug.ContainsKey(zone.ZonaSlug))
-                    .Select(zone => zone.Nombre)
+                    .Where(zone => !zonesBySlug.ContainsKey(zone.ZoneSlug))
+                    .Select(zone => zone.Name)
                     .ToArray();
                 if (unavailableZones.Length > 0)
                     throw new BadRequestException($"No hay datos para calcular estas zonas: {string.Join(", ", unavailableZones)}.");
@@ -93,22 +93,22 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
             var calculations = await Task.WhenAll(selectedAnalyses.Select(async analysis =>
             {
-                if (analysis.PuntajesEnGrupoJson is { } groupRankingJson)
+                if (analysis.GroupScoresJson is { } groupRankingJson)
                     return FromGroupSnapshot(analysis, groupRankingJson);
 
-                if (AnalysisResultCalculator.Deserialize(analysis.ResultadoJson) is { } saved)
+                if (AnalysisResultCalculator.Deserialize(analysis.ResultJson) is { } saved)
                     return new ComparedAnalysisResponse(
                         analysis.Id,
-                        analysis.Nombre,
+                        analysis.Name,
                         saved.TravelMode,
                         saved.Zonas.Select(ToComparedZone).ToArray());
 
                 var context = analysis.Context;
                 var request = BuildRequest(context);
                 var mode = TravelModes.FromMobility(context.Movilidad ?? []);
-                var analysisZones = analysis.Zonas
-                    .OrderBy(zone => zone.Orden)
-                    .Select(zone => zonesBySlug[zone.ZonaSlug])
+                var analysisZones = analysis.Zones
+                    .OrderBy(zone => zone.Order)
+                    .Select(zone => zonesBySlug[zone.ZoneSlug])
                     .ToArray();
                 var travelTimes = await MeasureTripsAsync(analysisZones, request.Lugares, mode, routeLimit, cancellationToken);
                 var rankedZones = analysisZones
@@ -120,7 +120,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
                 return new ComparedAnalysisResponse(
                     analysis.Id,
-                    analysis.Nombre,
+                    analysis.Name,
                     TravelModes.ToCode(mode),
                     rankedZones.Select(ToComparedZone).ToArray(),
                     null);
@@ -141,26 +141,26 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             }
             catch (JsonException)
             {
-                throw new BadRequestException($"El análisis de grupo '{analysis.Nombre}' no tiene un resultado válido guardado.");
+                throw new BadRequestException($"El análisis de grupo '{analysis.Name}' no tiene un resultado válido guardado.");
             }
 
             if (snapshot?.Zones is not { } snapshotZones)
-                throw new BadRequestException($"El análisis de grupo '{analysis.Nombre}' no tiene un resultado válido guardado.");
+                throw new BadRequestException($"El análisis de grupo '{analysis.Name}' no tiene un resultado válido guardado.");
 
             var scoresBySlug = snapshotZones
                 .GroupBy(zone => zone.Slug, StringComparer.Ordinal)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-            var savedZones = analysis.Zonas.OrderBy(zone => zone.Orden).ToArray();
+            var savedZones = analysis.Zones.OrderBy(zone => zone.Order).ToArray();
             var missingSlugs = savedZones
-                .Where(zone => !scoresBySlug.ContainsKey(zone.ZonaSlug))
-                .Select(zone => zone.ZonaSlug)
+                .Where(zone => !scoresBySlug.ContainsKey(zone.ZoneSlug))
+                .Select(zone => zone.ZoneSlug)
                 .ToArray();
             if (missingSlugs.Length > 0)
                 throw new BadRequestException(
-                    $"El análisis de grupo '{analysis.Nombre}' no tiene puntajes guardados para todas sus zonas. Volvé a calcular y guardar ese ranking.");
+                    $"El análisis de grupo '{analysis.Name}' no tiene puntajes guardados para todas sus zonas. Volvé a calcular y guardar ese ranking.");
 
             var rankedGroupZones = savedZones
-                .Select(zone => scoresBySlug[zone.ZonaSlug])
+                .Select(zone => scoresBySlug[zone.ZoneSlug])
                 .OrderByDescending(zone => zone.Score.HasValue)
                 .ThenByDescending(zone => zone.Score)
                 .ThenBy(zone => zone.Name, StringComparer.CurrentCulture)
@@ -171,7 +171,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
             return new ComparedAnalysisResponse(
                 analysis.Id,
-                analysis.Nombre,
+                analysis.Name,
                 "grupo",
                 legacyZones.Select(ToComparedZone).ToArray(),
                 snapshot with { Zones = rankedGroupZones, NearbyZones = [] });

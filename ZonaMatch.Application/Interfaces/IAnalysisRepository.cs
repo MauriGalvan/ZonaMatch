@@ -7,18 +7,18 @@ namespace ZonaMatch.Application.Interfaces
     public interface IAnalysisRepository
     {
         // Returns the user's original analyses and versions, newest first.
-        Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 
         // Returns null when the analysis does not exist or belongs to another user.
-        Task<Analysis?> GetAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default);
+        Task<Analysis?> GetAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
 
         // Returns versions derived from an original, oldest first.
-        Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid analisisOrigenId, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid originalAnalysisId, CancellationToken cancellationToken = default);
 
-        void Add(Analysis analisis);
+        void Add(Analysis analysis);
 
         // Deletes the analysis together with its criteria snapshot.
-        void Delete(Analysis analisis);
+        void Delete(Analysis analysis);
 
         Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }

@@ -37,7 +37,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             var sourceAnalysis = await _analysisRepository.GetAsync(analysisId, userId, cancellationToken)
                 ?? throw new NotFoundException("El análisis no existe.");
 
-            var original = sourceAnalysis.AnalisisOrigenId is { } originalId
+            var original = sourceAnalysis.OriginalAnalysisId is { } originalId
                 ? await _analysisRepository.GetAsync(originalId, userId, cancellationToken) ?? throw new NotFoundException("El análisis no existe.")
                 : sourceAnalysis;
 
@@ -55,30 +55,30 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
 
             var zones = request.Zones is { } requestedZones
                 ? await AnalysisMapping.BuildZonesAsync(requestedZones, _zoneRepository, cancellationToken)
-                : sourceAnalysis.Zonas
-                    .OrderBy(z => z.Orden)
-                    .Select(z => z.Copiar())
+                : sourceAnalysis.Zones
+                    .OrderBy(z => z.Order)
+                    .Select(z => z.Copy())
                     .ToList();
 
             var versions = await _analysisRepository.ListVersionsAsync(original.Id, cancellationToken);
 
             var version = new Analysis
             {
-                UsuarioId = userId,
-                Nombre = string.IsNullOrWhiteSpace(request.Name)
-                    ? BuildVersionName(original.Nombre, versions.Count + 2)
+                UserId = userId,
+                Name = string.IsNullOrWhiteSpace(request.Name)
+                    ? BuildVersionName(original.Name, versions.Count + 2)
                     : request.Name.Trim(),
                 Context = context,
-                AnalisisOrigenId = original.Id,
-                FechaCreacion = now,
-                FechaActualizacion = now,
-                Zonas = zones,
+                OriginalAnalysisId = original.Id,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Zones = zones,
             };
 
             if (await _resultCalculator.CalculateAsync(version, cancellationToken) is { } result)
             {
-                version.ResultadoJson = AnalysisResultCalculator.Serialize(result);
-                version.FechaResultado = now;
+                version.ResultJson = AnalysisResultCalculator.Serialize(result);
+                version.ResultGeneratedAt = now;
             }
 
             _analysisRepository.Add(version);

@@ -19,11 +19,11 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
                 ?? throw new NotFoundException("El análisis no existe.");
 
             // A group ranking mixes the profiles of several people: it is recalculated from the group
-            if (source.PuntajesEnGrupoJson is not null)
+            if (source.GroupScoresJson is not null)
                 throw new BadRequestException("Los análisis de grupo se recalculan desde el grupo.");
 
             // Versions always hang from the original, as the adjusted ones
-            var originalId = source.AnalisisOrigenId ?? source.Id;
+            var originalId = source.OriginalAnalysisId ?? source.Id;
             var original = originalId == source.Id
                 ? source
                 : await analyses.GetAsync(originalId, userId, cancellationToken) ?? throw new NotFoundException("El análisis no existe.");
@@ -31,22 +31,22 @@ namespace ZonaMatch.Application.UseCases.SavedAnalyses
             var now = clock.GetUtcNow();
             var version = new Analysis
             {
-                UsuarioId = userId,
-                Nombre = RecalculatedName(original.Nombre, now),
+                UserId = userId,
+                Name = RecalculatedName(original.Name, now),
                 Context = source.Context.CopiarParaAnalisis(now),
-                AnalisisOrigenId = original.Id,
-                FechaCreacion = now,
-                FechaActualizacion = now,
-                Zonas = source.Zonas
-                    .OrderBy(zone => zone.Orden)
-                    .Select(zone => zone.Copiar())
+                OriginalAnalysisId = original.Id,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Zones = source.Zones
+                    .OrderBy(zone => zone.Order)
+                    .Select(zone => zone.Copy())
                     .ToList(),
             };
 
             if (await calculator.CalculateAsync(version, cancellationToken) is { } result)
             {
-                version.ResultadoJson = AnalysisResultCalculator.Serialize(result);
-                version.FechaResultado = now;
+                version.ResultJson = AnalysisResultCalculator.Serialize(result);
+                version.ResultGeneratedAt = now;
             }
 
             analyses.Add(version);

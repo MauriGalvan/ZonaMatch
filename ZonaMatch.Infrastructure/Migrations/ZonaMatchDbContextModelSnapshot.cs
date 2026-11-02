@@ -26,110 +26,110 @@ namespace ZonaMatch.Infrastructure.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Analysis", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid?>("AnalisisOrigenId")
+                    b.Property<Guid?>("OriginalAnalysisId")
                         .HasColumnType("uuid")
                         .HasColumnName("analisis_origen_id");
 
-                    b.Property<Guid>("ContextoId")
+                    b.Property<Guid>("ContextId")
                         .HasColumnType("uuid")
                         .HasColumnName("contexto_id");
 
-                    b.Property<bool>("EsFavorito")
+                    b.Property<bool>("IsFavorite")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("es_favorito");
 
-                    b.Property<DateTimeOffset>("FechaActualizacion")
+                    b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_actualizacion");
 
-                    b.Property<DateTimeOffset>("FechaCreacion")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_creacion");
 
-                    b.Property<DateTimeOffset?>("FechaResultado")
+                    b.Property<DateTimeOffset?>("ResultGeneratedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_resultado");
 
-                    b.Property<string>("Nombre")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("nombre");
 
-                    b.Property<string>("PuntajesEnGrupoJson")
+                    b.Property<string>("GroupScoresJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("puntajes_en_grupo_json");
 
-                    b.Property<string>("ResultadoJson")
+                    b.Property<string>("ResultJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("resultado_json");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("usuario_id");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AnalisisOrigenId");
+                    b.HasIndex("OriginalAnalysisId");
 
-                    b.HasIndex("ContextoId")
+                    b.HasIndex("ContextId")
                         .IsUnique();
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("analisis", "app");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.AnalisisZona", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.AnalysisZone", b =>
                 {
-                    b.Property<Guid>("AnalisisId")
+                    b.Property<Guid>("AnalysisId")
                         .HasColumnType("uuid")
                         .HasColumnName("analisis_id");
 
-                    b.Property<int>("Orden")
+                    b.Property<int>("Order")
                         .HasColumnType("integer")
                         .HasColumnName("orden");
 
-                    b.Property<bool>("EsAgregada")
+                    b.Property<bool>("IsAdded")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("es_agregada");
 
-                    b.Property<bool>("EsInicial")
+                    b.Property<bool>("IsInitial")
                         .HasColumnType("boolean")
                         .HasColumnName("es_inicial");
 
-                    b.Property<string>("Nombre")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)")
                         .HasColumnName("nombre");
 
-                    b.Property<double?>("OrigenLatitud")
+                    b.Property<double?>("OriginLatitude")
                         .HasColumnType("double precision")
                         .HasColumnName("origen_latitud");
 
-                    b.Property<double?>("OrigenLongitud")
+                    b.Property<double?>("OriginLongitude")
                         .HasColumnType("double precision")
                         .HasColumnName("origen_longitud");
 
-                    b.Property<string>("ZonaSlug")
+                    b.Property<string>("ZoneSlug")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("zona_slug");
 
-                    b.HasKey("AnalisisId", "Orden");
+                    b.HasKey("AnalysisId", "Order");
 
                     b.ToTable("analisis_zonas", "app");
                 });
@@ -1421,33 +1421,33 @@ namespace ZonaMatch.Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Analysis", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Analisis", null)
+                    b.HasOne("ZonaMatch.Domain.Entities.Analysis", null)
                         .WithMany()
-                        .HasForeignKey("AnalisisOrigenId")
+                        .HasForeignKey("OriginalAnalysisId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("ZonaMatch.Domain.Entities.Contexto", "Contexto")
+                    b.HasOne("ZonaMatch.Domain.Entities.Context", "Context")
                         .WithMany()
-                        .HasForeignKey("ContextoId")
+                        .HasForeignKey("ContextId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ZonaMatch.Domain.Entities.Usuario", null)
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Contexto");
+                    b.Navigation("Context");
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.AnalisisZona", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.AnalysisZone", b =>
                 {
-                    b.HasOne("ZonaMatch.Domain.Entities.Analisis", null)
-                        .WithMany("Zonas")
-                        .HasForeignKey("AnalisisId")
+                    b.HasOne("ZonaMatch.Domain.Entities.Analysis", null)
+                        .WithMany("Zones")
+                        .HasForeignKey("AnalysisId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1663,9 +1663,9 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ZonaMatch.Domain.Entities.Analisis", b =>
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.Analysis", b =>
                 {
-                    b.Navigation("Zonas");
+                    b.Navigation("Zones");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Aporte", b =>
