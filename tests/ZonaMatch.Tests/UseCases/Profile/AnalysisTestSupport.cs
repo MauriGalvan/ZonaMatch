@@ -1,18 +1,20 @@
 using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
+using CriterionRepository = ZonaMatch.Application.Interfaces.ICriterionRepository;
+using DomainCriterion = ZonaMatch.Domain.Entities.Criterion;
 
 namespace ZonaMatch.Tests.UseCases.Profile;
 
 // In-memory repositories used by profile and saved analysis tests.
-internal sealed class FakeCriterionRepository : ICriterionRepository
+internal sealed class FakeCriterionRepository : CriterionRepository
 {
-    public Task<IReadOnlyList<Criterion>> ListAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Criterion>>(
+    public Task<IReadOnlyList<DomainCriterion>> ListAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<DomainCriterion>>(
         [
-            new Criterion { Id = "seguridad", Name = "Seguridad", IsActive = true },
-            new Criterion { Id = "salud", Name = "Salud", IsActive = true },
-            new Criterion { Id = "transporte", Name = "Transporte", IsActive = false },
+            new DomainCriterion { Id = "seguridad", Name = "Seguridad", IsActive = true },
+            new DomainCriterion { Id = "salud", Name = "Salud", IsActive = true },
+            new DomainCriterion { Id = "transporte", Name = "Transporte", IsActive = false },
         ]);
 }
 

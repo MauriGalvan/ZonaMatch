@@ -177,6 +177,20 @@ public sealed class AuthUseCasesTests
             () => _loginUser.ExecuteAsync(new LoginRequest("nadie@example.com", "Secreta123")));
     }
 
+    [Fact]
+    public async Task Login_WhenEmailIsUnknownOrPasswordIsIncorrect_ReturnsTheSameUnauthorizedMessage()
+    {
+        await _registerUser.ExecuteAsync(CreateRegisterRequest());
+
+        var incorrectPassword = await Assert.ThrowsAsync<UnauthorizedException>(
+            () => _loginUser.ExecuteAsync(new LoginRequest("ana@example.com", "OtraClave999")));
+        var unknownEmail = await Assert.ThrowsAsync<UnauthorizedException>(
+            () => _loginUser.ExecuteAsync(new LoginRequest("nadie@example.com", "Secreta123")));
+
+        Assert.Equal("Email o contrasena incorrectos.", incorrectPassword.Message);
+        Assert.Equal(incorrectPassword.Message, unknownEmail.Message);
+    }
+
     private sealed class FakeUserRepository : IUserRepository
     {
         public List<User> SavedUsers { get; } = [];

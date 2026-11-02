@@ -85,6 +85,16 @@ public class PasswordResetTests
     }
 
     [Fact]
+    public async Task A_canceled_email_send_is_propagated()
+    {
+        _email.Failure = new OperationCanceledException("Email send canceled.");
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => Ask());
+
+        Assert.Empty(_email.Sent);
+    }
+
+    [Fact]
     public async Task The_link_changes_the_password_once_and_cancels_the_other_links()
     {
         await Ask();
