@@ -1,6 +1,7 @@
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Zones;
+using ZonaMatch.Application.DTOs.ZoneIndicators.Responses;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Tests.UseCases.Zones
@@ -24,7 +25,7 @@ namespace ZonaMatch.Tests.UseCases.Zones
             var result = await _useCase.ExecuteAsync("villa-luro");
 
             Assert.Equal(90.0, result.Conectividad.PorcentajeHogaresInternet);
-            var safety = Assert.IsType<ZonaMatch.Application.DTOs.SeguridadZonaDto>(result.Seguridad);
+            var safety = Assert.IsType<ZoneSafetyResponse>(result.Seguridad);
             Assert.Equal(38.0, safety.DelitosCada1000Habitantes);
             Assert.Equal(100, safety.Robos);
             Assert.Equal(0, safety.Homicidios);
@@ -41,7 +42,7 @@ namespace ZonaMatch.Tests.UseCases.Zones
 
             var result = await _useCase.ExecuteAsync("castelar");
 
-            var safety = Assert.IsType<ZonaMatch.Application.DTOs.SeguridadZonaDto>(result.Seguridad);
+            var safety = Assert.IsType<ZoneSafetyResponse>(result.Seguridad);
             Assert.Equal("snic", safety.Fuente);
             Assert.Equal("Morón", safety.Ambito);
             Assert.Equal(2025, safety.Anio);

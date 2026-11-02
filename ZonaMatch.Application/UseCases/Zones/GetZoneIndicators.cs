@@ -1,4 +1,5 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Shared.Responses;
+using ZonaMatch.Application.DTOs.ZoneIndicators.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Policies;
@@ -15,7 +16,7 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
     private const string BuenosAiresCity = "CABA";
     private const int BuenosAiresCityAdminLevel = 4;
 
-    public async Task<IndicadoresZonaDto> ExecuteAsync(
+    public async Task<ZoneIndicatorsResponse> ExecuteAsync(
         string slug,
         CancellationToken cancellationToken = default)
     {
@@ -29,11 +30,11 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             ? await indicatorsRepository.GetCapitalCityAsync(cancellationToken)
             : null;
 
-        return new IndicadoresZonaDto(
+        return new ZoneIndicatorsResponse(
             zone.Slug,
             zone.Nombre,
             zone.Nivel,
-            new PoblacionZonaDto(
+            new ZonePopulationResponse(
                 zone.Poblacion,
                 zone.DensidadHabitantesKm2,
                 zone.Hogares,
@@ -41,14 +42,14 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
                 zone.PorcentajeMenores15,
                 zone.Porcentaje15a64,
                 zone.Porcentaje65yMas),
-            new ConectividadZonaDto(
+            new ZoneConnectivityResponse(
                 zone.PorcentajeHogaresInternet,
                 zone.PorcentajeHogaresComputadora,
                 zone.PorcentajeHogaresCelularInternet,
                 cityReference is null || IsBuenosAiresCity(zone)
                     ? null
-                    : new ReferenciaDto(BuenosAiresCity, cityReference.PorcentajeHogaresInternet)),
-            new CondicionesZonaDto(
+                    : new IndicatorReferenceResponse(BuenosAiresCity, cityReference.PorcentajeHogaresInternet)),
+            new ZoneConditionsResponse(
                 zone.PorcentajeHogaresNbi,
                 zone.PorcentajeHogaresHacinamiento,
                 zone.PorcentajeHogaresAlquilan,
@@ -58,12 +59,12 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             BuildSources(zone));
     }
 
-    private static SeguridadZonaDto? BuildSafety(ZoneIndicators zone, ZoneIndicators? cityReference)
+    private static ZoneSafetyResponse? BuildSafety(ZoneIndicators zone, ZoneIndicators? cityReference)
     {
         if (zone.Delitos is not { } crimes || zone.DelitosPeriodo is not { } year)
             return null;
 
-        return new SeguridadZonaDto(
+        return new ZoneSafetyResponse(
             year,
             zone.DelitosFuente ?? ZoneIndicators.FuenteMapaDelito,
             zone.DelitosAmbito,
@@ -77,12 +78,12 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             zone.SiniestrosViales ?? 0,
             cityReference is null || IsBuenosAiresCity(zone)
                 ? null
-                : new ReferenciaDto(BuenosAiresCity, cityReference.DelitosCada1000Habitantes));
+                : new IndicatorReferenceResponse(BuenosAiresCity, cityReference.DelitosCada1000Habitantes));
     }
 
-    private static IReadOnlyList<FuenteDatoDto> BuildSources(ZoneIndicators zone)
+    private static IReadOnlyList<DataSourceResponse> BuildSources(ZoneIndicators zone)
     {
-        var sources = new List<FuenteDatoDto>
+        var sources = new List<DataSourceResponse>
         {
             new("Poblacion, hogares y conectividad", "Censo 2022 (INDEC)", "Radio censal", CensusYear),
         };

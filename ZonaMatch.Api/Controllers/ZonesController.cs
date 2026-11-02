@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Transit.Responses;
+using ZonaMatch.Application.DTOs.ZoneIndicators.Responses;
 using ZonaMatch.Application.UseCases.Zones;
 
 namespace ZonaMatch.Api.Controllers;
@@ -65,7 +67,7 @@ public sealed class ZonesController : ControllerBase
     // GET /api/v1/zones/villa-luro/indicators
     [HttpGet("{slug}/indicators")]
     [ResponseCache(Duration = 3600)]
-    [ProducesResponseType<IndicadoresZonaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ZoneIndicatorsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetZoneIndicators(
         [FromRoute] string slug,
@@ -78,7 +80,7 @@ public sealed class ZonesController : ControllerBase
     // GET /api/v1/zones/villa-luro/transit
     [HttpGet("{slug}/transit")]
     [ResponseCache(Duration = 3600)]
-    [ProducesResponseType<TransporteZonaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ZoneTransitResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetZoneTransit(
         [FromRoute] string slug,

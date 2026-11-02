@@ -1,4 +1,5 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Shared.Responses;
+using ZonaMatch.Application.DTOs.Transit.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Policies;
@@ -15,7 +16,7 @@ public sealed class GetZoneTransit(
     // Display order for transport modes.
     private static readonly string[] ModeOrder = ["subte", "tren", "colectivo"];
 
-    public async Task<TransporteZonaDto> ExecuteAsync(
+    public async Task<ZoneTransitResponse> ExecuteAsync(
         string slug,
         CancellationToken cancellationToken = default)
     {
@@ -35,10 +36,10 @@ public sealed class GetZoneTransit(
             .Select(stop => BuildMode(stop, departures.Where(departure => departure.Modo == stop.Modo).ToList()))
             .ToList();
 
-        return new TransporteZonaDto(slug, modes, BuildSources(modes));
+        return new ZoneTransitResponse(slug, modes, BuildSources(modes));
     }
 
-    private static ModoTransporteDto BuildMode(
+    private static TransitModeResponse BuildMode(
         ZoneTransitModeStops stops,
         IReadOnlyList<TransitLineDepartures> departures)
     {
@@ -48,7 +49,7 @@ public sealed class GetZoneTransit(
                 var windowDepartures = departures
                     .Where(departure => departure.Franja == timeWindow.Code && departure.Salidas > 0)
                     .ToList();
-                return new FranjaTransporteDto(
+                return new TransitTimeWindowResponse(
                     timeWindow.Code,
                     timeWindow.StartHour,
                     timeWindow.EndHour,
@@ -72,7 +73,7 @@ public sealed class GetZoneTransit(
                         var count = line
                             .Where(departure => departure.Franja == timeWindow.Code)
                             .Sum(departure => departure.Salidas);
-                        return new FrecuenciaLineaDto(
+                        return new TransitLineFrequencyResponse(
                             timeWindow.Code,
                             timeWindow.DeparturesPerHour(count),
                             timeWindow.MinutesBetweenDepartures(count));
@@ -81,13 +82,13 @@ public sealed class GetZoneTransit(
             })
             .OrderByDescending(line => line.MorningPeak)
             .ThenBy(line => line.Name, StringComparer.Ordinal)
-            .Select(line => new LineaTransporteDto(line.Name, line.Stops, line.TimeWindows))
+            .Select(line => new TransitLineResponse(line.Name, line.Stops, line.TimeWindows))
             .ToList();
 
-        return new ModoTransporteDto(stops.Modo, stops.Paradas, stops.Lineas, timeWindows, lines);
+        return new TransitModeResponse(stops.Modo, stops.Paradas, stops.Lineas, timeWindows, lines);
     }
 
-    private static IReadOnlyList<FuenteDatoDto> BuildSources(IReadOnlyList<ModoTransporteDto> modes)
+    private static IReadOnlyList<DataSourceResponse> BuildSources(IReadOnlyList<TransitModeResponse> modes)
     {
         var sourcesByMode = new Dictionary<string, (string Source, int Year)>
         {
@@ -98,7 +99,7 @@ public sealed class GetZoneTransit(
 
         return modes
             .Where(mode => sourcesByMode.ContainsKey(mode.Modo))
-            .Select(mode => new FuenteDatoDto(
+            .Select(mode => new DataSourceResponse(
                 "Transporte",
                 sourcesByMode[mode.Modo].Source,
                 "Parada",
