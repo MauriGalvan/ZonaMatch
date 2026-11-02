@@ -77,13 +77,36 @@ public class GetZoneTransitTests
         await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync("no-existe"));
     }
 
+    [Fact]
+    public async Task GetZoneTransit_WhenSlugIsInvalid_ThrowsBadRequestWithoutQueryingTheRepository()
+    {
+        await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync("Villa Luro"));
+
+        Assert.Equal(0, _transitRepository.StopListCallCount);
+    }
+
+    [Fact]
+    public async Task GetZoneTransit_WhenRepositoryReturnsAnUnknownMode_DoesNotIncludeAnUnknownDataSource()
+    {
+        _transitRepository.Stops.Add(new ZoneTransitModeStops { Mode = "ferry", StopCount = 2, LineCount = 1 });
+
+        var result = await _useCase.ExecuteAsync(ZoneSlug);
+
+        Assert.Equal("ferry", Assert.Single(result.Modes).Mode);
+        Assert.Empty(result.Sources);
+    }
+
     private sealed class FakeTransitZoneRepository : IZoneTransitRepository
     {
         public List<ZoneTransitModeStops> Stops { get; } = [];
         public List<TransitLineDepartures> Departures { get; } = [];
+        public int StopListCallCount { get; private set; }
 
-        public Task<IReadOnlyList<ZoneTransitModeStops>> ListStopsAsync(string slug, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ZoneTransitModeStops>>(slug == ZoneSlug ? Stops : []);
+        public Task<IReadOnlyList<ZoneTransitModeStops>> ListStopsAsync(string slug, CancellationToken cancellationToken = default)
+        {
+            StopListCallCount++;
+            return Task.FromResult<IReadOnlyList<ZoneTransitModeStops>>(slug == ZoneSlug ? Stops : []);
+        }
 
         public Task<IReadOnlyList<TransitLineDepartures>> ListDeparturesAsync(string slug, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<TransitLineDepartures>>(slug == ZoneSlug ? Departures : []);

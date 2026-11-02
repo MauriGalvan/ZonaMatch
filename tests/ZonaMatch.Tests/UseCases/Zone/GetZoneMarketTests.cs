@@ -65,6 +65,42 @@ namespace ZonaMatch.Tests.UseCases.Zone
         }
 
         [Fact]
+        public async Task ExecuteAsync_WhenZoneHasNoParent_ReturnsNoReference()
+        {
+            _market.Rows.Add(Row("castelar", ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 861_000));
+
+            var market = await new GetZoneMarket(_market).ExecuteAsync("castelar");
+
+            Assert.NotNull(market.Rent);
+            Assert.Null(market.Reference);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenParentHasNoComparableMarketRows_ReturnsNoReference()
+        {
+            _market.Rows.Add(Row("castelar", ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 861_000));
+            _market.Rows.Add(Row("partido-de-moron", ZoneMarketOperation.Rent, ZoneMarketPropertyType.Apartment, 700_000));
+            _market.Parent = ("partido-de-moron", "Partido de Morón");
+
+            var market = await new GetZoneMarket(_market).ExecuteAsync("castelar");
+
+            Assert.Null(market.Reference);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenParentHasOnlyRentData_ReturnsPartialReference()
+        {
+            _market.Rows.Add(Row("castelar", ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 861_000));
+            _market.Rows.Add(Row("partido-de-moron", ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 700_000));
+            _market.Parent = ("partido-de-moron", "Partido de Morón");
+
+            var market = await new GetZoneMarket(_market).ExecuteAsync("castelar");
+
+            Assert.Equal(700_000, market.Reference!.AverageRent);
+            Assert.Null(market.Reference.AverageSalePriceM2);
+        }
+
+        [Fact]
         public async Task ExecuteAsync_WhenZoneHasNoData_ThrowsNotFoundException()
         {
             await Assert.ThrowsAsync<NotFoundException>(() => new GetZoneMarket(_market).ExecuteAsync("no-existe"));

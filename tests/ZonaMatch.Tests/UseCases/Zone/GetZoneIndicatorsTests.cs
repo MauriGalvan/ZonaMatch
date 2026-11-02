@@ -35,6 +35,19 @@ namespace ZonaMatch.Tests.UseCases.Zone
         }
 
         [Fact]
+        public async Task GetZoneIndicators_WhenCityReferenceIsMissing_ReturnsCrimeDataWithoutComparisons()
+        {
+            _repository.Zones.Add(Zone("caballito", 4, crimeCount: 380));
+
+            var result = await _useCase.ExecuteAsync("caballito");
+
+            var safety = Assert.IsType<ZoneSafetyResponse>(result.Safety);
+            Assert.Null(safety.Reference);
+            Assert.Null(result.Connectivity.Reference);
+            Assert.True(_repository.DidLoadCityReference);
+        }
+
+        [Fact]
         public async Task GetZoneIndicators_WhenZoneIsInProvince_ReturnsDistrictCrimesWithoutCityReference()
         {
             _repository.Zones.Add(Zone("castelar", 8, crimeCount: 241, dataSource: ZoneIndicators.SnicSource, jurisdiction: "Morón"));
