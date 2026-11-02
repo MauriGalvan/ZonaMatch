@@ -8,25 +8,25 @@ namespace ZonaMatch.Tests.Domain
         [InlineData(3, 5, 4, 4, 2, 3.6)]
         [InlineData(5, 5, 5, 5, 5, 5.0)]
         [InlineData(1, 1, 1, 1, 2, 1.2)]
-        public void El_puntaje_general_es_el_promedio_de_los_aspectos(
-            int seguridad, int transporte, int conectividad, int comercios, int espaciosVerdes, double esperado)
+        public void OverallScoreIsTheAverageOfAllAspects(
+            int safety, int transit, int connectivity, int commerce, int greenSpaces, double expected)
         {
-            var resena = new Review
+            var review = new Review
             {
-                SafetyScore = seguridad,
-                TransitScore = transporte,
-                ConnectivityScore = conectividad,
-                CommerceScore = comercios,
-                GreenSpaceScore = espaciosVerdes
+                SafetyScore = safety,
+                TransitScore = transit,
+                ConnectivityScore = connectivity,
+                CommerceScore = commerce,
+                GreenSpaceScore = greenSpaces
             };
 
-            Assert.Equal(esperado, resena.OverallScore);
+            Assert.Equal(expected, review.OverallScore);
         }
 
         [Fact]
-        public void El_puntaje_general_sigue_a_los_aspectos_al_editar()
+        public void OverallScoreUpdatesWhenAnAspectIsEdited()
         {
-            var resena = new Review
+            var review = new Review
             {
                 SafetyScore = 4,
                 TransitScore = 4,
@@ -35,9 +35,9 @@ namespace ZonaMatch.Tests.Domain
                 GreenSpaceScore = 4
             };
 
-            resena.SafetyScore = 1;
+            review.SafetyScore = 1;
 
-            Assert.Equal(3.4, resena.OverallScore);
+            Assert.Equal(3.4, review.OverallScore);
         }
     }
 }
