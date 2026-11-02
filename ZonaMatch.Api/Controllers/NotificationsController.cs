@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs.Notification.Responses;
-using ZonaMatch.Application.UseCases.Notifications;
+using ZonaMatch.Application.UseCases.Notification;
 
 namespace ZonaMatch.Api.Controllers
 {

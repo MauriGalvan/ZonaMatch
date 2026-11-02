@@ -7,7 +7,7 @@ using ZonaMatch.Application.DTOs.Group.Requests;
 using ZonaMatch.Application.DTOs.Group.Responses;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
-using ZonaMatch.Application.UseCases.Groups;
+using ZonaMatch.Application.UseCases.Group;
 
 namespace ZonaMatch.Api.Controllers
 {

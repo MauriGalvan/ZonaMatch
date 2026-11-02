@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.UseCases.PasswordResets;
+using ZonaMatch.Application.UseCases.PasswordReset;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Infrastructure.Data;
 

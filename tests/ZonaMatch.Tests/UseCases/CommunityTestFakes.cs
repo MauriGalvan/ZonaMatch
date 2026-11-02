@@ -2,6 +2,9 @@
 using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
+using DomainContribution = ZonaMatch.Domain.Entities.Contribution;
+using DomainQuestion = ZonaMatch.Domain.Entities.Question;
+using DomainReview = ZonaMatch.Domain.Entities.Review;
 
 namespace ZonaMatch.Tests.UseCases
 {
@@ -33,7 +36,7 @@ namespace ZonaMatch.Tests.UseCases
 
     internal sealed class FakeContributionRepository : IContributionRepository
     {
-        public List<Contribution> Contributions { get; } = [];
+        public List<DomainContribution> Contributions { get; } = [];
         public int SaveCount { get; private set; }
 
         public Task<(int ApprovedCount, int PendingCount)> CountAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
@@ -41,14 +44,14 @@ namespace ZonaMatch.Tests.UseCases
                 Contributions.Count(a => a.ZoneSlug == zoneSlug && a.Status == ContributionStatus.Approved),
                 Contributions.Count(a => a.ZoneSlug == zoneSlug && a.Status == ContributionStatus.Pending)));
 
-        public Task<IReadOnlyList<Contribution>> ListPendingAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Contribution>>(
+        public Task<IReadOnlyList<DomainContribution>> ListPendingAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<DomainContribution>>(
                 Contributions.Where(a => a.ZoneSlug == zoneSlug && a.Status == ContributionStatus.Pending).ToList());
 
-        public Task<Contribution?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<DomainContribution?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Contributions.FirstOrDefault(a => a.ZoneSlug == zoneSlug && a.Id == id));
 
-        public void Add(Contribution contribution) => Contributions.Add(contribution);
+        public void Add(DomainContribution contribution) => Contributions.Add(contribution);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -69,22 +72,22 @@ namespace ZonaMatch.Tests.UseCases
 
     internal sealed class FakeReviewRepository : IReviewRepository
     {
-        public List<Review> Reviews { get; } = [];
+        public List<DomainReview> Reviews { get; } = [];
         public int SaveCount { get; private set; }
 
-        public Task<IReadOnlyList<Review>> ListByZoneAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Review>>(
+        public Task<IReadOnlyList<DomainReview>> ListByZoneAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<DomainReview>>(
                 Reviews.Where(r => r.ZoneSlug == zoneSlug).OrderByDescending(r => r.CreatedAt).ToList());
 
-        public Task<Review?> GetByUserAsync(string zoneSlug, Guid userId, CancellationToken cancellationToken = default) =>
+        public Task<DomainReview?> GetByUserAsync(string zoneSlug, Guid userId, CancellationToken cancellationToken = default) =>
             Task.FromResult(Reviews.FirstOrDefault(r => r.ZoneSlug == zoneSlug && r.UserId == userId));
 
-        public Task<Review?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<DomainReview?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Reviews.FirstOrDefault(r => r.ZoneSlug == zoneSlug && r.Id == id));
 
-        public void Add(Review review) => Reviews.Add(review);
+        public void Add(DomainReview review) => Reviews.Add(review);
 
-        public void Delete(Review review) => Reviews.Remove(review);
+        public void Delete(DomainReview review) => Reviews.Remove(review);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -95,19 +98,19 @@ namespace ZonaMatch.Tests.UseCases
 
     internal sealed class FakeQuestionRepository : IQuestionRepository
     {
-        public List<Question> Questions { get; } = [];
+        public List<DomainQuestion> Questions { get; } = [];
 
-        public Task<IReadOnlyList<Question>> ListByZoneAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Question>>(
+        public Task<IReadOnlyList<DomainQuestion>> ListByZoneAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<DomainQuestion>>(
                 Questions.Where(p => p.ZoneSlug == zoneSlug).OrderByDescending(p => p.CreatedAt).ToList());
 
         public Task<bool> ExistsAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Questions.Any(p => p.ZoneSlug == zoneSlug && p.Id == id));
 
-        public Task<Question?> GetByIdAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
+        public Task<DomainQuestion?> GetByIdAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Questions.FirstOrDefault(p => p.ZoneSlug == zoneSlug && p.Id == id));
 
-        public void Add(Question question) => Questions.Add(question);
+        public void Add(DomainQuestion question) => Questions.Add(question);
 
         public void Add(Answer answer) =>
             Questions.Single(question => question.Id == answer.QuestionId).Answers.Add(answer);

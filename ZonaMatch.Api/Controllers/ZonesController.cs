@@ -4,7 +4,7 @@ using ZonaMatch.Application.DTOs.PointOfInterest.Responses;
 using ZonaMatch.Application.DTOs.Transit.Responses;
 using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.DTOs.ZoneIndicator.Responses;
-using ZonaMatch.Application.UseCases.Zones;
+using ZonaMatch.Application.UseCases.Zone;
 
 namespace ZonaMatch.Api.Controllers;
 
