@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Geolocation.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Mapping;
 using ZonaMatch.Application.Policies;
@@ -7,7 +7,7 @@ namespace ZonaMatch.Application.UseCases.Geolocation;
 
 public sealed class GetNearbySchools(ISchoolRepository schoolRepository)
 {
-    public async Task<IReadOnlyList<EscuelaDto>> ExecuteAsync(
+    public async Task<IReadOnlyList<SchoolResponse>> ExecuteAsync(
         double latitude,
         double longitude,
         double radiusMeters,

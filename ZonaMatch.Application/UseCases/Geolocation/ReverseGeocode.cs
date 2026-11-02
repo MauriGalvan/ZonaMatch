@@ -1,6 +1,7 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Geolocation.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models.Geolocation;
 using ZonaMatch.Application.Policies;
 using ZonaMatch.Application.Services;
 
@@ -10,14 +11,14 @@ public sealed class ReverseGeocode(
     IGeocodingClient geocodingClient,
     LocationBoundaryLookup boundaryLookup)
 {
-    public async Task<DireccionDto> ExecuteAsync(
+    public async Task<ReverseGeocodeResponse> ExecuteAsync(
         double latitude,
         double longitude,
         CancellationToken cancellationToken = default)
     {
         GeolocationRequestValidator.ValidateCoordinates(latitude, longitude);
 
-        DireccionGeocodificadaDto? geocodedAddress;
+        GeocodedAddress? geocodedAddress;
         try
         {
             geocodedAddress = await geocodingClient.ReverseAsync(latitude, longitude, cancellationToken);
@@ -34,16 +35,16 @@ public sealed class ReverseGeocode(
         if (geocodedAddress is null && district is null && commune is null)
             throw new NotFoundException("No se encontro una direccion para esa ubicacion.");
 
-        return new DireccionDto(
-            Ubicacion: new CoordenadaDto(latitude, longitude),
-            Nombre: geocodedAddress?.Nombre,
-            Calle: geocodedAddress?.Calle,
-            Altura: geocodedAddress?.Altura,
-            Localidad: geocodedAddress?.Localidad,
+        return new ReverseGeocodeResponse(
+            Ubicacion: new CoordinateResponse(latitude, longitude),
+            Nombre: geocodedAddress?.Name,
+            Calle: geocodedAddress?.Street,
+            Altura: geocodedAddress?.StreetNumber,
+            Localidad: geocodedAddress?.Locality,
             District: district?.Nombre,
             Commune: commune?.Nombre,
-            Provincia: district?.Provincia ?? geocodedAddress?.Provincia,
-            CodigoPostal: geocodedAddress?.CodigoPostal,
-            DireccionCompleta: geocodedAddress?.DireccionCompleta);
+            Provincia: district?.Provincia ?? geocodedAddress?.Province,
+            CodigoPostal: geocodedAddress?.PostalCode,
+            DireccionCompleta: geocodedAddress?.FullAddress);
     }
 }

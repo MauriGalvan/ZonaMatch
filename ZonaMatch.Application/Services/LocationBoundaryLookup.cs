@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Geolocation.Responses;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.Services;
@@ -10,15 +10,15 @@ public sealed class LocationBoundaryLookup(
     IDistrictRepository districtRepository,
     ICommuneRepository communeRepository)
 {
-    public async Task<PartidoDto?> GetDistrictAsync(double latitude, double longitude)
+    public async Task<DistrictResponse?> GetDistrictAsync(double latitude, double longitude)
     {
         var district = await districtRepository.GetContainingPointAsync(latitude, longitude);
-        return district is null ? null : new PartidoDto(district.Key, district.Nombre, district.Provincia);
+        return district is null ? null : new DistrictResponse(district.Key, district.Nombre, district.Provincia);
     }
 
-    public async Task<ComunaDto?> GetCommuneAsync(double latitude, double longitude)
+    public async Task<CommuneResponse?> GetCommuneAsync(double latitude, double longitude)
     {
         var commune = await communeRepository.GetContainingPointAsync(latitude, longitude);
-        return commune is null ? null : new ComunaDto(commune.Key, commune.Nombre);
+        return commune is null ? null : new CommuneResponse(commune.Key, commune.Nombre);
     }
 }

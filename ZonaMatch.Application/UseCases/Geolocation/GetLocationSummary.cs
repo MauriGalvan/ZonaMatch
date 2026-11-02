@@ -1,4 +1,4 @@
-using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs.Geolocation.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Mapping;
@@ -11,7 +11,7 @@ public sealed class GetLocationSummary(
     LocationBoundaryLookup boundaryLookup,
     ISchoolRepository schoolRepository)
 {
-    public async Task<UbicacionResumenDto> ExecuteAsync(
+    public async Task<LocationSummaryResponse> ExecuteAsync(
         double latitude,
         double longitude,
         double radiusMeters,
@@ -24,8 +24,8 @@ public sealed class GetLocationSummary(
         var commune = await boundaryLookup.GetCommuneAsync(latitude, longitude);
         var schools = await schoolRepository.GetNearbyByFiltersAsync(latitude, longitude, radiusMeters, null, null);
 
-        return new UbicacionResumenDto(
-            new CoordenadaDto(latitude, longitude),
+        return new LocationSummaryResponse(
+            new CoordinateResponse(latitude, longitude),
             district,
             commune,
             schools.Select(school => SchoolResponseMapper.Map(school.Entity, school.DistanceMeters)).ToList());

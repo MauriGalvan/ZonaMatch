@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models.Geolocation;
 using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Geo
@@ -73,7 +73,7 @@ namespace ZonaMatch.Infrastructure.Geo
             _dbContext = dbContext;
         }
 
-        public async Task<DireccionGeocodificadaDto?> ReverseAsync(
+        public async Task<GeocodedAddress?> ReverseAsync(
             double latitud, double longitud, CancellationToken cancellationToken = default)
         {
             var fila = await _dbContext.Database
@@ -87,7 +87,7 @@ namespace ZonaMatch.Infrastructure.Geo
             var completa = string.Join(", ",
                 new[] { fila.Nombre, calleYAltura, fila.Localidad }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
-            return new DireccionGeocodificadaDto(
+            return new GeocodedAddress(
                 Nombre: fila.Nombre,
                 Calle: fila.Calle,
                 Altura: fila.Altura,

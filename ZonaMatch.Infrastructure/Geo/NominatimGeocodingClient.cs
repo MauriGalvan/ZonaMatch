@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
-using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Models.Geolocation;
 
 namespace ZonaMatch.Infrastructure.Geo
 {
@@ -26,13 +26,13 @@ namespace ZonaMatch.Infrastructure.Geo
             _cache = cache;
         }
 
-        public async Task<DireccionGeocodificadaDto?> ReverseAsync(
+        public async Task<GeocodedAddress?> ReverseAsync(
             double latitud, double longitud, CancellationToken cancellationToken = default)
         {
             // ~11 m precision: re-clicking the same spot is served from cache
             var cacheKey = string.Create(CultureInfo.InvariantCulture, $"nominatim:{latitud:F4}:{longitud:F4}");
 
-            if (_cache.TryGetValue(cacheKey, out DireccionGeocodificadaDto? cached))
+            if (_cache.TryGetValue(cacheKey, out GeocodedAddress? cached))
                 return cached;
 
             var resultado = await ConsultarAsync(latitud, longitud, cancellationToken);
@@ -40,7 +40,7 @@ namespace ZonaMatch.Infrastructure.Geo
             return resultado;
         }
 
-        private async Task<DireccionGeocodificadaDto?> ConsultarAsync(double latitud, double longitud, CancellationToken ct)
+        private async Task<GeocodedAddress?> ConsultarAsync(double latitud, double longitud, CancellationToken ct)
         {
             var url = string.Create(CultureInfo.InvariantCulture,
                 $"reverse?format=jsonv2&addressdetails=1&namedetails=1&zoom=18&accept-language=es&lat={latitud}&lon={longitud}");
@@ -72,7 +72,7 @@ namespace ZonaMatch.Infrastructure.Geo
             }
         }
 
-        private static DireccionGeocodificadaDto? Mapear(JsonElement raiz)
+        private static GeocodedAddress? Mapear(JsonElement raiz)
         {
             // Nominatim answers 200 with {"error": "Unable to geocode"} when there is nothing near the point
             if (raiz.ValueKind != JsonValueKind.Object || raiz.TryGetProperty("error", out _))
@@ -83,7 +83,7 @@ namespace ZonaMatch.Infrastructure.Geo
 
             var calle = Texto(address, "road") ?? Texto(address, "pedestrian") ?? Texto(address, "footway");
 
-            return new DireccionGeocodificadaDto(
+            return new GeocodedAddress(
                 Nombre: Texto(raiz, "name") ?? Texto(nombres, "name"),
                 Calle: calle,
                 Altura: Texto(address, "house_number"),
