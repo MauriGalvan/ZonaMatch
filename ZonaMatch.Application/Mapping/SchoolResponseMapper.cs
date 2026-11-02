@@ -6,6 +6,6 @@ namespace ZonaMatch.Application.Mapping;
 public static class SchoolResponseMapper
 {
     public static SchoolResponse Map(School school, double distanceMeters) =>
-        new(school.ClaveNatural, school.Nombre, school.Nivel, school.Sector, school.Direccion, school.Localidad,
-            school.Ubicacion.Y, school.Ubicacion.X, distanceMeters);
+        new(school.NaturalKey, school.Name, school.Level, school.Sector, school.Address, school.Locality,
+            school.Location.Y, school.Location.X, distanceMeters);
 }

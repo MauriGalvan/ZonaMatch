@@ -1032,15 +1032,15 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.School", b =>
                 {
-                    b.Property<string>("ClaveNatural")
+                    b.Property<string>("NaturalKey")
                         .HasColumnType("text")
                         .HasColumnName("clave_natural");
 
-                    b.Property<string>("Ambito")
+                    b.Property<string>("Address")
                         .HasColumnType("text")
-                        .HasColumnName("ambito");
+                        .HasColumnName("direccion");
 
-                    b.Property<int?>("Anexo")
+                    b.Property<int?>("Annex")
                         .HasColumnType("integer")
                         .HasColumnName("anexo");
 
@@ -1048,35 +1048,15 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("area");
 
-                    b.Property<string>("Calle")
-                        .HasColumnType("text")
-                        .HasColumnName("calle");
-
-                    b.Property<string>("CalleLateralDerecha")
-                        .HasColumnType("text")
-                        .HasColumnName("calle_lateral_derecha");
-
-                    b.Property<string>("CalleLateralIzquierda")
-                        .HasColumnType("text")
-                        .HasColumnName("calle_lateral_izquierda");
-
-                    b.Property<string>("Categoria")
+                    b.Property<string>("Category")
                         .HasColumnType("text")
                         .HasColumnName("categoria");
-
-                    b.Property<string>("Clave")
-                        .HasColumnType("text")
-                        .HasColumnName("clave");
-
-                    b.Property<string>("CodigoPostal")
-                        .HasColumnType("text")
-                        .HasColumnName("codigo_postal");
 
                     b.Property<string>("Cue")
                         .HasColumnType("text")
                         .HasColumnName("cue");
 
-                    b.Property<string>("Cueanexo")
+                    b.Property<string>("CueAnnex")
                         .HasColumnType("text")
                         .HasColumnName("cueanexo");
 
@@ -1084,128 +1064,153 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("cui");
 
-                    b.Property<string>("Dependencia")
-                        .HasColumnType("text")
-                        .HasColumnName("dependencia");
-
-                    b.Property<string>("Desfavorabilidad")
+                    b.Property<string>("DisadvantageLevel")
                         .HasColumnType("text")
                         .HasColumnName("desfavorabilidad");
 
-                    b.Property<string>("Direccion")
+                    b.Property<string>("DistrictId")
                         .HasColumnType("text")
-                        .HasColumnName("direccion");
+                        .HasColumnName("id_distrito");
 
-                    b.Property<string>("Distrito")
+                    b.Property<string>("DistrictKey")
+                        .HasColumnType("text")
+                        .HasColumnName("partido_key");
+
+                    b.Property<string>("DistrictName")
                         .HasColumnType("text")
                         .HasColumnName("distrito");
+
+                    b.Property<string>("EducationalRegion")
+                        .HasColumnType("text")
+                        .HasColumnName("region_educativa");
+
+                    b.Property<string>("ElectoralSection")
+                        .HasColumnType("text")
+                        .HasColumnName("seccion_electoral");
 
                     b.Property<string>("Email")
                         .HasColumnType("text")
                         .HasColumnName("email");
 
-                    b.Property<string>("EscSede")
-                        .HasColumnType("text")
-                        .HasColumnName("esc_sede");
-
-                    b.Property<string>("Fuente")
-                        .HasColumnType("text")
-                        .HasColumnName("fuente");
-
-                    b.Property<int?>("IdDependencia")
-                        .HasColumnType("integer")
-                        .HasColumnName("id_dependencia");
-
-                    b.Property<string>("IdDistrito")
-                        .HasColumnType("text")
-                        .HasColumnName("id_distrito");
-
-                    b.Property<string>("IdLocalidad")
-                        .HasColumnType("text")
-                        .HasColumnName("id_localidad");
-
-                    b.Property<int?>("IdModalidad")
-                        .HasColumnType("integer")
-                        .HasColumnName("id_modalidad");
-
-                    b.Property<int?>("IdNivel")
-                        .HasColumnType("integer")
-                        .HasColumnName("id_nivel");
-
-                    b.Property<int?>("IdSector")
-                        .HasColumnType("integer")
-                        .HasColumnName("id_sector");
-
-                    b.Property<int?>("IdTipoOrganizacion")
-                        .HasColumnType("integer")
-                        .HasColumnName("id_tipo_organizacion");
-
-                    b.Property<double?>("Latitud")
-                        .HasColumnType("double precision")
-                        .HasColumnName("latitud");
-
-                    b.Property<string>("Localidad")
-                        .HasColumnType("text")
-                        .HasColumnName("localidad");
-
-                    b.Property<double?>("Longitud")
-                        .HasColumnType("double precision")
-                        .HasColumnName("longitud");
-
-                    b.Property<int?>("Matricula")
+                    b.Property<int?>("Enrollment")
                         .HasColumnType("integer")
                         .HasColumnName("matricula");
 
-                    b.Property<string>("Modalidad")
-                        .HasColumnType("text")
-                        .HasColumnName("modalidad");
-
-                    b.Property<int?>("Mujeres")
+                    b.Property<int?>("FemaleStudents")
                         .HasColumnType("integer")
                         .HasColumnName("mujeres");
 
-                    b.Property<string>("Nivel")
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitud");
+
+                    b.Property<string>("LeftSideStreet")
+                        .HasColumnType("text")
+                        .HasColumnName("calle_lateral_izquierda");
+
+                    b.Property<string>("Level")
                         .HasColumnType("text")
                         .HasColumnName("nivel");
 
-                    b.Property<string>("Nombre")
+                    b.Property<int?>("LevelId")
+                        .HasColumnType("integer")
+                        .HasColumnName("id_nivel");
+
+                    b.Property<string>("Locality")
+                        .HasColumnType("text")
+                        .HasColumnName("localidad");
+
+                    b.Property<string>("LocalityId")
+                        .HasColumnType("text")
+                        .HasColumnName("id_localidad");
+
+                    b.Property<Point>("Location")
+                        .IsRequired()
+                        .HasColumnType("geometry(Point,4326)")
+                        .HasColumnName("geom");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitud");
+
+                    b.Property<int?>("MaleStudents")
+                        .HasColumnType("integer")
+                        .HasColumnName("varones");
+
+                    b.Property<string>("ManagingAuthority")
+                        .HasColumnType("text")
+                        .HasColumnName("dependencia");
+
+                    b.Property<int?>("ManagingAuthorityId")
+                        .HasColumnType("integer")
+                        .HasColumnName("id_dependencia");
+
+                    b.Property<string>("Modality")
+                        .HasColumnType("text")
+                        .HasColumnName("modalidad");
+
+                    b.Property<int?>("ModalityId")
+                        .HasColumnType("integer")
+                        .HasColumnName("id_modalidad");
+
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("nombre");
 
-                    b.Property<string>("Nro")
+                    b.Property<string>("Number")
                         .HasColumnType("text")
                         .HasColumnName("nro");
 
-                    b.Property<string>("NroEscuela")
+                    b.Property<string>("OrganizationType")
                         .HasColumnType("text")
-                        .HasColumnName("nro_escuela");
+                        .HasColumnName("tipo_organizacion");
 
-                    b.Property<string>("PartidoKey")
-                        .HasColumnType("text")
-                        .HasColumnName("partido_key");
+                    b.Property<int?>("OrganizationTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("id_tipo_organizacion");
 
-                    b.Property<string>("Periodo")
+                    b.Property<string>("Period")
                         .HasColumnType("text")
                         .HasColumnName("periodo");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text")
+                        .HasColumnName("telefono");
+
+                    b.Property<string>("PostalCode")
+                        .HasColumnType("text")
+                        .HasColumnName("codigo_postal");
 
                     b.Property<string>("Region")
                         .HasColumnType("text")
                         .HasColumnName("region");
 
-                    b.Property<string>("RegionEducativa")
+                    b.Property<string>("RightSideStreet")
                         .HasColumnType("text")
-                        .HasColumnName("region_educativa");
+                        .HasColumnName("calle_lateral_derecha");
 
                     b.Property<string>("Rpv")
                         .HasColumnType("text")
                         .HasColumnName("rpv");
 
-                    b.Property<string>("SeccionElectoral")
+                    b.Property<string>("SchoolCode")
                         .HasColumnType("text")
-                        .HasColumnName("seccion_electoral");
+                        .HasColumnName("clave");
 
-                    b.Property<int?>("Secciones")
+                    b.Property<string>("SchoolNumber")
+                        .HasColumnType("text")
+                        .HasColumnName("nro_escuela");
+
+                    b.Property<string>("SchoolSite")
+                        .HasColumnType("text")
+                        .HasColumnName("esc_sede");
+
+                    b.Property<string>("Scope")
+                        .HasColumnType("text")
+                        .HasColumnName("ambito");
+
+                    b.Property<int?>("Sections")
                         .HasColumnType("integer")
                         .HasColumnName("secciones");
 
@@ -1213,36 +1218,31 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("sector");
 
-                    b.Property<string>("SedeAxoExt")
-                        .HasColumnType("text")
-                        .HasColumnName("sede_axo_ext");
+                    b.Property<int?>("SectorId")
+                        .HasColumnType("integer")
+                        .HasColumnName("id_sector");
 
-                    b.Property<string>("Subvencion")
-                        .HasColumnType("text")
-                        .HasColumnName("subvencion");
-
-                    b.Property<string>("Telefono")
-                        .HasColumnType("text")
-                        .HasColumnName("telefono");
-
-                    b.Property<string>("TipoOrganizacion")
-                        .HasColumnType("text")
-                        .HasColumnName("tipo_organizacion");
-
-                    b.Property<string>("Turnos")
+                    b.Property<string>("Shifts")
                         .HasColumnType("text")
                         .HasColumnName("turnos");
 
-                    b.Property<Point>("Ubicacion")
-                        .IsRequired()
-                        .HasColumnType("geometry(Point,4326)")
-                        .HasColumnName("geom");
+                    b.Property<string>("SiteYearExtension")
+                        .HasColumnType("text")
+                        .HasColumnName("sede_axo_ext");
 
-                    b.Property<int?>("Varones")
-                        .HasColumnType("integer")
-                        .HasColumnName("varones");
+                    b.Property<string>("Source")
+                        .HasColumnType("text")
+                        .HasColumnName("fuente");
 
-                    b.HasKey("ClaveNatural");
+                    b.Property<string>("Street")
+                        .HasColumnType("text")
+                        .HasColumnName("calle");
+
+                    b.Property<string>("Subsidy")
+                        .HasColumnType("text")
+                        .HasColumnName("subvencion");
+
+                    b.HasKey("NaturalKey");
 
                     b.ToTable("escuelas", "geo", t =>
                         {

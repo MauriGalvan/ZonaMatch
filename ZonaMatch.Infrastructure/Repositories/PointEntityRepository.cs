@@ -24,7 +24,7 @@ public class PointEntityRepository<T> : Repository<T>, IPointEntityRepository<T>
         var cosineLatitude = Math.Cos(latitude * Math.PI / 180d);
 
         var candidates = await _dbContext.Set<T>()
-            .OrderBy(entity => Math.Pow(entity.Ubicacion.Y - latitude, 2) + Math.Pow((entity.Ubicacion.X - longitude) * cosineLatitude, 2))
+            .OrderBy(entity => Math.Pow(entity.Location.Y - latitude, 2) + Math.Pow((entity.Location.X - longitude) * cosineLatitude, 2))
             .Take(count)
             .ToListAsync();
 
@@ -40,7 +40,7 @@ public class PointEntityRepository<T> : Repository<T>, IPointEntityRepository<T>
 
         // ST_DWithin in degrees is a coarse, index-friendly prefilter; exact meters are computed in memory.
         var candidates = await query
-            .Where(entity => entity.Ubicacion.IsWithinDistance(point, radiusDegrees))
+            .Where(entity => entity.Location.IsWithinDistance(point, radiusDegrees))
             .ToListAsync();
 
         return WithDistance(candidates, latitude, longitude)
@@ -52,7 +52,7 @@ public class PointEntityRepository<T> : Repository<T>, IPointEntityRepository<T>
         IEnumerable<T> entities, double latitude, double longitude) =>
         entities
             .Select(entity => (Entity: entity,
-                DistanceMeters: GeoMath.CalculateDistanceInMeters(latitude, longitude, entity.Ubicacion.Y, entity.Ubicacion.X)))
+                DistanceMeters: GeoMath.CalculateDistanceInMeters(latitude, longitude, entity.Location.Y, entity.Location.X)))
             .OrderBy(item => item.DistanceMeters)
             .ToList();
 }

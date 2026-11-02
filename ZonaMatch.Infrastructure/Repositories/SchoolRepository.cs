@@ -16,7 +16,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             IQueryable<School> query = _dbContext.Set<School>();
 
             if (!string.IsNullOrWhiteSpace(level))
-                query = query.Where(school => school.Nivel == level);
+                query = query.Where(school => school.Level == level);
 
             if (!string.IsNullOrWhiteSpace(sector))
                 query = query.Where(school => school.Sector == sector);
