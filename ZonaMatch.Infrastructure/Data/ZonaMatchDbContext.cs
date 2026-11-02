@@ -19,8 +19,8 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<CensusTract> CensusTracts => Set<CensusTract>();
         public DbSet<MunicipalityAlias> MunicipalityAliases => Set<MunicipalityAlias>();
         public DbSet<User> Usuarios => Set<User>();
-        public DbSet<Review> Resenas => Set<Review>();
-        public DbSet<ReviewHelpfulVote> ResenasVotosUtil => Set<ReviewHelpfulVote>();
+        public DbSet<Review> Reviews => Set<Review>();
+        public DbSet<ReviewHelpfulVote> ReviewHelpfulVotes => Set<ReviewHelpfulVote>();
         public DbSet<Question> Preguntas => Set<Question>();
         public DbSet<Answer> Respuestas => Set<Answer>();
         public DbSet<Contribution> Aportes => Set<Contribution>();
@@ -358,22 +358,32 @@ namespace ZonaMatch.Infrastructure.Data
                         "AND puntaje_comercios BETWEEN 1 AND 5 AND puntaje_espacios_verdes BETWEEN 1 AND 5");
                 });
                 e.HasKey(x => x.Id);
-                e.Property(x => x.ZonaSlug).HasMaxLength(200);
-                e.HasIndex(x => new { x.ZonaSlug, x.UsuarioId }).IsUnique();
-                e.Property(x => x.Texto).HasMaxLength(TextLimits.ReviewText);
-                e.Property(x => x.Temas).HasColumnType("text[]");
-                e.Property(x => x.FechaCreacion).HasColumnType("timestamptz");
-                e.Property(x => x.FechaActualizacion).HasColumnType("timestamptz");
-                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
-                e.HasMany(x => x.VotosUtil).WithOne().HasForeignKey(x => x.ResenaId).OnDelete(DeleteBehavior.Cascade);
+                e.Property(x => x.ZoneSlug).HasColumnName("zona_slug").HasMaxLength(200);
+                e.Property(x => x.UserId).HasColumnName("usuario_id");
+                e.Property(x => x.SafetyScore).HasColumnName("puntaje_seguridad");
+                e.Property(x => x.TransitScore).HasColumnName("puntaje_transporte");
+                e.Property(x => x.ConnectivityScore).HasColumnName("puntaje_conectividad");
+                e.Property(x => x.CommerceScore).HasColumnName("puntaje_comercios");
+                e.Property(x => x.GreenSpaceScore).HasColumnName("puntaje_espacios_verdes");
+                e.Property(x => x.Text).HasColumnName("texto").HasMaxLength(TextLimits.ReviewText);
+                e.Property(x => x.YearsInZone).HasColumnName("anios_en_zona");
+                e.Property(x => x.Topics).HasColumnName("temas").HasColumnType("text[]");
+                e.Property(x => x.IsVerified).HasColumnName("verificada");
+                e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
+                e.Property(x => x.UpdatedAt).HasColumnName("fecha_actualizacion").HasColumnType("timestamptz");
+                e.HasIndex(x => new { x.ZoneSlug, x.UserId }).IsUnique();
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasMany(x => x.HelpfulVotes).WithOne().HasForeignKey(x => x.ReviewId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<ReviewHelpfulVote>(e =>
             {
                 e.ToTable("resenas_votos_util");
-                e.HasKey(x => new { x.ResenaId, x.UsuarioId });
-                e.Property(x => x.Fecha).HasColumnType("timestamptz");
-                e.HasOne<User>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+                e.HasKey(x => new { x.ReviewId, x.UserId });
+                e.Property(x => x.ReviewId).HasColumnName("resena_id");
+                e.Property(x => x.UserId).HasColumnName("usuario_id");
+                e.Property(x => x.CreatedAt).HasColumnName("fecha").HasColumnType("timestamptz");
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Question>(e =>

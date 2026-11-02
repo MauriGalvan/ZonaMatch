@@ -907,58 +907,58 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<int?>("AniosEnZona")
-                        .HasColumnType("integer")
-                        .HasColumnName("anios_en_zona");
-
-                    b.Property<DateTimeOffset>("FechaActualizacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_actualizacion");
-
-                    b.Property<DateTimeOffset>("FechaCreacion")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("fecha_creacion");
-
-                    b.Property<int>("PuntajeComercios")
+                    b.Property<int>("CommerceScore")
                         .HasColumnType("integer")
                         .HasColumnName("puntaje_comercios");
 
-                    b.Property<int>("PuntajeConectividad")
+                    b.Property<int>("ConnectivityScore")
                         .HasColumnType("integer")
                         .HasColumnName("puntaje_conectividad");
 
-                    b.Property<int>("PuntajeEspaciosVerdes")
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<int>("GreenSpaceScore")
                         .HasColumnType("integer")
                         .HasColumnName("puntaje_espacios_verdes");
 
-                    b.Property<int>("PuntajeSeguridad")
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("verificada");
+
+                    b.Property<int>("SafetyScore")
                         .HasColumnType("integer")
                         .HasColumnName("puntaje_seguridad");
 
-                    b.Property<int>("PuntajeTransporte")
-                        .HasColumnType("integer")
-                        .HasColumnName("puntaje_transporte");
-
-                    b.PrimitiveCollection<List<string>>("Temas")
-                        .IsRequired()
-                        .HasColumnType("text[]")
-                        .HasColumnName("temas");
-
-                    b.Property<string>("Texto")
+                    b.Property<string>("Text")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("texto");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.PrimitiveCollection<List<string>>("Topics")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("temas");
+
+                    b.Property<int>("TransitScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("puntaje_transporte");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_actualizacion");
+
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("usuario_id");
 
-                    b.Property<bool>("Verificada")
-                        .HasColumnType("boolean")
-                        .HasColumnName("verificada");
+                    b.Property<int?>("YearsInZone")
+                        .HasColumnType("integer")
+                        .HasColumnName("anios_en_zona");
 
-                    b.Property<string>("ZonaSlug")
+                    b.Property<string>("ZoneSlug")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -966,9 +966,9 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UserId");
 
-                    b.HasIndex("ZonaSlug", "UsuarioId")
+                    b.HasIndex("ZoneSlug", "UserId")
                         .IsUnique();
 
                     b.ToTable("resenas", "app", t =>
@@ -979,21 +979,21 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.ReviewHelpfulVote", b =>
                 {
-                    b.Property<Guid>("ResenaId")
+                    b.Property<Guid>("ReviewId")
                         .HasColumnType("uuid")
                         .HasColumnName("resena_id");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("usuario_id");
 
-                    b.Property<DateTimeOffset>("Fecha")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha");
 
-                    b.HasKey("ResenaId", "UsuarioId");
+                    b.HasKey("ReviewId", "UserId");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("resenas_votos_util", "app");
                 });
@@ -1623,7 +1623,7 @@ namespace ZonaMatch.Infrastructure.Migrations
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1633,14 +1633,14 @@ namespace ZonaMatch.Infrastructure.Migrations
             modelBuilder.Entity("ZonaMatch.Domain.Entities.ReviewHelpfulVote", b =>
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.Review", null)
-                        .WithMany("VotosUtil")
-                        .HasForeignKey("ResenaId")
+                        .WithMany("HelpfulVotes")
+                        .HasForeignKey("ReviewId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("ZonaMatch.Domain.Entities.User", null)
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1701,7 +1701,7 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>
                 {
-                    b.Navigation("VotosUtil");
+                    b.Navigation("HelpfulVotes");
                 });
 #pragma warning restore 612, 618
         }

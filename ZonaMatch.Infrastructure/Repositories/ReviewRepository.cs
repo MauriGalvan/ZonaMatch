@@ -16,29 +16,29 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<Review>> ListByZoneAsync(string zonaSlug, CancellationToken cancellationToken = default) =>
-            await _dbContext.Resenas
+        public async Task<IReadOnlyList<Review>> ListByZoneAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
+            await _dbContext.Reviews
                 .AsNoTracking()
                 .AsSplitQuery()
                 .Include(r => r.User)
-                .Include(r => r.VotosUtil)
-                .Where(r => r.ZonaSlug == zonaSlug)
-                .OrderByDescending(r => r.FechaCreacion)
+                .Include(review => review.HelpfulVotes)
+                .Where(review => review.ZoneSlug == zoneSlug)
+                .OrderByDescending(review => review.CreatedAt)
                 .ToListAsync(cancellationToken);
 
-        public Task<Review?> GetByUserAsync(string zonaSlug, Guid usuarioId, CancellationToken cancellationToken = default) =>
-            _dbContext.Resenas
-                .Include(r => r.VotosUtil)
-                .FirstOrDefaultAsync(r => r.ZonaSlug == zonaSlug && r.UsuarioId == usuarioId, cancellationToken);
+        public Task<Review?> GetByUserAsync(string zoneSlug, Guid userId, CancellationToken cancellationToken = default) =>
+            _dbContext.Reviews
+                .Include(review => review.HelpfulVotes)
+                .FirstOrDefaultAsync(review => review.ZoneSlug == zoneSlug && review.UserId == userId, cancellationToken);
 
-        public Task<Review?> GetAsync(string zonaSlug, Guid id, CancellationToken cancellationToken = default) =>
-            _dbContext.Resenas
-                .Include(r => r.VotosUtil)
-                .FirstOrDefaultAsync(r => r.ZonaSlug == zonaSlug && r.Id == id, cancellationToken);
+        public Task<Review?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
+            _dbContext.Reviews
+                .Include(review => review.HelpfulVotes)
+                .FirstOrDefaultAsync(review => review.ZoneSlug == zoneSlug && review.Id == id, cancellationToken);
 
-        public void Add(Review resena) => _dbContext.Resenas.Add(resena);
+        public void Add(Review review) => _dbContext.Reviews.Add(review);
 
-        public void Delete(Review resena) => _dbContext.Resenas.Remove(resena);
+        public void Delete(Review review) => _dbContext.Reviews.Remove(review);
 
         public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {

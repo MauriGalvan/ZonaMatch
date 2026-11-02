@@ -22,16 +22,16 @@ namespace ZonaMatch.Application.UseCases.Reviews
             var review = await _reviews.GetAsync(zoneSlug, reviewId, cancellationToken)
                 ?? throw new NotFoundException("La reseña no existe.");
 
-            if (review.UsuarioId == userId)
+            if (review.UserId == userId)
                 throw new ConflictException("No podés marcar como útil tu propia reseña.");
 
-            var vote = review.VotosUtil.FirstOrDefault(item => item.UsuarioId == userId);
+            var vote = review.HelpfulVotes.FirstOrDefault(item => item.UserId == userId);
 
             // Idempotent: repeating either operation does not change the result.
             if (helpful && vote is null)
-                review.VotosUtil.Add(new ReviewHelpfulVote { ResenaId = review.Id, UsuarioId = userId, Fecha = _clock.GetUtcNow() });
+                review.HelpfulVotes.Add(new ReviewHelpfulVote { ReviewId = review.Id, UserId = userId, CreatedAt = _clock.GetUtcNow() });
             else if (!helpful && vote is not null)
-                review.VotosUtil.Remove(vote);
+                review.HelpfulVotes.Remove(vote);
             else
                 return;
 

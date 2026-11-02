@@ -14,15 +14,15 @@ namespace ZonaMatch.Application.UseCases.Reviews
                 items.Count == 0 ? 0 : Math.Round(items.Average(score), 1);
 
             return new ReviewSummaryResponse(
-                Average(reviews, review => review.Puntaje),
+                Average(reviews, review => review.OverallScore),
                 reviews.Count,
-                reviews.Count(review => review.Verificada),
+                reviews.Count(review => review.IsVerified),
                 [
-                    new ReviewAspectRatingResponse(ReviewAspect.Safety, Average(reviews, review => review.PuntajeSeguridad)),
-                    new ReviewAspectRatingResponse(ReviewAspect.PublicTransport, Average(reviews, review => review.PuntajeTransporte)),
-                    new ReviewAspectRatingResponse(ReviewAspect.Connectivity, Average(reviews, review => review.PuntajeConectividad)),
-                    new ReviewAspectRatingResponse(ReviewAspect.Shopping, Average(reviews, review => review.PuntajeComercios)),
-                    new ReviewAspectRatingResponse(ReviewAspect.GreenSpaces, Average(reviews, review => review.PuntajeEspaciosVerdes)),
+                    new ReviewAspectRatingResponse(ReviewAspect.Safety, Average(reviews, review => review.SafetyScore)),
+                    new ReviewAspectRatingResponse(ReviewAspect.PublicTransport, Average(reviews, review => review.TransitScore)),
+                    new ReviewAspectRatingResponse(ReviewAspect.Connectivity, Average(reviews, review => review.ConnectivityScore)),
+                    new ReviewAspectRatingResponse(ReviewAspect.Shopping, Average(reviews, review => review.CommerceScore)),
+                    new ReviewAspectRatingResponse(ReviewAspect.GreenSpaces, Average(reviews, review => review.GreenSpaceScore)),
                 ]);
         }
 
@@ -30,20 +30,20 @@ namespace ZonaMatch.Application.UseCases.Reviews
             new(
                 review.Id,
                 AuthorInitials.GetInitials(authorEmail),
-                review.AniosEnZona,
-                review.Verificada,
-                review.Puntaje,
+                review.YearsInZone,
+                review.IsVerified,
+                review.OverallScore,
                 new ReviewAspectScoresResponse(
-                    review.PuntajeSeguridad,
-                    review.PuntajeTransporte,
-                    review.PuntajeConectividad,
-                    review.PuntajeComercios,
-                    review.PuntajeEspaciosVerdes),
-                review.Temas,
-                review.Texto,
-                review.FechaCreacion,
-                review.VotosUtil.Count,
-                currentUserId is not null && review.VotosUtil.Any(vote => vote.UsuarioId == currentUserId),
-                review.UsuarioId == currentUserId);
+                    review.SafetyScore,
+                    review.TransitScore,
+                    review.ConnectivityScore,
+                    review.CommerceScore,
+                    review.GreenSpaceScore),
+                review.Topics,
+                review.Text,
+                review.CreatedAt,
+                review.HelpfulVotes.Count,
+                currentUserId is not null && review.HelpfulVotes.Any(vote => vote.UserId == currentUserId),
+                review.UserId == currentUserId);
     }
 }

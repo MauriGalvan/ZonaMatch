@@ -47,20 +47,20 @@ namespace ZonaMatch.Application.UseCases.Reviews
 
             if (review is null)
             {
-                review = new Review { ZonaSlug = zoneSlug, UsuarioId = currentUser.Id, FechaCreacion = now };
+                review = new Review { ZoneSlug = zoneSlug, UserId = currentUser.Id, CreatedAt = now };
                 _reviews.Add(review);
             }
 
             var scores = request.Aspects!; // Required by request validation.
-            review.PuntajeSeguridad = scores.Safety;
-            review.PuntajeTransporte = scores.Transport;
-            review.PuntajeConectividad = scores.Connectivity;
-            review.PuntajeComercios = scores.Commerce;
-            review.PuntajeEspaciosVerdes = scores.GreenSpaces;
-            review.Texto = request.Text.Trim();
-            review.AniosEnZona = request.YearsInZone;
-            review.Temas = topics.ToList();
-            review.FechaActualizacion = now;
+            review.SafetyScore = scores.Safety;
+            review.TransitScore = scores.Transport;
+            review.ConnectivityScore = scores.Connectivity;
+            review.CommerceScore = scores.Commerce;
+            review.GreenSpaceScore = scores.GreenSpaces;
+            review.Text = request.Text.Trim();
+            review.YearsInZone = request.YearsInZone;
+            review.Topics = topics.ToList();
+            review.UpdatedAt = now;
 
             if (isNewReview)
             {
