@@ -24,10 +24,17 @@ public class EmailService : IEmailService
     });
 
     private readonly IConfiguration _config;
+    private readonly Func<SmtpClient> _smtpClientFactory;
 
     public EmailService(IConfiguration config)
+        : this(config, static () => new SmtpClient())
+    {
+    }
+
+    internal EmailService(IConfiguration config, Func<SmtpClient> smtpClientFactory)
     {
         _config = config;
+        _smtpClientFactory = smtpClientFactory;
     }
 
     public Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default) =>
@@ -54,7 +61,7 @@ public class EmailService : IEmailService
 
         email.Body = builder.ToMessageBody();
 
-        using var smtp = new SmtpClient();
+        using var smtp = _smtpClientFactory();
 
         // Connect to the SMTP server using the appsettings configuration.
         await smtp.ConnectAsync(
