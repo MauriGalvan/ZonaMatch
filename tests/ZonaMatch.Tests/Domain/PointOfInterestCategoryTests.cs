@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Tests.Domain
@@ -12,17 +13,17 @@ namespace ZonaMatch.Tests.Domain
         {
             var isValid = PointOfInterestCategory.TryParseList(list, out var categories, out _);
 
-            Assert.True(isValid);
-            Assert.Equal(PointOfInterestCategory.All, categories);
+            isValid.Should().BeTrue();
+            categories.Should().Equal(PointOfInterestCategory.All);
         }
 
         [Fact]
-        public void TryParseList_NormalizesCaseWhitespaceAndDuplicates()
+        public void TryParseList_WhenListHasCaseWhitespaceAndDuplicates_NormalizesCategories()
         {
             var isValid = PointOfInterestCategory.TryParseList(" Transporte, salud,transporte ", out var categories, out _);
 
-            Assert.True(isValid);
-            Assert.Equal([PointOfInterestCategory.PublicTransport, PointOfInterestCategory.Healthcare], categories);
+            isValid.Should().BeTrue();
+            categories.Should().Equal(PointOfInterestCategory.PublicTransport, PointOfInterestCategory.Healthcare);
         }
 
         [Fact]
@@ -30,9 +31,9 @@ namespace ZonaMatch.Tests.Domain
         {
             var isValid = PointOfInterestCategory.TryParseList("salud,boliches", out var categories, out var error);
 
-            Assert.False(isValid);
-            Assert.Empty(categories);
-            Assert.Contains("boliches", error);
+            isValid.Should().BeFalse();
+            categories.Should().BeEmpty();
+            error.Should().Contain("boliches");
         }
     }
 }

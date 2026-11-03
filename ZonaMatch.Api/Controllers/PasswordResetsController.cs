@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using ZonaMatch.Application.DTOs.PasswordReset.Requests;
-using ZonaMatch.Application.UseCases.PasswordResets;
+using ZonaMatch.Application.UseCases.PasswordReset;
 
 namespace ZonaMatch.Api.Controllers;
 

@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Tests.Domain
@@ -13,43 +14,43 @@ namespace ZonaMatch.Tests.Domain
         }
 
         [Fact]
-        public void Three_confirmations_approve_the_contribution()
+        public void RecordVote_WhenThreeConfirmationsAreReached_ApprovesContribution()
         {
             var contribution = new Contribution();
 
             Vote(contribution, 2, confirms: true);
-            Assert.Equal(ContributionStatus.Pending, contribution.Status);
+            contribution.Status.Should().Be(ContributionStatus.Pending);
 
             Vote(contribution, 1, confirms: true);
-            Assert.Equal(ContributionStatus.Approved, contribution.Status);
-            Assert.Equal(Now, contribution.ResolvedAt);
+            contribution.Status.Should().Be(ContributionStatus.Approved);
+            contribution.ResolvedAt.Should().Be(Now);
         }
 
         [Fact]
-        public void One_rejection_offsets_one_confirmation()
+        public void RecordVote_WhenConfirmationsExceedRejectionsByThree_ApprovesContribution()
         {
             var contribution = new Contribution();
 
             Vote(contribution, 1, confirms: false);
             Vote(contribution, 3, confirms: true);
-            Assert.Equal(ContributionStatus.Pending, contribution.Status);
+            contribution.Status.Should().Be(ContributionStatus.Pending);
 
             Vote(contribution, 1, confirms: true);
-            Assert.Equal(ContributionStatus.Approved, contribution.Status);
+            contribution.Status.Should().Be(ContributionStatus.Approved);
         }
 
         [Fact]
-        public void Three_vote_difference_rejects_the_contribution()
+        public void RecordVote_WhenRejectionsExceedConfirmationsByThree_RejectsContribution()
         {
             var contribution = new Contribution();
 
             Vote(contribution, 3, confirms: false);
 
-            Assert.Equal(ContributionStatus.Rejected, contribution.Status);
+            contribution.Status.Should().Be(ContributionStatus.Rejected);
         }
 
         [Fact]
-        public void Voting_again_changes_the_vote_without_adding_another()
+        public void RecordVote_WhenSameUserVotesAgain_UpdatesExistingVote()
         {
             var contribution = new Contribution();
             var user = Guid.NewGuid();
@@ -57,10 +58,10 @@ namespace ZonaMatch.Tests.Domain
             contribution.RecordVote(user, confirms: true, Now);
             contribution.RecordVote(user, confirms: false, Now);
 
-            var vote = Assert.Single(contribution.Votes);
-            Assert.False(vote.Confirms);
-            Assert.Equal(0, contribution.Confirmations);
-            Assert.Equal(1, contribution.Rejections);
+            var vote = contribution.Votes.Should().ContainSingle().Which;
+            vote.Confirms.Should().BeFalse();
+            contribution.Confirmations.Should().Be(0);
+            contribution.Rejections.Should().Be(1);
         }
     }
 }

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs.ZoneMarket.Responses;
-using ZonaMatch.Application.UseCases.Zones;
+using ZonaMatch.Application.UseCases.Zone;
 
 namespace ZonaMatch.Api.Controllers
 {

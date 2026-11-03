@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Tests.Domain
@@ -22,13 +23,13 @@ namespace ZonaMatch.Tests.Domain
             new(criteria, places ?? [], maximumRent);
 
         [Fact]
-        public void PercentileCountsTiesAsHalf()
+        public void Percentile_WhenValuesContainTies_CountsEachTieAsHalf()
         {
             double[] values = [1, 2, 2, 3];
 
-            Assert.Equal(50, ScoringEngine.Percentile(values, 2));
-            Assert.Equal(13, ScoringEngine.Percentile(values, 1));
-            Assert.Equal(100, ScoringEngine.Percentile(values, 4));
+            ScoringEngine.Percentile(values, 2).Should().Be(50);
+            ScoringEngine.Percentile(values, 1).Should().Be(13);
+            ScoringEngine.Percentile(values, 4).Should().Be(100);
         }
 
         [Theory]
@@ -37,9 +38,9 @@ namespace ZonaMatch.Tests.Domain
         [InlineData(0.2, 30.0)]
         [InlineData(0.4, 11.0)]
         [InlineData(1.0, 0.5)]
-        public void SmallOveragesDeductOnePointPerPercentAndLargeOveragesDecayExponentially(double overage, double expected)
+        public void ApplyPenalty_WhenOverageChanges_ReturnsExpectedPenalty(double overage, double expected)
         {
-            Assert.Equal(expected, ScoringEngine.ApplyPenalty(50, overage), 1);
+            Math.Round(ScoringEngine.ApplyPenalty(50, overage), 1).Should().Be(expected);
         }
 
         [Theory]
@@ -48,30 +49,35 @@ namespace ZonaMatch.Tests.Domain
         [InlineData(54, 60)]
         [InlineData(63, 22)]
         [InlineData(90, 1)]
-        public void TravelScoreIs80AtTheLimitAndPenalizedBeyondIt(int minutes, int expected)
+        public void TravelScore_WhenTravelTimeChanges_AppliesLimitAndPenalty(int minutes, int expected)
         {
-            Assert.Equal(expected, ScoringEngine.TravelScore(minutes, 45));
+            ScoringEngine.TravelScore(minutes, 45).Should().Be(expected);
         }
 
         [Fact]
-        public void TravelWithoutRouteHasNoScore()
+        public void TravelScore_WhenRouteIsUnavailable_ReturnsNoScore()
         {
-            Assert.Null(ScoringEngine.TravelScore(null, 45));
+            ScoringEngine.TravelScore(null, 45).Should().BeNull();
         }
 
         [Fact]
-        public void SafetyRewardsFewerCrimes()
+        public void Calculate_WhenZoneHasFewerCrimes_ScoresItHigher()
         {
             var safeZone = CreateZoneProfile("segura", crimeCount: 10);
             var unsafeZone = CreateZoneProfile("insegura", crimeCount: 90);
             var engine = new ScoringEngine([safeZone, unsafeZone, CreateZoneProfile("media", crimeCount: 50)]);
             var request = CreateScoringRequest(new() { [ScoringEngine.Safety] = "media" });
 
-            Assert.True(engine.Calculate(safeZone, request).Score > engine.Calculate(unsafeZone, request).Score);
+            var safeScore = engine.Calculate(safeZone, request).Score;
+            var unsafeScore = engine.Calculate(unsafeZone, request).Score;
+
+            safeScore.Should().NotBeNull();
+            unsafeScore.Should().NotBeNull();
+            safeScore!.Value.Should().BeGreaterThan(unsafeScore!.Value);
         }
 
         [Fact]
-        public void HighPriorityWeighsNineTimesMoreThanLowPriority()
+        public void Calculate_WhenPrioritiesDiffer_WeightsHighPriorityNineTimesMore()
         {
             // Better on safety (83rd percentile) and worse on education (17th percentile).
             var zone = CreateZoneProfile("zona", crimeCount: 10, schoolCount: 1);
@@ -79,11 +85,11 @@ namespace ZonaMatch.Tests.Domain
 
             var result = engine.Calculate(zone, CreateScoringRequest(new() { [ScoringEngine.Safety] = "alta", [ScoringEngine.Education] = "baja" }));
 
-            Assert.Equal(76, result.Score); // (83 * 9 + 17 * 1) / 10
+            result.Score.Should().Be(76); // (83 * 9 + 17 * 1) / 10
         }
 
         [Fact]
-        public void MissingCriterionDataIsIgnoredAndNoDataReturnsNullScore()
+        public void Calculate_WhenCriterionDataIsMissing_IgnoresItAndReturnsNullWhenNoDataRemains()
         {
             var zoneWithoutCrimeData = new ZoneProfile { Slug = "conurbano", Name = "Conurbano", Level = 8, Population = 1000, AreaKm2 = 2, SchoolCount = 5 };
             var engine = new ScoringEngine([zoneWithoutCrimeData, CreateZoneProfile("caba")]);
@@ -91,13 +97,13 @@ namespace ZonaMatch.Tests.Domain
             var safetyOnlyResult = engine.Calculate(zoneWithoutCrimeData, CreateScoringRequest(new() { [ScoringEngine.Safety] = "alta" }));
             var resultWithEducation = engine.Calculate(zoneWithoutCrimeData, CreateScoringRequest(new() { [ScoringEngine.Safety] = "alta", [ScoringEngine.Education] = "media" }));
 
-            Assert.Null(safetyOnlyResult.Score);
-            Assert.Null(safetyOnlyResult.Components.Single().Score);
-            Assert.NotNull(resultWithEducation.Score);
+            safetyOnlyResult.Score.Should().BeNull();
+            safetyOnlyResult.Components.Single().Score.Should().BeNull();
+            resultWithEducation.Score.Should().NotBeNull();
         }
 
         [Fact]
-        public void RentLimitPenalizesSmallOveragesSlightlyAndLargeOveragesHeavily()
+        public void Calculate_WhenRentExceedsMonthlyLimit_PenalizesSmallAndLargeOverages()
         {
             // All zones have the same number of schools, so each scores 50 without a rent limit.
             var slightlyOverBudgetZone = CreateZoneProfile("poco", rent: 1_100_000);
@@ -110,18 +116,18 @@ namespace ZonaMatch.Tests.Domain
 
             int? CalculateWithRentLimit(ZoneProfile zone) => engine.Calculate(zone, CreateScoringRequest(criteria, 1_000_000)).Score;
 
-            Assert.Equal(50, engine.Calculate(slightlyOverBudgetZone, CreateScoringRequest(criteria)).Score);
-            Assert.Equal(40, CalculateWithRentLimit(slightlyOverBudgetZone));
-            Assert.Equal(30, CalculateWithRentLimit(atLimitZone));
-            Assert.Equal(7, CalculateWithRentLimit(wellOverBudgetZone));
-            Assert.Equal(1, CalculateWithRentLimit(doubleBudgetZone));
-            Assert.Equal(50, CalculateWithRentLimit(underBudgetZone));
-            Assert.True(engine.Calculate(underBudgetZone, CreateScoringRequest(criteria, 1_000_000)).Limits.Single().IsSatisfied);
-            Assert.Contains("en un 50 %", engine.Calculate(wellOverBudgetZone, CreateScoringRequest(criteria, 1_000_000)).Limits.Single().Details);
+            engine.Calculate(slightlyOverBudgetZone, CreateScoringRequest(criteria)).Score.Should().Be(50);
+            CalculateWithRentLimit(slightlyOverBudgetZone).Should().Be(40);
+            CalculateWithRentLimit(atLimitZone).Should().Be(30);
+            CalculateWithRentLimit(wellOverBudgetZone).Should().Be(7);
+            CalculateWithRentLimit(doubleBudgetZone).Should().Be(1);
+            CalculateWithRentLimit(underBudgetZone).Should().Be(50);
+            engine.Calculate(underBudgetZone, CreateScoringRequest(criteria, 1_000_000)).Limits.Single().IsSatisfied.Should().BeTrue();
+            engine.Calculate(wellOverBudgetZone, CreateScoringRequest(criteria, 1_000_000)).Limits.Single().Details.Should().Contain("en un 50 %");
         }
 
         [Fact]
-        public void BuildingExpensesCountTowardTheMonthlyLimit()
+        public void Calculate_WhenRentAndExpensesExceedMonthlyLimit_IncludesExpenses()
         {
             // 900,000 rent is within the 1,000,000 limit, but adding 200,000 in expenses exceeds it by 10%.
             var zoneWithExpenses = CreateZoneProfile("con-expensas", rent: 900_000, expenses: 200_000);
@@ -131,14 +137,14 @@ namespace ZonaMatch.Tests.Domain
 
             var limitResult = engine.Calculate(zoneWithExpenses, CreateScoringRequest(criteria, 1_000_000)).Limits.Single();
 
-            Assert.False(limitResult.IsSatisfied);
-            Assert.Contains("= $ 1.100.000 por mes", limitResult.Details);
-            Assert.Equal(40, engine.Calculate(zoneWithExpenses, CreateScoringRequest(criteria, 1_000_000)).Score);
-            Assert.True(engine.Calculate(zoneWithoutExpenses, CreateScoringRequest(criteria, 1_000_000)).Limits.Single().IsSatisfied);
+            limitResult.IsSatisfied.Should().BeFalse();
+            limitResult.Details.Should().Contain("= $ 1.100.000 por mes");
+            engine.Calculate(zoneWithExpenses, CreateScoringRequest(criteria, 1_000_000)).Score.Should().Be(40);
+            engine.Calculate(zoneWithoutExpenses, CreateScoringRequest(criteria, 1_000_000)).Limits.Single().IsSatisfied.Should().BeTrue();
         }
 
         [Fact]
-        public void BuyersComparePurchasePriceAndExpensesAgainstTheirMonthlyLimit()
+        public void Calculate_WhenBuyerHasPurchaseAndMonthlyLimits_AppliesEachLimit()
         {
             var zone = new ZoneProfile
             {
@@ -152,16 +158,16 @@ namespace ZonaMatch.Tests.Domain
             var overBudget = engine.Calculate(zone, new ScoringRequest(criteria, [], 250_000, HousingOperations.Purchase, 100_000));
 
             // Rent does not count; a buyer's monthly housing expense is the building expenses.
-            Assert.Equal([ScoringEngine.PurchaseLimit, ScoringEngine.ExpensesLimit], withinBudget.Limits.Select(limit => limit.Type));
-            Assert.All(withinBudget.Limits, limit => Assert.True(limit.IsSatisfied));
-            Assert.Equal(50, withinBudget.Score);
-            Assert.False(overBudget.Limits[0].IsSatisfied);
-            Assert.Contains("Precio promedio US$ 120.000: supera tu tope de compra de US$ 100.000 en un 20 %", overBudget.Limits[0].Details);
-            Assert.Equal(30, overBudget.Score);
+            withinBudget.Limits.Select(limit => limit.Type).Should().Equal(ScoringEngine.PurchaseLimit, ScoringEngine.ExpensesLimit);
+            withinBudget.Limits.Should().AllSatisfy(limit => limit.IsSatisfied.Should().BeTrue());
+            withinBudget.Score.Should().Be(50);
+            overBudget.Limits[0].IsSatisfied.Should().BeFalse();
+            overBudget.Limits[0].Details.Should().Contain("Precio promedio US$ 120.000: supera tu tope de compra de US$ 100.000 en un 20 %");
+            overBudget.Score.Should().Be(30);
         }
 
         [Fact]
-        public void HousingTypeUsesItsOwnMarketData()
+        public void Calculate_WhenHousingTypeHasMarketData_UsesItsOwnMarketData()
         {
             var zone = new ZoneProfile
             {
@@ -179,17 +185,17 @@ namespace ZonaMatch.Tests.Domain
             var rentResult = engine.Calculate(zone, new ScoringRequest(criteria, [], 750_000, HousingType: HousingTypes.Apartment));
             var houseSaleResult = engine.Calculate(zone, new ScoringRequest(criteria, [], null, HousingOperations.Purchase, 95_000, HousingTypes.House));
 
-            Assert.True(purchaseResult.Limits.Single().IsSatisfied);
-            Assert.Contains("Precio promedio de departamentos US$ 90.000", purchaseResult.Limits.Single().Details);
+            purchaseResult.Limits.Single().IsSatisfied.Should().BeTrue();
+            purchaseResult.Limits.Single().Details.Should().Contain("Precio promedio de departamentos US$ 90.000");
             // Without apartment-specific expenses, use the zone average: 700,000 + 100,000 exceeds 750,000.
-            Assert.False(rentResult.Limits.Single().IsSatisfied);
-            Assert.Contains("Alquiler de departamentos $ 700.000 + expensas $ 100.000", rentResult.Limits.Single().Details);
-            Assert.Null(houseSaleResult.Limits.Single().IsSatisfied);
-            Assert.Equal("Sin datos de venta de casas para esta zona", houseSaleResult.Limits.Single().Details);
+            rentResult.Limits.Single().IsSatisfied.Should().BeFalse();
+            rentResult.Limits.Single().Details.Should().Contain("Alquiler de departamentos $ 700.000 + expensas $ 100.000");
+            houseSaleResult.Limits.Single().IsSatisfied.Should().BeNull();
+            houseSaleResult.Limits.Single().Details.Should().Be("Sin datos de venta de casas para esta zona");
         }
 
         [Fact]
-        public void HousesAndPhsExcludeBuildingExpenses()
+        public void Calculate_WhenHousingTypeIsHouseOrPh_ExcludesBuildingExpenses()
         {
             var zone = new ZoneProfile
             {
@@ -208,15 +214,15 @@ namespace ZonaMatch.Tests.Domain
             var houseResult = engine.Calculate(zone, new ScoringRequest(criteria, [], 750_000, HousingType: HousingTypes.House));
             var phResult = engine.Calculate(zone, new ScoringRequest(criteria, [], 1, HousingOperations.Purchase, 120_000, HousingTypes.Ph));
 
-            Assert.True(houseResult.Limits.Single().IsSatisfied);
-            Assert.Contains("Alquiler de casas $ 700.000 + expensas $ 0 = $ 700.000 por mes", houseResult.Limits.Single().Details);
+            houseResult.Limits.Single().IsSatisfied.Should().BeTrue();
+            houseResult.Limits.Single().Details.Should().Contain("Alquiler de casas $ 700.000 + expensas $ 0 = $ 700.000 por mes");
             var phExpensesLimit = phResult.Limits.Single(limit => limit.Type == ScoringEngine.ExpensesLimit);
-            Assert.True(phExpensesLimit.IsSatisfied);
-            Assert.Equal(0, zone.GetMarket(HousingTypes.Ph).AverageExpenses);
+            phExpensesLimit.IsSatisfied.Should().BeTrue();
+            zone.GetMarket(HousingTypes.Ph).AverageExpenses.Should().Be(0);
         }
 
         [Fact]
-        public void AreaUsesPricePerSquareMeterWhenAvailable()
+        public void Calculate_WhenPricePerSquareMeterIsAvailable_UsesItForRequestedArea()
         {
             // Similar to Ramos Mejia: the average apartment price (US$ 95,354) covers about 66 m²; 34 m² costs much less.
             var zone = new ZoneProfile
@@ -238,16 +244,16 @@ namespace ZonaMatch.Tests.Domain
             var limitWithoutArea = engine.Calculate(zone, new ScoringRequest(
                 criteria, [], null, HousingOperations.Purchase, 60_000, HousingTypes.Apartment)).Limits.Single();
 
-            Assert.True(purchaseLimit.IsSatisfied);
-            Assert.Equal("Precio estimado de departamentos para 34 m² US$ 58.276 (US$ 1.714/m²): dentro de tu tope de compra de US$ 60.000", purchaseLimit.Details);
+            purchaseLimit.IsSatisfied.Should().BeTrue();
+            purchaseLimit.Details.Should().Be("Precio estimado de departamentos para 34 m² US$ 58.276 (US$ 1.714/m²): dentro de tu tope de compra de US$ 60.000");
             // 13,855 x 34 = 471,070 rent + 100,000 in building expenses.
-            Assert.True(rentLimit.IsSatisfied);
-            Assert.Contains("Alquiler estimado de departamentos para 34 m² $ 471.070 + expensas $ 100.000 = $ 571.070 por mes", rentLimit.Details);
-            Assert.False(limitWithoutArea.IsSatisfied);
+            rentLimit.IsSatisfied.Should().BeTrue();
+            rentLimit.Details.Should().Contain("Alquiler estimado de departamentos para 34 m² $ 471.070 + expensas $ 100.000 = $ 571.070 por mes");
+            limitWithoutArea.IsSatisfied.Should().BeFalse();
         }
 
         [Fact]
-        public void AreaFallsBackToZoneAverageWithoutPricePerSquareMeter()
+        public void Calculate_WhenPricePerSquareMeterIsMissing_UsesZoneAverage()
         {
             var zone = new ZoneProfile
             {
@@ -260,11 +266,11 @@ namespace ZonaMatch.Tests.Domain
                 new Dictionary<string, string> { [ScoringEngine.Education] = "media" }, [], null, HousingOperations.Purchase, 100_000, AreaM2: 34))
                 .Limits.Single();
 
-            Assert.Equal("Precio promedio US$ 90.000: dentro de tu tope de compra de US$ 100.000", limitResult.Details);
+            limitResult.Details.Should().Be("Precio promedio US$ 90.000: dentro de tu tope de compra de US$ 100.000");
         }
 
         [Fact]
-        public void MissingRentDataDoesNotAffectTheScore()
+        public void Calculate_WhenRentDataIsMissing_DoesNotAffectScore()
         {
             var zone = CreateZoneProfile("zona");
             var engine = new ScoringEngine([zone]);
@@ -272,14 +278,14 @@ namespace ZonaMatch.Tests.Domain
 
             var resultWithRentLimit = engine.Calculate(zone, CreateScoringRequest(criteria, 800_000));
 
-            Assert.Equal(engine.Calculate(zone, CreateScoringRequest(criteria)).Score, resultWithRentLimit.Score);
+            resultWithRentLimit.Score.Should().Be(engine.Calculate(zone, CreateScoringRequest(criteria)).Score);
             var limitResult = resultWithRentLimit.Limits.Single();
-            Assert.Equal(ScoringEngine.RentLimit, limitResult.Type);
-            Assert.Null(limitResult.IsSatisfied);
+            limitResult.Type.Should().Be(ScoringEngine.RentLimit);
+            limitResult.IsSatisfied.Should().BeNull();
         }
 
         [Fact]
-        public void LargeZonesAreComparedWithEachOther()
+        public void Calculate_WhenZoneIsLarge_ComparesItWithOtherLargeZones()
         {
             // The district has more crimes than any neighborhood, but fewer than the other district.
             var district = CreateZoneProfile("partido", crimeCount: 200, level: 5);
@@ -287,11 +293,11 @@ namespace ZonaMatch.Tests.Domain
 
             var safetyComponent = engine.Calculate(district, CreateScoringRequest(new() { [ScoringEngine.Safety] = "media" })).Components.Single();
 
-            Assert.Equal(75, safetyComponent.Score);
+            safetyComponent.Score.Should().Be(75);
         }
 
         [Fact]
-        public void PlacesAddAScoringCriterionAndFlagLongTrips()
+        public void Calculate_WhenUserPlacesAreProvided_AddsCriterionAndFlagsLongTrips()
         {
             var zone = CreateZoneProfile("zona");
             var engine = new ScoringEngine([zone]);
@@ -305,17 +311,17 @@ namespace ZonaMatch.Tests.Domain
             var result = engine.Calculate(zone, CreateScoringRequest([], places: places),
                 [new TravelTime(30, false), new TravelTime(50, false), null]);
 
-            var component = Assert.Single(result.Components);
-            Assert.Equal(ScoringEngine.Places, component.Criterion);
+            var component = result.Components.Should().ContainSingle().Which;
+            component.Criterion.Should().Be(ScoringEngine.Places);
             // Work scores 87 (weight 4); Club is 67% over its limit and scores 6 (weight 1).
-            Assert.Equal(71, component.Score);
-            var limitResult = Assert.Single(result.Limits);
-            Assert.False(limitResult.IsSatisfied);
-            Assert.Contains("Club", limitResult.Details);
+            component.Score.Should().Be(71);
+            var limitResult = result.Limits.Should().ContainSingle().Which;
+            limitResult.IsSatisfied.Should().BeFalse();
+            limitResult.Details.Should().Contain("Club");
         }
 
         [Fact]
-        public void PreservesAllPlaceDistancesWithoutChangingScores()
+        public void Calculate_WhenRouteDistancesAreAvailable_PreservesDistancesWithoutChangingScores()
         {
             var zone = CreateZoneProfile("recoleta");
             var engine = new ScoringEngine([zone]);
@@ -330,20 +336,20 @@ namespace ZonaMatch.Tests.Domain
             var resultWithoutRouteDistances = engine.Calculate(zone, request,
                 [new TravelTime(25, false), new TravelTime(30, false)]);
 
-            Assert.Equal(new double?[] { 8.75, 12.5 }, resultWithRouteDistances.Places.Select(place => place.DistanceKm));
-            Assert.Equal(resultWithoutRouteDistances.Score, resultWithRouteDistances.Score);
+            resultWithRouteDistances.Places.Select(place => place.DistanceKm).Should().Equal(8.75, 12.5);
+            resultWithRouteDistances.Score.Should().Be(resultWithoutRouteDistances.Score);
         }
 
         [Fact]
-        public void NoPlacesReturnsAnEmptyList()
+        public void Calculate_WhenNoPlacesAreProvided_ReturnsNoPlaceScores()
         {
             var zone = CreateZoneProfile("recoleta");
 
-            Assert.Empty(new ScoringEngine([zone]).Calculate(zone, CreateScoringRequest([])).Places);
+            new ScoringEngine([zone]).Calculate(zone, CreateScoringRequest([])).Places.Should().BeEmpty();
         }
 
         [Fact]
-        public void UnavailableTripDoesNotAffectTheScore()
+        public void Calculate_WhenTripIsUnavailable_DoesNotAffectScore()
         {
             var zone = CreateZoneProfile("zona");
             var engine = new ScoringEngine([zone]);
@@ -356,9 +362,9 @@ namespace ZonaMatch.Tests.Domain
             var result = engine.Calculate(zone, CreateScoringRequest([], places: places), [new TravelTime(45, false), new TravelTime(null, false)]);
             var workOnlyResult = engine.Calculate(zone, CreateScoringRequest([], places: [places[0]]), [new TravelTime(45, false)]);
 
-            Assert.Equal(workOnlyResult.Score, result.Score);
-            Assert.Null(result.Places[1].Score);
-            Assert.Contains(result.Limits, limit => limit.IsSatisfied is null && limit.Details.Contains("Facultad"));
+            result.Score.Should().Be(workOnlyResult.Score);
+            result.Places[1].Score.Should().BeNull();
+            result.Limits.Should().Contain(limit => limit.IsSatisfied == null && limit.Details.Contains("Facultad"));
         }
     }
 }

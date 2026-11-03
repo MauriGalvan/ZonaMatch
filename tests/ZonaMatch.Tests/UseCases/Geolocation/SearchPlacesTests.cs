@@ -51,6 +51,18 @@ namespace ZonaMatch.Tests.UseCases.Geolocation
             Assert.Single(client.Queries);
         }
 
+        [Fact]
+        public async Task ExecuteAsync_WhenNoVariantFindsPlaces_ReturnsAnEmptyListAfterTryingEveryVariant()
+        {
+            const string search = "Av Maipu 99999";
+            var client = new FakePlaceSearchClient("no-match");
+
+            var results = await new SearchPlaces(client).ExecuteAsync(search, CancellationToken.None);
+
+            Assert.Empty(results);
+            Assert.Equal(PlaceQueryVariants.Build(search).Select(variant => variant.Query), client.Queries);
+        }
+
         private sealed class FakePlaceSearchClient(string knownQuery) : IPlaceSearchClient
         {
             public List<string> Queries { get; } = [];
