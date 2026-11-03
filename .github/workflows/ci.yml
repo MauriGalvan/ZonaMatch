@@ -13,7 +13,6 @@ concurrency:
 jobs:
   secret-scan:
     name: Secret scan
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,4 +35,20 @@ jobs:
 
       - run: dotnet restore ZonaMatch.slnx
       - run: dotnet build ZonaMatch.slnx -c Release --no-restore
-      - run: dotnet test ZonaMatch.slnx -c Release --no-build --verbosity normal
+      - name: Run tests and collect coverage
+        run: dotnet test ZonaMatch.slnx -c Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+
+      - name: Generate coverage summary
+        run: |
+          dotnet tool install --tool-path "$RUNNER_TEMP/tools" dotnet-reportgenerator-globaltool --version 5.5.12
+          "$RUNNER_TEMP/tools/reportgenerator" "-reports:TestResults/**/coverage.cobertura.xml" "-targetdir:TestResults/CoverageReport" "-reporttypes:Html;MarkdownSummaryGithub"
+          cat TestResults/CoverageReport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-report
+          path: TestResults
+          if-no-files-found: warn
+          retention-days: 14
