@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/tests/">
     <Project Path="tests/ZonaMatch.Tests/ZonaMatch.Tests.csproj" />
+    <Project Path="tests/ZonaMatch.Api.IntegrationTests/ZonaMatch.Api.IntegrationTests.csproj" />
   </Folder>
   <Project Path="ZonaMatch.Api/ZonaMatch.Api.csproj" Id="fcf04c13-81e2-456f-a9a4-258cd5039616">
     <BuildDependency Project="ZonaMatch.Application/ZonaMatch.Application.csproj" />
