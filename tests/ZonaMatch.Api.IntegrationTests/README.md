@@ -22,4 +22,4 @@ dotnet test tests\ZonaMatch.Api.IntegrationTests\ZonaMatch.Api.IntegrationTests.
 
 The test database is created inside a temporary container and is removed when the test fixture is disposed. It does not use the application's local or development database.
 
-The CI workflow runs the unit and integration tests, adds line-coverage results to the GitHub Actions job summary, and publishes the detailed report as a downloadable artifact.
+The CI workflow runs the unit and integration tests, adds production line-coverage results to the GitHub Actions job summary, and publishes the detailed report as a downloadable artifact. The workflow fails if combined coverage across the API, application, domain, and infrastructure assemblies is below 90%; test assemblies are excluded from this threshold.

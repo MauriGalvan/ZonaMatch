@@ -41,8 +41,13 @@ jobs:
       - name: Generate coverage summary
         run: |
           dotnet tool install --tool-path "$RUNNER_TEMP/tools" dotnet-reportgenerator-globaltool --version 5.5.12
-          "$RUNNER_TEMP/tools/reportgenerator" "-reports:TestResults/**/coverage.cobertura.xml" "-targetdir:TestResults/CoverageReport" "-reporttypes:Html;MarkdownSummaryGithub"
+          "$RUNNER_TEMP/tools/reportgenerator" "-reports:TestResults/**/coverage.cobertura.xml" "-targetdir:TestResults/CoverageReport" "-reporttypes:Html;Cobertura;MarkdownSummaryGithub" "-assemblyfilters:+ZonaMatch.Api;+ZonaMatch.Application;+ZonaMatch.Domain;+ZonaMatch.Infrastructure"
           cat TestResults/CoverageReport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+          echo "Minimum required production line coverage: 90%." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce 90% production line coverage
+        run: |
+          python3 -c "import sys, xml.etree.ElementTree as ET; line_rate = float(ET.parse('TestResults/CoverageReport/Cobertura.xml').getroot().attrib['line-rate']) * 100; print(f'Production line coverage: {line_rate:.2f}% (minimum: 90%)'); sys.exit(0 if line_rate >= 90 else 1)"
 
       - name: Upload coverage report
         if: always()
