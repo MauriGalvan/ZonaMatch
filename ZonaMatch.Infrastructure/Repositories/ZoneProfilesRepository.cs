@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using NpgsqlTypes;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Scoring;
 using ZonaMatch.Infrastructure.Data;
 
@@ -102,14 +103,16 @@ namespace ZonaMatch.Infrastructure.Repositories
                 ORDER BY z.slug, z.nivel DESC
             ),
             market_rows AS (
-                SELECT zone_slug, operation, property_type, average_price, average_expenses_ars, average_price_m2, listings
+                SELECT zone_slug, operation, property_type, average_price, average_expenses_ars, average_price_m2, listings,
+                       price_deciles, price_m2_deciles, price_shares, price_m2_shares
                 FROM {App}.zone_market
                 WHERE average_price IS NOT NULL
             ),
             zone_market_rows AS (
                 SELECT z.slug, market.operation, market.property_type, market.average_price,
                        market.listings AS listing_count, market.average_expenses_ars AS average_expenses,
-                       market.average_price_m2 AS average_price_per_m2
+                       market.average_price_m2 AS average_price_per_m2,
+                       market.price_deciles, market.price_m2_deciles, market.price_shares, market.price_m2_shares
                 FROM zones z
                 JOIN market_rows market ON market.zone_slug = z.slug
             ),
@@ -120,7 +123,9 @@ namespace ZonaMatch.Infrastructure.Repositories
                        round(sum(market.average_expenses_ars * greatest(market.listings, 1))
                              / nullif(sum(greatest(market.listings, 1)) FILTER (WHERE market.average_expenses_ars IS NOT NULL), 0)) AS average_expenses,
                        round(sum(market.average_price_m2 * greatest(market.listings, 1))
-                             / nullif(sum(greatest(market.listings, 1)) FILTER (WHERE market.average_price_m2 IS NOT NULL), 0)) AS average_price_per_m2
+                             / nullif(sum(greatest(market.listings, 1)) FILTER (WHERE market.average_price_m2 IS NOT NULL), 0)) AS average_price_per_m2,
+                       NULL::numeric[] AS price_deciles, NULL::numeric[] AS price_m2_deciles,
+                       NULL::numeric[] AS price_shares, NULL::numeric[] AS price_m2_shares
                 FROM zones z
                 JOIN zones contained ON contained.level > 5 AND ST_Contains(z.geom, ST_PointOnSurface(contained.geom))
                 JOIN market_rows market ON market.zone_slug = contained.slug
@@ -130,11 +135,25 @@ namespace ZonaMatch.Infrastructure.Repositories
                 GROUP BY z.slug, market.operation, market.property_type
             )
             SELECT slug AS "Slug", operation AS "Operation", property_type AS "PropertyType", average_price AS "AveragePrice",
-                   listing_count AS "ListingCount", average_expenses AS "AverageExpenses", average_price_per_m2 AS "AveragePricePerM2"
+                   listing_count AS "ListingCount", average_expenses AS "AverageExpenses", average_price_per_m2 AS "AveragePricePerM2",
+                   price_deciles AS "PriceDeciles", price_m2_deciles AS "PricePerM2Deciles",
+                   price_shares AS "PriceShares", price_m2_shares AS "PricePerM2Shares"
             FROM zone_market_rows
             UNION ALL
-            SELECT slug, operation, property_type, average_price, listing_count, average_expenses, average_price_per_m2
+            SELECT slug, operation, property_type, average_price, listing_count, average_expenses, average_price_per_m2,
+                   price_deciles, price_m2_deciles, price_shares, price_m2_shares
             FROM aggregated_market_rows
+            """;
+
+        // Prices by number of rooms (app.zone_market_rooms), only the groups with a large enough sample. Inherited zones,
+        // districts and communes are already calculated by the ETL.
+        private static readonly string RoomsMarketSql = $"""
+            SELECT zone_slug AS "Slug", operation AS "Operation", property_type AS "PropertyType", rooms AS "Rooms",
+                   average_price AS "AveragePrice", listings AS "ListingCount", average_expenses_ars AS "AverageExpenses",
+                   average_price_m2 AS "AveragePricePerM2", price_deciles AS "PriceDeciles", price_m2_deciles AS "PricePerM2Deciles",
+                   price_shares AS "PriceShares", price_m2_shares AS "PricePerM2Shares"
+            FROM {App}.zone_market_rooms
+            WHERE average_price IS NOT NULL AND sample_size >= {ZoneMarketRooms.MinSampleSize}
             """;
 
         private static readonly string NearbyZonesSql = $"""
@@ -245,12 +264,30 @@ namespace ZonaMatch.Infrastructure.Repositories
                         .SqlQueryRaw<HousingMarketRow>(HousingMarketSql)
                         .ToListAsync(cancellationToken))
                     .ToLookup(row => row.Slug, StringComparer.Ordinal);
+                var roomsRows = (await ReadRoomsMarketAsync(cancellationToken))
+                    .ToLookup(row => row.Slug, StringComparer.Ordinal);
 
-                return zoneRows.Select(row => row.ToZoneProfile(marketRows[row.Slug])).ToList();
+                return zoneRows.Select(row => row.ToZoneProfile(marketRows[row.Slug], roomsRows[row.Slug])).ToList();
             }
             catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
             {
                 _logger.LogWarning("Zone scoring tables are missing. Run ZONE-DATA-DOCKER.bat. ({Message})", ex.MessageText);
+                return [];
+            }
+        }
+
+        // Without the rooms table (migration AddZoneMarketByRooms not applied) scoring keeps the averages of every size.
+        private async Task<IReadOnlyList<RoomsMarketRow>> ReadRoomsMarketAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await _dbContext.Database
+                    .SqlQueryRaw<RoomsMarketRow>(RoomsMarketSql)
+                    .ToListAsync(cancellationToken);
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                _logger.LogWarning("app.zone_market_rooms is missing. Apply the migrations. ({Message})", ex.MessageText);
                 return [];
             }
         }
@@ -273,9 +310,25 @@ namespace ZonaMatch.Infrastructure.Repositories
             public double Latitude { get; set; }
             public double Longitude { get; set; }
 
-            public ZoneProfile ToZoneProfile(IEnumerable<HousingMarketRow> marketRows)
+            public ZoneProfile ToZoneProfile(IEnumerable<HousingMarketRow> marketRows, IEnumerable<RoomsMarketRow> roomsRows)
             {
                 var marketByOperationAndType = marketRows.ToDictionary(row => (row.Operation, row.PropertyType));
+                var marketByRooms = roomsRows
+                    .GroupBy(row => (row.PropertyType, row.Rooms))
+                    .ToDictionary(
+                        group => group.Key,
+                        group =>
+                        {
+                            var rent = group.FirstOrDefault(row => row.Operation == "rent");
+                            var sale = group.FirstOrDefault(row => row.Operation == "sale");
+                            return new HousingMarket(
+                                rent?.AveragePrice, rent?.ListingCount, rent?.AverageExpenses, sale?.AveragePrice, sale?.ListingCount,
+                                rent?.AveragePricePerM2, sale?.AveragePricePerM2,
+                                RentDeciles: rent?.PriceDeciles, RentPerM2Deciles: rent?.PricePerM2Deciles,
+                                SaleDecilesUsd: sale?.PriceDeciles, SalePerM2DecilesUsd: sale?.PricePerM2Deciles,
+                        RentShares: rent?.PriceShares, RentPerM2Shares: rent?.PricePerM2Shares,
+                        SaleShares: sale?.PriceShares, SalePerM2Shares: sale?.PricePerM2Shares);
+                        });
 
                 HousingMarket CreateHousingMarket(string propertyType)
                 {
@@ -283,7 +336,11 @@ namespace ZonaMatch.Infrastructure.Repositories
                     var sale = marketByOperationAndType.GetValueOrDefault(("sale", propertyType));
                     return new HousingMarket(
                         rent?.AveragePrice, rent?.ListingCount, rent?.AverageExpenses, sale?.AveragePrice, sale?.ListingCount,
-                        rent?.AveragePricePerM2, sale?.AveragePricePerM2);
+                        rent?.AveragePricePerM2, sale?.AveragePricePerM2,
+                        RentDeciles: rent?.PriceDeciles, RentPerM2Deciles: rent?.PricePerM2Deciles,
+                        SaleDecilesUsd: sale?.PriceDeciles, SalePerM2DecilesUsd: sale?.PricePerM2Deciles,
+                        RentShares: rent?.PriceShares, RentPerM2Shares: rent?.PricePerM2Shares,
+                        SaleShares: sale?.PriceShares, SalePerM2Shares: sale?.PricePerM2Shares);
                 }
 
                 var combinedMarket = CreateHousingMarket(HousingTypes.All);
@@ -311,8 +368,17 @@ namespace ZonaMatch.Infrastructure.Repositories
                 AvailablePropertiesForSale = combinedMarket.AvailablePropertiesForSale,
                 RentPricePerM2 = combinedMarket.RentPricePerM2,
                 SalePricePerM2Usd = combinedMarket.SalePricePerM2Usd,
+                RentDeciles = combinedMarket.RentDeciles,
+                RentPerM2Deciles = combinedMarket.RentPerM2Deciles,
+                SaleDecilesUsd = combinedMarket.SaleDecilesUsd,
+                SalePerM2DecilesUsd = combinedMarket.SalePerM2DecilesUsd,
+                RentShares = combinedMarket.RentShares,
+                RentPerM2Shares = combinedMarket.RentPerM2Shares,
+                SaleShares = combinedMarket.SaleShares,
+                SalePerM2Shares = combinedMarket.SalePerM2Shares,
                 MarketByPropertyType = new[] { HousingTypes.Apartment, HousingTypes.House, HousingTypes.Ph }
                     .ToDictionary(propertyType => propertyType, CreateHousingMarket),
+                MarketByRooms = marketByRooms,
                 };
             }
         }
@@ -327,6 +393,27 @@ namespace ZonaMatch.Infrastructure.Repositories
             public int? ListingCount { get; set; }
             public decimal? AverageExpenses { get; set; }
             public decimal? AveragePricePerM2 { get; set; }
+            public decimal[]? PriceDeciles { get; set; }
+            public decimal[]? PricePerM2Deciles { get; set; }
+            public decimal[]? PriceShares { get; set; }
+            public decimal[]? PricePerM2Shares { get; set; }
+        }
+
+        // Keyless result type for RoomsMarketSql: one row per operation, property type and rooms (1 to 5).
+        private sealed class RoomsMarketRow
+        {
+            public string Slug { get; set; } = string.Empty;
+            public string Operation { get; set; } = string.Empty;
+            public string PropertyType { get; set; } = string.Empty;
+            public int Rooms { get; set; }
+            public decimal? AveragePrice { get; set; }
+            public int? ListingCount { get; set; }
+            public decimal? AverageExpenses { get; set; }
+            public decimal? AveragePricePerM2 { get; set; }
+            public decimal[]? PriceDeciles { get; set; }
+            public decimal[]? PricePerM2Deciles { get; set; }
+            public decimal[]? PriceShares { get; set; }
+            public decimal[]? PricePerM2Shares { get; set; }
         }
     }
 }

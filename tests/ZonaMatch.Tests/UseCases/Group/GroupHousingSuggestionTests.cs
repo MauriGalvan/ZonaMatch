@@ -7,8 +7,25 @@ namespace ZonaMatch.Tests.UseCases.Group;
 
 public class GroupHousingSuggestionTests
 {
-    private static Context Profile(string operation, string? monthly, decimal? purchase = null, string? type = null, int? surface = null) =>
-        new() { Operation = operation, MaximumRent = monthly, MaximumPurchasePriceUsd = purchase, HousingType = type, AreaM2 = surface };
+    private static Context Profile(
+        string operation, string? monthly, decimal? purchase = null, string? type = null, int? surface = null, int? rooms = null) =>
+        new()
+        {
+            Operation = operation, MaximumRent = monthly, MaximumPurchasePriceUsd = purchase, HousingType = type, AreaM2 = surface,
+            Rooms = rooms,
+        };
+
+    [Fact]
+    public void From_WhenMembersAskForRooms_SuggestsTheLargestNumber()
+    {
+        var suggestion = GroupHousingSuggestion.From([
+            Profile(HousingOperations.Rent, "500000", rooms: 2),
+            Profile(HousingOperations.Rent, "400000", rooms: 3),
+            Profile(HousingOperations.Rent, "300000"),
+        ]);
+
+        suggestion.Rooms.Should().Be(3);
+    }
 
     [Fact]
     public void From_WhenProfilesHaveDifferentSurfaces_ReturnsLargestSurface()

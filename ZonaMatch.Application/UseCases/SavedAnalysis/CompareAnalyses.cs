@@ -234,7 +234,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
 
             return new ScoringRequest(
                 criteria, places, ParseRent(context.MaximumRent), context.Operation, context.MaximumPurchasePriceUsd, context.HousingType,
-                context.AreaM2);
+                context.AreaM2, context.Rooms);
         }
 
         private static int ParseMinutes(string? value)
@@ -267,8 +267,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                     .Select(place => new PlaceTravelTimeResponse(
                         place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm))
                     .ToArray(),
-                HousingScoring.Rent(result.Zone, request.HousingType, request.AreaM2),
-                HousingScoring.Sale(result.Zone, request.HousingType, request.AreaM2));
+                HousingScoring.Rent(result.Zone, request.HousingType, request.AreaM2, request.Rooms),
+                HousingScoring.Sale(result.Zone, request.HousingType, request.AreaM2, request.Rooms));
 
         private static ScoredZoneResponse ToDto(RankedZoneResponse result) =>
             new(
@@ -291,11 +291,11 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                     place.IsEstimated)).ToArray() ?? [],
                 result.Rent is { } rent
                     ? new RentResponse(
-                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated)
+                        rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost, rent.PricePerM2, rent.SurfaceM2, rent.Estimated, rent.Rooms, rent.Distribution, rent.DistributionShares)
                     : null,
                 result.Sale is { } sale
                     ? new SaleResponse(
-                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd)
+                        sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd, sale.SurfaceM2, sale.EstimatedUsd, sale.Rooms, sale.Distribution, sale.DistributionShares)
                     : null);
 
         private static ComparedZoneResponse ToComparedZone(ScoredZoneResponse zone) =>
@@ -317,12 +317,12 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                 zone.Rent is { } rent
                     ? new ComparedRentResponse(
                         rent.Average, rent.AvailableProperties, rent.Expenses, rent.MonthlyCost,
-                        rent.PricePerM2, rent.SurfaceM2, rent.Estimated)
+                        rent.PricePerM2, rent.SurfaceM2, rent.Estimated, rent.Rooms, rent.Distribution, rent.DistributionShares)
                     : null,
                 zone.Sale is { } sale
                     ? new ComparedSaleResponse(
                         sale.AverageUsd, sale.AvailableProperties, sale.Expenses, sale.PricePerM2Usd,
-                        sale.SurfaceM2, sale.EstimatedUsd)
+                        sale.SurfaceM2, sale.EstimatedUsd, sale.Rooms, sale.Distribution, sale.DistributionShares)
                     : null);
     }
 }

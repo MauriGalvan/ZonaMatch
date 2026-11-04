@@ -7,6 +7,28 @@ namespace ZonaMatch.Tests.UseCases.Scoring
 {
     public class HousingScoringTests
     {
+        [Theory]
+        [InlineData(null, null)]
+        [InlineData(0, null)]
+        [InlineData(1, 1)]
+        [InlineData(5, 5)]
+        public void ValidateRooms_WhenOptionalOrInRange_ReturnsThem(int? requested, int? expected)
+        {
+            var rooms = HousingScoring.ValidateRooms(requested);
+
+            rooms.Should().Be(expected);
+        }
+
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(6)]
+        public void ValidateRooms_WhenOutOfRange_ThrowsBadRequestException(int rooms)
+        {
+            var validate = () => HousingScoring.ValidateRooms(rooms);
+
+            validate.Should().Throw<BadRequestException>();
+        }
+
         [Fact]
         public void Validate_WhenOperationIsMissing_DefaultsToRentAndIgnoresPurchaseLimit()
         {

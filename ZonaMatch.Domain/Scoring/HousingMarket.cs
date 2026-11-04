@@ -1,7 +1,10 @@
 namespace ZonaMatch.Domain.Scoring
 {
     // Real estate market data for a zone and housing type (Zonaprop): rent and building expenses in Argentine pesos,
-    // sale prices in US dollars, and prices per square meter. Null values indicate unavailable data.
+    // sale prices in US dollars, and prices per square meter. Null values indicate unavailable data. RentRooms and
+    // SaleRooms: the number of rooms the prices are for (1 to 5, 5 = 5 or more); null when they cover every size.
+    // The deciles and shares are the price distribution (PriceDistribution): rent per month without expenses, sale in
+    // dollars.
     public sealed record HousingMarket(
         decimal? AverageRent,
         int? AvailablePropertiesForRent,
@@ -9,7 +12,17 @@ namespace ZonaMatch.Domain.Scoring
         decimal? AverageSalePriceUsd,
         int? AvailablePropertiesForSale,
         decimal? RentPricePerM2 = null,
-        decimal? SalePricePerM2Usd = null)
+        decimal? SalePricePerM2Usd = null,
+        int? RentRooms = null,
+        int? SaleRooms = null,
+        decimal[]? RentDeciles = null,
+        decimal[]? RentPerM2Deciles = null,
+        decimal[]? SaleDecilesUsd = null,
+        decimal[]? SalePerM2DecilesUsd = null,
+        decimal[]? RentShares = null,
+        decimal[]? RentPerM2Shares = null,
+        decimal[]? SaleShares = null,
+        decimal[]? SalePerM2Shares = null)
     {
         public static readonly HousingMarket NoData = new(null, null, null, null, null);
 
@@ -30,6 +43,27 @@ namespace ZonaMatch.Domain.Scoring
 
         public decimal? MonthlyRentCostForArea(int? areaM2) =>
             RentForArea(areaM2) is { } rent ? rent + (AverageExpenses ?? 0) : null;
+
+        // Distribution of what renting costs per month (rent plus building expenses), for the area when there is a
+        // price per square meter; null without a distribution.
+        public PriceDistribution? MonthlyRentDistribution(int? areaM2)
+        {
+            var expenses = AverageExpenses ?? 0;
+            if (areaM2 is > 0 && PriceDistribution.From(RentPerM2Deciles, RentPerM2Shares) is { } perM2)
+                return perM2.Scale(areaM2.Value, expenses);
+
+            return !EstimatesRent(areaM2) ? PriceDistribution.From(RentDeciles, RentShares)?.Scale(1, expenses) : null;
+        }
+
+        // Distribution of the sale price in US dollars, for the area when there is a price per square meter; null
+        // without a distribution.
+        public PriceDistribution? SalePriceDistributionUsd(int? areaM2)
+        {
+            if (areaM2 is > 0 && PriceDistribution.From(SalePerM2DecilesUsd, SalePerM2Shares) is { } perM2)
+                return perM2.Scale(areaM2.Value);
+
+            return !EstimatesSale(areaM2) ? PriceDistribution.From(SaleDecilesUsd, SaleShares) : null;
+        }
     }
 
     // The user's housing operation: rent or purchase.
@@ -39,6 +73,24 @@ namespace ZonaMatch.Domain.Scoring
         public const string Purchase = "compra";
 
         public static bool IsValid(string? operation) => operation is Rent or Purchase;
+    }
+
+    // Number of rooms the user is looking for, with the groups of app.zone_market_rooms: 1 to 4, and 5 for 5 or more.
+    public static class HousingRooms
+    {
+        public const int Minimum = 1;
+        public const int Maximum = 5;
+
+        public static bool IsValid(int rooms) => rooms is >= Minimum and <= Maximum;
+
+        // Text suffixes such as " de 2 ambientes"; empty when no number of rooms is specified.
+        public static string TextSuffix(int? rooms) => rooms switch
+        {
+            null => string.Empty,
+            1 => " de 1 ambiente",
+            >= Maximum => $" de {Maximum} ambientes o más",
+            _ => $" de {rooms} ambientes",
+        };
     }
 
     // Housing types using the same values as app.zone_market.property_type ("all" represents the combined market).

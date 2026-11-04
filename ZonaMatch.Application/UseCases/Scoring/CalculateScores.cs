@@ -203,7 +203,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
 
             return new ScoringRequest(
                 criteria, places, ParseRent(request.MaximumRent), operation, maximumPurchase, housingType,
-                HousingScoring.ValidateSurface(request.AreaM2));
+                HousingScoring.ValidateSurface(request.AreaM2), HousingScoring.ValidateRooms(request.Rooms));
         }
 
         // "45 min" -> 45.
@@ -231,7 +231,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 result.Limits.Select(limit => new ScoreLimitResponse(limit.Type, limit.IsSatisfied, limit.Details)).ToList(),
                 result.Places.Select(place => new PlaceTravelTimeResponse(
                     place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm)).ToList(),
-                HousingScoring.Rent(result.Zone, request.HousingType, request.AreaM2),
-                HousingScoring.Sale(result.Zone, request.HousingType, request.AreaM2));
+                HousingScoring.Rent(result.Zone, request.HousingType, request.AreaM2, request.Rooms),
+                HousingScoring.Sale(result.Zone, request.HousingType, request.AreaM2, request.Rooms));
     }
 }

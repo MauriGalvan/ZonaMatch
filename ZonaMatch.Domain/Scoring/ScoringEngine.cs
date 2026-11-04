@@ -5,7 +5,8 @@ namespace ZonaMatch.Domain.Scoring
     // User input for scoring: criteria and priorities, places, and limits.
     // The monthly budget is in Argentine pesos: rent plus building expenses for renters, and expenses only for buyers.
     // The purchase price limit is in US dollars. Without a housing type, all types are considered.
-    // If the user provides a desired area, prices are estimated for that area.
+    // If the user provides a desired area, prices are estimated for that area. With a number of rooms (1 to 5, 5 = 5 or
+    // more), prices are those of that size in each zone (and with an area, its price per square meter).
     public sealed record ScoringRequest(
         IReadOnlyDictionary<string, string> Criteria,
         IReadOnlyList<UserPlace> Places,
@@ -13,7 +14,8 @@ namespace ZonaMatch.Domain.Scoring
         string Operation = HousingOperations.Rent,
         decimal? MaximumPurchasePriceUsd = null,
         string? HousingType = null,
-        int? AreaM2 = null)
+        int? AreaM2 = null,
+        int? Rooms = null)
     {
         public bool IsPurchase => Operation == HousingOperations.Purchase;
     }
@@ -142,7 +144,7 @@ namespace ZonaMatch.Domain.Scoring
 
             var limits = new List<LimitResult>();
             var budgetOverage = 0.0;
-            var market = zone.GetMarket(request.HousingType);
+            var market = zone.GetMarket(request.HousingType, request.Rooms);
 
             if (request.IsPurchase && request.MaximumPurchasePriceUsd is { } maximumPurchasePriceUsd && maximumPurchasePriceUsd > 0)
             {
@@ -276,9 +278,18 @@ namespace ZonaMatch.Domain.Scoring
         private static (LimitResult Limit, double Overage) RentLimitFor(
             HousingMarket market, decimal maximumBudget, string? housingType, int? areaM2)
         {
-            var housingTypeSuffix = HousingTypes.TextSuffix(housingType);
+            var housingTypeSuffix = HousingTypes.TextSuffix(housingType) + HousingRooms.TextSuffix(market.RentRooms);
             if (market.MonthlyRentCostForArea(areaM2) is not { } monthlyCost)
                 return (new LimitResult(RentLimit, null, $"Sin datos de alquiler{housingTypeSuffix} para esta zona"), 0);
+
+            // With a distribution, the limit is compared with the range of what is paid per month (CompareWithDistribution)
+            if (market.MonthlyRentDistribution(areaM2) is { } monthly)
+            {
+                var areaText = areaM2 is > 0 && PriceDistribution.IsValid(market.RentPerM2Deciles) ? $" para {areaM2} m²" : string.Empty;
+                var range = $"Alquiler + expensas{housingTypeSuffix}{areaText}: de {FormatArgentinePesos(monthly.Minimum)} " +
+                            $"a {FormatArgentinePesos(monthly.Maximum)} por mes, precio medio {FormatArgentinePesos(monthly.Median)}";
+                return CompareWithDistribution(RentLimit, monthly, maximumBudget, range, $"tu tope de {FormatArgentinePesos(maximumBudget)}");
+            }
 
             var rent = market.RentForArea(areaM2)!.Value;
             var isEstimated = market.EstimatesRent(areaM2);
@@ -306,15 +317,47 @@ namespace ZonaMatch.Domain.Scoring
         private static (LimitResult Limit, double Overage) PurchaseLimitFor(
             HousingMarket market, decimal maximumPriceUsd, string? housingType, int? areaM2)
         {
-            var housingTypeSuffix = HousingTypes.TextSuffix(housingType);
+            var housingTypeSuffix = HousingTypes.TextSuffix(housingType) + HousingRooms.TextSuffix(market.SaleRooms);
             if (market.SalePriceUsdForArea(areaM2) is not { } salePrice)
                 return (new LimitResult(PurchaseLimit, null, $"Sin datos de venta{housingTypeSuffix} para esta zona"), 0);
+
+            if (market.SalePriceDistributionUsd(areaM2) is { } prices)
+            {
+                var areaText = areaM2 is > 0 && PriceDistribution.IsValid(market.SalePerM2DecilesUsd) ? $" para {areaM2} m²" : string.Empty;
+                var range = $"Precio{housingTypeSuffix}{areaText}: de {FormatDollars(prices.Minimum)} " +
+                            $"a {FormatDollars(prices.Maximum)}, precio medio {FormatDollars(prices.Median)}";
+                return CompareWithDistribution(PurchaseLimit, prices, maximumPriceUsd, range, $"tu tope de compra de {FormatDollars(maximumPriceUsd)}");
+            }
 
             var details = market.EstimatesSale(areaM2)
                 ? $"Precio estimado{housingTypeSuffix} para {areaM2} m² {FormatDollars(salePrice)} ({FormatDollars(market.SalePricePerM2Usd!.Value)}/m²)"
                 : $"Precio promedio{housingTypeSuffix} {FormatDollars(salePrice)}";
 
             return CompareWithLimit(PurchaseLimit, salePrice, maximumPriceUsd, details, $"tu tope de compra de {FormatDollars(maximumPriceUsd)}");
+        }
+
+        // Limit against the price distribution, on the same scale as ApplyPenalty:
+        // - every listing fits: no deduction;
+        // - some listings fit: the limit is met and up to MinorOverage is deducted for the share that does not fit;
+        // - none fits (the limit is below the cheapest listing): MinorOverage is deducted and the score falls from there
+        //   like any other limit.
+        // This way the score does not jump when the limit moves.
+        private static (LimitResult Limit, double Overage) CompareWithDistribution(
+            string type, PriceDistribution distribution, decimal maximum, string details, string limitDescription)
+        {
+            var minimum = distribution.Minimum;
+            if (maximum < minimum)
+            {
+                var shortfall = (double)(minimum / maximum - 1);
+                return (new LimitResult(type, false,
+                    $"{details}: ninguna entra, la más barata supera {limitDescription} en un {(int)Math.Ceiling(shortfall * 100)} %"), MinorOverage + shortfall);
+            }
+
+            var percentage = distribution.PercentageUpTo(maximum);
+            var text = percentage >= 100
+                ? $"{details}: todas entran en {limitDescription}"
+                : $"{details}: entra el {percentage} % de las publicaciones en {limitDescription}";
+            return (new LimitResult(type, true, text), MinorOverage * (100 - percentage) / 100.0);
         }
 
         private static (LimitResult Limit, double Overage) CompareWithLimit(string type, decimal value, decimal maximum, string details, string limitDescription)

@@ -6,7 +6,8 @@ using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    // Reads app.zone_market through EF and resolves a zone's parent commune or district from geo.zonas (etl/calculate_zones.sql).
+    // Reads app.zone_market and app.zone_market_rooms through EF and resolves a zone's parent commune or district from
+    // geo.zonas (etl/calculate_zones.sql).
     public class ZoneMarketRepository(ZonaMatchDbContext dbContext) : IZoneMarketRepository
     {
         private const string Geo = ZonaMatchDbOptions.GeoSchema;
@@ -27,6 +28,9 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         public async Task<IReadOnlyList<ZoneMarket>> ListByZoneAsync(string slug, CancellationToken cancellationToken = default) =>
             await dbContext.ZoneMarkets.AsNoTracking().Where(row => row.ZoneSlug == slug).ToListAsync(cancellationToken);
+
+        public async Task<IReadOnlyList<ZoneMarketRooms>> ListRoomsByZoneAsync(string slug, CancellationToken cancellationToken = default) =>
+            await dbContext.ZoneMarketRooms.AsNoTracking().Where(row => row.ZoneSlug == slug).ToListAsync(cancellationToken);
 
         public async Task<(string Slug, string Name)?> GetParentAsync(string slug, CancellationToken cancellationToken = default)
         {

@@ -25,4 +25,8 @@ public sealed class AnalysisPointsRequest
     // Optional target area in square meters.
     [Range(0, 2000, ErrorMessage = "La superficie debe estar entre 10 y 2.000 m².")]
     public int? AreaM2 { get; set; }
+
+    // Number of rooms (1 to 4, 5 = 5 or more): prices are those of that size; omitted or 0 uses every size.
+    [Range(0, 5, ErrorMessage = "Los ambientes deben estar entre 1 y 5 (5 o más).")]
+    public int? Rooms { get; set; }
 }

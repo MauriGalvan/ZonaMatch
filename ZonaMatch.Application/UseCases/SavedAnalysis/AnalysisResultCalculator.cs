@@ -85,6 +85,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                 MaximumPurchasePriceUsd = context.MaximumPurchasePriceUsd,
                 HousingType = context.HousingType,
                 AreaM2 = context.AreaM2,
+                Rooms = context.Rooms,
                 Mobility = (context.Mobility ?? []).ToList(),
             };
 

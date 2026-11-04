@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Zone;
@@ -48,6 +49,67 @@ namespace ZonaMatch.Tests.UseCases.Zone
             Assert.Equal("Partido de Morón", market.Reference!.Name);
             Assert.Equal(700_000, market.Reference.AverageRent);
             Assert.Equal(1_400, market.Reference.AverageSalePriceM2);
+        }
+
+        private static ZoneMarketRooms RoomsRow(string operation, string type, int rooms, decimal price, int sampleSize = 30) => new()
+        {
+            ZoneSlug = "palermo",
+            Operation = operation,
+            PropertyType = type,
+            Rooms = rooms,
+            Listings = 1_000,
+            SampleSize = sampleSize,
+            AveragePrice = price,
+            MedianCoveredM2 = 30 + rooms * 15,
+            Currency = operation == ZoneMarketOperation.Rent ? "ARS" : "USD",
+            Source = ZoneMarketSource.Zonaprop,
+            UpdatedAt = new DateTimeOffset(2026, 10, 30, 12, 0, 0, TimeSpan.Zero),
+        };
+
+        [Fact]
+        public async Task ExecuteAsync_WhenZoneHasListingFeatures_ReturnsSharesAndTypicalSurface()
+        {
+            var sale = Row("palermo", ZoneMarketOperation.Sale, ZoneMarketPropertyType.All, 274_330, 3_865, 12_585);
+            sale.CreditEligibleShare = 0.2578m;
+            sale.OwnerShare = 0.0132m;
+            sale.MedianCoveredM2 = 58;
+            sale.MedianTotalM2 = 71;
+            var rent = Row("palermo", ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 1_351_000, 25_298, 3_535);
+            rent.PetsAllowedShare = 0.2571m;
+            _market.Rows.AddRange([sale, rent]);
+
+            var market = await new GetZoneMarket(_market).ExecuteAsync("palermo");
+
+            market.Sale!.CreditEligibleShare.Should().Be(0.2578m);
+            market.Sale.OwnerShare.Should().Be(0.0132m);
+            market.Sale.MedianCoveredM2.Should().Be(58);
+            market.Sale.MedianTotalM2.Should().Be(71);
+            market.Rent!.PetsAllowedShare.Should().Be(0.2571m);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenZoneHasPricesByRooms_ReturnsTheSizesWithEnoughListings()
+        {
+            _market.Rows.AddRange([
+                Row("palermo", ZoneMarketOperation.Sale, ZoneMarketPropertyType.All, 274_330, 3_865, 12_585),
+                Row("palermo", ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 1_351_000, 25_298, 3_535),
+                Row("palermo", ZoneMarketOperation.Sale, ZoneMarketPropertyType.Apartment, 258_200, 3_910, 11_967),
+            ]);
+            _market.RoomsRows.AddRange([
+                RoomsRow(ZoneMarketOperation.Sale, ZoneMarketPropertyType.All, 2, 170_148),
+                RoomsRow(ZoneMarketOperation.Sale, ZoneMarketPropertyType.All, 1, 120_733),
+                // Too few listings to show
+                RoomsRow(ZoneMarketOperation.Sale, ZoneMarketPropertyType.All, 5, 1_069_191, sampleSize: 3),
+                RoomsRow(ZoneMarketOperation.Sale, ZoneMarketPropertyType.Apartment, 2, 170_547),
+                RoomsRow(ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 2, 1_227_000),
+            ]);
+
+            var market = await new GetZoneMarket(_market).ExecuteAsync("palermo");
+
+            market.Sale!.ByRooms!.Select(rooms => rooms.Rooms).Should().Equal(1, 2);
+            market.Sale.ByRooms![1].AveragePrice.Should().Be(170_148);
+            market.Sale.ByType.Single().ByRooms!.Single().AveragePrice.Should().Be(170_547);
+            market.Rent!.ByRooms!.Single().AveragePrice.Should().Be(1_227_000);
         }
 
         [Fact]
@@ -109,11 +171,15 @@ namespace ZonaMatch.Tests.UseCases.Zone
         private sealed class FakeZoneMarketRepository : IZoneMarketRepository
         {
             public List<ZoneMarket> Rows { get; } = [];
+            public List<ZoneMarketRooms> RoomsRows { get; } = [];
             public (string Slug, string Name)? Parent { get; set; }
             public Dictionary<string, string> Names { get; } = [];
 
             public Task<IReadOnlyList<ZoneMarket>> ListByZoneAsync(string slug, CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZoneMarket>>(Rows.Where(row => row.ZoneSlug == slug).ToList());
+
+            public Task<IReadOnlyList<ZoneMarketRooms>> ListRoomsByZoneAsync(string slug, CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<ZoneMarketRooms>>(RoomsRows.Where(row => row.ZoneSlug == slug).ToList());
 
             public Task<(string Slug, string Name)?> GetParentAsync(string slug, CancellationToken cancellationToken = default) =>
                 Task.FromResult(Parent);

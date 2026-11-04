@@ -8,6 +8,9 @@ namespace ZonaMatch.Application.Interfaces
         // Every row of the zone (operation x property type); empty when there is no data for it
         Task<IReadOnlyList<ZoneMarket>> ListByZoneAsync(string slug, CancellationToken cancellationToken = default);
 
+        // Every room group of the zone (app.zone_market_rooms: operation x property type x rooms); may be empty
+        Task<IReadOnlyList<ZoneMarketRooms>> ListRoomsByZoneAsync(string slug, CancellationToken cancellationToken = default);
+
         // The comuna or partido the zone belongs to (slug and name), to compare with; null for comunas and partidos
         Task<(string Slug, string Name)?> GetParentAsync(string slug, CancellationToken cancellationToken = default);
 

@@ -23,6 +23,18 @@ namespace ZonaMatch.Application.UseCases.Scoring
             return surfaceM2;
         }
 
+        // Without a number of rooms (or when it is 0), return the prices of every size. 5 means 5 rooms or more.
+        public static int? ValidateRooms(int? rooms)
+        {
+            if (rooms is null or 0)
+                return null;
+
+            if (!HousingRooms.IsValid(rooms.Value))
+                throw new BadRequestException("Los ambientes deben estar entre 1 y 5 (5 o más).");
+
+            return rooms;
+        }
+
         // Operation defaults to rent for profiles saved before purchase was available.
         public static (string Operation, decimal? MaximumPurchasePriceUsd, string? HousingType) Validate(
             string? operation, decimal? maximumPurchasePriceUsd, string? housingType)
@@ -42,10 +54,12 @@ namespace ZonaMatch.Application.UseCases.Scoring
             return (requestedOperation, purchaseLimit, requestedHousingType);
         }
 
-        // Null is returned when no rent data exists for the requested type and zone.
-        public static RentResponse? Rent(ZoneProfile zone, string? housingType, int? surfaceM2 = null)
+        // Null is returned when no rent data exists for the requested type and zone. With a surface, the monthly cost
+        // uses the estimated rent; with a number of rooms, the prices of that size when the zone has them.
+        public static RentResponse? Rent(ZoneProfile zone, string? housingType, int? surfaceM2 = null, int? rooms = null)
         {
-            var market = zone.GetMarket(housingType);
+            var market = zone.GetMarket(housingType, rooms);
+            var distribution = market.MonthlyRentDistribution(surfaceM2);
             return market.AverageRent is { } average
                 ? new RentResponse(
                     average,
@@ -54,14 +68,19 @@ namespace ZonaMatch.Application.UseCases.Scoring
                     market.MonthlyRentCostForArea(surfaceM2),
                     market.RentPricePerM2,
                     market.EstimatesRent(surfaceM2) ? surfaceM2 : null,
-                    market.EstimatesRent(surfaceM2) ? market.RentForArea(surfaceM2) : null)
+                    market.EstimatesRent(surfaceM2) ? market.RentForArea(surfaceM2) : null,
+                    market.RentRooms,
+                    distribution?.Prices,
+                    distribution?.Shares)
                 : null;
         }
 
-        // Null is returned when no sale data exists for the requested type and zone.
-        public static SaleResponse? Sale(ZoneProfile zone, string? housingType, int? surfaceM2 = null)
+        // Null is returned when no sale data exists for the requested type and zone. With a number of rooms, the prices
+        // of that size when the zone has them.
+        public static SaleResponse? Sale(ZoneProfile zone, string? housingType, int? surfaceM2 = null, int? rooms = null)
         {
-            var market = zone.GetMarket(housingType);
+            var market = zone.GetMarket(housingType, rooms);
+            var distribution = market.SalePriceDistributionUsd(surfaceM2);
             return market.AverageSalePriceUsd is { } average
                 ? new SaleResponse(
                     average,
@@ -69,7 +88,10 @@ namespace ZonaMatch.Application.UseCases.Scoring
                     market.AverageExpenses,
                     market.SalePricePerM2Usd,
                     market.EstimatesSale(surfaceM2) ? surfaceM2 : null,
-                    market.EstimatesSale(surfaceM2) ? market.SalePriceUsdForArea(surfaceM2) : null)
+                    market.EstimatesSale(surfaceM2) ? market.SalePriceUsdForArea(surfaceM2) : null,
+                    market.SaleRooms,
+                    distribution?.Prices,
+                    distribution?.Shares)
                 : null;
         }
     }

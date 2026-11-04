@@ -26,6 +26,7 @@ public static class AnalysisCriteriaBuilder
         var (operation, purchaseLimit, propertyType) = HousingScoring.Validate(
             request.Points.Operation, request.Points.PurchaseLimitUsd, request.Points.PropertyType);
         var areaM2 = HousingScoring.ValidateSurface(request.Points.AreaM2);
+        var rooms = HousingScoring.ValidateRooms(request.Points.Rooms);
 
         context.PeopleCount = request.Context.PeopleCount;
         context.Pets = request.Context.Pets.Distinct(StringComparer.Ordinal).ToArray();
@@ -35,6 +36,7 @@ public static class AnalysisCriteriaBuilder
         context.MaximumPurchasePriceUsd = purchaseLimit;
         context.HousingType = propertyType;
         context.AreaM2 = areaM2;
+        context.Rooms = rooms;
 
         Replace(context.People, householdMembers);
         Replace(context.Criteria, criteria);
@@ -182,5 +184,6 @@ public static class AnalysisCriteriaBuilder
             context.Operation,
             context.MaximumPurchasePriceUsd,
             context.HousingType,
-            context.AreaM2);
+            context.AreaM2,
+            context.Rooms);
 }

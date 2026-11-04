@@ -32,8 +32,32 @@ namespace ZonaMatch.Domain.Entities
 
         public decimal? MedianPriceM2 { get; set; }
 
-        // Monthly expenses of rentals, in pesos
+        // Monthly expenses in pesos, of rentals and sales together
         public decimal? AverageExpensesArs { get; set; }
+
+        // Typical surface of the listings (median), covered and total, in m2
+        public decimal? MedianCoveredM2 { get; set; }
+
+        public decimal? MedianTotalM2 { get; set; }
+
+        // Shares (0 to 1) of the listings, only on the "all" row of each operation: eligible for a mortgage ("apto
+        // credito", sale), published by the owner ("dueno directo") and accepting pets (rent)
+        public decimal? CreditEligibleShare { get; set; }
+
+        public decimal? OwnerShare { get; set; }
+
+        public decimal? PetsAllowedShare { get; set; }
+
+        // Price at every 5 % of the listings (21 points; older runs stored 11, one every tenth), from the cheapest to the
+        // most expensive, without placeholder prices: the range and the distribution of the listings. Rent in pesos per month without expenses, sale in dollars.
+        public decimal[]? PriceDeciles { get; set; }
+
+        // The same per m2
+        public decimal[]? PriceM2Deciles { get; set; }
+
+        // Share of the listings (0 to 1) priced up to each point of PriceDeciles and PriceM2Deciles, ties included
+        public decimal[]? PriceShares { get; set; }
+        public decimal[]? PriceM2Shares { get; set; }
 
         // ZoneMarketSource: where the values come from
         public string Source { get; set; } = string.Empty;

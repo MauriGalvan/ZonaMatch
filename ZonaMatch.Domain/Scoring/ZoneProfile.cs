@@ -49,8 +49,25 @@ namespace ZonaMatch.Domain.Scoring
         public decimal? RentPricePerM2 { get; init; }
         public decimal? SalePricePerM2Usd { get; init; }
 
+        // Price distribution across all housing types (PriceDistribution): rent and rent per square meter in Argentine
+        // pesos, sale prices in US dollars.
+        public decimal[]? RentDeciles { get; init; }
+        public decimal[]? RentPerM2Deciles { get; init; }
+        public decimal[]? SaleDecilesUsd { get; init; }
+        public decimal[]? SalePerM2DecilesUsd { get; init; }
+
+        // Share of the listings priced up to each of those points (0 to 1), ties included.
+        public decimal[]? RentShares { get; init; }
+        public decimal[]? RentPerM2Shares { get; init; }
+        public decimal[]? SaleShares { get; init; }
+        public decimal[]? SalePerM2Shares { get; init; }
+
         // Separate apartment, house, and PH market data (keyed by HousingTypes); the fields above cover all types.
         public IReadOnlyDictionary<string, HousingMarket> MarketByPropertyType { get; init; } = new Dictionary<string, HousingMarket>();
+
+        // Market data by number of rooms (keyed by a HousingTypes value, or All, and the rooms from 1 to 5).
+        public IReadOnlyDictionary<(string Type, int Rooms), HousingMarket> MarketByRooms { get; init; } =
+            new Dictionary<(string Type, int Rooms), HousingMarket>();
 
         // Return the requested housing type's market, or the combined market when no type is specified. Houses and PHs
         // exclude building expenses because most do not pay them; those that do are in gated communities. An apartment
@@ -59,10 +76,53 @@ namespace ZonaMatch.Domain.Scoring
         {
             if (!HousingTypes.IsValid(type))
                 return new HousingMarket(
-                    AverageRent, AvailableRentalProperties, AverageExpenses, AverageSalePriceUsd, AvailablePropertiesForSale, RentPricePerM2, SalePricePerM2Usd);
+                    AverageRent, AvailableRentalProperties, AverageExpenses, AverageSalePriceUsd, AvailablePropertiesForSale, RentPricePerM2, SalePricePerM2Usd,
+                    RentDeciles: RentDeciles, RentPerM2Deciles: RentPerM2Deciles,
+                    SaleDecilesUsd: SaleDecilesUsd, SalePerM2DecilesUsd: SalePerM2DecilesUsd,
+                    RentShares: RentShares, RentPerM2Shares: RentPerM2Shares,
+                    SaleShares: SaleShares, SalePerM2Shares: SalePerM2Shares);
 
             var market = MarketByPropertyType.TryGetValue(type!, out var typeSpecificMarket) ? typeSpecificMarket : HousingMarket.NoData;
             return market with { AverageExpenses = HousingTypes.IncludesBuildingExpenses(type) ? market.AverageExpenses ?? AverageExpenses : 0 };
+        }
+
+        // With a number of rooms, the prices of that size for the requested type, each operation on its own; where that
+        // size has no data, the prices of every size (RentRooms or SaleRooms stay null).
+        public HousingMarket GetMarket(string? type, int? rooms)
+        {
+            var general = GetMarket(type);
+            if (rooms is not { } requestedRooms || requestedRooms < HousingRooms.Minimum)
+                return general;
+
+            var key = (HousingTypes.IsValid(type) ? type! : HousingTypes.All, Math.Min(requestedRooms, HousingRooms.Maximum));
+            if (!MarketByRooms.TryGetValue(key, out var sized))
+                return general;
+
+            var rent = sized.AverageRent is not null;
+            var sale = sized.AverageSalePriceUsd is not null;
+            return general with
+            {
+                AverageRent = rent ? sized.AverageRent : general.AverageRent,
+                AvailablePropertiesForRent = rent ? sized.AvailablePropertiesForRent : general.AvailablePropertiesForRent,
+                RentPricePerM2 = rent ? sized.RentPricePerM2 : general.RentPricePerM2,
+                // Houses and PHs stay without building expenses even when their size brings a value
+                AverageExpenses = HousingTypes.IncludesBuildingExpenses(type)
+                    ? (rent ? sized.AverageExpenses : null) ?? general.AverageExpenses
+                    : general.AverageExpenses,
+                AverageSalePriceUsd = sale ? sized.AverageSalePriceUsd : general.AverageSalePriceUsd,
+                AvailablePropertiesForSale = sale ? sized.AvailablePropertiesForSale : general.AvailablePropertiesForSale,
+                SalePricePerM2Usd = sale ? sized.SalePricePerM2Usd : general.SalePricePerM2Usd,
+                RentRooms = rent ? key.Item2 : null,
+                SaleRooms = sale ? key.Item2 : null,
+                RentDeciles = rent ? sized.RentDeciles : general.RentDeciles,
+                RentPerM2Deciles = rent ? sized.RentPerM2Deciles : general.RentPerM2Deciles,
+                SaleDecilesUsd = sale ? sized.SaleDecilesUsd : general.SaleDecilesUsd,
+                SalePerM2DecilesUsd = sale ? sized.SalePerM2DecilesUsd : general.SalePerM2DecilesUsd,
+                RentShares = rent ? sized.RentShares : general.RentShares,
+                RentPerM2Shares = rent ? sized.RentPerM2Shares : general.RentPerM2Shares,
+                SaleShares = sale ? sized.SaleShares : general.SaleShares,
+                SalePerM2Shares = sale ? sized.SalePerM2Shares : general.SalePerM2Shares,
+            };
         }
 
         // Compare communes and districts with each other, and neighborhoods and localities with each other.

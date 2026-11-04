@@ -348,6 +348,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("text[]")
                         .HasColumnName("mascotas");
 
+                    b.Property<int?>("Rooms")
+                        .HasColumnType("integer")
+                        .HasColumnName("ambientes");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -371,6 +375,8 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.ToTable("contextos", "app", t =>
                         {
+                            t.HasCheckConstraint("ck_contextos_ambientes", "ambientes IS NULL OR ambientes BETWEEN 1 AND 5");
+
                             t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
 
                             t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
@@ -1368,6 +1374,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("numeric(12,0)")
                         .HasColumnName("average_price_m2");
 
+                    b.Property<decimal?>("CreditEligibleShare")
+                        .HasColumnType("numeric(5,4)")
+                        .HasColumnName("credit_eligible_share");
+
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasMaxLength(3)
@@ -1383,6 +1393,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("listings");
 
+                    b.Property<decimal?>("MedianCoveredM2")
+                        .HasColumnType("numeric(8,0)")
+                        .HasColumnName("median_covered_m2");
+
                     b.Property<decimal?>("MedianPrice")
                         .HasColumnType("numeric(14,0)")
                         .HasColumnName("median_price");
@@ -1390,6 +1404,34 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Property<decimal?>("MedianPriceM2")
                         .HasColumnType("numeric(12,0)")
                         .HasColumnName("median_price_m2");
+
+                    b.Property<decimal?>("MedianTotalM2")
+                        .HasColumnType("numeric(8,0)")
+                        .HasColumnName("median_total_m2");
+
+                    b.Property<decimal?>("OwnerShare")
+                        .HasColumnType("numeric(5,4)")
+                        .HasColumnName("owner_share");
+
+                    b.Property<decimal?>("PetsAllowedShare")
+                        .HasColumnType("numeric(5,4)")
+                        .HasColumnName("pets_allowed_share");
+
+                    b.PrimitiveCollection<decimal[]>("PriceDeciles")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_deciles");
+
+                    b.PrimitiveCollection<decimal[]>("PriceM2Deciles")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_m2_deciles");
+
+                    b.PrimitiveCollection<decimal[]>("PriceM2Shares")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_m2_shares");
+
+                    b.PrimitiveCollection<decimal[]>("PriceShares")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_shares");
 
                     b.Property<int>("SampleSize")
                         .HasColumnType("integer")
@@ -1418,6 +1460,116 @@ namespace ZonaMatch.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_zone_market_prices", "average_price >= 0 AND median_price >= 0");
 
                             t.HasCheckConstraint("ck_zone_market_property_type", "property_type IN ('apartment', 'house', 'ph', 'all')");
+                        });
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ZoneMarketRooms", b =>
+                {
+                    b.Property<string>("ZoneSlug")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("zone_slug");
+
+                    b.Property<string>("Operation")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("PropertyType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("property_type");
+
+                    b.Property<int>("Rooms")
+                        .HasColumnType("integer")
+                        .HasColumnName("rooms");
+
+                    b.Property<decimal?>("AverageExpensesArs")
+                        .HasColumnType("numeric(12,0)")
+                        .HasColumnName("average_expenses_ars");
+
+                    b.Property<decimal?>("AveragePrice")
+                        .HasColumnType("numeric(14,0)")
+                        .HasColumnName("average_price");
+
+                    b.Property<decimal?>("AveragePriceM2")
+                        .HasColumnType("numeric(12,0)")
+                        .HasColumnName("average_price_m2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("InheritedFrom")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("inherited_from");
+
+                    b.Property<int?>("Listings")
+                        .HasColumnType("integer")
+                        .HasColumnName("listings");
+
+                    b.Property<decimal?>("MedianCoveredM2")
+                        .HasColumnType("numeric(8,0)")
+                        .HasColumnName("median_covered_m2");
+
+                    b.Property<decimal?>("MedianPrice")
+                        .HasColumnType("numeric(14,0)")
+                        .HasColumnName("median_price");
+
+                    b.Property<decimal?>("MedianPriceM2")
+                        .HasColumnType("numeric(12,0)")
+                        .HasColumnName("median_price_m2");
+
+                    b.Property<decimal?>("MedianTotalM2")
+                        .HasColumnType("numeric(8,0)")
+                        .HasColumnName("median_total_m2");
+
+                    b.PrimitiveCollection<decimal[]>("PriceDeciles")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_deciles");
+
+                    b.PrimitiveCollection<decimal[]>("PriceM2Deciles")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_m2_deciles");
+
+                    b.PrimitiveCollection<decimal[]>("PriceM2Shares")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_m2_shares");
+
+                    b.PrimitiveCollection<decimal[]>("PriceShares")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("price_shares");
+
+                    b.Property<int>("SampleSize")
+                        .HasColumnType("integer")
+                        .HasColumnName("sample_size");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("source");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ZoneSlug", "Operation", "PropertyType", "Rooms");
+
+                    b.ToTable("zone_market_rooms", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_zone_market_rooms_counts", "listings >= 0 AND sample_size >= 0");
+
+                            t.HasCheckConstraint("ck_zone_market_rooms_currency", "currency IN ('ARS', 'USD')");
+
+                            t.HasCheckConstraint("ck_zone_market_rooms_operation", "operation IN ('sale', 'rent')");
+
+                            t.HasCheckConstraint("ck_zone_market_rooms_property_type", "property_type IN ('apartment', 'house', 'ph', 'all')");
+
+                            t.HasCheckConstraint("ck_zone_market_rooms_rooms", "rooms BETWEEN 1 AND 5");
                         });
                 });
 

@@ -41,6 +41,9 @@ namespace ZonaMatch.Domain.Entities
         // Desired area in square meters; prices are estimated per square meter. Null uses zone averages.
         public int? AreaM2 { get; set; }
 
+        // Number of rooms (1 to 4, 5 = 5 or more): prices are those of that size. Null uses every size.
+        public int? Rooms { get; set; }
+
         public DateTimeOffset CreatedAt { get; set; }
 
         public DateTimeOffset UpdatedAt { get; set; }
@@ -67,6 +70,7 @@ namespace ZonaMatch.Domain.Entities
             MaximumPurchasePriceUsd = MaximumPurchasePriceUsd,
             HousingType = HousingType,
             AreaM2 = AreaM2,
+            Rooms = Rooms,
             CreatedAt = timestamp,
             UpdatedAt = timestamp,
             People = People
