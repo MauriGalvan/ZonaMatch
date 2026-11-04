@@ -83,8 +83,8 @@ namespace ZonaMatch.Infrastructure.Migrations
                 principalColumn: "id",
                 onDelete: ReferentialAction.SetNull);
 
-            // Contributions approved before this table existed: the new points, and for each corrected place the
-            // last approved value of each reason ("Otro" is informative only)
+            // Include contributions approved before this table existed: new points and the last approved value
+            // for each correction reason. The "other" reason is informational only.
             migrationBuilder.Sql("""
                 INSERT INTO app.community_pois
                     (id, is_new, zone_slug, name, category, location, removed, last_contribution_id, updated_at)

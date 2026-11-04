@@ -24,10 +24,17 @@ public class EmailService : IEmailService
     });
 
     private readonly IConfiguration _config;
+    private readonly Func<SmtpClient> _smtpClientFactory;
 
     public EmailService(IConfiguration config)
+        : this(config, static () => new SmtpClient())
+    {
+    }
+
+    internal EmailService(IConfiguration config, Func<SmtpClient> smtpClientFactory)
     {
         _config = config;
+        _smtpClientFactory = smtpClientFactory;
     }
 
     public Task SendEmailAsync(string to, string subject, string body, CancellationToken cancellationToken = default) =>
@@ -40,7 +47,7 @@ public class EmailService : IEmailService
         email.To.Add(MailboxAddress.Parse(to));
         email.Subject = subject;
 
-        // Usamos formato Html para poder mandar links bonitos al frontend
+        // Use HTML so email links are rendered correctly in the frontend.
         var builder = new BodyBuilder { HtmlBody = body };
 
         // Brand layout: the logo travels inside the email (most clients block SVG and remote images)
@@ -54,9 +61,9 @@ public class EmailService : IEmailService
 
         email.Body = builder.ToMessageBody();
 
-        using var smtp = new SmtpClient();
+        using var smtp = _smtpClientFactory();
 
-        // Nos conectamos al servidor SMTP usando los datos del appsettings
+        // Connect to the SMTP server using the appsettings configuration.
         await smtp.ConnectAsync(
             _config["EmailSettings:Host"],
             int.Parse(_config["EmailSettings:Port"]!),

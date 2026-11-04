@@ -1,181 +1,143 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs.Geolocation.Requests;
 using ZonaMatch.Application.DTOs.Geolocation.Responses;
-using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Application.Services;
+using ZonaMatch.Application.DTOs.PointOfInterest.Responses;
 using ZonaMatch.Application.UseCases.Geolocation;
-using ZonaMatch.Domain.Common;
 
-namespace ZonaMatch.Api.Controllers
+namespace ZonaMatch.Api.Controllers;
+
+[ApiController]
+[Route("api/v1/geolocation")]
+public sealed class GeolocationController : ControllerBase
 {
-    [ApiController]
-    [Route("[controller]")]
-    public class GeolocationController : ControllerBase
+    [HttpGet("places")]
+    [ProducesResponseType(typeof(IReadOnlyList<PlaceSearchResultResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<PlaceSearchResultResponse>>> SearchPlaces(
+        [FromQuery] SearchPlacesRequest request,
+        [FromServices] SearchPlaces searchPlaces,
+        CancellationToken cancellationToken)
     {
-        private readonly IGeolocationService _geolocationService;
-        private readonly ILogger<GeolocationController> _logger;
+        var results = await searchPlaces.ExecuteAsync(request.Search, cancellationToken);
+        return Ok(results);
+    }
 
-        public GeolocationController(IGeolocationService geolocationService, ILogger<GeolocationController> logger)
-        {
-            _geolocationService = geolocationService;
-            _logger = logger;
-        }
+    // GET /api/v1/geolocation/summary?latitude=-34.6&longitude=-58.45&radiusMeters=1000
+    [HttpGet("summary")]
+    [ProducesResponseType(typeof(LocationSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<LocationSummaryResponse>> GetSummary(
+        [FromQuery] double latitude,
+        [FromQuery] double longitude,
+        [FromServices] GetLocationSummary getLocationSummary,
+        [FromQuery] double radiusMeters = 1000)
+    {
+        var summary = await getLocationSummary.ExecuteAsync(latitude, longitude, radiusMeters);
+        return Ok(summary);
+    }
 
-        [HttpGet("~/v1/geolocation/places")]
-        [ProducesResponseType(typeof(IReadOnlyList<PlaceSearchResultResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<IReadOnlyList<PlaceSearchResultResponse>>> SearchPlaces(
-            [FromQuery] SearchPlacesRequest request,
-            [FromServices] SearchPlaces searchPlaces,
-            CancellationToken cancellationToken)
-        {
-            var results = await searchPlaces.ExecuteAsync(request.Search, cancellationToken);
-            return Ok(results);
-        }
+    // GET /api/v1/geolocation/schools?latitude=&longitude=&radiusMeters=&level=&sector=
+    [HttpGet("schools")]
+    [ProducesResponseType(typeof(IReadOnlyList<SchoolResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<SchoolResponse>>> GetNearbySchools(
+        [FromQuery] double latitude,
+        [FromQuery] double longitude,
+        [FromServices] GetNearbySchools getNearbySchools,
+        [FromQuery] double radiusMeters = 1000,
+        [FromQuery] string? level = null,
+        [FromQuery] string? sector = null)
+    {
+        var schools = await getNearbySchools.ExecuteAsync(latitude, longitude, radiusMeters, level, sector);
+        return Ok(schools);
+    }
 
-        // GET /Geolocation/resumen?latitud=-34.6&longitud=-58.45&radioMetros=1000
-        [HttpGet("resumen")]
-        public async Task<IActionResult> GetResumen(
-            [FromQuery] double latitud, [FromQuery] double longitud, [FromQuery] double radioMetros = 1000)
-        {
-            if (!CoordenadasValidas(latitud, longitud, radioMetros, out var error))
-                return BadRequest(error);
+    // GET /api/v1/geolocation/schools/nearest?latitude=&longitude=&quantity=5
+    [HttpGet("schools/nearest")]
+    [ProducesResponseType(typeof(IReadOnlyList<SchoolResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<SchoolResponse>>> GetNearestSchools(
+        [FromQuery] double latitude,
+        [FromQuery] double longitude,
+        [FromServices] GetNearestSchools getNearestSchools,
+        [FromQuery] int quantity = 5)
+    {
+        var schools = await getNearestSchools.ExecuteAsync(latitude, longitude, quantity);
+        return Ok(schools);
+    }
 
-            var resumen = await _geolocationService.GetResumenUbicacionAsync(latitud, longitud, radioMetros);
-            return Ok(resumen);
-        }
+    // GET /api/v1/geolocation/points-of-interest?latitude=&longitude=&radiusMeters=1000&categories=category-codes
+    // Without categories it returns every category.
+    [HttpGet("points-of-interest")]
+    [ProducesResponseType(typeof(NearbyPointsOfInterestResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<NearbyPointsOfInterestResponse>> GetNearbyPointsOfInterest(
+        [FromQuery] double latitude,
+        [FromQuery] double longitude,
+        [FromServices] GetNearbyPointsOfInterest getNearbyPointsOfInterest,
+        [FromQuery] double radiusMeters = 1000,
+        [FromQuery] string? categories = null,
+        CancellationToken cancellationToken = default)
+    {
+        var points = await getNearbyPointsOfInterest.ExecuteAsync(
+            latitude, longitude, radiusMeters, categories, cancellationToken);
+        return Ok(points);
+    }
 
-        // GET /Geolocation/escuelas?latitud=&longitud=&radioMetros=&nivel=&sector=
-        [HttpGet("escuelas")]
-        public async Task<IActionResult> GetEscuelasCercanas(
-            [FromQuery] double latitud, [FromQuery] double longitud, [FromQuery] double radioMetros = 1000,
-            [FromQuery] string? nivel = null, [FromQuery] string? sector = null)
-        {
-            if (!CoordenadasValidas(latitud, longitud, radioMetros, out var error))
-                return BadRequest(error);
+    // GET /api/v1/geolocation/points-of-interest/summary?latitude=&longitude=&radiusMeters=1000
+    [HttpGet("points-of-interest/summary")]
+    [ProducesResponseType(typeof(PointsOfInterestSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PointsOfInterestSummaryResponse>> GetPointsOfInterestSummary(
+        [FromQuery] double latitude,
+        [FromQuery] double longitude,
+        [FromServices] GetPointsOfInterestSummary getPointsOfInterestSummary,
+        [FromQuery] double radiusMeters = 1000,
+        CancellationToken cancellationToken = default)
+    {
+        var summary = await getPointsOfInterestSummary.ExecuteAsync(
+            latitude, longitude, radiusMeters, cancellationToken);
+        return Ok(summary);
+    }
 
-            var escuelas = await _geolocationService.GetEscuelasCercanasAsync(latitud, longitud, radioMetros, nivel, sector);
-            return Ok(escuelas);
-        }
+    // GET /api/v1/geolocation/district?latitude=&longitude=
+    [HttpGet("district")]
+    [ProducesResponseType(typeof(DistrictResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DistrictResponse>> GetDistrictByLocation(
+        [FromQuery] double latitude,
+        [FromQuery] double longitude,
+        [FromServices] GetDistrictByLocation getDistrictByLocation)
+    {
+        return Ok(await getDistrictByLocation.ExecuteAsync(latitude, longitude));
+    }
 
-        // GET /Geolocation/escuelas/mas-cercanas?latitud=&longitud=&cantidad=5
-        [HttpGet("escuelas/mas-cercanas")]
-        public async Task<IActionResult> GetEscuelasMasCercanas(
-            [FromQuery] double latitud, [FromQuery] double longitud, [FromQuery] int cantidad = 5)
-        {
-            if (!CoordenadasValidas(latitud, longitud, 0, out var error))
-                return BadRequest(error);
+    // GET /api/v1/geolocation/commune?latitude=&longitude=
+    [HttpGet("commune")]
+    [ProducesResponseType(typeof(CommuneResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CommuneResponse>> GetCommuneByLocation(
+        [FromQuery] double latitude,
+        [FromQuery] double longitude,
+        [FromServices] GetCommuneByLocation getCommuneByLocation)
+    {
+        return Ok(await getCommuneByLocation.ExecuteAsync(latitude, longitude));
+    }
 
-            if (cantidad <= 0)
-                return BadRequest("La cantidad debe ser mayor a 0.");
-
-            var escuelas = await _geolocationService.GetEscuelasMasCercanasAsync(latitud, longitud, cantidad);
-            return Ok(escuelas);
-        }
-
-        // GET /Geolocation/puntos-interes?latitud=&longitud=&radioMetros=1000&categorias=transporte,salud
-        // Without categorias it returns every category (see CategoriaPuntoInteres)
-        [HttpGet("puntos-interes")]
-        public async Task<IActionResult> GetPuntosInteresCercanos(
-            [FromQuery] double latitud, [FromQuery] double longitud, [FromQuery] double radioMetros = 1000,
-            [FromQuery] string? categorias = null, CancellationToken cancellationToken = default)
-        {
-            if (!CoordenadasValidas(latitud, longitud, radioMetros, out var error))
-                return BadRequest(error);
-
-            if (radioMetros > GeolocationService.MaxRadioPuntosInteresMetros)
-                return BadRequest($"El radio no puede superar los {GeolocationService.MaxRadioPuntosInteresMetros} metros.");
-
-            if (!CategoriaPuntoInteres.TryParseLista(categorias, out var codigos, out error))
-                return BadRequest(error);
-
-            var puntos = await _geolocationService.GetPuntosInteresCercanosAsync(
-                latitud, longitud, radioMetros, codigos, cancellationToken);
-            return Ok(puntos);
-        }
-
-        // GET /Geolocation/puntos-interes/resumen?latitud=&longitud=&radioMetros=1000
-        [HttpGet("puntos-interes/resumen")]
-        public async Task<IActionResult> GetResumenPuntosInteres(
-            [FromQuery] double latitud, [FromQuery] double longitud, [FromQuery] double radioMetros = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            if (!CoordenadasValidas(latitud, longitud, radioMetros, out var error))
-                return BadRequest(error);
-
-            if (radioMetros > GeolocationService.MaxRadioPuntosInteresMetros)
-                return BadRequest($"El radio no puede superar los {GeolocationService.MaxRadioPuntosInteresMetros} metros.");
-
-            var resumen = await _geolocationService.GetResumenPuntosInteresAsync(latitud, longitud, radioMetros, cancellationToken);
-            return Ok(resumen);
-        }
-
-        // GET /Geolocation/partido?latitud=&longitud=
-        [HttpGet("partido")]
-        public async Task<IActionResult> GetPartidoPorUbicacion([FromQuery] double latitud, [FromQuery] double longitud)
-        {
-            if (!CoordenadasValidas(latitud, longitud, 0, out var error))
-                return BadRequest(error);
-
-            var partido = await _geolocationService.GetPartidoPorUbicacionAsync(latitud, longitud);
-            return partido is null ? NotFound("No se encontro un partido para esa ubicacion.") : Ok(partido);
-        }
-
-        // GET /Geolocation/comuna?latitud=&longitud=
-        [HttpGet("comuna")]
-        public async Task<IActionResult> GetComunaPorUbicacion([FromQuery] double latitud, [FromQuery] double longitud)
-        {
-            if (!CoordenadasValidas(latitud, longitud, 0, out var error))
-                return BadRequest(error);
-
-            var comuna = await _geolocationService.GetComunaPorUbicacionAsync(latitud, longitud);
-            return comuna is null ? NotFound("No se encontro una comuna para esa ubicacion.") : Ok(comuna);
-        }
-
-        // GET /Geolocation/direccion?latitud=&longitud=
-        // Place name + address of a point picked on the map (reverse geocoding)
-        [HttpGet("direccion")]
-        public async Task<IActionResult> GetDireccionPorUbicacion(
-            [FromQuery] double latitud, [FromQuery] double longitud, CancellationToken cancellationToken)
-        {
-            if (!CoordenadasValidas(latitud, longitud, 0, out var error))
-                return BadRequest(error);
-
-            try
-            {
-                var direccion = await _geolocationService.GetDireccionPorUbicacionAsync(latitud, longitud, cancellationToken);
-                return direccion is null ? NotFound("No se encontro una direccion para esa ubicacion.") : Ok(direccion);
-            }
-            catch (HttpRequestException ex)
-            {
-                // Coordinates are not logged: they are the user's location
-                _logger.LogWarning(ex, "Reverse geocoding service is unavailable");
-                return StatusCode(StatusCodes.Status502BadGateway, "El servicio de geocodificacion no esta disponible.");
-            }
-        }
-
-        private static bool CoordenadasValidas(double latitud, double longitud, double radioMetros, out string error)
-        {
-            if (latitud is < -90 or > 90)
-            {
-                error = "La latitud debe estar entre -90 y 90.";
-                return false;
-            }
-
-            if (longitud is < -180 or > 180)
-            {
-                error = "La longitud debe estar entre -180 y 180.";
-                return false;
-            }
-
-            if (radioMetros < 0)
-            {
-                error = "El radio no puede ser negativo.";
-                return false;
-            }
-
-            error = string.Empty;
-            return true;
-        }
+    // GET /api/v1/geolocation/address?latitude=&longitude=
+    // Returns the place name and address of a point picked on the map.
+    [HttpGet("address")]
+    [ProducesResponseType(typeof(ReverseGeocodeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ReverseGeocodeResponse>> ReverseGeocode(
+        [FromQuery] double latitude,
+        [FromQuery] double longitude,
+        [FromServices] ReverseGeocode reverseGeocode,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await reverseGeocode.ExecuteAsync(latitude, longitude, cancellationToken));
     }
 }

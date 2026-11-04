@@ -5,6 +5,8 @@
 
 # dotenv files
 .env
+.env.*
+!.env.example
 
 # User-specific files
 *.rsuser
@@ -485,5 +487,5 @@ $RECYCLE.BIN/
 zonamatch.sql
 restore-geo.log
 *.osm.pbf
-# Datos abiertos descargados por etl/descargar_datos.py (censo, delitos, GTFS)
+# Datos abiertos descargados por etl/download_open_data.py (censo, delitos, GTFS)
 datos/

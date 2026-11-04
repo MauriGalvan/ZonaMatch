@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using ZonaMatch.Application.DTOs.GuestReports.Requests;
+using ZonaMatch.Application.DTOs.GuestReport.Requests;
 using ZonaMatch.Application.Exceptions;
-using ZonaMatch.Application.UseCases.GuestReports;
+using ZonaMatch.Application.UseCases.GuestReport;
 
 namespace ZonaMatch.Api.Controllers;
 
@@ -20,7 +20,7 @@ public sealed class GuestReportsController : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> Send(
+    public async Task<IActionResult> SendAsync(
         [FromForm] SendGuestReportRequest request,
         IFormFile? report,
         [FromServices] SendGuestReport sendGuestReport,

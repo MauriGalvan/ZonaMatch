@@ -5,6 +5,6 @@ public static class AppRoles
 {
     public const string ClaimType = "role";
 
-    // Site administrator (Usuario.EsAdministrador)
+    // Site administrator (User.IsAdministrator)
     public const string Admin = "admin";
 }

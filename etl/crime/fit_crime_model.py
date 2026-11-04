@@ -1,22 +1,22 @@
 """
-Model that spreads the crimes of a partido over its census fractions, so its localidades are not all the same.
+Model that distributes a district's crimes across its census fractions, so its localities do not all receive the same rate.
 
-The SNIC only has crimes per partido. In CABA the Mapa del Delito locates each event, so a Poisson regression is
+SNIC only reports crimes by district. In CABA, the Crime Map locates each incident, so a Poisson regression is
 fitted there: crimes per resident of each census fraction against census indicators (unmet basic needs,
-renting, density) and activity (shops from OSM, public transport departures from the GTFS). The model gives every fraction of the AMBA a relative factor;
-etl/crime/spread_crimes.sql uses it to split each partido's total, which does not change.
+renting, density) and activity (shops from OSM, public transit departures from GTFS). The model gives every AMBA census fraction a relative factor;
+etl/crime/spread_crimes.sql uses it to split each district's total, which does not change.
 
-Validation (leave one comuna out, spreading each comuna's real total over its fractions with a model fitted on the
+Validation (leave one commune out, distributing its actual total across its fractions with a model fitted on the
 other 14): the absolute error of the spread falls from 33 % (same rate everywhere, the previous method) to 23 %,
-and the rank correlation of the fractions' rates rises from about 0 to 0.66. Run with --validate to repeat it.
+and the rank correlation of fraction rates rises from about 0 to 0.66. Run with --validate to repeat it.
 
 Reported crimes follow activity: they are filed where people circulate and where the police is, and less in poor
-areas, the same reporting bias corrected between partidos with homicides. So homicides, which are almost always
-recorded, get their own factor: across the comunas and partidos of the AMBA, the five-year homicide rate grows
+areas, the same reporting bias corrected between districts with homicides. Since homicides are almost always
+recorded, they get their own factor: across AMBA communes and districts, the five-year homicide rate grows
 about 17 % per point of households with unmet basic needs (R2 0.45). Each fraction takes that relation with its NBI,
-clipped to the range seen between partidos, so the violence of a partido falls where its poorest households live.
+clipped to the range seen across districts, so a district's violence rate is lower where its poorest households live.
 
-Usage (from backend/ZonaMatch, see DATOS-ZONAS-DOCKER.bat):
+Usage (from backend/ZonaMatch, see ZONE-DATA-DOCKER.bat):
   python etl/crime/fit_crime_model.py datos/delitos_fracciones_entrada.csv datos/snic_departamentos.csv
       datos/delitos_fracciones.csv
 Requires numpy (pip install numpy).
@@ -85,25 +85,25 @@ def poisson_fit(X, y, offset, iterations=100):
     return beta
 
 
-def validate(raw, y, population, comuna):
-    """Leave one comuna out: spread its real total with a model fitted on the others."""
+def validate(raw, y, population, communes):
+    """Leave one commune out: spread its real total with a model fitted on the others."""
     offset = np.log(population)
     predicted = np.zeros_like(y)
-    for c in np.unique(comuna):
-        test, train = comuna == c, comuna != c
+    for commune in np.unique(communes):
+        test, train = communes == commune, communes != commune
         beta = poisson_fit(standardize(raw[train], raw[train]), y[train], offset[train])
         relative = np.exp(standardize(raw[test], raw[train]) @ beta) * population[test]
         predicted[test] = relative / relative.sum() * y[test].sum()
     uniform = np.zeros_like(y)
-    for c in np.unique(comuna):
-        mask = comuna == c
+    for commune in np.unique(communes):
+        mask = communes == commune
         uniform[mask] = population[mask] / population[mask].sum() * y[mask].sum()
-    for label, guess in [("uniforme", uniform), ("modelo", predicted)]:
-        print(f"  {label:9} error absoluto {np.abs(guess - y).sum() / y.sum():.1%}")
+    for label, guess in [("uniform", uniform), ("model", predicted)]:
+        print(f"  {label:9} absolute error {np.abs(guess - y).sum() / y.sum():.1%}")
 
 
 def department(row):
-    """SNIC department of a fraction: the partido, or the comuna in CABA (the census numbers comunas by 7)."""
+    """SNIC department of a fraction: its district, or its CABA commune (census commune codes are offset by 7)."""
     fid = row["fid"]
     if fid.startswith("02"):
         return "02" + str(int(fid[2:5]) // 7).zfill(3)
@@ -120,7 +120,7 @@ def homicide_model(rows, snic_file):
         dep = department(row)
         households, nbi, pob = totals.get(dep, (0.0, 0.0, 0.0))
         totals[dep] = (households + value(row, "hogares"), nbi + value(row, "nbi"), pob + value(row, "pob"))
-    # Only departments fully inside the AMBA extract of the census (the 34 comunas and partidos of the zones)
+    # Only departments fully inside the AMBA census extract (the 34 communes and districts covered by the zones).
     deps = [d for d in totals if d in rates and totals[d][0] > 0 and totals[d][2] > 50000]
     nbi = np.array([totals[d][1] / totals[d][0] * 100 for d in deps])
     weight = np.array([totals[d][2] for d in deps])
@@ -130,19 +130,19 @@ def homicide_model(rows, snic_file):
     fitted = X @ beta
     mean = np.average(y, weights=weight)
     r2 = 1 - np.sum(weight * (y - fitted) ** 2) / np.sum(weight * (y - mean) ** 2)
-    print(f"Homicidios segun NBI ({len(deps)} comunas y partidos): x{np.exp(beta[1]):.3f} por punto de NBI, R2 {r2:.2f}")
+    print(f"Homicides by NBI ({len(deps)} communes and districts): x{np.exp(beta[1]):.3f} per NBI point, R2 {r2:.2f}")
     return beta[1], nbi.min(), nbi.max()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Modelo para repartir los delitos de cada partido")
-    parser.add_argument("entrada", help="CSV de etl/crime/fraction_features.sql")
-    parser.add_argument("snic", help="datos/snic_departamentos.csv (etl/download_snic.py)")
-    parser.add_argument("salida", help="CSV con los factores relativos de cada fraccion")
-    parser.add_argument("--validate", action="store_true", help="repetir la validacion por comuna")
+    parser = argparse.ArgumentParser(description="Model for distributing each department's crime totals")
+    parser.add_argument("input_csv", help="CSV produced by etl/crime/fraction_features.sql")
+    parser.add_argument("snic_csv", help="datos/snic_departamentos.csv (etl/download_snic.py)")
+    parser.add_argument("output_csv", help="CSV with relative factors for each census fraction")
+    parser.add_argument("--validate", action="store_true", help="repeat the leave-one-commune-out validation")
     args = parser.parse_args()
 
-    with open(args.entrada, encoding="utf-8") as handle:
+    with open(args.input_csv, encoding="utf-8") as handle:
         rows = [row for row in csv.DictReader(handle) if value(row, "pob") > 0]
 
     raw = features(rows)
@@ -151,27 +151,27 @@ def main():
     y = np.array([value(r, "total") for r in rows])
 
     if args.validate:
-        comuna = np.array([int(r["comuna"] or 0) for r in rows])
-        validate(raw[caba], y[caba], population[caba], comuna[caba])
+        communes = np.array([int(r["comuna"] or 0) for r in rows])
+        validate(raw[caba], y[caba], population[caba], communes[caba])
 
     beta = poisson_fit(standardize(raw[caba], raw[caba]), y[caba], np.log(population[caba]))
-    print("Modelo de delitos por fraccion (CABA, Mapa del Delito), efecto de un desvio de cada variable:")
+    print("Crime model by census fraction (CABA Crime Map), effect of a one standard deviation increase in each feature:")
     for name, coefficient in zip(FEATURES, beta[1:]):
         print(f"  {name:10} x{np.exp(coefficient):.2f}")
 
-    # Relative rate of every fraction (CABA mean = 1); only the ratios within each partido matter
+    # Relative rate of every fraction (CABA mean = 1); only ratios within each district matter.
     factor = np.exp(standardize(raw, raw[caba]) @ beta - beta[0])
 
-    slope, low, high = homicide_model(rows, args.snic)
+    slope, low, high = homicide_model(rows, args.snic_csv)
     nbi = np.clip(raw[:, FEATURES.index("nbi")], low, high)
     homicide_factor = np.exp(slope * (nbi - nbi.mean()))
 
-    with open(args.salida, "w", encoding="utf-8", newline="") as handle:
+    with open(args.output_csv, "w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow(["fraction_id", "factor", "homicide_factor"])
         for row, f, h in zip(rows, factor, homicide_factor):
             writer.writerow([row["fid"], round(float(f), 4), round(float(h), 4)])
-    print(f"  {len(rows)} fracciones en {args.salida}")
+    print(f"  {len(rows)} census fractions in {args.output_csv}")
     return 0
 
 

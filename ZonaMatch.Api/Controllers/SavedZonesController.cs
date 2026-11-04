@@ -1,14 +1,14 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Api.Authentication;
-using ZonaMatch.Application.DTOs.SavedZones.Requests;
-using ZonaMatch.Application.DTOs.SavedZones.Responses;
-using ZonaMatch.Application.UseCases.SavedZones;
+using ZonaMatch.Application.DTOs.SavedZone.Requests;
+using ZonaMatch.Application.DTOs.SavedZone.Responses;
+using ZonaMatch.Application.UseCases.SavedZone;
 
 namespace ZonaMatch.Api.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/saved-zones")]
     [Authorize]
     public class SavedZonesController : ControllerBase
     {

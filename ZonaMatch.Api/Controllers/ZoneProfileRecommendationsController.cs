@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
-using ZonaMatch.Application.DTOs.ZoneRecommendations.Requests;
-using ZonaMatch.Application.DTOs.ZoneRecommendations.Responses;
-using ZonaMatch.Application.UseCases.ZoneRecommendations;
+﻿using Microsoft.AspNetCore.Mvc;
+using ZonaMatch.Application.DTOs.ZoneRecommendation.Requests;
+using ZonaMatch.Application.DTOs.ZoneRecommendation.Responses;
+using ZonaMatch.Application.UseCases.ZoneRecommendation;
 using ZonaMatch.Domain.Common;
 
 namespace ZonaMatch.Api.Controllers;
@@ -20,7 +20,7 @@ public sealed class ZoneProfileRecommendationsController : ControllerBase
         [FromServices] GetZoneProfileRecommendations useCase,
         CancellationToken cancellationToken)
     {
-        if (!SlugZona.EsValido(slug))
+        if (!ZoneSlug.IsValid(slug))
             return Problem(statusCode: StatusCodes.Status400BadRequest, detail: "The zone slug is not valid.");
 
         return Ok(await useCase.ExecuteAsync(slug, request, cancellationToken));

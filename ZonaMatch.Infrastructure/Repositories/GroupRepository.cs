@@ -19,7 +19,7 @@ public class GroupRepository : IGroupRepository
 
     public async Task AddAsync(Group group, CancellationToken cancellationToken)
     {
-        // Usamos AddAsync de Entity Framework
+        // Use Entity Framework's asynchronous add operation.
         await _context.Groups.AddAsync(group, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
@@ -35,8 +35,7 @@ public class GroupRepository : IGroupRepository
 
     public async Task<Group?> GetByIdAsync(Guid groupId, CancellationToken cancellationToken)
     {
-        // Usamos Include(g => g.Participants) para traernos los participantes también
-        // y así el Caso de Uso puede verificar si el usuario es el Propietario.
+        // Include participants so the use case can verify whether the user owns the group.
         return await _context.Groups
             .Include(g => g.Participants)
             .FirstOrDefaultAsync(g => g.Id == groupId, cancellationToken);
@@ -54,10 +53,10 @@ public class GroupRepository : IGroupRepository
 
     public async Task DeleteAsync(Group group, CancellationToken cancellationToken)
     {
-        // Eliminamos el grupo del contexto
+        // Remove the group from the context.
         _context.Groups.Remove(group);
 
-        // Guardamos los cambios en PostgreSQL
+        // Save the changes to PostgreSQL.
         await _context.SaveChangesAsync(cancellationToken);
     }
 
@@ -75,7 +74,7 @@ public class GroupRepository : IGroupRepository
 
     public async Task AddParticipantAsync(Participant participant, CancellationToken cancellationToken)
     {
-        // Le decimos a EF Core explícitamente: "Esto es un INSERT, respeta su ID V7"
+        // Explicitly tell EF Core to insert the participant and preserve its UUIDv7.
         await _context.Set<Participant>().AddAsync(participant, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }

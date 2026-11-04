@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs.ZoneMarket.Responses;
-using ZonaMatch.Application.UseCases.Zonas;
-using ZonaMatch.Domain.Common;
+using ZonaMatch.Application.UseCases.Zone;
 
 namespace ZonaMatch.Api.Controllers
 {
@@ -11,21 +10,18 @@ namespace ZonaMatch.Api.Controllers
     {
         // GET /api/v1/zones/villa-crespo/market
         // Rent and sale of the zone from the Zonaprop listings: averages, price per m2, expenses and listings, by type,
-        // with the source and the comuna or partido to compare. 404 when there is no data for the zone.
+        // with the source and the commune or district used for comparison. Returns 404 when the zone has no data.
         [HttpGet("{slug}/market")]
         [ResponseCache(Duration = 3600)]
         [ProducesResponseType<ZoneMarketResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ZoneMarketResponse>> GetAsync(
+        public async Task<ActionResult<ZoneMarketResponse>> GetZoneMarket(
             [FromRoute] string slug,
-            [FromServices] GetZoneMarket useCase,
+            [FromServices] GetZoneMarket getZoneMarket,
             CancellationToken cancellationToken)
         {
-            if (!SlugZona.EsValido(slug))
-                return Problem(statusCode: StatusCodes.Status400BadRequest, detail: "The zone slug is not valid.");
-
-            return Ok(await useCase.ExecuteAsync(slug, cancellationToken));
+            return Ok(await getZoneMarket.ExecuteAsync(slug, cancellationToken));
         }
     }
 }

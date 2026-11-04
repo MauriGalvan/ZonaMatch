@@ -38,7 +38,7 @@ public sealed class AuthUseCasesTests
         Assert.Equal(savedUser.Id, response.Id);
         Assert.Equal("ana@example.com", response.Email);
         Assert.Equal(new DateOnly(1990, 5, 31), response.BirthDate);
-        Assert.Equal(CurrentTime, savedUser.FechaCreacion);
+        Assert.Equal(CurrentTime, savedUser.CreatedAt);
     }
 
     [Fact]
@@ -177,18 +177,32 @@ public sealed class AuthUseCasesTests
             () => _loginUser.ExecuteAsync(new LoginRequest("nadie@example.com", "Secreta123")));
     }
 
+    [Fact]
+    public async Task Login_WhenEmailIsUnknownOrPasswordIsIncorrect_ReturnsTheSameUnauthorizedMessage()
+    {
+        await _registerUser.ExecuteAsync(CreateRegisterRequest());
+
+        var incorrectPassword = await Assert.ThrowsAsync<UnauthorizedException>(
+            () => _loginUser.ExecuteAsync(new LoginRequest("ana@example.com", "OtraClave999")));
+        var unknownEmail = await Assert.ThrowsAsync<UnauthorizedException>(
+            () => _loginUser.ExecuteAsync(new LoginRequest("nadie@example.com", "Secreta123")));
+
+        Assert.Equal("Email o contrasena incorrectos.", incorrectPassword.Message);
+        Assert.Equal(incorrectPassword.Message, unknownEmail.Message);
+    }
+
     private sealed class FakeUserRepository : IUserRepository
     {
-        public List<Usuario> SavedUsers { get; } = [];
+        public List<User> SavedUsers { get; } = [];
         public bool ThrowConflictOnAdd { get; set; }
 
         public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) =>
             Task.FromResult(SavedUsers.Any(user => user.Email == email));
 
-        public Task<Usuario?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
+        public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
             Task.FromResult(SavedUsers.FirstOrDefault(user => user.Email == email));
 
-        public Task AddAsync(Usuario user, CancellationToken cancellationToken = default)
+        public Task AddAsync(User user, CancellationToken cancellationToken = default)
         {
             if (ThrowConflictOnAdd)
                 throw new ConflictException("El email ya esta registrado.");
@@ -211,7 +225,7 @@ public sealed class AuthUseCasesTests
     {
         public const string TokenPrefix = "token:";
 
-        public (string Token, DateTimeOffset ExpiresAt) Generate(Usuario user) =>
+        public (string Token, DateTimeOffset ExpiresAt) Generate(User user) =>
             (TokenPrefix + user.Id, CurrentTime.AddHours(1));
     }
 

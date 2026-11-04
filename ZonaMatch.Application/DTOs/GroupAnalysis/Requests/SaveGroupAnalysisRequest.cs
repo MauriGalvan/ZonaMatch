@@ -41,4 +41,8 @@ public sealed class SaveGroupAnalysisRequest
     // Surface the user looks for (m2): prices are estimated as price per m2 times this surface
     [Range(10, 2000, ErrorMessage = "La superficie debe estar entre 10 y 2.000 m².")]
     public int? SurfaceM2 { get; set; }
+
+    // Rooms the user looks for (1 to 4, 5 = 5 or more): prices are the ones of that size in each zone
+    [Range(0, 5, ErrorMessage = "Los ambientes deben estar entre 1 y 5 (5 o más).")]
+    public int? Rooms { get; set; }
 }

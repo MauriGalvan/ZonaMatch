@@ -1,10 +1,18 @@
 """
 Scrapes Zonaprop listing pages to measure the real estate market of each ZonaMatch zone.
 
-For every zone in datos/zonaprop/zones.csv (exported by target_zones.sql) and every combination of operation
-(venta, alquiler) and property type (departamentos, casas, ph) it reads:
-  - the total number of active listings Zonaprop reports for that location, and
-  - a sample of the most recent listings (price, currency, expenses, surface, coordinates).
+For every zone in datos/zonaprop/zones.csv (exported by target_zones.sql), every operation (venta, alquiler) and every
+property type (departamentos, casas, ph) it reads every published listing, not a sample. Page 1 of the type gives
+the total number of active listings. Zonaprop only serves the first 9 pages of a search (270 listings, 30 per page,
+newest first; later pages answer with a Cloudflare challenge), so:
+  - a type with 270 listings or fewer is read page by page;
+  - a larger one is split into price bands ('...-50000-99999-dolar'), and every band that still has more than 270
+    listings is split in two at the median price of its newest listings, until each part can be read whole. The
+    bands start at 1: listings without a price (or priced 0) are left out.
+Listings that show up twice (they moved to the next page while it read, or fall in two searches) count once, by their
+id. The totals of each room group (1, 2, 3, 4 and 5 or more rooms) are counted from the listings themselves.
+It also reads the totals of four Zonaprop filters, for the three types together: sale listings eligible for a mortgage
+("apto crédito"), sale and rent listings published by the owner ("dueño directo") and rentals that accept pets.
 
 Zonaprop resolves its location URLs by slug, which usually matches ours ("villa-crespo", "adrogue"). An unknown
 slug falls back to a wider search and an ambiguous one may land in another province, so every response is
@@ -13,19 +21,25 @@ elsewhere in the country are tried again with the partido ("castelar-moron"). Zo
 logged in datos/zonaprop/unmatched.csv; slug_overrides.csv maps them by hand (a Zonaprop slug, or the partido of
 zones that geo.zonas does not place in one).
 
+Every page is cached in datos/zonaprop/cache/<run>/, one folder per scrape (the date it started), with every field of
+each listing that the market calculation may need. Running it again resumes the same run while it is younger than
+--max-age-days; after that a new run starts from scratch.
+
 Outputs (in datos/zonaprop/):
-  totals.csv    zone_slug, operation, property_type, listings, zonaprop_location, zonaprop_slug, url, scraped_at
-  listings.csv  one row per sampled listing
+  totals.csv    zone_slug, operation, property_type, rooms, filter, listings, zonaprop_location, zonaprop_slug, url,
+                scraped_at. property_type 'all' and a filter (credit, owner, pets) for the filter totals; rooms 0 for
+                every room count, 1 to 5 (5 or more) for a room group
+  listings.csv  one row per published listing with a price. stratum is always 0 (the whole market, weight 1 in
+                calculate_market.sql); earlier scrapes sampled by room group
 Statistics per zone are computed in SQL (etl/zonaprop/calculate_market.sql), which also drops listings whose
 coordinates fall far from the zone.
 
-The scraper is deliberately slow: one request every few seconds. When Zonaprop answers with a challenge or an
-error it waits and retries a few times, and then stops. Every response is cached, so running it again resumes
-where it stopped.
+The scraper is deliberately slow: one request every few seconds, from one connection, and it never tries to get past
+Cloudflare. When Zonaprop answers with a challenge or an error it waits longer and longer, and finally stops; running
+it again resumes where it stopped.
 
 Usage (from backend/ZonaMatch):
   python etl/zonaprop/scrape_zonaprop.py                 scrape everything still missing
-  python etl/zonaprop/scrape_zonaprop.py --pages 1       smaller sample (30 listings per combination)
   python etl/zonaprop/scrape_zonaprop.py --only palermo,adrogue
   python etl/zonaprop/scrape_zonaprop.py --export-only   rebuild the CSV files from the cache
 No dependencies beyond the Python standard library.
@@ -35,6 +49,7 @@ import argparse
 import csv
 import gzip
 import json
+import math
 import random
 import re
 import sys
@@ -42,20 +57,42 @@ import time
 import unicodedata
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 BASE_URL = "https://www.zonaprop.com.ar"
 DATA_DIR = Path(__file__).resolve().parents[2] / "datos" / "zonaprop"
-CACHE_DIR = DATA_DIR / "cache"
 OVERRIDES_FILE = Path(__file__).resolve().parent / "slug_overrides.csv"
 
 OPERATIONS = ["venta", "alquiler"]
 # Zonaprop URL segment -> property type name in the listing data
 PROPERTY_TYPES = {"departamentos": "Departamentos", "casas": "Casas", "ph": "PH"}
+ALL_TYPES = "departamentos-casas-ph"
+# Room groups and their URL segment. "mas-de-5-ambientes" is 5 or more
+ROOM_GROUPS = {1: "1-ambiente", 2: "2-ambientes", 3: "3-ambientes", 4: "4-ambientes", 5: "mas-de-5-ambientes"}
+# Filter totals per operation, for the three types together: key -> URL segment
+FILTERS = {
+    "venta": {"credit": "con-apto-credito", "owner": "dueno-directo"},
+    "alquiler": {"pets": "con-permite-mascotas", "owner": "dueno-directo"},
+}
+PAGE_SIZE = 30
+# Zonaprop answers pages past the 9th with a Cloudflare challenge: a search shows 270 listings at most
+MAX_PAGES = 9
+SEARCH_LIMIT = MAX_PAGES * PAGE_SIZE
+# Price filter of each operation: its URL unit and where a larger search is first split (each band ends just below the
+# next cut; the last cut is a ceiling no listing reaches). Sale in dollars, rent in pesos per month
+PRICE_UNITS = {"venta": "dolar", "alquiler": "pesos"}
+# Currency of each unit in the listing data
+PRICE_CURRENCIES = {"dolar": "USD", "pesos": "$"}
+PRICE_CUTS = {
+    "venta": [50_000, 100_000, 200_000, 400_000, 1_000_000, 1_000_000_000],
+    "alquiler": [300_000, 600_000, 1_200_000, 3_000_000, 1_000_000_000_000],
+}
 # Newest first: the default "relevance" order favors paid listings
 SORT_SUFFIX = "-orden-publicado-descendente"
 USD_RATE_URL = "https://dolarapi.com/v1/dolares/bolsa"
+# publisher.publisherTypeId of Zonaprop
+PUBLISHER_TYPES = {"1": "owner", "2": "agency"}
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -64,7 +101,7 @@ USER_AGENT = (
 STATE_MARKER = "window.__PRELOADED_STATE__ = "
 TITLE_PATTERN = re.compile(r"<title>\s*([^<]*?)\s*</title>", re.S)
 # "1.234 Departamentos más recientes en venta en Adrogué, Almirante Brown - Pagina 2 - Zonaprop"
-LOCATION_PATTERN = re.compile(r" en (?:venta|alquiler) en (.+?)(?: - P[aá]gina \d+)? - Zonaprop$")
+LOCATION_PATTERN = re.compile(r" en (?:venta|alquiler)(?: [^,]*?)? en (.+?)(?: - P[aá]gina \d+)? - Zonaprop$")
 
 
 # Parents Zonaprop shows for AMBA locations outside CABA: the partidos and its GBA regions
@@ -95,9 +132,8 @@ def normalize(text):
     return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
 
-def fetch(path, delay):
+def fetch(path):
     """Downloads a listing page and returns (final_url, html). Raises Blocked on challenges."""
-    time.sleep(delay * random.uniform(0.7, 1.4))
     request = urllib.request.Request(
         BASE_URL + path,
         headers={
@@ -118,7 +154,7 @@ def fetch(path, delay):
         if error.code in (404, 410):
             raise NotFound() from error
         raise Blocked(f"HTTP {error.code}") from error
-    except (urllib.error.URLError, TimeoutError) as error:
+    except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
         raise Blocked(str(error)) from error
     if STATE_MARKER not in html:
         raise Blocked("page without listing data (challenge?)")
@@ -126,7 +162,7 @@ def fetch(path, delay):
 
 
 def parse_page(html):
-    """Extracts the title, the total and the minimal fields of each listing from a Zonaprop page."""
+    """Extracts the title, the total and the fields of each listing from a Zonaprop page."""
     title_match = TITLE_PATTERN.search(html)
     title = title_match.group(1) if title_match else ""
     start = html.index(STATE_MARKER) + len(STATE_MARKER)
@@ -134,9 +170,7 @@ def parse_page(html):
     store = state["listStore"]
     paging = store.get("paging") or {}
     total = int(paging.get("total") or 0)
-    postings = []
-    for posting in store.get("listPostings") or [] if total > 0 else []:
-        postings.append(parse_posting(posting))
+    postings = [parse_posting(posting) for posting in (store.get("listPostings") or [] if total > 0 else [])]
     return {"title": title, "total": total, "total_pages": paging.get("totalPages") or 0, "postings": postings}
 
 
@@ -147,11 +181,27 @@ def number(value):
         return None
 
 
+def feature(features, key):
+    return number((features.get(key) or {}).get("value"))
+
+
+def location_chain(location):
+    """'Palermo Hollywood > Palermo > Capital Federal' as a list of names, innermost first."""
+    names = []
+    node = location.get("location") or {}
+    while node and len(names) < 6:
+        names.append(node.get("name"))
+        node = node.get("parent") or {}
+    return names
+
+
 def parse_posting(posting):
     features = posting.get("mainFeatures") or {}
     location = posting.get("postingLocation") or {}
     geo = (location.get("postingGeolocation") or {}).get("geolocation") or {}
     expenses = posting.get("expenses") or {}
+    publisher = posting.get("publisher") or {}
+    pictures = (posting.get("visiblePictures") or {}).get("pictures") or []
     operations = {}
     for operation in posting.get("priceOperationTypes") or []:
         prices = operation.get("prices") or []
@@ -164,13 +214,26 @@ def parse_posting(posting):
         "id": posting.get("postingId"),
         "type": (posting.get("realEstateType") or {}).get("name"),
         "operations": operations,
-        "expenses": expenses.get("amount") if expenses.get("currency") in ("$", None) else None,
-        "total_m2": number((features.get("CFT100") or {}).get("value")),
-        "covered_m2": number((features.get("CFT101") or {}).get("value")),
-        "rooms": number((features.get("CFT1") or {}).get("value")),
+        "expenses": expenses.get("amount"),
+        "expenses_currency": expenses.get("currency"),
+        "total_m2": feature(features, "CFT100"),
+        "covered_m2": feature(features, "CFT101"),
+        "rooms": feature(features, "CFT1"),
+        "bedrooms": feature(features, "CFT2"),
+        "bathrooms": feature(features, "CFT3"),
+        "garages": feature(features, "CFT7"),
+        "age_years": feature(features, "CFT5"),
+        "publisher_type": PUBLISHER_TYPES.get(str(publisher.get("publisherTypeId")), None),
+        "publisher_id": publisher.get("publisherId"),
+        "publisher_name": publisher.get("name"),
         "lat": geo.get("latitude"),
         "lng": geo.get("longitude"),
-        "location_name": (location.get("location") or {}).get("name"),
+        "location_names": location_chain(location),
+        "address": (location.get("address") or {}).get("name"),
+        "title": posting.get("title"),
+        "pill": posting.get("triggerPill"),
+        "picture": (pictures[0].get("url360x266") if pictures else None),
+        "status": posting.get("status"),
         "modified": posting.get("modified_date"),
         "url": posting.get("url"),
     }
@@ -200,35 +263,90 @@ def location_matches(title, zone):
     return parent in KNOWN_PARENTS, location
 
 
-def listing_path(property_type, operation, slug, page):
+def listing_path(property_type, operation, slug, segment="", page=1, sort=True):
+    """'/departamentos-venta-palermo-2-ambientes-orden-publicado-descendente-pagina-2.html'"""
+    parts = [property_type, operation, slug] + ([segment] if segment else [])
     page_part = f"-pagina-{page}" if page > 1 else ""
-    return f"/{property_type}-{operation}-{slug}{SORT_SUFFIX}{page_part}.html"
+    return f"/{'-'.join(parts)}{SORT_SUFFIX if sort else ''}{page_part}.html"
+
+
+def price_segment(operation, low, high):
+    """'50000-99999-dolar': the listings priced from low to high, both included."""
+    return f"{low}-{high}-{PRICE_UNITS[operation]}"
+
+
+def band_prices(page, operation):
+    """Prices of the listings of a band page in the unit of its filter (sale in dollars, rent in pesos)."""
+    currency = PRICE_CURRENCIES[PRICE_UNITS[operation]]
+    prices = []
+    for posting in page["postings"]:
+        price = posting["operations"].get(operation)
+        if price and price["currency"] == currency and price["amount"]:
+            prices.append(price["amount"])
+    return prices
+
+
+def split_point(low, high, prices=()):
+    """Where a price band is split in two (low..result and result + 1..high): at the median of the prices seen in it
+    (its newest listings), or halfway on a log scale when there are none (prices spread out as they grow)."""
+    inside = sorted(price for price in prices if low <= price <= high)
+    if inside:
+        middle = int(inside[(len(inside) - 1) // 2])
+    else:
+        middle = int(math.sqrt(low * high)) if low > 0 else high // 2
+    return min(max(middle, low), high - 1)
+
+
+def is_page(page, number):
+    """False when Zonaprop answered a page with another one (the final URL has no '-pagina-<number>')."""
+    return not page.get("final_url") or f"-pagina-{number}." in page["final_url"]
+
+
+def run_folder(cache_root, requested, max_age):
+    """The cache folder of this scrape: the newest run still younger than max_age, or a new one named after today."""
+    if requested:
+        return cache_root / requested
+    runs = sorted(p for p in cache_root.glob("????-??-??") if p.is_dir())
+    if runs:
+        started = date.fromisoformat(runs[-1].name)
+        if date.today() - started < max_age:
+            return runs[-1]
+    return cache_root / date.today().isoformat()
 
 
 class Scraper:
-    def __init__(self, delay, max_age_days):
+    def __init__(self, cache_dir, delay, download=True):
+        self.cache_dir = cache_dir
         self.delay = delay
-        self.max_age = timedelta(days=max_age_days)
+        self.download = download
         self.requests = 0
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        self.last_request = 0.0
+        if download:
+            cache_dir.mkdir(parents=True, exist_ok=True)
 
     def cache_file(self, path):
-        return CACHE_DIR / (path.strip("/").replace(".html", "") + ".json")
+        return self.cache_dir / (path.strip("/").replace(".html", "") + ".json")
 
     def get(self, path):
-        """Returns the parsed page, from the cache when it is recent enough."""
+        """Returns the parsed page, from the cache when this run already has it. None when not downloading."""
         file = self.cache_file(path)
         if file.exists():
-            cached = json.loads(file.read_text(encoding="utf-8"))
-            if datetime.now(timezone.utc) - datetime.fromisoformat(cached["scraped_at"]) < self.max_age:
-                return cached
-        waits = [60, 180, 600]
+            return json.loads(file.read_text(encoding="utf-8"))
+        if not self.download:
+            return None
+        # Longer and longer pauses when Zonaprop refuses; after the last one the scrape stops (and can be resumed)
+        waits = [60, 180, 600, 1800, 1800]
         for attempt in range(len(waits) + 1):
+            # One request every `delay` seconds on average, counting the time the previous one took
+            pause = self.delay * random.uniform(0.7, 1.4) - (time.time() - self.last_request)
+            if pause > 0:
+                time.sleep(pause)
+            self.last_request = time.time()
             try:
-                final_url, html = fetch(path, self.delay)
+                final_url, html = fetch(path)
                 break
             except NotFound:
-                # Cached too, so a slug Zonaprop does not know is asked only once
+                # Cached too, so a slug Zonaprop does not know is asked only once per run
                 self.requests += 1
                 page = {"title": "", "total": 0, "total_pages": 0, "postings": [], "final_url": None,
                         "scraped_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
@@ -237,7 +355,7 @@ class Scraper:
             except Blocked as error:
                 if attempt == len(waits):
                     raise
-                print(f"    Zonaprop no respondio ({error}); esperando {waits[attempt]} s...", flush=True)
+                print(f"    Zonaprop did not respond ({error}); waiting {waits[attempt] // 60} min...", flush=True)
                 time.sleep(waits[attempt])
         self.requests += 1
         page = parse_page(html)
@@ -246,17 +364,11 @@ class Scraper:
         file.write_text(json.dumps(page, ensure_ascii=False), encoding="utf-8")
         return page
 
-    def cached(self, path):
-        """Returns the cached page, or None, without downloading anything."""
-        file = self.cache_file(path)
-        return json.loads(file.read_text(encoding="utf-8")) if file.exists() else None
-
-    def resolve(self, zone, download=True):
+    def resolve(self, zone):
         """Finds the Zonaprop slug of a zone, trying each candidate. Returns (slug, location) or (None, answer)."""
         answer = ""
         for slug in zone["candidates"]:
-            path = listing_path("departamentos", "venta", slug, 1)
-            page = self.get(path) if download else self.cached(path)
+            page = self.get(listing_path("departamentos", "venta", slug))
             if page is None:
                 continue
             matches, location = location_matches(page["title"], zone)
@@ -265,16 +377,81 @@ class Scraper:
             answer = answer or location or page["title"]
         return None, answer
 
-    def scrape_zone(self, zone, pages):
-        """Scrapes every combination for a zone. Returns (False, answer) when Zonaprop does not know it."""
+    def pages(self, slug):
+        """Yields (operation, property_type, first, page) for every listing page of a matched zone.
+
+        first is True for page 1 of the type, the one that gives its total. A page missing from the cache when not
+        downloading ends its search.
+        """
+        for operation in OPERATIONS:
+            for property_type in PROPERTY_TYPES:
+                first = self.get(listing_path(property_type, operation, slug))
+                if first is None:
+                    continue
+                yield operation, property_type, True, first
+                if first["total"] <= SEARCH_LIMIT:
+                    pages = self.search_pages(property_type, operation, slug, "", first)
+                else:
+                    pages = self.split_pages(property_type, operation, slug)
+                for page in pages:
+                    yield operation, property_type, False, page
+
+    def search_pages(self, property_type, operation, slug, segment, first):
+        """Yields the pages of a search after its first one, up to the last one Zonaprop serves.
+
+        They end at the last page the first one announces, at an empty page, or when Zonaprop answers with another
+        page (it sends past-the-end pages back to the first one).
+        """
+        last = min(first["total_pages"] or -(-first["total"] // PAGE_SIZE), MAX_PAGES)
+        for number in range(2, last + 1):
+            page = self.get(listing_path(property_type, operation, slug, segment, page=number))
+            if page is None or not page["postings"] or not is_page(page, number):
+                return
+            yield page
+
+    def split_pages(self, property_type, operation, slug):
+        """Yields every page of a type with more listings than one search shows, band by band of price."""
+        low = 1
+        for cut in PRICE_CUTS[operation]:
+            yield from self.band_pages(property_type, operation, slug, low, cut - 1)
+            low = cut
+
+    def band_pages(self, property_type, operation, slug, low, high):
+        """Yields the pages of the listings priced from low to high (both included), splitting the band in two while
+        it has more listings than one search shows. A band that cannot be split any more is read as far as it goes."""
+        segment = price_segment(operation, low, high)
+        first = self.get(listing_path(property_type, operation, slug, segment))
+        if first is None or not first["total"]:
+            return
+        yield first
+        if first["total"] > SEARCH_LIMIT and high > low:
+            middle = split_point(low, high, band_prices(first, operation))
+            yield from self.band_pages(property_type, operation, slug, low, middle)
+            yield from self.band_pages(property_type, operation, slug, middle + 1, high)
+            return
+        yield from self.search_pages(property_type, operation, slug, segment, first)
+
+    def filter_pages(self, slug, operation_totals):
+        """Yields (operation, filter, page) for the filter totals of the operations that have listings."""
+        for operation, filters in FILTERS.items():
+            if not operation_totals.get(operation):
+                continue
+            for key, segment in filters.items():
+                page = self.get(listing_path(ALL_TYPES, operation, slug, segment, sort=False))
+                if page is not None:
+                    yield operation, key, page
+
+    def scrape_zone(self, zone):
+        """Downloads every page of a zone. Returns (False, answer) when Zonaprop does not know it."""
         slug, location = self.resolve(zone)
         if not slug:
             return False, location
-        for operation in OPERATIONS:
-            for property_type in PROPERTY_TYPES:
-                page = self.get(listing_path(property_type, operation, slug, 1))
-                for number_ in range(2, min(pages, page["total_pages"]) + 1):
-                    self.get(listing_path(property_type, operation, slug, number_))
+        totals = {}
+        for operation, _, first, page in self.pages(slug):
+            if first:
+                totals[operation] = totals.get(operation, 0) + page["total"]
+        for _ in self.filter_pages(slug, totals):
+            pass
         return True, location
 
 
@@ -286,7 +463,7 @@ def slugify(text):
 def read_zones(only):
     file = DATA_DIR / "zones.csv"
     if not file.exists():
-        sys.exit(f"Falta {file}: exportarlo con etl/zonaprop/target_zones.sql (ver MERCADO-ZONAS-DOCKER.bat).")
+        sys.exit(f"Missing {file}: export it with etl/zonaprop/target_zones.sql (see ZONE-MARKET-DOCKER.bat).")
     # zonaprop_slug: the slug to use; partido: for zones without a partido in geo.zonas, to build the fallback
     overrides = {}
     if OVERRIDES_FILE.exists():
@@ -325,54 +502,92 @@ def usd_rate(override):
         with urllib.request.urlopen(request, timeout=30) as response:
             return float(json.loads(response.read())["venta"])
     except (urllib.error.URLError, TimeoutError, KeyError, ValueError) as error:
-        sys.exit(f"No se pudo obtener la cotizacion del dolar ({error}); pasarla con --usd-ars.")
+        sys.exit(f"Could not retrieve the exchange rate ({error}); provide it with --usd-ars.")
 
 
-def export(zones, pages, usd_ars):
+def room_group(rooms):
+    """Room group of a listing from its own number of rooms (1-5, 5 = 5 or more), None when unknown."""
+    if rooms is None or rooms < 1:
+        return None
+    return min(int(rooms), 5)
+
+
+TOTALS_HEADER = ["zone_slug", "operation", "property_type", "rooms", "filter", "listings", "zonaprop_location",
+                 "zonaprop_slug", "url", "scraped_at"]
+LISTINGS_HEADER = ["zone_slug", "operation", "property_type", "stratum", "posting_id", "currency", "price",
+                   "expenses", "expenses_currency", "total_m2", "covered_m2", "rooms", "bedrooms", "bathrooms",
+                   "garages", "age_years", "publisher_type", "lat", "lng", "modified", "url", "usd_ars"]
+
+
+def zone_rows(scraper, zone, usd_ars):
+    """totals.csv and listings.csv rows of a zone from the cache, or (None, answer) when it did not match."""
+    slug, location = scraper.resolve(zone)
+    if not slug:
+        return None, location
+    totals, listings = [], []
+    operation_totals = {}
+    seen = set()
+    # (operation, property_type) -> (page 1, {room group: listings})
+    types = {}
+    for operation, property_type, first, page in scraper.pages(slug):
+        type_name = PROPERTY_TYPES[property_type]
+        if first:
+            url = BASE_URL + listing_path(property_type, operation, slug)
+            totals.append([zone["slug"], operation, property_type, 0, "", page["total"], location, slug, url,
+                           page["scraped_at"]])
+            operation_totals[operation] = operation_totals.get(operation, 0) + page["total"]
+            types[(operation, property_type)] = (page, {})
+        groups = types[(operation, property_type)][1]
+        for posting in page["postings"]:
+            key = (operation, property_type, posting["id"])
+            if posting["type"] != type_name or key in seen:
+                continue
+            seen.add(key)
+            group = room_group(posting["rooms"])
+            if group:
+                groups[group] = groups.get(group, 0) + 1
+            price = posting["operations"].get(operation)
+            if not price:
+                continue
+            # stratum 0: every listing stands for itself (calculate_market.sql gives it weight 1)
+            listings.append([
+                zone["slug"], operation, property_type, 0, posting["id"], price["currency"], price["amount"],
+                posting.get("expenses"), posting.get("expenses_currency"), posting["total_m2"],
+                posting["covered_m2"], posting["rooms"], posting.get("bedrooms"), posting.get("bathrooms"),
+                posting.get("garages"), posting.get("age_years"), posting.get("publisher_type"), posting["lat"],
+                posting["lng"], posting["modified"], BASE_URL + (posting["url"] or ""), usd_ars,
+            ])
+    # Room groups: counted from the listings of the type
+    for (operation, property_type), (page, groups) in types.items():
+        for rooms, count in sorted(groups.items()):
+            totals.append([zone["slug"], operation, property_type, rooms, "", count, location, slug,
+                           BASE_URL + listing_path(property_type, operation, slug, ROOM_GROUPS[rooms]),
+                           page["scraped_at"]])
+    for operation, key, page in scraper.filter_pages(slug, operation_totals):
+        url = BASE_URL + listing_path(ALL_TYPES, operation, slug, FILTERS[operation][key], sort=False)
+        totals.append([zone["slug"], operation, "all", 0, key, page["total"], location, slug, url,
+                       page["scraped_at"]])
+    return (totals, listings), location
+
+
+def export(zones, cache_dir, usd_ars):
     """Writes totals.csv and listings.csv from the cached pages of the matched zones."""
     totals_rows, listing_rows, unmatched_rows = [], [], []
-    scraper = Scraper(0, 36500)
+    scraper = Scraper(cache_dir, 0, download=False)
     for zone in zones:
-        slug, location = scraper.resolve(zone, download=False)
-        if not slug:
+        rows, location = zone_rows(scraper, zone, usd_ars)
+        if rows is None:
             if location:
                 unmatched_rows.append([zone["slug"], zone["name"], zone["parent_name"], location])
             continue
-        for operation in OPERATIONS:
-            for property_type, type_name in PROPERTY_TYPES.items():
-                page_file = scraper.cache_file(listing_path(property_type, operation, slug, 1))
-                if not page_file.exists():
-                    continue
-                page = json.loads(page_file.read_text(encoding="utf-8"))
-                totals_rows.append([zone["slug"], operation, property_type, page["total"], location, slug,
-                                    BASE_URL + listing_path(property_type, operation, slug, 1), page["scraped_at"]])
-                seen = set()
-                for number_ in range(1, pages + 1):
-                    file = scraper.cache_file(listing_path(property_type, operation, slug, number_))
-                    if not file.exists():
-                        break
-                    for posting in json.loads(file.read_text(encoding="utf-8"))["postings"]:
-                        price = posting["operations"].get(operation)
-                        if not price or posting["type"] != type_name or posting["id"] in seen:
-                            continue
-                        seen.add(posting["id"])
-                        listing_rows.append([
-                            zone["slug"], operation, property_type, posting["id"], price["currency"], price["amount"],
-                            posting["expenses"], posting["total_m2"], posting["covered_m2"], posting["rooms"],
-                            posting["lat"], posting["lng"], posting["modified"], BASE_URL + (posting["url"] or ""),
-                            usd_ars,
-                        ])
-    write_csv("totals.csv", ["zone_slug", "operation", "property_type", "listings", "zonaprop_location",
-                             "zonaprop_slug", "url",
-                             "scraped_at"], totals_rows)
-    write_csv("listings.csv", ["zone_slug", "operation", "property_type", "posting_id", "currency", "price",
-                               "expenses_ars", "total_m2", "covered_m2", "rooms", "lat", "lng", "modified", "url",
-                               "usd_ars"],
-              listing_rows)
+        totals_rows.extend(rows[0])
+        listing_rows.extend(rows[1])
+    write_csv("totals.csv", TOTALS_HEADER, totals_rows)
+    write_csv("listings.csv", LISTINGS_HEADER, listing_rows)
     write_csv("unmatched.csv", ["zone_slug", "name", "parent_name", "zonaprop_answer"], unmatched_rows)
     matched = len({row[0] for row in totals_rows})
-    print(f"Exportado: {matched} zonas con datos, {len(listing_rows)} avisos de muestra, "
-          f"{len(unmatched_rows)} zonas sin equivalente en Zonaprop (unmatched.csv). Dolar: {usd_ars}.")
+    print(f"Exported ({cache_dir.name}): {matched} zones with data, {len(listing_rows)} listings, "
+          f"{len(unmatched_rows)} zones without a Zonaprop match (unmatched.csv). USD/ARS: {usd_ars}.")
 
 
 def write_csv(name, header, rows):
@@ -383,32 +598,37 @@ def write_csv(name, header, rows):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Scraper de publicaciones de Zonaprop por zona")
-    parser.add_argument("--pages", type=int, default=2, help="paginas de 30 avisos por combinacion (muestra)")
-    parser.add_argument("--delay", type=float, default=4.0, help="segundos promedio entre pedidos")
-    parser.add_argument("--max-age-days", type=float, default=14, help="antiguedad maxima de la cache")
-    parser.add_argument("--only", default="", help="slugs separados por coma")
-    parser.add_argument("--usd-ars", type=float, help="pesos por dolar (por defecto, el MEP del dia)")
-    parser.add_argument("--export-only", action="store_true", help="solo reconstruir los CSV desde la cache")
+    parser = argparse.ArgumentParser(description="Scrape Zonaprop listings by zone")
+    parser.add_argument("--delay", type=float, default=3.5, help="average delay between requests, in seconds")
+    parser.add_argument("--max-age-days", type=float, default=7,
+                        help="days a run keeps being completed before a new one starts")
+    parser.add_argument("--run", default="", help="run folder in datos/zonaprop/cache (YYYY-MM-DD)")
+    parser.add_argument("--only", default="", help="comma-separated zone slugs")
+    parser.add_argument("--usd-ars", type=float, help="pesos per US dollar (defaults to today's MEP rate)")
+    parser.add_argument("--export-only", action="store_true", help="rebuild CSV files from the cache only")
     args = parser.parse_args()
 
     only = {slug.strip() for slug in args.only.split(",") if slug.strip()}
     zones = read_zones(only)
+    cache_dir = run_folder(DATA_DIR / "cache", args.run, timedelta(days=args.max_age_days))
+    print(f"Run: {cache_dir}", flush=True)
     if not args.export_only:
-        scraper = Scraper(args.delay, args.max_age_days)
+        scraper = Scraper(cache_dir, args.delay)
         started = time.time()
         try:
             for index, zone in enumerate(zones, 1):
-                matched, location = scraper.scrape_zone(zone, args.pages)
-                status = f"ok ({location})" if matched else f"sin equivalente ({location or 'otra ubicacion'})"
+                matched, location = scraper.scrape_zone(zone)
+                status = f"ok ({location})" if matched else f"no match ({location or 'another location'})"
                 minutes = (time.time() - started) / 60
-                print(f"[{index}/{len(zones)}] {zone['slug']}: {status} - {scraper.requests} pedidos, "
+                print(f"[{index}/{len(zones)}] {zone['slug']}: {status} - {scraper.requests} requests, "
                       f"{minutes:.0f} min", flush=True)
         except Blocked as error:
-            print(f"Zonaprop sigue bloqueando ({error}). Se corta aca; volver a ejecutar mas tarde para retomar.")
+            print(f"Zonaprop keeps blocking ({error}). Stopping here; run it again later to resume.")
+            sys.exit(2)
         except KeyboardInterrupt:
-            print("Interrumpido; volver a ejecutar para retomar.")
-    export(zones, args.pages, usd_rate(args.usd_ars))
+            print("Interrupted; run it again to resume.")
+            sys.exit(130)
+    export(zones, cache_dir, usd_rate(args.usd_ars))
 
 
 if __name__ == "__main__":

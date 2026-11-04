@@ -1,13 +1,13 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Api.Authentication;
-using ZonaMatch.Application.DTOs.Notifications.Responses;
-using ZonaMatch.Application.UseCases.Notifications;
+using ZonaMatch.Application.DTOs.Notification.Responses;
+using ZonaMatch.Application.UseCases.Notification;
 
 namespace ZonaMatch.Api.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/v1/notifications")]
     [Authorize]
     public class NotificationsController : ControllerBase
     {
