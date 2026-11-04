@@ -366,5 +366,102 @@ namespace ZonaMatch.Tests.Domain
             result.Places[1].Score.Should().BeNull();
             result.Limits.Should().Contain(limit => limit.IsSatisfied == null && limit.Details.Contains("Facultad"));
         }
+
+        private static readonly Dictionary<string, string> EducationCriteria = new() { [ScoringEngine.Education] = "media" };
+
+        // Sale prices from US$ 100.000 to US$ 200.000, every tenth of the listings US$ 10.000 more (older data, without shares)
+        private static ZoneProfile ZoneWithSaleRange() => new()
+        {
+            Slug = "zona", Name = "zona", Level = 9, AreaKm2 = 2, Population = 1000, SchoolCount = 10,
+            AverageSalePriceUsd = 160_000,
+            SaleDecilesUsd = [100_000, 110_000, 120_000, 130_000, 140_000, 150_000, 160_000, 170_000, 180_000, 190_000, 200_000],
+        };
+
+        // Like Palermo: apartments for rent average $ 1.289.000, but a 2-room one is about $ 1.229.000
+        private static ZoneProfile ZoneWithRooms() => new()
+        {
+            Slug = "zona", Name = "zona", Level = 9, AreaKm2 = 2, Population = 1000, SchoolCount = 10,
+            AverageExpenses = 280_000,
+            MarketByPropertyType = new Dictionary<string, HousingMarket>
+            {
+                [HousingTypes.Apartment] = new(1_289_000, 3_413, 291_000, 258_200, 11_967, RentPricePerM2: 25_259, SalePricePerM2Usd: 3_910),
+            },
+            MarketByRooms = new Dictionary<(string Type, int Rooms), HousingMarket>
+            {
+                [(HousingTypes.Apartment, 2)] = new(1_229_000, 1_353, 250_000, 170_547, 3_560, RentPricePerM2: 25_523, SalePricePerM2Usd: 3_738),
+            },
+        };
+
+        [Fact]
+        public void Calculate_WhenPartOfTheListingsFitThePurchaseCap_MeetsTheLimitAndDescribesTheRange()
+        {
+            var zone = ZoneWithSaleRange();
+            var engine = new ScoringEngine([zone]);
+
+            // The average (160.000) is over the limit, but half of the listings fit: the limit is met and 10 points go
+            var result = engine.Calculate(zone, new ScoringRequest(EducationCriteria, [], null, HousingOperations.Purchase, 150_000));
+
+            var limit = result.Limits.Single();
+            limit.IsSatisfied.Should().BeTrue();
+            result.Score.Should().Be(40);
+            limit.Details.Should().Be(
+                "Precio: de US$ 100.000 a US$ 200.000, precio medio US$ 150.000: entra el 50 % de las publicaciones en tu tope de compra de US$ 150.000");
+        }
+
+        [Fact]
+        public void Calculate_WhenNoListingFitsThePurchaseCap_FailsTheLimit()
+        {
+            var zone = ZoneWithSaleRange();
+
+            var result = new ScoringEngine([zone]).Calculate(zone, new ScoringRequest(EducationCriteria, [], null, HousingOperations.Purchase, 90_000));
+
+            result.Limits.Single().IsSatisfied.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Calculate_WhenSharesAreKnown_UsesTheRealShareOfTheCap()
+        {
+            // Many rentals at exactly $ 500.000: 39 % cost up to it although the point is at 35 %
+            var zone = new ZoneProfile
+            {
+                Slug = "zona", Name = "zona", Level = 9, AreaKm2 = 2, Population = 1000, SchoolCount = 10,
+                AverageRent = 520_000,
+                RentDeciles = [250_000, 400_000, 490_000, 500_000, 520_000, 600_000, 1_000_000],
+                RentShares = [0.01m, 0.2m, 0.33m, 0.39m, 0.45m, 0.7m, 1],
+            };
+
+            var result = new ScoringEngine([zone]).Calculate(zone, new ScoringRequest(EducationCriteria, [], 500_000));
+
+            result.Limits.Single().Details.Should().EndWith("entra el 39 % de las publicaciones en tu tope de $ 500.000");
+        }
+
+        [Fact]
+        public void Calculate_WhenRoomsAreRequested_ComparesTheBudgetWithThatSize()
+        {
+            var zone = ZoneWithRooms();
+
+            var result = new ScoringEngine([zone]).Calculate(zone, new ScoringRequest(
+                EducationCriteria, [], 1_500_000, HousingType: HousingTypes.Apartment, Rooms: 2));
+
+            // 1.229.000 of rent + 250.000 of expenses
+            var limit = result.Limits.Single();
+            limit.IsSatisfied.Should().BeTrue();
+            limit.Details.Should().Be(
+                "Alquiler de departamentos de 2 ambientes $ 1.229.000 + expensas $ 250.000 = $ 1.479.000 por mes: dentro de tu tope de $ 1.500.000");
+        }
+
+        [Fact]
+        public void Calculate_WhenRoomsAndSurfaceAreRequested_EstimatesWithThePricePerM2OfThatSize()
+        {
+            var zone = ZoneWithRooms();
+
+            var result = new ScoringEngine([zone]).Calculate(zone, new ScoringRequest(
+                EducationCriteria, [], null, HousingOperations.Purchase, 150_000, HousingTypes.Apartment, AreaM2: 40, Rooms: 2));
+
+            // 3.738 x 40 = 149.520
+            var limit = result.Limits.Single();
+            limit.IsSatisfied.Should().BeTrue();
+            limit.Details.Should().StartWith("Precio estimado de departamentos de 2 ambientes para 40 m² US$ 149.520 (US$ 3.738/m²)");
+        }
     }
 }

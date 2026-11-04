@@ -10,7 +10,7 @@ namespace ZonaMatch.Domain.Entities
         // Room groups with fewer sampled listings are too noisy to show or to price with
         public const int MinSampleSize = 5;
 
-        // Zone slug, the same as in GET /Zonas/{slug}
+        // Zone slug, as in GET /api/v1/zones/{slug}
         public string ZoneSlug { get; set; } = string.Empty;
 
         // ZoneMarketOperation: sale or rent

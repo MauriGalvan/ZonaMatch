@@ -24,7 +24,7 @@ public class GroupHousingSuggestionTests
             Profile(HousingOperations.Rent, "300000"),
         ]);
 
-        Assert.Equal(3, suggestion.Rooms);
+        suggestion.Rooms.Should().Be(3);
     }
 
     [Fact]

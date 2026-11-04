@@ -1,3 +1,4 @@
+using FluentAssertions;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Zone;
@@ -66,7 +67,7 @@ namespace ZonaMatch.Tests.UseCases.Zone
         };
 
         [Fact]
-        public async Task ExecuteAsync_WhenZoneHasFiltersAndRooms_ReturnsSharesSurfaceAndPricesByRooms()
+        public async Task ExecuteAsync_WhenZoneHasListingFeatures_ReturnsSharesAndTypicalSurface()
         {
             var sale = Row("palermo", ZoneMarketOperation.Sale, ZoneMarketPropertyType.All, 274_330, 3_865, 12_585);
             sale.CreditEligibleShare = 0.2578m;
@@ -75,8 +76,25 @@ namespace ZonaMatch.Tests.UseCases.Zone
             sale.MedianTotalM2 = 71;
             var rent = Row("palermo", ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 1_351_000, 25_298, 3_535);
             rent.PetsAllowedShare = 0.2571m;
-            _market.Rows.AddRange([sale, rent,
-                Row("palermo", ZoneMarketOperation.Sale, ZoneMarketPropertyType.Apartment, 258_200, 3_910, 11_967)]);
+            _market.Rows.AddRange([sale, rent]);
+
+            var market = await new GetZoneMarket(_market).ExecuteAsync("palermo");
+
+            market.Sale!.CreditEligibleShare.Should().Be(0.2578m);
+            market.Sale.OwnerShare.Should().Be(0.0132m);
+            market.Sale.MedianCoveredM2.Should().Be(58);
+            market.Sale.MedianTotalM2.Should().Be(71);
+            market.Rent!.PetsAllowedShare.Should().Be(0.2571m);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenZoneHasPricesByRooms_ReturnsTheSizesWithEnoughListings()
+        {
+            _market.Rows.AddRange([
+                Row("palermo", ZoneMarketOperation.Sale, ZoneMarketPropertyType.All, 274_330, 3_865, 12_585),
+                Row("palermo", ZoneMarketOperation.Rent, ZoneMarketPropertyType.All, 1_351_000, 25_298, 3_535),
+                Row("palermo", ZoneMarketOperation.Sale, ZoneMarketPropertyType.Apartment, 258_200, 3_910, 11_967),
+            ]);
             _market.RoomsRows.AddRange([
                 RoomsRow(ZoneMarketOperation.Sale, ZoneMarketPropertyType.All, 2, 170_148),
                 RoomsRow(ZoneMarketOperation.Sale, ZoneMarketPropertyType.All, 1, 120_733),
@@ -88,15 +106,10 @@ namespace ZonaMatch.Tests.UseCases.Zone
 
             var market = await new GetZoneMarket(_market).ExecuteAsync("palermo");
 
-            Assert.Equal(0.2578m, market.Sale!.CreditEligibleShare);
-            Assert.Equal(0.0132m, market.Sale.OwnerShare);
-            Assert.Equal(58, market.Sale.MedianCoveredM2);
-            Assert.Equal(71, market.Sale.MedianTotalM2);
-            Assert.Equal(0.2571m, market.Rent!.PetsAllowedShare);
-            Assert.Equal([1, 2], market.Sale.ByRooms!.Select(rooms => rooms.Rooms));
-            Assert.Equal(170_148, market.Sale.ByRooms![1].AveragePrice);
-            Assert.Equal(170_547, market.Sale.ByType.Single().ByRooms!.Single().AveragePrice);
-            Assert.Equal(1_227_000, market.Rent.ByRooms!.Single().AveragePrice);
+            market.Sale!.ByRooms!.Select(rooms => rooms.Rooms).Should().Equal(1, 2);
+            market.Sale.ByRooms![1].AveragePrice.Should().Be(170_148);
+            market.Sale.ByType.Single().ByRooms!.Single().AveragePrice.Should().Be(170_547);
+            market.Rent!.ByRooms!.Single().AveragePrice.Should().Be(1_227_000);
         }
 
         [Fact]

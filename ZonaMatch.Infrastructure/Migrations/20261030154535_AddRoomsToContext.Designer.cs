@@ -14,8 +14,8 @@ using ZonaMatch.Infrastructure.Data;
 namespace ZonaMatch.Infrastructure.Migrations
 {
     [DbContext(typeof(ZonaMatchDbContext))]
-    [Migration("20261030154535_AddAmbientesAlContexto")]
-    partial class AddAmbientesAlContexto
+    [Migration("20261030154535_AddRoomsToContext")]
+    partial class AddRoomsToContext
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

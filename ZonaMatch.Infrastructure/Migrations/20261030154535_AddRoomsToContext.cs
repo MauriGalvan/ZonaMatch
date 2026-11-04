@@ -5,7 +5,7 @@
 namespace ZonaMatch.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAmbientesAlContexto : Migration
+    public partial class AddRoomsToContext : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

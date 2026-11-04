@@ -14,7 +14,9 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         [InlineData(5, 5)]
         public void ValidateRooms_WhenOptionalOrInRange_ReturnsThem(int? requested, int? expected)
         {
-            Assert.Equal(expected, HousingScoring.ValidateRooms(requested));
+            var rooms = HousingScoring.ValidateRooms(requested);
+
+            rooms.Should().Be(expected);
         }
 
         [Theory]
@@ -22,7 +24,9 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         [InlineData(6)]
         public void ValidateRooms_WhenOutOfRange_ThrowsBadRequestException(int rooms)
         {
-            Assert.Throws<BadRequestException>(() => HousingScoring.ValidateRooms(rooms));
+            var validate = () => HousingScoring.ValidateRooms(rooms);
+
+            validate.Should().Throw<BadRequestException>();
         }
 
         [Fact]
