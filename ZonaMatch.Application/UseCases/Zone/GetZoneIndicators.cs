@@ -114,21 +114,61 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
         if (zone.CrimeCount is not { } crimes || zone.CrimeDataYear is not { } year)
             return null;
 
+        var cityAverageRate = cityReference?.CrimesPerThousandResidents ?? ZoneSafetyBenchmark.DefaultCityAverageRate;
+        var robberies = zone.Robberies ?? 0;
+        var thefts = zone.Thefts ?? 0;
+        var injuries = zone.Injuries ?? 0;
+        var threats = zone.Threats ?? 0;
+        var homicides = zone.Homicides ?? 0;
+        var roadIncidents = zone.TrafficIncidents ?? 0;
+
+        var evaluation = ZoneSafetyBenchmark.Evaluate(
+            zone.CrimesPerThousandResidents,
+            cityAverageRate,
+            robberies,
+            thefts,
+            injuries,
+            threats,
+            homicides,
+            roadIncidents);
+
+        if (evaluation is null)
+            return null;
+
+        var badgeResponse = new SafetyBadgeResponse(evaluation.Badge.Label, evaluation.Badge.Variant);
+        var breakdownResponse = evaluation.Breakdown
+            .Select(b => new SafetyBreakdownItemResponse(b.Category, b.Count, b.Percentage))
+            .ToList();
+        var roadIncidentsResponse = new SafetyRoadIncidentsResponse(roadIncidents);
+
+        var referenceResponse = cityReference is null || IsBuenosAiresCity(zone)
+            ? null
+            : new IndicatorReferenceResponse(BuenosAiresCity, cityAverageRate);
+
+        var totalCrimes = evaluation.TotalCrimes > 0 ? evaluation.TotalCrimes : crimes;
+
         return new ZoneSafetyResponse(
+            evaluation.Score,
+            evaluation.MaxScore,
+            badgeResponse,
+            evaluation.Summary,
+            evaluation.CrimesPerThousandResidents,
+            evaluation.CityAverageRate,
+            totalCrimes,
+            evaluation.DominantCategoryText,
+            breakdownResponse,
+            roadIncidentsResponse,
             year,
             zone.CrimeDataSource ?? ZoneIndicators.CrimeMapSource,
             zone.CrimeDataCoverage,
-            crimes,
+            totalCrimes,
             zone.CrimesPerThousandResidents,
-            zone.Robberies ?? 0,
-            zone.Thefts ?? 0,
-            zone.Injuries ?? 0,
-            zone.Homicides ?? 0,
-            zone.Threats ?? 0,
-            zone.TrafficIncidents ?? 0,
-            cityReference is null || IsBuenosAiresCity(zone)
-                ? null
-                : new IndicatorReferenceResponse(BuenosAiresCity, cityReference.CrimesPerThousandResidents));
+            robberies,
+            thefts,
+            injuries,
+            homicides,
+            threats,
+            referenceResponse);
     }
 
     private static IReadOnlyList<DataSourceResponse> BuildSources(ZoneIndicators zone)
