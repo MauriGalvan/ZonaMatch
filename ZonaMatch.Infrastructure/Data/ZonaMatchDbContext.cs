@@ -570,6 +570,11 @@ namespace ZonaMatch.Infrastructure.Data
             modelBuilder.Entity<Participant>()
                 .Property(p => p.Role)
                 .HasConversion<string>();
+
+            // A user takes part in a group only once.
+            modelBuilder.Entity<Participant>()
+                .HasIndex(p => new { p.GroupId, p.UserId })
+                .IsUnique();
         }
 
         private static string ToSnakeCase(string name) =>
