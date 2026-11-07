@@ -68,9 +68,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEmailService, EmailService>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
-        // One cache for the whole API (zone profiles, MOTIS trips and plans, Nominatim addresses). Today it lives in memory;
-        // with several instances, a distributed cache (Redis or PostgreSQL) can be added here as its second level.
+        // MOTIS trips and plans and Nominatim addresses. Today it lives in memory; with several instances, a distributed
+        // cache (Redis or PostgreSQL) can be added here as its second level.
         services.AddHybridCache();
+        // The zone profiles are too large for HybridCache: they have their own in-memory cache.
+        services.AddSingleton<ZoneProfilesCache>();
         services.AddHttpClient<IRoutingClient, MotisRoutingClient>(client =>
         {
             client.BaseAddress = new Uri(configuration["Motis:Url"] ?? "http://localhost:18080/");
