@@ -1,4 +1,5 @@
-﻿using ZonaMatch.Application.DTOs;
+﻿using FluentAssertions;
+using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Scoring.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -40,28 +41,28 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         };
 
         [Fact]
-        public async Task ExecuteAsync_WhenAddedZoneDoesNotExist_ThrowsNotFoundException()
+        public async Task CalculateAsync_WhenAddedZoneDoesNotExist_ThrowsNotFoundException()
         {
             AddZone("villa-luro", 30);
 
             var request = BuildRequest();
             request.AddedZones = ["no-existe"];
 
-            await Assert.ThrowsAsync<NotFoundException>(() => _useCase.ExecuteAsync(request));
+            await Assert.ThrowsAsync<NotFoundException>(() => _useCase.CalculateAsync(request));
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenUnknownCriteriaAreProvided_IgnoresThem()
+        public async Task CalculateAsync_WhenUnknownCriteriaAreProvided_IgnoresThem()
         {
             AddZone("villa-luro", 30);
 
-            var zone = Assert.Single((await _useCase.ExecuteAsync(BuildRequest())).Zones);
+            var zone = Assert.Single((await _useCase.CalculateAsync(BuildRequest())).Zones);
 
             Assert.Equal(["seguridad"], zone.Components.Select(component => component.Criterion));
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenInitialZoneIsOutsideTop_IncludesItAndReturnsRecommendations()
+        public async Task CalculateAsync_WhenInitialZoneIsOutsideTop_IncludesItAndReturnsRecommendations()
         {
             AddZone("villa-luro", 50);
             for (var i = 1; i <= 7; i++)
@@ -69,7 +70,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             var request = BuildRequest();
             request.InitialZone = "vecina-7";
 
-            var result = await _useCase.ExecuteAsync(request);
+            var result = await _useCase.CalculateAsync(request);
 
             Assert.Equal(CalculateScores.AutomaticTopZones, result.Zones.Count);
             Assert.Contains(result.Zones, zone => zone.Slug == "vecina-7");
@@ -78,14 +79,14 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenRoutingFails_EstimatesTravelTime()
+        public async Task CalculateAsync_WhenRoutingFails_EstimatesTravelTime()
         {
             AddZone("villa-luro", 30);
             _routing.IsAvailable = false;
             var request = BuildRequest();
             request.Places = [new PlaceScoreRequest { Name = "Trabajo", Latitude = -34.6, Longitude = -58.4, MaximumTravelTime = "30 min" }];
 
-            var place = Assert.Single(Assert.Single((await _useCase.ExecuteAsync(request)).Zones).Places);
+            var place = Assert.Single(Assert.Single((await _useCase.CalculateAsync(request)).Zones).Places);
 
             Assert.True(place.IsEstimated);
             Assert.Equal(30, place.MaximumMinutes);
@@ -94,13 +95,13 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenRentLimitIsFormatted_ParsesTheEnteredAmount()
+        public async Task CalculateAsync_WhenRentLimitIsFormatted_ParsesTheEnteredAmount()
         {
             AddZone("villa-luro", 30);
             var request = BuildRequest();
             request.MaximumRent = "$ 500.000";
 
-            var zone = Assert.Single((await _useCase.ExecuteAsync(request)).Zones);
+            var zone = Assert.Single((await _useCase.CalculateAsync(request)).Zones);
 
             var limit = Assert.Single(zone.Limits);
             Assert.False(limit.IsMet);
@@ -108,21 +109,21 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         }
 
         [Fact]
-        public async Task ExecuteAsync_UsesHouseholdMobilityToMeasureTrips()
+        public async Task CalculateAsync_UsesHouseholdMobilityToMeasureTrips()
         {
             AddZone("villa-luro", 30);
             var request = BuildRequest();
             request.Mobility = ["vehiculo", "a-pie"];
             request.Places = [new PlaceScoreRequest { Name = "Trabajo", Latitude = -34.6, Longitude = -58.4 }];
 
-            var result = await _useCase.ExecuteAsync(request);
+            var result = await _useCase.CalculateAsync(request);
 
             Assert.Equal("auto", result.TravelMode);
             Assert.Equal([TravelMode.Car], _routing.Modes.Distinct());
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenZoneHasStartingPoint_MeasuresItsTripsFromThere()
+        public async Task CalculateAsync_WhenZoneHasStartingPoint_MeasuresItsTripsFromThere()
         {
             AddZone("villa-luro", 30);
             AddZone("floresta", 30);
@@ -130,21 +131,60 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             request.Places = [new PlaceScoreRequest { Name = "Trabajo", Latitude = -34.60, Longitude = -58.38 }];
             request.ZoneOrigins = [new ZoneOriginRequest { Slug = "villa-luro", Latitude = -34.64, Longitude = -58.50 }];
 
-            await _useCase.ExecuteAsync(request);
+            await _useCase.CalculateAsync(request);
 
             Assert.Contains((-34.64, -58.50), _routing.Origins);
             Assert.Contains((-34.6, -58.5), _routing.Origins);
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenStartingPointIsOutsideItsZone_ThrowsBadRequestException()
+        public async Task CalculateAsync_WhenStartingPointIsOutsideItsZone_ThrowsBadRequestException()
         {
             AddZone("villa-luro", 30);
             _zones.ContainsStartingPoint = false;
             var request = BuildRequest();
             request.ZoneOrigins = [new ZoneOriginRequest { Slug = "villa-luro", Latitude = -34.5, Longitude = -58.4 }];
 
-            await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(request));
+            await Assert.ThrowsAsync<BadRequestException>(() => _useCase.CalculateAsync(request));
+        }
+
+        private static CalculateScoresRequest RequestWithPlaces(int count, string? maximumRent = "800000") => new()
+        {
+            Criteria = new() { ["seguridad"] = "alta" },
+            MaximumRent = maximumRent,
+            Places = Enumerable.Range(1, count)
+                .Select(index => new PlaceScoreRequest { Name = $"Lugar {index}", MaximumTravelTime = "45 min" })
+                .ToList(),
+        };
+
+        [Fact]
+        public async Task ExecuteAsync_WhenGuestSendsMorePlacesThanAllowed_ThrowsBadRequestException()
+        {
+            AddZone("villa-luro", 30);
+
+            var action = () => _useCase.ExecuteAsync(RequestWithPlaces(ScoringPlaceLimits.Guest + 1), isGuest: true);
+
+            await action.Should().ThrowAsync<BadRequestException>().WithMessage(ScoringPlaceLimits.GuestMessage);
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenSignedInUserSendsMorePlacesThanAGuest_CalculatesTheRanking()
+        {
+            AddZone("villa-luro", 30);
+
+            var result = await _useCase.ExecuteAsync(RequestWithPlaces(ScoringPlaceLimits.Guest + 1), isGuest: false);
+
+            result.Zones.Should().ContainSingle();
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenMonthlyBudgetIsMissing_ThrowsBadRequestException()
+        {
+            AddZone("villa-luro", 30);
+
+            var action = () => _useCase.ExecuteAsync(RequestWithPlaces(1, maximumRent: null), isGuest: false);
+
+            await action.Should().ThrowAsync<BadRequestException>().WithMessage("El gasto máximo por mes es obligatorio.");
         }
 
         private sealed class FakeZoneRepository : IZoneRepository
@@ -168,14 +208,14 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         [InlineData("bici", TravelMode.Bicycle)]
         [InlineData("a-pie", TravelMode.Walking)]
         [InlineData("transporte-publico", TravelMode.PublicTransit)]
-        public async Task ExecuteAsync_WhenMobilityIsSelected_ReturnsRouteDistance(string mobility, TravelMode expectedMode)
+        public async Task CalculateAsync_WhenMobilityIsSelected_ReturnsRouteDistance(string mobility, TravelMode expectedMode)
         {
             AddZone("recoleta", 30);
             var request = BuildRequest();
             request.Mobility = [mobility];
             request.Places = [new PlaceScoreRequest { Name = "Trabajo", Latitude = -34.6, Longitude = -58.4 }];
 
-            var result = await _useCase.ExecuteAsync(request);
+            var result = await _useCase.CalculateAsync(request);
             var place = Assert.Single(Assert.Single(result.Zones).Places);
 
             Assert.Equal(25, place.Minutes);
@@ -184,13 +224,13 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         }
 
         [Fact]
-        public async Task ExecuteAsync_WhenPlaceHasNoCoordinates_DoesNotCreateARoute()
+        public async Task CalculateAsync_WhenPlaceHasNoCoordinates_DoesNotCreateARoute()
         {
             AddZone("recoleta", 30);
             var request = BuildRequest();
             request.Places = [new PlaceScoreRequest { Name = "Trabajo" }];
 
-            var result = await _useCase.ExecuteAsync(request);
+            var result = await _useCase.CalculateAsync(request);
 
             Assert.Empty(Assert.Single(result.Zones).Places);
             Assert.Empty(_routing.Modes);
@@ -202,6 +242,8 @@ namespace ZonaMatch.Tests.UseCases.Scoring
 
             public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZoneProfile>>(Zones);
+
+            public Task InvalidateAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
             public Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
                 IReadOnlyCollection<(double Latitude, double Longitude)> locations,

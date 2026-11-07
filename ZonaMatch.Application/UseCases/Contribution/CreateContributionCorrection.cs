@@ -45,7 +45,7 @@ namespace ZonaMatch.Application.UseCases.Contribution
             {
                 case CorrectionReason.Name:
                     contribution.Name = ContributionMapper.Normalize(request.ProposedName)
-                        ?? throw new BadRequestException("Indica el nombre correcto del lugar.");
+                        ?? throw new BadRequestException("Indicá el nombre correcto del lugar.");
                     break;
 
                 case CorrectionReason.Category:
@@ -54,7 +54,7 @@ namespace ZonaMatch.Application.UseCases.Contribution
 
                 case CorrectionReason.Location:
                     if (request.Latitude is not { } latitude || request.Longitude is not { } longitude)
-                        throw new BadRequestException("Marca en el mapa la ubicacion correcta del lugar.");
+                        throw new BadRequestException("Marcá en el mapa la ubicación correcta del lugar.");
                     await _zones.EnsurePointBelongsToZoneAsync(zoneSlug, latitude, longitude, cancellationToken);
                     contribution.Location = ContributionMapper.CreatePoint(latitude, longitude);
                     break;

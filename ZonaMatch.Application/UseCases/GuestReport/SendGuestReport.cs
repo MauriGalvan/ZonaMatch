@@ -9,16 +9,19 @@ namespace ZonaMatch.Application.UseCases.GuestReport;
 // Emails a visitor the PDF report of their analysis, with an invitation to create an account.
 // The PDF is built in the browser, so the email text is fixed and only real, small PDFs are attached:
 // the endpoint cannot be used to send arbitrary content.
-public sealed class SendGuestReport(IEmailService email, GuestReportQuota quota)
+public sealed class SendGuestReport(IEmailService email, GuestReportQuota quota, FrontendLinks links)
 {
     public const int MaxReportBytes = 5 * 1024 * 1024;
+    // PENDING (decided 06/11): these limits get in the way of live demos (same email, same network). Options weighed:
+    // configurable limits plus a list of team addresses without limit, an invisible captcha (Cloudflare Turnstile),
+    // or a higher per-IP limit only. See ZonaMatch-plan-06-11.md, "Pendiente o a investigar".
     public const int MaxEmailsPerRecipientPerDay = 3;
     public const string Subject = "Tu informe de ZonaMatch";
     public const string AttachmentName = "informe-zonamatch.pdf";
 
     private static readonly byte[] PdfSignature = Encoding.ASCII.GetBytes("%PDF-");
 
-    public async Task ExecuteAsync(SendGuestReportRequest request, byte[]? report, string frontendBaseUrl, CancellationToken cancellationToken = default)
+    public async Task ExecuteAsync(SendGuestReportRequest request, byte[]? report, CancellationToken cancellationToken = default)
     {
         // A bot filled in the hidden field: answer as if it worked, but send nothing
         if (!string.IsNullOrWhiteSpace(request.Website))
@@ -28,13 +31,13 @@ public sealed class SendGuestReport(IEmailService email, GuestReportQuota quota)
             throw new BadRequestException("El informe no es un PDF válido.");
 
         var recipient = request.Email.Trim();
-        var sent = quota.SentToday(recipient);
+        var sent = await quota.SentTodayAsync(recipient, cancellationToken);
         if (sent >= MaxEmailsPerRecipientPerDay)
             throw new BadRequestException("Ya te mandamos varios informes hoy. Probá de nuevo mañana o creá tu cuenta para guardar tus análisis.");
 
         try
         {
-            await email.SendEmailAsync(recipient, Subject, Body(frontendBaseUrl.TrimEnd('/')),
+            await email.SendEmailAsync(recipient, Subject, Body(links),
                 [new EmailAttachment(AttachmentName, "application/pdf", report)], cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -42,10 +45,10 @@ public sealed class SendGuestReport(IEmailService email, GuestReportQuota quota)
             throw new ServiceUnavailableException("No pudimos enviar el informe en este momento. Intentá de nuevo en unos minutos.", ex);
         }
 
-        quota.Register(recipient);
+        await quota.RegisterAsync(recipient, cancellationToken);
     }
 
-    private static string Body(string frontendBaseUrl) => BrandEmail.Render(new BrandEmailContent(
+    private static string Body(FrontendLinks links) => BrandEmail.Render(new BrandEmailContent(
         Preheader: "Te mandamos el informe de tu análisis de zonas.",
         Title: "¡Gracias por probar ZonaMatch!",
         Paragraphs:
@@ -53,6 +56,6 @@ public sealed class SendGuestReport(IEmailService email, GuestReportQuota quota)
             "Te mandamos adjunto el informe de tu análisis, con las zonas que mejor encajan con lo que te importa.",
             "Con una cuenta podés guardar tus análisis, ajustarlos cuando cambien tus planes, compararlos y buscar zona en grupo con quienes vas a vivir.",
         ],
-        Button: new BrandEmailButton("Crear mi cuenta gratis", $"{frontendBaseUrl}/register"),
+        Button: new BrandEmailButton("Crear mi cuenta gratis", links.To("/register")),
         Footnote: "Recibiste este mail porque lo pediste desde ZonaMatch. No guardamos tu dirección ni te vamos a volver a escribir."));
 }

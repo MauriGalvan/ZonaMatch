@@ -3,6 +3,7 @@ using ZonaMatch.Application.DTOs.Scoring.Requests;
 using ZonaMatch.Application.DTOs.Scoring.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Services;
 using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Scoring
@@ -18,7 +19,6 @@ namespace ZonaMatch.Application.UseCases.Scoring
         public const int RecommendationsReturned = 4;
 
         // Number of routing requests sent concurrently.
-        private const int ConcurrentTrips = 6;
 
         private readonly IZoneProfilesRepository _zoneProfiles;
         private readonly IRoutingClient _routing;
@@ -31,7 +31,21 @@ namespace ZonaMatch.Application.UseCases.Scoring
             _zones = zones;
         }
 
-        public async Task<ScoresResponse> ExecuteAsync(CalculateScoresRequest request, CancellationToken cancellationToken = default)
+        // A ranking requested by a person: guests score fewer places, and every limit is required.
+        public Task<ScoresResponse> ExecuteAsync(CalculateScoresRequest request, bool isGuest, CancellationToken cancellationToken = default)
+        {
+            // Reject more places than a guest can score.
+            if (isGuest && request.Places.Count > ScoringPlaceLimits.Guest)
+                throw new BadRequestException(ScoringPlaceLimits.GuestMessage);
+
+            MandatoryScoringLimits.Validate(
+                request.MaximumRent, request.Operation, request.MaximumPurchasePriceUsd, request.Places.Select(place => place.MaximumTravelTime));
+
+            return CalculateAsync(request, cancellationToken);
+        }
+
+        // Only calculates. Saved analyses recalculate through here, so older ones saved without limits still work.
+        public async Task<ScoresResponse> CalculateAsync(CalculateScoresRequest request, CancellationToken cancellationToken = default)
         {
             var zoneUniverse = await _zoneProfiles.ListAsync(cancellationToken);
             var zonesBySlug = zoneUniverse.ToDictionary(zone => zone.Slug);
@@ -70,7 +84,9 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 .ToArray();
 
             var origins = await ResolveOriginsAsync(request.ZoneOrigins, zonesBySlug, cancellationToken);
-            var travelTimes = await MeasureTripsAsync(candidateZones, scoringRequest.Places, travelMode, origins, cancellationToken);
+            using var routeLimit = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
+            var travelTimes = await ZoneTripTimes.MeasureAsync(
+                _routing, candidateZones, scoringRequest.Places, travelMode, routeLimit, cancellationToken, origins);
             var ranking = candidateZones
                 .Select(zone => scoringEngine.Calculate(zone, scoringRequest, travelTimes[zone.Slug]))
                 .OrderByDescending(result => result.Score.HasValue)
@@ -151,42 +167,6 @@ namespace ZonaMatch.Application.UseCases.Scoring
 
         // One trip per zone and located place, starting at the zone center or at the point the user chose in it.
         // Estimate the time if routing is unavailable.
-        private async Task<Dictionary<string, IReadOnlyList<TravelTime?>>> MeasureTripsAsync(
-            IReadOnlyList<ZoneProfile> zones, IReadOnlyList<UserPlace> places, TravelMode travelMode,
-            IReadOnlyDictionary<string, (double Latitude, double Longitude)> origins,
-            CancellationToken cancellationToken)
-        {
-            using var concurrencyLimit = new SemaphoreSlim(ConcurrentTrips);
-
-            async Task<TravelTime?> MeasureAsync(ZoneProfile zone, UserPlace place)
-            {
-                if (!place.HasLocation)
-                    return null;
-
-                var (latitude, longitude) = origins.TryGetValue(zone.Slug, out var origin) ? origin : (zone.Latitude, zone.Longitude);
-
-                await concurrencyLimit.WaitAsync(cancellationToken);
-                try
-                {
-                    // Five blocks or less are walked (TravelModes.WalkingDistanceThresholdKm)
-                    var routeMode = TravelModes.ForDistance(travelMode, latitude, longitude, place.Latitude!.Value, place.Longitude!.Value);
-                    return await _routing.GetTravelTimeAsync(latitude, longitude, place.Latitude!.Value, place.Longitude!.Value, routeMode, cancellationToken)
-                           ?? TravelModes.Estimate(routeMode, latitude, longitude, place.Latitude!.Value, place.Longitude!.Value);
-                }
-                finally
-                {
-                    concurrencyLimit.Release();
-                }
-            }
-
-            var byZone = zones
-                .DistinctBy(z => z.Slug)
-                .Select(async zone => (zone.Slug, Times: await Task.WhenAll(places.Select(place => MeasureAsync(zone, place)))))
-                .ToList();
-
-            var results = await Task.WhenAll(byZone);
-            return results.ToDictionary(result => result.Slug, result => (IReadOnlyList<TravelTime?>)result.Times);
-        }
 
         private static ScoringRequest BuildRequest(CalculateScoresRequest request)
         {

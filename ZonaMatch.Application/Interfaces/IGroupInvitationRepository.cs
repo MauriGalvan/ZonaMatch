@@ -13,4 +13,7 @@ public interface IGroupInvitationRepository
     Task<GroupInvitation?> GetByTokenAsync(Guid token, CancellationToken cancellationToken);
 
     Task UpdateAsync(GroupInvitation invitation, CancellationToken cancellationToken);
+
+    // Invitations of the group still waiting for an answer and not expired at `now`.
+    Task<IReadOnlyList<GroupInvitation>> ListPendingAsync(Guid groupId, DateTime now, CancellationToken cancellationToken);
 }

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ZonaMatch.Application.DTOs;
@@ -36,6 +37,7 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddScoped<GetZoneProfileRecommendations>();
         services.AddScoped<GetZoneMarket>();
+        services.AddScoped<RefreshZoneProfiles>();
         services.AddScoped<SearchPlaces>();
         services.AddScoped<PointOfInterestResponseBuilder>();
         services.AddScoped<LocationBoundaryLookup>();
@@ -121,13 +123,22 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetZoneTransit>();
 
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton(new FrontendLinks(configuration["Frontend:BaseUrl"] ?? "http://localhost:5173"));
+        services.AddOptions<FrontendOptions>()
+            .BindConfiguration(FrontendOptions.SectionName)
+            .PostConfigure<IHostEnvironment>((options, environment) =>
+            {
+                if (string.IsNullOrWhiteSpace(options.BaseUrl) && environment.IsDevelopment())
+                    options.BaseUrl = FrontendOptions.DevelopmentBaseUrl;
+            })
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton(provider => new FrontendLinks(provider.GetRequiredService<IOptions<FrontendOptions>>().Value.BaseUrl));
         services.AddSingleton(new ContactOptions(
             configuration["Contact:RecipientEmail"]
                 ?? configuration["Contacto:Destinatario"]
                 ?? "zonamatchtpi@gmail.com"));
         services.AddScoped<SendContactMessage>();
-        services.AddSingleton<GuestReportQuota>();
+        services.AddScoped<GuestReportQuota>();
         services.AddScoped<SendGuestReport>();
 
         return services;

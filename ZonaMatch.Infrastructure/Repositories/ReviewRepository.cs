@@ -49,7 +49,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
                 // Two requests created the user's review for the zone at the same time or marked the same review useful.
-                throw new ConflictException("La operacion ya se habia registrado. Actualiza la pagina.");
+                throw new ConflictException("La operación ya se había registrado. Actualizá la página.");
             }
         }
     }

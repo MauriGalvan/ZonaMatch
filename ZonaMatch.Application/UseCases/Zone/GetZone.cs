@@ -14,6 +14,6 @@ public sealed class GetZone(IZoneRepository zoneRepository)
         ZoneQueryPolicy.ValidateSlug(slug);
         return await zoneRepository.GetBySlugAsync(
             slug, ZoneQueryPolicy.NormalizeBoundaryTolerance(tolerance), cancellationToken)
-            ?? throw new NotFoundException("No se encontro una zona con ese identificador.");
+            ?? throw new NotFoundException("No se encontró una zona con ese identificador.");
     }
 }

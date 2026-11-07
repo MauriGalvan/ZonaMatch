@@ -4,6 +4,7 @@ using ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
 using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Scoring;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Scoring;
@@ -15,7 +16,6 @@ namespace ZonaMatch.Application.UseCases.Group;
 /// </summary>
 public sealed partial class CalculateGroupScore
 {
-    private const int ConcurrentTrips = 6;
     private const int RecommendationsReturned = 4;
     private const int AutomaticTopZones = 5;
     private static readonly string[] RecommendationAgeRangeOrder = ["0-2", "3-5", "6-11", "12-17"];
@@ -72,7 +72,7 @@ public sealed partial class CalculateGroupScore
             cancellationToken);
         var profilesByUserId = profiles.ToDictionary(profile => profile.UserId);
         var engine = new ScoringEngine(universe);
-        using var routeLimit = new SemaphoreSlim(ConcurrentTrips);
+        using var routeLimit = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
 
         var members = group.Participants
             .Where(participant => profilesByUserId.ContainsKey(participant.UserId))
@@ -117,7 +117,7 @@ public sealed partial class CalculateGroupScore
         var calculations = members
             .Select(async member =>
             {
-                var travelTimes = await MeasureTripsAsync(zonesToCalculate, member.Request.Places, member.Mode, routeLimit, cancellationToken);
+                var travelTimes = await ZoneTripTimes.MeasureAsync(_routing, zonesToCalculate, member.Request.Places, member.Mode, routeLimit, cancellationToken);
                 var results = zonesToCalculate.ToDictionary(
                     zone => zone.Slug,
                     zone =>
@@ -262,41 +262,6 @@ public sealed partial class CalculateGroupScore
             throw new BadRequestException("Asigná un peso mayor a cero a por lo menos un participante.");
 
         return weights;
-    }
-
-    private async Task<Dictionary<string, IReadOnlyList<TravelTime?>>> MeasureTripsAsync(
-        IReadOnlyList<ZoneProfile> zones,
-        IReadOnlyList<UserPlace> places,
-        TravelMode mode,
-        SemaphoreSlim limiter,
-        CancellationToken cancellationToken)
-    {
-        async Task<TravelTime?> MeasureAsync(ZoneProfile zone, UserPlace place)
-        {
-            if (!place.HasLocation)
-                return null;
-
-            await limiter.WaitAsync(cancellationToken);
-            try
-            {
-                return await _routing.GetTravelTimeAsync(
-                           zone.Latitude, zone.Longitude,
-                           place.Latitude!.Value, place.Longitude!.Value,
-                           mode, cancellationToken)
-                       ?? TravelModes.Estimate(
-                           mode, zone.Latitude, zone.Longitude,
-                           place.Latitude!.Value, place.Longitude!.Value);
-            }
-            finally
-            {
-                limiter.Release();
-            }
-        }
-
-        var zoneTasks = zones.Select(async zone =>
-            (zone.Slug, Times: await Task.WhenAll(places.Select(place => MeasureAsync(zone, place)))));
-        var results = await Task.WhenAll(zoneTasks);
-        return results.ToDictionary(result => result.Slug, result => (IReadOnlyList<TravelTime?>)result.Times, StringComparer.Ordinal);
     }
 
     private static ScoringRequest BuildRequest(Context profile, decimal? sharedRentLimit)

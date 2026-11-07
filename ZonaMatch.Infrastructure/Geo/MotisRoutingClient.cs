@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ZonaMatch.Application.Interfaces;
@@ -19,7 +19,11 @@ namespace ZonaMatch.Infrastructure.Geo
         // Tuesday, March 3, 2026, at 8:00 AM in Buenos Aires (UTC-3).
         private const string DefaultReferenceDate = "2026-03-03T11:00:00Z";
 
-        private static readonly TimeSpan TravelTimeCacheDuration = TimeSpan.FromDays(1);
+        private static readonly HybridCacheEntryOptions TravelTimeCacheDuration = new()
+        {
+            Expiration = TimeSpan.FromDays(1),
+            LocalCacheExpiration = TimeSpan.FromDays(1),
+        };
         private static readonly TimeSpan FailureBackoffDuration = TimeSpan.FromMinutes(1);
 
         // Maximum duration for direct walking or cycling routes, in seconds.
@@ -28,12 +32,12 @@ namespace ZonaMatch.Infrastructure.Geo
         private static DateTimeOffset _doNotQueryUntil = DateTimeOffset.MinValue;
 
         private readonly HttpClient _http;
-        private readonly IMemoryCache _cache;
+        private readonly HybridCache _cache;
         private readonly TimeProvider _timeProvider;
         private readonly ILogger<MotisRoutingClient> _logger;
         private readonly string _referenceDate;
 
-        public MotisRoutingClient(HttpClient http, IMemoryCache cache, TimeProvider timeProvider, IConfiguration configuration, ILogger<MotisRoutingClient> logger)
+        public MotisRoutingClient(HttpClient http, HybridCache cache, TimeProvider timeProvider, IConfiguration configuration, ILogger<MotisRoutingClient> logger)
         {
             _http = http;
             _cache = cache;
@@ -50,11 +54,26 @@ namespace ZonaMatch.Infrastructure.Geo
             var cacheKey = string.Create(CultureInfo.InvariantCulture,
                 $"motis:{mode}:{originLatitude:F4},{originLongitude:F4}:{destinationLatitude:F4},{destinationLongitude:F4}");
 
-            if (_cache.TryGetValue(cacheKey, out TravelTime? cachedTravelTime))
-                return cachedTravelTime;
-
-            if (_timeProvider.GetUtcNow() < _doNotQueryUntil)
+            try
+            {
+                return await _cache.GetOrCreateAsync(cacheKey,
+                    token => new ValueTask<TravelTime>(QueryAsync(originLatitude, originLongitude, destinationLatitude, destinationLongitude, mode, token)),
+                    TravelTimeCacheDuration, cancellationToken: cancellationToken);
+            }
+            catch (TripNotAvailableException)
+            {
+                // MOTIS failed or is paused: the caller estimates the trip, and nothing is cached
                 return null;
+            }
+        }
+
+        // Only a trip MOTIS answered is returned (and cached); every failure throws TripNotAvailableException.
+        private async Task<TravelTime> QueryAsync(
+            double originLatitude, double originLongitude, double destinationLatitude, double destinationLongitude, TravelMode mode,
+            CancellationToken cancellationToken)
+        {
+            if (_timeProvider.GetUtcNow() < _doNotQueryUntil)
+                throw new TripNotAvailableException();
 
             try
             {
@@ -66,7 +85,7 @@ namespace ZonaMatch.Infrastructure.Geo
                 if (plan is null || plan.Error is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) })
                 {
                     _logger.LogWarning("MOTIS could not calculate the trip: {Error}", plan?.Error);
-                    return null;
+                    throw new TripNotAvailableException();
                 }
 
                 // Select one itinerary first so its duration and distance are not mixed with another itinerary.
@@ -74,28 +93,28 @@ namespace ZonaMatch.Infrastructure.Geo
                     .Concat(plan.DirectRoutes ?? [])
                     .Where(item => item.DurationSeconds is >= 0)
                     .MinBy(item => item.DurationSeconds!.Value);
-                var travelTime = itinerary is null
+                return itinerary is null
                     ? new TravelTime(null, IsEstimated: false)
                     : new TravelTime(
                         (int)Math.Round(itinerary.DurationSeconds!.Value / 60.0),
                         IsEstimated: false,
                         DistanceKm: CalculateDistanceKm(itinerary));
-
-                _cache.Set(cacheKey, travelTime, TravelTimeCacheDuration);
-                return travelTime;
             }
             catch (JsonException ex)
             {
                 _logger.LogWarning(ex, "MOTIS returned an invalid response; route distance is unknown.");
-                return null;
+                throw new TripNotAvailableException();
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
             {
                 _doNotQueryUntil = _timeProvider.GetUtcNow() + FailureBackoffDuration;
                 _logger.LogWarning("MOTIS is unavailable ({Message}); trips will be estimated from distance for one minute.", ex.Message);
-                return null;
+                throw new TripNotAvailableException();
             }
         }
+
+        // Signals a result that must not be cached; it never leaves this class.
+        private sealed class TripNotAvailableException : Exception;
 
         private static double? CalculateDistanceKm(Itinerary itinerary)
         {

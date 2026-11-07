@@ -2,6 +2,7 @@
 using ZonaMatch.Application.DTOs.ZoneRecommendation.Requests;
 using ZonaMatch.Application.DTOs.ZoneRecommendation.Responses;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Policies;
 
 namespace ZonaMatch.Application.UseCases.ZoneRecommendation;
 
@@ -14,6 +15,8 @@ public sealed class GetZoneProfileRecommendations(IPointOfInterestRepository poi
         GetZoneProfileRecommendationsRequest request,
         CancellationToken cancellationToken = default)
     {
+        ZoneQueryPolicy.ValidateSlug(slug);
+
         var categories = ResolveCategories(request);
         if (categories.Count == 0)
             return new ZoneProfileRecommendationsResponse([], false);

@@ -22,7 +22,8 @@ public sealed class ZonaMatchApiFactory(string connectionString) : WebApplicatio
                 ["Jwt:SigningKey"] = "integration-test-signing-key-that-is-not-a-real-secret",
                 ["Jwt:Issuer"] = "ZonaMatch.IntegrationTests",
                 ["Jwt:Audience"] = "ZonaMatch.IntegrationTests",
-                ["Jwt:ExpirationMinutes"] = "10"
+                ["Jwt:ExpirationMinutes"] = "10",
+                ["Frontend:BaseUrl"] = "http://localhost:5173"
             }));
 
         builder.ConfigureTestServices(services =>

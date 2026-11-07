@@ -35,9 +35,7 @@ public sealed class QuestionsController : ControllerBase
         [FromServices] CreateQuestion createQuestion,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserContext() is not { } currentUser)
-            return Unauthorized();
-
+        var currentUser = User.RequireUserContext();
         var question = await createQuestion.ExecuteAsync(slug, currentUser, request, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, question);
     }
@@ -56,9 +54,7 @@ public sealed class QuestionsController : ControllerBase
         [FromServices] AnswerQuestion answerQuestion,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserContext() is not { } currentUser)
-            return Unauthorized();
-
+        var currentUser = User.RequireUserContext();
         var answer = await answerQuestion.ExecuteAsync(slug, id, currentUser, request, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, answer);
     }

@@ -43,11 +43,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IContributionRepository, ContributionRepository>();
         services.AddScoped<ICommunityPoiRepository, CommunityPoiRepository>();
         services.AddScoped<IProfileRepository, ProfileRepository>();
+        services.AddScoped<IGuestReportSendRepository, GuestReportSendRepository>();
         services.AddScoped<IZoneProfilesRepository, ZoneProfilesRepository>();
 
         if (string.Equals(configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
         {
-            services.AddMemoryCache();
             services.AddHttpClient<IGeocodingClient, NominatimGeocodingClient>(client =>
             {
                 client.BaseAddress = new Uri(configuration["Nominatim:BaseUrl"] ?? "https://nominatim.openstreetmap.org/");
@@ -68,7 +68,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEmailService, EmailService>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
-        services.AddMemoryCache();
+        // MOTIS trips and plans and Nominatim addresses. Today it lives in memory; with several instances, a distributed
+        // cache (Redis or PostgreSQL) can be added here as its second level.
+        services.AddHybridCache();
+        // The zone profiles are too large for HybridCache: they have their own in-memory cache.
         services.AddSingleton<ZoneProfilesCache>();
         services.AddHttpClient<IRoutingClient, MotisRoutingClient>(client =>
         {

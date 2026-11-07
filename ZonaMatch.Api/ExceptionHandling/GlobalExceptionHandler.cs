@@ -42,9 +42,11 @@ namespace ZonaMatch.Api.ExceptionHandling
                 BadGatewayException => (StatusCodes.Status502BadGateway, exception.Message),
                 // External services are unavailable, such as the email provider.
                 ServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, exception.Message),
+                // A unique index rejected a repeated row, for example two requests adding the same participant at once
+                _ when IsUniqueViolation(exception) => (StatusCodes.Status409Conflict, "Eso ya estaba registrado. Actualizá la página."),
                 // Database unreachable, connection refused, timeouts...
-                _ when IsTransientDbFailure(exception) => (StatusCodes.Status503ServiceUnavailable, "El servicio no esta disponible temporalmente. Intenta nuevamente en unos instantes."),
-                _ => (StatusCodes.Status500InternalServerError, "Ocurrio un error inesperado.")
+                _ when IsTransientDbFailure(exception) => (StatusCodes.Status503ServiceUnavailable, "El servicio no está disponible por el momento. Intentá de nuevo en unos instantes."),
+                _ => (StatusCodes.Status500InternalServerError, "Ocurrió un error inesperado.")
             };
 
             // Do not log the external exception: reverse-geocoding requests can contain the user's coordinates.
@@ -82,6 +84,18 @@ namespace ZonaMatch.Api.ExceptionHandling
             for (var e = exception; e is not null; e = e.InnerException)
             {
                 if (e is DbException { IsTransient: true })
+                    return true;
+            }
+
+            return false;
+        }
+
+        // PostgreSQL unique_violation (23505), also wrapped by EF in DbUpdateException
+        private static bool IsUniqueViolation(Exception exception)
+        {
+            for (var e = exception; e is not null; e = e.InnerException)
+            {
+                if (e is DbException { SqlState: "23505" })
                     return true;
             }
 

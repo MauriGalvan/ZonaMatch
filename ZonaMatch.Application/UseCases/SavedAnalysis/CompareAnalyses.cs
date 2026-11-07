@@ -6,6 +6,7 @@ using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 using ZonaMatch.Application.DTOs.Scoring.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Scoring;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Scoring;
@@ -22,7 +23,6 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
         private const int MaxAnalyses = 5;
         private const int MaxZones = 10;
-        private const int ParallelTrips = 6;
 
         private readonly IAnalysisRepository _analysisRepository;
         private readonly IZoneProfilesRepository _zoneProfilesRepository;
@@ -89,7 +89,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                 engine = new ScoringEngine(universe);
             }
 
-            using var routeLimit = new SemaphoreSlim(ParallelTrips);
+            using var routeLimit = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
 
             var calculations = await Task.WhenAll(selectedAnalyses.Select(async analysis =>
             {
@@ -110,7 +110,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                     .OrderBy(zone => zone.Order)
                     .Select(zone => zonesBySlug[zone.ZoneSlug])
                     .ToArray();
-                var travelTimes = await MeasureTripsAsync(analysisZones, request.Places, mode, routeLimit, cancellationToken);
+                var travelTimes = await ZoneTripTimes.MeasureAsync(_routingClient, analysisZones, request.Places, mode, routeLimit, cancellationToken);
                 var rankedZones = analysisZones
                     .Select(zone => ToDto(engine!.Calculate(zone, request, travelTimes[zone.Slug]), request))
                     .OrderByDescending(zone => zone.Score.HasValue)
@@ -175,44 +175,6 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                 "grupo",
                 legacyZones.Select(ToComparedZone).ToArray(),
                 snapshot with { Zones = rankedGroupZones, NearbyZones = [] });
-        }
-
-        private async Task<Dictionary<string, IReadOnlyList<TravelTime?>>> MeasureTripsAsync(
-            IReadOnlyList<ZoneProfile> zones,
-            IReadOnlyList<UserPlace> places,
-            TravelMode mode,
-            SemaphoreSlim limiter,
-            CancellationToken cancellationToken)
-        {
-            async Task<TravelTime?> MeasureAsync(ZoneProfile zone, UserPlace place)
-            {
-                if (!place.HasLocation)
-                    return null;
-
-                await limiter.WaitAsync(cancellationToken);
-                try
-                {
-                    return await _routingClient.GetTravelTimeAsync(
-                               zone.Latitude, zone.Longitude,
-                               place.Latitude!.Value, place.Longitude!.Value,
-                               mode, cancellationToken)
-                           ?? TravelModes.Estimate(
-                               mode, zone.Latitude, zone.Longitude,
-                               place.Latitude!.Value, place.Longitude!.Value);
-                }
-                finally
-                {
-                    limiter.Release();
-                }
-            }
-
-            var zoneTasks = zones.Select(async zone =>
-                (zone.Slug, Times: await Task.WhenAll(places.Select(place => MeasureAsync(zone, place)))));
-            var results = await Task.WhenAll(zoneTasks);
-            return results.ToDictionary(
-                result => result.Slug,
-                result => (IReadOnlyList<TravelTime?>)result.Times,
-                StringComparer.Ordinal);
         }
 
         private static ScoringRequest BuildRequest(Context context)
