@@ -240,16 +240,13 @@ census_counts AS (
            coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('4', '5', '6')), 0)::int AS p_15_29,
            coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('7', '8', '9')), 0)::int AS p_30_44,
            coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('10', '11', '12', '13')), 0)::int AS p_45_64,
-           coalesce(sum(i.conteo) FILTER (WHERE (i.variable = 'PERSONA_EDADQUI' AND i.categoria ~ '^[0-9]+$' AND i.categoria::int >= 14)
-                                             OR (i.variable = 'PERSONA_EDADGRU' AND i.categoria = '3')), 0)::int AS p_65,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria ~ '^[0-9]+$' AND i.categoria::int >= 14), 0)::int AS p_65,
            round(
                sum(i.categoria::int * i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDAD' AND i.categoria ~ '^[0-9]+$')::numeric
                / nullif(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDAD' AND i.categoria ~ '^[0-9]+$'), 0)
            , 1)::double precision AS edad_promedio,
-           coalesce(sum(i.conteo) FILTER (WHERE (i.variable = 'PERSONA_EDADGRU' AND i.categoria = '1')
-                                             OR (i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('1', '2', '3'))), 0)::int AS p_0_14,
-           coalesce(sum(i.conteo) FILTER (WHERE (i.variable = 'PERSONA_EDADGRU' AND i.categoria = '2')
-                                             OR (i.variable = 'PERSONA_EDADQUI' AND i.categoria ~ '^[0-9]+$' AND i.categoria::int BETWEEN 4 AND 13)), 0)::int AS p_15_64,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('1', '2', '3')), 0)::int AS p_0_14,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria ~ '^[0-9]+$' AND i.categoria::int BETWEEN 4 AND 13), 0)::int AS p_15_64,
            -- Employer health plan, private insurance, or PAMI (1), or state health plan (2).
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_P19' AND i.categoria IN ('1', '2')) AS p_cobertura,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_P19') AS p_dato_cobertura,
@@ -257,7 +254,7 @@ census_counts AS (
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_MNI' AND i.categoria IN ('9', '10', '11')) AS p_universitario,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_MNI' AND i.categoria <> '99') AS p_dato_educacion,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24A') AS hogares,
-           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_TOTPERS' AND i.categoria = '1'), 0)::int AS h_unipersonales,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_TIPHOGAR' AND i.categoria = '1'), 0)::int AS h_unipersonales,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24A' AND i.categoria = '1') AS h_internet,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24B' AND i.categoria = '1') AS h_celular,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24C' AND i.categoria = '1') AS h_computadora,
