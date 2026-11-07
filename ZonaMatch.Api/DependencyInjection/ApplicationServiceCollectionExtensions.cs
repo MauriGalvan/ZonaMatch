@@ -5,6 +5,7 @@ using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
+using ZonaMatch.Application.UseCases.Admin;
 using ZonaMatch.Application.UseCases.Contribution;
 using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.UseCases.Contact;
@@ -83,6 +84,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<CompletePasswordReset>();
         services.AddScoped<LoginUser>();
         services.AddScoped<RegisterUser>();
+
+        services.AddScoped<ListUsers>();
 
         services.AddScoped<ListZoneReviews>();
         services.AddScoped<SaveMyReview>();

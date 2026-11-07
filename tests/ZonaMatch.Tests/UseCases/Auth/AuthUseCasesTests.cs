@@ -210,6 +210,9 @@ public sealed class AuthUseCasesTests
             SavedUsers.Add(user);
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<User>>(SavedUsers.OrderBy(user => user.Email).ToList());
     }
 
     private sealed class FakePasswordHasher : IPasswordHasher

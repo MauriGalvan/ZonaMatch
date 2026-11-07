@@ -142,6 +142,7 @@ public class PasswordResetTests
         public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(All.Any(u => u.Email == email));
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(All.FirstOrDefault(u => u.Email == email));
         public Task AddAsync(User user, CancellationToken cancellationToken = default) { All.Add(user); return Task.CompletedTask; }
+        public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<User>>(All);
     }
 
     private sealed class FakeResets(FakeUsers users) : IPasswordResetRepository
