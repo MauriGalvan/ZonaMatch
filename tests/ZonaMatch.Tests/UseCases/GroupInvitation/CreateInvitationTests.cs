@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using ZonaMatch.Application.Emails;
+using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using ZonaMatch.Application.Exceptions;
@@ -41,7 +42,8 @@ public class CreateInvitationTests
             _notificationRepositoryMock.Object,
             _emailServiceMock.Object,
             TimeProvider.System,
-            NullLogger<CreateInvitation>.Instance);
+            NullLogger<CreateInvitation>.Instance,
+            new FrontendLinks("http://localhost:5173/"));
     }
 
     [Fact]

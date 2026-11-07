@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using ZonaMatch.Application.Emails;
+using System.Text;
 using ZonaMatch.Application.DTOs.GuestReport.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -15,7 +16,7 @@ public class SendGuestReportTests
 
     public SendGuestReportTests()
     {
-        _useCase = new SendGuestReport(_email, new GuestReportQuota(TimeProvider.System));
+        _useCase = new SendGuestReport(_email, new GuestReportQuota(TimeProvider.System), new FrontendLinks("http://localhost:5173/"));
     }
 
     private static SendGuestReportRequest Request(string email = "ana@example.com", string? website = null) =>
@@ -24,7 +25,7 @@ public class SendGuestReportTests
     [Fact]
     public async Task Sends_the_pdf_with_a_link_to_register()
     {
-        await _useCase.ExecuteAsync(Request(" ana@example.com "), Pdf, "http://localhost:5173/");
+        await _useCase.ExecuteAsync(Request(" ana@example.com "), Pdf);
 
         var mail = Assert.Single(_email.Sent);
         Assert.Equal("ana@example.com", mail.To);
@@ -43,7 +44,7 @@ public class SendGuestReportTests
     public async Task Rejects_files_that_are_not_pdf(string content)
     {
         await Assert.ThrowsAsync<BadRequestException>(
-            () => _useCase.ExecuteAsync(Request(), Encoding.ASCII.GetBytes(content), "http://localhost:5173"));
+            () => _useCase.ExecuteAsync(Request(), Encoding.ASCII.GetBytes(content)));
 
         Assert.Empty(_email.Sent);
     }
@@ -51,7 +52,7 @@ public class SendGuestReportTests
     [Fact]
     public async Task Rejects_a_missing_report()
     {
-        await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(Request(), null, "http://localhost:5173"));
+        await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(Request(), null));
     }
 
     [Fact]
@@ -61,7 +62,7 @@ public class SendGuestReportTests
         Encoding.ASCII.GetBytes("%PDF-1.7").CopyTo(oversizedPdf, 0);
 
         var error = await Assert.ThrowsAsync<BadRequestException>(
-            () => _useCase.ExecuteAsync(Request(), oversizedPdf, "http://localhost:5173"));
+            () => _useCase.ExecuteAsync(Request(), oversizedPdf));
 
         Assert.Equal("El informe no es un PDF válido.", error.Message);
         Assert.Empty(_email.Sent);
@@ -70,7 +71,7 @@ public class SendGuestReportTests
     [Fact]
     public async Task A_bot_that_fills_the_hidden_field_gets_no_email()
     {
-        await _useCase.ExecuteAsync(Request(website: "https://spam.example"), Pdf, "http://localhost:5173");
+        await _useCase.ExecuteAsync(Request(website: "https://spam.example"), Pdf);
 
         Assert.Empty(_email.Sent);
     }
@@ -79,9 +80,9 @@ public class SendGuestReportTests
     public async Task Limits_the_reports_per_recipient_and_day()
     {
         for (var i = 0; i < SendGuestReport.MaxEmailsPerRecipientPerDay; i++)
-            await _useCase.ExecuteAsync(Request(), Pdf, "http://localhost:5173");
+            await _useCase.ExecuteAsync(Request(), Pdf);
 
-        await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(Request("ANA@example.com"), Pdf, "http://localhost:5173"));
+        await Assert.ThrowsAsync<BadRequestException>(() => _useCase.ExecuteAsync(Request("ANA@example.com"), Pdf));
         Assert.Equal(SendGuestReport.MaxEmailsPerRecipientPerDay, _email.Sent.Count);
     }
 
@@ -90,12 +91,12 @@ public class SendGuestReportTests
     {
         _email.Failure = new InvalidOperationException("SMTP caído");
 
-        var error = await Assert.ThrowsAsync<ServiceUnavailableException>(() => _useCase.ExecuteAsync(Request(), Pdf, "http://localhost:5173"));
+        var error = await Assert.ThrowsAsync<ServiceUnavailableException>(() => _useCase.ExecuteAsync(Request(), Pdf));
         Assert.IsType<InvalidOperationException>(error.InnerException);
 
         _email.Failure = null;
         for (var i = 0; i < SendGuestReport.MaxEmailsPerRecipientPerDay; i++)
-            await _useCase.ExecuteAsync(Request(), Pdf, "http://localhost:5173");
+            await _useCase.ExecuteAsync(Request(), Pdf);
         Assert.Equal(SendGuestReport.MaxEmailsPerRecipientPerDay, _email.Sent.Count);
     }
 
@@ -105,12 +106,12 @@ public class SendGuestReportTests
         _email.Failure = new OperationCanceledException("Email send canceled.");
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => _useCase.ExecuteAsync(Request(), Pdf, "http://localhost:5173"));
+            () => _useCase.ExecuteAsync(Request(), Pdf));
         Assert.Empty(_email.Sent);
 
         _email.Failure = null;
         for (var i = 0; i < SendGuestReport.MaxEmailsPerRecipientPerDay; i++)
-            await _useCase.ExecuteAsync(Request(), Pdf, "http://localhost:5173");
+            await _useCase.ExecuteAsync(Request(), Pdf);
 
         Assert.Equal(SendGuestReport.MaxEmailsPerRecipientPerDay, _email.Sent.Count);
     }

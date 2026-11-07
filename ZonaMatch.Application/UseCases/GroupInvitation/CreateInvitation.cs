@@ -22,6 +22,7 @@ public class CreateInvitation
     private readonly IEmailService _emailService;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<CreateInvitation> _logger;
+    private readonly FrontendLinks _links;
 
     public CreateInvitation(
         IGroupRepository groupRepository,
@@ -30,7 +31,8 @@ public class CreateInvitation
         INotificationRepository notifications,
         IEmailService emailService,
         TimeProvider timeProvider,
-        ILogger<CreateInvitation> logger)
+        ILogger<CreateInvitation> logger,
+        FrontendLinks links)
     {
         _groupRepository = groupRepository;
         _invitationRepository = invitationRepository;
@@ -39,14 +41,14 @@ public class CreateInvitation
         _emailService = emailService;
         _timeProvider = timeProvider;
         _logger = logger;
+        _links = links;
     }
 
     // currentUserId is read from the JWT by the controller.
     public async Task ExecuteAsync(
         CreateInvitationRequest request,
         Guid currentUserId,
-        CancellationToken cancellationToken,
-        string? frontendBaseUrl = null)
+        CancellationToken cancellationToken)
     {
         // 1. Find the group and ensure it exists.
         var group = await _groupRepository.GetByIdAsync(request.GroupId, cancellationToken);
@@ -64,7 +66,7 @@ public class CreateInvitation
 
         if (group.Participants.Count >= DomainGroup.MaximumParticipants)
         {
-            throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
+            throw new ConflictException($"El grupo ya alcanzó el máximo de {DomainGroup.MaximumParticipants} participantes.");
         }
 
         // 3. Create the invitation with a random token.
@@ -98,10 +100,7 @@ public class CreateInvitation
         await _invitationRepository.AddAsync(invitation, cancellationToken);
 
         // 5. Send the invitation email.
-        var frontendUrl = string.IsNullOrWhiteSpace(frontendBaseUrl)
-            ? "http://localhost:5173"
-            : frontendBaseUrl.TrimEnd('/');
-        string inviteLink = $"{frontendUrl}/invitations/email/{invitation.Token}";
+        string inviteLink = _links.To($"/invitations/email/{invitation.Token}");
         string subject = $"Te invitaron al grupo {group.Name} en ZonaMatch";
         var days = Math.Max(1, (int)Math.Ceiling((invitation.ExpiresAt - DateTime.UtcNow).TotalDays));
         // The group name is typed by a user: it is encoded so it cannot inject HTML

@@ -58,7 +58,7 @@ public class AcceptInvitation
 
         if (group.Participants.Count >= DomainGroup.MaximumParticipants)
         {
-            throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
+            throw new ConflictException($"El grupo ya alcanzó el máximo de {DomainGroup.MaximumParticipants} participantes.");
         }
 
         // 5. Add the user as a participant, using the role configured for this operation.
