@@ -12,4 +12,9 @@ public interface IUserRepository
 
     // Every registered user, ordered by email.
     Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default);
+
+    // Read-only.
+    Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default);
 }

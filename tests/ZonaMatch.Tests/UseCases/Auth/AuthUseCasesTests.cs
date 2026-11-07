@@ -213,6 +213,12 @@ public sealed class AuthUseCasesTests
 
         public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<User>>(SavedUsers.OrderBy(user => user.Email).ToList());
+
+        public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SavedUsers.FirstOrDefault(user => user.Id == id));
+
+        public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakePasswordHasher : IPasswordHasher

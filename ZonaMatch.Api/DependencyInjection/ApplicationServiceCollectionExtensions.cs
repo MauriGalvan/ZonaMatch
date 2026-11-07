@@ -86,6 +86,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<RegisterUser>();
 
         services.AddScoped<ListUsers>();
+        services.AddScoped<UpdateUserRole>();
 
         services.AddScoped<ListZoneReviews>();
         services.AddScoped<SaveMyReview>();
