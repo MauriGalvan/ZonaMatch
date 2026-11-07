@@ -31,7 +31,21 @@ namespace ZonaMatch.Application.UseCases.Scoring
             _zones = zones;
         }
 
-        public async Task<ScoresResponse> ExecuteAsync(CalculateScoresRequest request, CancellationToken cancellationToken = default)
+        // A ranking requested by a person: guests score fewer places, and every limit is required.
+        public Task<ScoresResponse> ExecuteAsync(CalculateScoresRequest request, bool isGuest, CancellationToken cancellationToken = default)
+        {
+            // Reject more places than a guest can score.
+            if (isGuest && request.Places.Count > ScoringPlaceLimits.Guest)
+                throw new BadRequestException(ScoringPlaceLimits.GuestMessage);
+
+            MandatoryScoringLimits.Validate(
+                request.MaximumRent, request.Operation, request.MaximumPurchasePriceUsd, request.Places.Select(place => place.MaximumTravelTime));
+
+            return CalculateAsync(request, cancellationToken);
+        }
+
+        // Only calculates. Saved analyses recalculate through here, so older ones saved without limits still work.
+        public async Task<ScoresResponse> CalculateAsync(CalculateScoresRequest request, CancellationToken cancellationToken = default)
         {
             var zoneUniverse = await _zoneProfiles.ListAsync(cancellationToken);
             var zonesBySlug = zoneUniverse.ToDictionary(zone => zone.Slug);

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs.Scoring.Requests;
 using ZonaMatch.Application.DTOs.Scoring.Responses;
-using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Scoring;
 
 namespace ZonaMatch.Api.Controllers
@@ -30,16 +29,8 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] ILogger<ScoresController> logger,
             CancellationToken cancellationToken)
         {
-            // Guests can score fewer places than signed-in users.
-            if (User.GetAuthenticatedUserId() is null && request.Places.Count > ScoringPlaceLimits.Guest)
-                throw new BadRequestException(ScoringPlaceLimits.GuestMessage);
-
-            // Saved analyses go straight to the use case, so older ones without limits still recalculate
-            MandatoryScoringLimits.Validate(
-                request.MaximumRent, request.Operation, request.MaximumPurchasePriceUsd, request.Places.Select(place => place.MaximumTravelTime));
-
             var stopwatch = Stopwatch.StartNew();
-            var result = await useCase.ExecuteAsync(request, cancellationToken);
+            var result = await useCase.ExecuteAsync(request, isGuest: User.GetAuthenticatedUserId() is null, cancellationToken);
             stopwatch.Stop();
 
             logger.Log(
