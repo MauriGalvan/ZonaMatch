@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
 using ZonaMatch.Api.IntegrationTests.Support;
 using ZonaMatch.Application.DTOs.Admin.Requests;
 using ZonaMatch.Application.DTOs.Admin.Responses;
@@ -67,6 +68,43 @@ public sealed class AdminUsersApiTests(PostgreSqlDatabaseFixture database)
             $"/api/v1/admin/users/{member.User.Id}/role", new UpdateUserRoleRequest(IsAdmin: true));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UpdateRole_WhenUserDoesNotExist_ReturnsNotFound()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+
+        var response = await administrator.Client.PutAsJsonAsync(
+            $"/api/v1/admin/users/{Guid.NewGuid()}/role", new UpdateUserRoleRequest(IsAdmin: true));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateRole_WhenIsAdminIsMissing_ReturnsBadRequest()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+
+        var response = await administrator.Client.PutAsJsonAsync($"/api/v1/admin/users/{member.User.Id}/role", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ListUsers_WhenAnonymous_ReturnsUnauthorized()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+
+        var response = await client.GetAsync("/api/v1/admin/users");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

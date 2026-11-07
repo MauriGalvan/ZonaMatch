@@ -1,10 +1,12 @@
+using FluentAssertions;
+using ZonaMatch.Application.DTOs.Admin.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Admin;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Tests.UseCases.Admin;
 
-public sealed class UpdateUserRoleTests
+public class UpdateUserRoleTests
 {
     private readonly User _administrator = new() { Email = "admin@example.com", IsAdministrator = true };
     private readonly User _member = new() { Email = "ana@example.com", DateOfBirth = new DateOnly(1995, 8, 23) };
@@ -22,9 +24,17 @@ public sealed class UpdateUserRoleTests
     {
         var response = await _useCase.ExecuteAsync(_member.Id, isAdmin: true, _administrator.Id);
 
-        Assert.True(response.IsAdmin);
-        Assert.Equal(_member.Email, response.Email);
-        Assert.True(_member.IsAdministrator);
+        response.IsAdmin.Should().BeTrue();
+        response.Email.Should().Be(_member.Email);
+        _member.IsAdministrator.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateRole_WhenGrantingAdmin_ReturnsTheUserDetails()
+    {
+        var response = await _useCase.ExecuteAsync(_member.Id, isAdmin: true, _administrator.Id);
+
+        response.Should().Be(new AdminUserResponse(_member.Id, "ana@example.com", new DateOnly(1995, 8, 23), IsAdmin: true));
     }
 
     [Fact]
@@ -34,8 +44,20 @@ public sealed class UpdateUserRoleTests
 
         var response = await _useCase.ExecuteAsync(_member.Id, isAdmin: false, _administrator.Id);
 
-        Assert.False(response.IsAdmin);
-        Assert.False(_member.IsAdministrator);
+        response.IsAdmin.Should().BeFalse();
+        _member.IsAdministrator.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UpdateRole_WhenGrantingAdmin_DoesNotChangeOtherUsers()
+    {
+        var otherMember = new User { Email = "bruno@example.com" };
+        _users.Users.Add(otherMember);
+
+        await _useCase.ExecuteAsync(_member.Id, isAdmin: true, _administrator.Id);
+
+        otherMember.IsAdministrator.Should().BeFalse();
+        _administrator.IsAdministrator.Should().BeTrue();
     }
 
     [Fact]
@@ -43,22 +65,35 @@ public sealed class UpdateUserRoleTests
     {
         await _useCase.ExecuteAsync(_member.Id, isAdmin: false, _administrator.Id);
 
-        Assert.Equal(0, _users.SetAdministratorCalls);
+        _users.SetAdministratorCalls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task UpdateRole_WhenAdministratorKeepsOwnAdminRole_SucceedsWithoutWriting()
+    {
+        var response = await _useCase.ExecuteAsync(_administrator.Id, isAdmin: true, _administrator.Id);
+
+        response.IsAdmin.Should().BeTrue();
+        _users.SetAdministratorCalls.Should().Be(0);
     }
 
     [Fact]
     public async Task UpdateRole_WhenRemovingOwnAdminRole_ThrowsBadRequest()
     {
-        await Assert.ThrowsAsync<BadRequestException>(() =>
-            _useCase.ExecuteAsync(_administrator.Id, isAdmin: false, _administrator.Id));
+        var act = () => _useCase.ExecuteAsync(_administrator.Id, isAdmin: false, _administrator.Id);
 
-        Assert.True(_administrator.IsAdministrator);
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("No podés quitarte tu propio rol de administrador.");
+        _administrator.IsAdministrator.Should().BeTrue();
+        _users.SetAdministratorCalls.Should().Be(0);
     }
 
     [Fact]
     public async Task UpdateRole_WhenUserDoesNotExist_ThrowsNotFound()
     {
-        await Assert.ThrowsAsync<NotFoundException>(() =>
-            _useCase.ExecuteAsync(Guid.NewGuid(), isAdmin: true, _administrator.Id));
+        var act = () => _useCase.ExecuteAsync(Guid.NewGuid(), isAdmin: true, _administrator.Id);
+
+        await act.Should().ThrowAsync<NotFoundException>().WithMessage("El usuario no existe.");
+        _users.SetAdministratorCalls.Should().Be(0);
     }
 }
