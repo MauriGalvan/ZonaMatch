@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -215,7 +214,7 @@ namespace ZonaMatch.Infrastructure.Repositories
         private const string CacheKey = "zone-profiles";
 
         // Built from the database and read on every ranking: kept only in this instance's memory, never in a shared
-        // cache (their dictionaries with tuple keys cannot be serialized, and every instance can rebuild them).
+        // cache (every instance can rebuild them).
         private static readonly HybridCacheEntryOptions CacheEntry = new()
         {
             Expiration = TimeSpan.FromHours(6),
@@ -255,10 +254,6 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         public Task InvalidateAsync(CancellationToken cancellationToken = default) =>
             _cache.RemoveAsync(CacheKey, cancellationToken).AsTask();
-
-        // Immutable and sealed, so HybridCache hands out the same instance instead of a copy on every read
-        [ImmutableObject(true)]
-        private sealed record ZoneProfileSet(IReadOnlyList<ZoneProfile> Profiles);
 
         // Signals that there is nothing to cache; it never leaves this class.
         private sealed class NoZoneProfilesException : Exception;
