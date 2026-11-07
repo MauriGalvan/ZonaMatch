@@ -14,7 +14,7 @@ namespace ZonaMatch.Application.UseCases.Route
         {
             // Coordinates outside the world are a malformed request, not a missing route
             if (!IsValid(request.FromLatitude, request.FromLongitude) || !IsValid(request.ToLatitude, request.ToLongitude))
-                throw new BadRequestException("The origin and the destination need a valid latitude and longitude.");
+                throw new BadRequestException("El origen y el destino necesitan una latitud y una longitud válidas.");
 
             var requestedMode = TravelModes.FromCode(request.Mode)
                 ?? throw new BadRequestException("Unknown travel mode: use transporte-publico, auto, bici or a-pie.");
@@ -29,7 +29,7 @@ namespace ZonaMatch.Application.UseCases.Route
 
             // The routing service answered but found no trip for that mode (too far to walk, no service...)
             if (plan is null || plan.Legs.Count == 0)
-                throw new NotFoundException("No trip was found between those points for the selected travel mode.");
+                throw new NotFoundException("No encontramos un recorrido entre esos puntos con el medio de transporte elegido.");
 
             return new RouteResponse(
                 TravelModes.ToCode(mode),

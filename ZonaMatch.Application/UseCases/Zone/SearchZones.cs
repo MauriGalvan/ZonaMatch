@@ -14,7 +14,7 @@ public sealed class SearchZones(IZoneRepository zoneRepository)
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(search))
-            throw new BadRequestException("Indica el texto a buscar en buscar.");
+            throw new BadRequestException("Indicá el texto a buscar.");
 
         if (limit is < 1 or > ZoneQueryPolicy.MaximumSearchResults)
             throw new BadRequestException(

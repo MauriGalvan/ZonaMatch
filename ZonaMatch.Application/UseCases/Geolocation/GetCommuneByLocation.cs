@@ -11,6 +11,6 @@ public sealed class GetCommuneByLocation(LocationBoundaryLookup boundaryLookup)
     {
         GeolocationRequestValidator.ValidateCoordinates(latitude, longitude);
         return await boundaryLookup.GetCommuneAsync(latitude, longitude)
-            ?? throw new NotFoundException("No se encontro una comuna para esa ubicacion.");
+            ?? throw new NotFoundException("No se encontró una comuna para esa ubicación.");
     }
 }

@@ -43,8 +43,8 @@ namespace ZonaMatch.Api.ExceptionHandling
                 // External services are unavailable, such as the email provider.
                 ServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, exception.Message),
                 // Database unreachable, connection refused, timeouts...
-                _ when IsTransientDbFailure(exception) => (StatusCodes.Status503ServiceUnavailable, "El servicio no esta disponible temporalmente. Intenta nuevamente en unos instantes."),
-                _ => (StatusCodes.Status500InternalServerError, "Ocurrio un error inesperado.")
+                _ when IsTransientDbFailure(exception) => (StatusCodes.Status503ServiceUnavailable, "El servicio no está disponible por el momento. Intentá de nuevo en unos instantes."),
+                _ => (StatusCodes.Status500InternalServerError, "Ocurrió un error inesperado.")
             };
 
             // Do not log the external exception: reverse-geocoding requests can contain the user's coordinates.

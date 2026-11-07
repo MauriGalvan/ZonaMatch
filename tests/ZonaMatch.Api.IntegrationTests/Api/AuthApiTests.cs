@@ -101,7 +101,7 @@ public sealed class AuthApiTests(PostgreSqlDatabaseFixture database)
         unknownEmailProblem.Should().NotBeNull();
         wrongPasswordProblem.Should().NotBeNull();
         unknownEmailProblem!.Title.Should().Be(wrongPasswordProblem!.Title);
-        unknownEmailProblem.Title.Should().Be("Email o contrasena incorrectos.");
+        unknownEmailProblem.Title.Should().Be("Email o contraseña incorrectos.");
     }
 
     [Fact]

@@ -25,7 +25,7 @@ public sealed class UserRepository(ZonaMatchDbContext dbContext) : IUserReposito
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            throw new ConflictException("El email ya esta registrado.");
+            throw new ConflictException("El email ya está registrado.");
         }
     }
 }

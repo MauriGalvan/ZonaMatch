@@ -156,7 +156,7 @@ public sealed class MotisRoutePlannerTests
         var act = () => harness.Planner.PlanAsync(-34.6, -58.4, -34.5, -58.3, TravelMode.Car);
 
         await act.Should().ThrowAsync<ServiceUnavailableException>()
-            .WithMessage("The routing service (MOTIS) is not available.");
+            .WithMessage("El servicio de recorridos no está disponible.");
     }
 
     [Fact]
@@ -167,7 +167,7 @@ public sealed class MotisRoutePlannerTests
         var act = () => harness.Planner.PlanAsync(-34.6, -58.4, -34.5, -58.3, TravelMode.Car);
 
         await act.Should().ThrowAsync<ServiceUnavailableException>()
-            .WithMessage("The routing service (MOTIS) is not available.");
+            .WithMessage("El servicio de recorridos no está disponible.");
     }
 
     private static PlannerHarness CreateHarness(

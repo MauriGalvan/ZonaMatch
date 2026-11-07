@@ -51,7 +51,7 @@ namespace ZonaMatch.Infrastructure.Geo
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
             {
-                throw new ServiceUnavailableException("The routing service (MOTIS) is not available.", ex);
+                throw new ServiceUnavailableException("El servicio de recorridos no está disponible.", ex);
             }
 
             // The best of the transit itineraries and the direct trip (walking can beat a bus)

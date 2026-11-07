@@ -126,7 +126,7 @@ public sealed class AuthUseCasesTests
 
         var error = Assert.Single(Validate(request));
 
-        Assert.Equal("La fecha de nacimiento no es valida.", error.ErrorMessage);
+        Assert.Equal("La fecha de nacimiento no es válida.", error.ErrorMessage);
     }
 
     private static List<ValidationResult> Validate(RegisterRequest request)
@@ -187,7 +187,7 @@ public sealed class AuthUseCasesTests
         var unknownEmail = await Assert.ThrowsAsync<UnauthorizedException>(
             () => _loginUser.ExecuteAsync(new LoginRequest("nadie@example.com", "Secreta123")));
 
-        Assert.Equal("Email o contrasena incorrectos.", incorrectPassword.Message);
+        Assert.Equal("Email o contraseña incorrectos.", incorrectPassword.Message);
         Assert.Equal(incorrectPassword.Message, unknownEmail.Message);
     }
 
@@ -205,7 +205,7 @@ public sealed class AuthUseCasesTests
         public Task AddAsync(User user, CancellationToken cancellationToken = default)
         {
             if (ThrowConflictOnAdd)
-                throw new ConflictException("El email ya esta registrado.");
+                throw new ConflictException("El email ya está registrado.");
 
             SavedUsers.Add(user);
             return Task.CompletedTask;
