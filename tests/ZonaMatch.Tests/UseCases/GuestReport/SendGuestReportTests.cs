@@ -16,7 +16,7 @@ public class SendGuestReportTests
 
     public SendGuestReportTests()
     {
-        _useCase = new SendGuestReport(_email, new GuestReportQuota(TimeProvider.System), new FrontendLinks("http://localhost:5173/"));
+        _useCase = new SendGuestReport(_email, new GuestReportQuota(new InMemoryGuestReportSendRepository(), TimeProvider.System), new FrontendLinks("http://localhost:5173/"));
     }
 
     private static SendGuestReportRequest Request(string email = "ana@example.com", string? website = null) =>

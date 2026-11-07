@@ -28,7 +28,7 @@ public sealed class SendGuestReport(IEmailService email, GuestReportQuota quota,
             throw new BadRequestException("El informe no es un PDF válido.");
 
         var recipient = request.Email.Trim();
-        var sent = quota.SentToday(recipient);
+        var sent = await quota.SentTodayAsync(recipient, cancellationToken);
         if (sent >= MaxEmailsPerRecipientPerDay)
             throw new BadRequestException("Ya te mandamos varios informes hoy. Probá de nuevo mañana o creá tu cuenta para guardar tus análisis.");
 
@@ -42,7 +42,7 @@ public sealed class SendGuestReport(IEmailService email, GuestReportQuota quota,
             throw new ServiceUnavailableException("No pudimos enviar el informe en este momento. Intentá de nuevo en unos minutos.", ex);
         }
 
-        quota.Register(recipient);
+        await quota.RegisterAsync(recipient, cancellationToken);
     }
 
     private static string Body(FrontendLinks links) => BrandEmail.Render(new BrandEmailContent(

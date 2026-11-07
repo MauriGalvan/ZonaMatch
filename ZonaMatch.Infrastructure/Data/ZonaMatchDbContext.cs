@@ -41,6 +41,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<SavedZone> SavedZones => Set<SavedZone>();
         public DbSet<UserNotification> Notifications => Set<UserNotification>();
         public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+        public DbSet<GuestReportSend> GuestReportSends => Set<GuestReportSend>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -291,6 +292,15 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasIndex(x => x.TokenHash).IsUnique();
                 e.HasIndex(x => new { x.UserId, x.CreatedAt });
                 e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<GuestReportSend>(e =>
+            {
+                e.ToTable("guest_report_sends");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.RecipientHash).HasMaxLength(64).IsRequired();
+                e.Property(x => x.SentAt).HasColumnType("timestamptz");
+                e.HasIndex(x => new { x.RecipientHash, x.SentAt });
             });
 
             modelBuilder.Entity<UserNotification>(e =>

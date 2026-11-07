@@ -749,6 +749,30 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("GroupInvitations", "app");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.GuestReportSend", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("RecipientHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("recipient_hash");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("sent_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipientHash", "SentAt");
+
+                    b.ToTable("guest_report_sends", "app");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipalityAlias", b =>
                 {
                     b.Property<string>("MunicipalityName")

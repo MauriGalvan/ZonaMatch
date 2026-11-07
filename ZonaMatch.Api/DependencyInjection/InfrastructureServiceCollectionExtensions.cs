@@ -43,6 +43,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IContributionRepository, ContributionRepository>();
         services.AddScoped<ICommunityPoiRepository, CommunityPoiRepository>();
         services.AddScoped<IProfileRepository, ProfileRepository>();
+        services.AddScoped<IGuestReportSendRepository, GuestReportSendRepository>();
         services.AddScoped<IZoneProfilesRepository, ZoneProfilesRepository>();
 
         if (string.Equals(configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))

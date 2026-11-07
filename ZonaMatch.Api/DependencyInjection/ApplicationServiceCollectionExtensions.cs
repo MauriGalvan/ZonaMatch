@@ -138,7 +138,7 @@ public static class ApplicationServiceCollectionExtensions
                 ?? configuration["Contacto:Destinatario"]
                 ?? "zonamatchtpi@gmail.com"));
         services.AddScoped<SendContactMessage>();
-        services.AddSingleton<GuestReportQuota>();
+        services.AddScoped<GuestReportQuota>();
         services.AddScoped<SendGuestReport>();
 
         return services;
