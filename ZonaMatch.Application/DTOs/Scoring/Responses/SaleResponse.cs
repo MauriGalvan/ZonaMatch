@@ -13,4 +13,8 @@ public sealed record SaleResponse(
     // Price in dollars at evenly spaced shares of the listings (21 points; 11 in older data)
     decimal[]? Distribution = null,
     // Share of the listings (0 to 1) priced up to each point of Distribution, ties included; null spaces them evenly
-    decimal[]? DistributionShares = null);
+    decimal[]? DistributionShares = null,
+    // Sales eligible for a mortgage ("apto crédito"), every type: prices in dollars and the share of them priced up to
+    // each one. With a mortgage the purchase cap is compared with these; null without credit data.
+    decimal[]? CreditDistribution = null,
+    decimal[]? CreditDistributionShares = null);

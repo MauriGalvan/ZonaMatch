@@ -78,5 +78,31 @@ namespace ZonaMatch.Tests.UseCases.Scoring
 
             act.Should().Throw<BadRequestException>();
         }
+
+        [Fact]
+        public void Sale_WhenZoneHasCreditData_ReturnsTheCreditDistributionAsLoaded()
+        {
+            var zone = new ZoneProfile
+            {
+                Slug = "ramos-mejia", Name = "Ramos Mejía", AverageSalePriceUsd = 150_000, AvailablePropertiesForSale = 900,
+                CreditPricesUsd = [60_000, 115_000, 300_000], CreditShares = [0.1m, 0.544m, 1m],
+            };
+
+            var sale = HousingScoring.Sale(zone, null);
+
+            sale!.CreditDistribution.Should().Equal(60_000, 115_000, 300_000);
+            sale.CreditDistributionShares.Should().Equal(0.1m, 0.544m, 1m);
+        }
+
+        [Fact]
+        public void Sale_WhenZoneHasNoCreditData_LeavesTheCreditDistributionEmpty()
+        {
+            var zone = new ZoneProfile { Slug = "zona", Name = "Zona", AverageSalePriceUsd = 150_000, AvailablePropertiesForSale = 900 };
+
+            var sale = HousingScoring.Sale(zone, null);
+
+            sale!.CreditDistribution.Should().BeNull();
+            sale.CreditDistributionShares.Should().BeNull();
+        }
     }
 }
