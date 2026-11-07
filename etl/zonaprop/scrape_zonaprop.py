@@ -31,6 +31,9 @@ Outputs (in datos/zonaprop/):
                 every room count, 1 to 5 (5 or more) for a room group
   listings.csv  one row per published listing with a price. stratum is always 0 (the whole market, weight 1 in
                 calculate_market.sql); earlier scrapes sampled by room group
+  credit_totals.csv  zone_slug, max_price_usd, listings, scraped_at: sale listings eligible for a mortgage ("apto
+                crédito") up to a few prices of the zone (CREDIT_POINTS of its own sale prices), so the scoring can
+                tell how many of them fit a purchase cap. Only the total in the title of each search is read.
 Statistics per zone are computed in SQL (etl/zonaprop/calculate_market.sql), which also drops listings whose
 coordinates fall far from the zone.
 
@@ -79,6 +82,8 @@ PAGE_SIZE = 30
 # Zonaprop answers pages past the 9th with a Cloudflare challenge: a search shows 270 listings at most
 MAX_PAGES = 9
 SEARCH_LIMIT = MAX_PAGES * PAGE_SIZE
+# Shares of the zone's sale listings (by price) where the credit-eligible total is read: 5, 10, 25, 50, 75, 90, 95 %
+CREDIT_POINTS = (0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95)
 # Price filter of each operation: its URL unit and where a larger search is first split (each band ends just below the
 # next cut; the last cut is a ceiling no listing reaches). Sale in dollars, rent in pesos per month
 PRICE_UNITS = {"venta": "dolar", "alquiler": "pesos"}
@@ -275,6 +280,28 @@ def price_segment(operation, low, high):
     return f"{low}-{high}-{PRICE_UNITS[operation]}"
 
 
+def credit_thresholds(sale_prices_usd):
+    """Prices of the zone at CREDIT_POINTS of its sale listings, rounded to US$ 1.000, without repeats."""
+    prices = sorted(price for price in sale_prices_usd if price and price > 0)
+    if not prices:
+        return []
+    points = {int(round(prices[min(len(prices) - 1, int(share * len(prices)))] / 1000)) * 1000 for share in CREDIT_POINTS}
+    return sorted(point for point in points if point > 0)
+
+
+def credit_path(slug, max_price):
+    """'/departamentos-casas-ph-venta-palermo-con-apto-credito-menos-120000-dolar.html'"""
+    return listing_path(ALL_TYPES, "venta", slug, f"{FILTERS['venta']['credit']}-menos-{max_price}-dolar", sort=False)
+
+
+def sale_prices_usd(page):
+    """(posting id, price) of the sale listings of a page priced in dollars."""
+    for posting in page["postings"]:
+        price = posting["operations"].get("venta")
+        if price and price.get("currency") == "USD" and price.get("amount"):
+            yield posting["id"], price["amount"]
+
+
 def band_prices(page, operation):
     """Prices of the listings of a band page in the unit of its filter (sale in dollars, rent in pesos)."""
     currency = PRICE_CURRENCIES[PRICE_UNITS[operation]]
@@ -441,17 +468,32 @@ class Scraper:
                 if page is not None:
                     yield operation, key, page
 
+    def credit_pages(self, slug, sale_prices):
+        """Yields (max price, page) of the credit-eligible sale totals up to each credit threshold of the zone."""
+        for max_price in credit_thresholds(sale_prices):
+            page = self.get(credit_path(slug, max_price))
+            if page is not None:
+                yield max_price, page
+
     def scrape_zone(self, zone):
         """Downloads every page of a zone. Returns (False, answer) when Zonaprop does not know it."""
         slug, location = self.resolve(zone)
         if not slug:
             return False, location
         totals = {}
+        sale_prices = {}
         for operation, _, first, page in self.pages(slug):
             if first:
                 totals[operation] = totals.get(operation, 0) + page["total"]
-        for _ in self.filter_pages(slug, totals):
-            pass
+            if operation == "venta":
+                sale_prices.update(sale_prices_usd(page))
+        credit_total = 0
+        for operation, key, page in self.filter_pages(slug, totals):
+            if key == "credit":
+                credit_total = page["total"]
+        if credit_total > 0:
+            for _ in self.credit_pages(slug, sale_prices.values()):
+                pass
         return True, location
 
 
@@ -514,6 +556,7 @@ def room_group(rooms):
 
 TOTALS_HEADER = ["zone_slug", "operation", "property_type", "rooms", "filter", "listings", "zonaprop_location",
                  "zonaprop_slug", "url", "scraped_at"]
+CREDIT_TOTALS_HEADER = ["zone_slug", "max_price_usd", "listings", "scraped_at"]
 LISTINGS_HEADER = ["zone_slug", "operation", "property_type", "stratum", "posting_id", "currency", "price",
                    "expenses", "expenses_currency", "total_m2", "covered_m2", "rooms", "bedrooms", "bathrooms",
                    "garages", "age_years", "publisher_type", "lat", "lng", "modified", "url", "usd_ars"]
@@ -524,8 +567,9 @@ def zone_rows(scraper, zone, usd_ars):
     slug, location = scraper.resolve(zone)
     if not slug:
         return None, location
-    totals, listings = [], []
+    totals, listings, credit = [], [], []
     operation_totals = {}
+    sale_prices = {}
     seen = set()
     # (operation, property_type) -> (page 1, {room group: listings})
     types = {}
@@ -538,6 +582,8 @@ def zone_rows(scraper, zone, usd_ars):
             operation_totals[operation] = operation_totals.get(operation, 0) + page["total"]
             types[(operation, property_type)] = (page, {})
         groups = types[(operation, property_type)][1]
+        if operation == "venta":
+            sale_prices.update(sale_prices_usd(page))
         for posting in page["postings"]:
             key = (operation, property_type, posting["id"])
             if posting["type"] != type_name or key in seen:
@@ -563,16 +609,26 @@ def zone_rows(scraper, zone, usd_ars):
             totals.append([zone["slug"], operation, property_type, rooms, "", count, location, slug,
                            BASE_URL + listing_path(property_type, operation, slug, ROOM_GROUPS[rooms]),
                            page["scraped_at"]])
+    credit_total = 0
     for operation, key, page in scraper.filter_pages(slug, operation_totals):
         url = BASE_URL + listing_path(ALL_TYPES, operation, slug, FILTERS[operation][key], sort=False)
         totals.append([zone["slug"], operation, "all", 0, key, page["total"], location, slug, url,
                        page["scraped_at"]])
-    return (totals, listings), location
+        if key == "credit":
+            credit_total = page["total"]
+    if credit_total > 0:
+        for max_price, page in scraper.credit_pages(slug, sale_prices.values()):
+            credit.append([zone["slug"], max_price, page["total"], page["scraped_at"]])
+        # A threshold missing from the cache: this run did not read the credit totals (or not all of them)
+        if len(credit) < len(credit_thresholds(sale_prices.values())):
+            credit = None
+    return (totals, listings, credit), location
 
 
 def export(zones, cache_dir, usd_ars):
     """Writes totals.csv and listings.csv from the cached pages of the matched zones."""
-    totals_rows, listing_rows, unmatched_rows = [], [], []
+    totals_rows, listing_rows, credit_rows, unmatched_rows = [], [], [], []
+    credit_complete = True
     scraper = Scraper(cache_dir, 0, download=False)
     for zone in zones:
         rows, location = zone_rows(scraper, zone, usd_ars)
@@ -582,8 +638,17 @@ def export(zones, cache_dir, usd_ars):
             continue
         totals_rows.extend(rows[0])
         listing_rows.extend(rows[1])
+        if rows[2] is None:
+            credit_complete = False
+        else:
+            credit_rows.extend(rows[2])
     write_csv("totals.csv", TOTALS_HEADER, totals_rows)
     write_csv("listings.csv", LISTINGS_HEADER, listing_rows)
+    # Runs before the credit totals existed (2026-11-01) got them from scrape_credit_totals.py: keep that file
+    if credit_complete and credit_rows:
+        write_csv("credit_totals.csv", CREDIT_TOTALS_HEADER, credit_rows)
+    elif not credit_complete:
+        print("Credit-eligible totals are incomplete in this run's cache: credit_totals.csv was left as it was.")
     write_csv("unmatched.csv", ["zone_slug", "name", "parent_name", "zonaprop_answer"], unmatched_rows)
     matched = len({row[0] for row in totals_rows})
     print(f"Exported ({cache_dir.name}): {matched} zones with data, {len(listing_rows)} listings, "
