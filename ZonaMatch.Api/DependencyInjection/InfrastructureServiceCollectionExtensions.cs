@@ -47,7 +47,6 @@ public static class InfrastructureServiceCollectionExtensions
 
         if (string.Equals(configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
         {
-            services.AddMemoryCache();
             services.AddHttpClient<IGeocodingClient, NominatimGeocodingClient>(client =>
             {
                 client.BaseAddress = new Uri(configuration["Nominatim:BaseUrl"] ?? "https://nominatim.openstreetmap.org/");
@@ -68,8 +67,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEmailService, EmailService>();
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
-        services.AddMemoryCache();
-        services.AddSingleton<ZoneProfilesCache>();
+        // One cache for the whole API (zone profiles, MOTIS trips and plans, Nominatim addresses). Today it lives in memory;
+        // with several instances, a distributed cache (Redis or PostgreSQL) can be added here as its second level.
+        services.AddHybridCache();
         services.AddHttpClient<IRoutingClient, MotisRoutingClient>(client =>
         {
             client.BaseAddress = new Uri(configuration["Motis:Url"] ?? "http://localhost:18080/");

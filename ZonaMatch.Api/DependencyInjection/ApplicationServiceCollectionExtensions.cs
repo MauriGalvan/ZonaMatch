@@ -37,6 +37,7 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddScoped<GetZoneProfileRecommendations>();
         services.AddScoped<GetZoneMarket>();
+        services.AddScoped<RefreshZoneProfiles>();
         services.AddScoped<SearchPlaces>();
         services.AddScoped<PointOfInterestResponseBuilder>();
         services.AddScoped<LocationBoundaryLookup>();

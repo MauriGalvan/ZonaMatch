@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text;
 using FluentAssertions;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Domain.Scoring;
@@ -178,19 +177,18 @@ public sealed class MotisRoutePlannerTests
     {
         var handler = new RecordingHttpMessageHandler(responseJson, statusCode, httpException);
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://motis.test/") };
-        var cache = new MemoryCache(new MemoryCacheOptions());
+        var cache = HybridCacheTestSupport.Create();
         var configurationValues = new Dictionary<string, string?>();
         if (referenceTime is not null)
             configurationValues["Motis:FechaReferencia"] = referenceTime;
 
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(configurationValues).Build();
-        return new PlannerHarness(handler, httpClient, cache, new MotisRoutePlanner(httpClient, cache, configuration));
+        return new PlannerHarness(handler, httpClient, new MotisRoutePlanner(httpClient, cache, configuration));
     }
 
     private sealed class PlannerHarness(
         RecordingHttpMessageHandler handler,
         HttpClient httpClient,
-        MemoryCache cache,
         MotisRoutePlanner planner) : IDisposable
     {
         public RecordingHttpMessageHandler Handler { get; } = handler;
@@ -199,7 +197,6 @@ public sealed class MotisRoutePlannerTests
         public void Dispose()
         {
             httpClient.Dispose();
-            cache.Dispose();
         }
     }
 

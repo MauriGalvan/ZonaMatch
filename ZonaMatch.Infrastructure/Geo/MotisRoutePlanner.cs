@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -14,12 +14,16 @@ namespace ZonaMatch.Infrastructure.Geo
     // keeps each plan in memory for a day. Of the itineraries MOTIS offers, the best one is kept: the fastest, with
     // every transfer counted as TransferPenaltySeconds more and every public transport leg shorter than five blocks as
     // ShortRidePenaltySeconds more, so a bus for three blocks or an unnecessary transfer does not win by a minute.
-    public class MotisRoutePlanner(HttpClient http, IMemoryCache cache, IConfiguration configuration) : IRoutePlanner
+    public class MotisRoutePlanner(HttpClient http, HybridCache cache, IConfiguration configuration) : IRoutePlanner
     {
         // Tuesday, March 3, 2026, 8:00 in Buenos Aires (UTC-3), as in MotisRoutingClient
         private const string DefaultReferenceTime = "2026-03-03T11:00:00Z";
 
-        private static readonly TimeSpan PlanLifetime = TimeSpan.FromDays(1);
+        private static readonly HybridCacheEntryOptions PlanLifetime = new()
+        {
+            Expiration = TimeSpan.FromDays(1),
+            LocalCacheExpiration = TimeSpan.FromDays(1),
+        };
 
         private const int TransferPenaltySeconds = 300;
 
@@ -38,9 +42,15 @@ namespace ZonaMatch.Infrastructure.Geo
             var key = string.Create(CultureInfo.InvariantCulture,
                 $"motis-plan:{mode}:{fromLatitude:F4},{fromLongitude:F4}:{toLatitude:F4},{toLongitude:F4}");
 
-            if (cache.TryGetValue(key, out RoutePlan? cached))
-                return cached;
+            // An unavailable MOTIS throws, and HybridCache does not keep exceptions
+            return await cache.GetOrCreateAsync(key, token => new ValueTask<RoutePlan?>(QueryAsync(fromLatitude, fromLongitude, toLatitude, toLongitude, mode, token)),
+                PlanLifetime, cancellationToken: cancellationToken);
+        }
 
+        private async Task<RoutePlan?> QueryAsync(
+            double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, TravelMode mode,
+            CancellationToken cancellationToken)
+        {
             var url = string.Create(CultureInfo.InvariantCulture,
                 $"api/v1/plan?fromPlace={fromLatitude},{fromLongitude}&toPlace={toLatitude},{toLongitude}&time={_referenceTime}&{Modes(mode)}");
 
@@ -62,9 +72,7 @@ namespace ZonaMatch.Infrastructure.Geo
                                  + TransferPenaltySeconds * option.Transfers
                                  + ShortRidePenaltySeconds * option.Legs.Count(IsShortRide));
 
-            var result = best.Legs is null ? null : new RoutePlan(best.Duration, best.Legs);
-            cache.Set(key, result, PlanLifetime);
-            return result;
+            return best.Legs is null ? null : new RoutePlan(best.Duration, best.Legs);
         }
 
         // Public transport with walks; the other modes, only the direct trip

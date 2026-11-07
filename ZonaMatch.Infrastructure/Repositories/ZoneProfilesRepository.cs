@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using NpgsqlTypes;
@@ -210,19 +212,56 @@ namespace ZonaMatch.Infrastructure.Repositories
             ) candidates
             """;
 
+        private const string CacheKey = "zone-profiles";
+
+        // Built from the database and read on every ranking: kept only in this instance's memory, never in a shared
+        // cache (their dictionaries with tuple keys cannot be serialized, and every instance can rebuild them).
+        private static readonly HybridCacheEntryOptions CacheEntry = new()
+        {
+            Expiration = TimeSpan.FromHours(6),
+            LocalCacheExpiration = TimeSpan.FromHours(6),
+            Flags = HybridCacheEntryFlags.DisableDistributedCache,
+        };
+
         private readonly ZonaMatchDbContext _dbContext;
-        private readonly ZoneProfilesCache _cache;
+        private readonly HybridCache _cache;
         private readonly ILogger<ZoneProfilesRepository> _logger;
 
-        public ZoneProfilesRepository(ZonaMatchDbContext dbContext, ZoneProfilesCache cache, ILogger<ZoneProfilesRepository> logger)
+        public ZoneProfilesRepository(ZonaMatchDbContext dbContext, HybridCache cache, ILogger<ZoneProfilesRepository> logger)
         {
             _dbContext = dbContext;
             _cache = cache;
             _logger = logger;
         }
 
-        public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
-            _cache.GetAsync(LoadZoneProfilesAsync, cancellationToken);
+        // HybridCache runs one load for concurrent requests; an empty result (data not loaded yet) is not cached.
+        public async Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var set = await _cache.GetOrCreateAsync(CacheKey, async token =>
+                {
+                    var profiles = await LoadZoneProfilesAsync(token);
+                    return profiles.Count > 0 ? new ZoneProfileSet(profiles) : throw new NoZoneProfilesException();
+                }, CacheEntry, cancellationToken: cancellationToken);
+
+                return set.Profiles;
+            }
+            catch (NoZoneProfilesException)
+            {
+                return [];
+            }
+        }
+
+        public Task InvalidateAsync(CancellationToken cancellationToken = default) =>
+            _cache.RemoveAsync(CacheKey, cancellationToken).AsTask();
+
+        // Immutable and sealed, so HybridCache hands out the same instance instead of a copy on every read
+        [ImmutableObject(true)]
+        private sealed record ZoneProfileSet(IReadOnlyList<ZoneProfile> Profiles);
+
+        // Signals that there is nothing to cache; it never leaves this class.
+        private sealed class NoZoneProfilesException : Exception;
 
         public async Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
             IReadOnlyCollection<(double Latitude, double Longitude)> locations,

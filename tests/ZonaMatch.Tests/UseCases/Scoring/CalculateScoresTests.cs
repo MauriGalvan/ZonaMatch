@@ -243,6 +243,8 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZoneProfile>>(Zones);
 
+            public Task InvalidateAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
             public Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
                 IReadOnlyCollection<(double Latitude, double Longitude)> locations,
                 CancellationToken cancellationToken = default) =>
