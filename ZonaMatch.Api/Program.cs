@@ -79,6 +79,7 @@ builder.Services.AddRateLimiter(options =>
         httpContext.User.GetAuthenticatedUserId()?.ToString() ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
     // A visitor gets their PDF report by email: 3 requests per hour per IP (each one sends an email with an attachment).
+    // PENDING: too low for live demos; see the note on SendGuestReport.MaxEmailsPerRecipientPerDay.
     options.AddPolicy("guest-report", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1) }));

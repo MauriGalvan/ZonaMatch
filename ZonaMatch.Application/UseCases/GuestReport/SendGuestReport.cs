@@ -12,6 +12,9 @@ namespace ZonaMatch.Application.UseCases.GuestReport;
 public sealed class SendGuestReport(IEmailService email, GuestReportQuota quota, FrontendLinks links)
 {
     public const int MaxReportBytes = 5 * 1024 * 1024;
+    // PENDING (decided 06/11): these limits get in the way of live demos (same email, same network). Options weighed:
+    // configurable limits plus a list of team addresses without limit, an invisible captcha (Cloudflare Turnstile),
+    // or a higher per-IP limit only. See ZonaMatch-plan-06-11.md, "Pendiente o a investigar".
     public const int MaxEmailsPerRecipientPerDay = 3;
     public const string Subject = "Tu informe de ZonaMatch";
     public const string AttachmentName = "informe-zonamatch.pdf";
