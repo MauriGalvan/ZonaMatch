@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.IdentityModel.JsonWebTokens;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs.Auth.Requests;
 using ZonaMatch.Application.DTOs.Auth.Responses;
@@ -60,13 +59,9 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public IActionResult Me()
         {
-            var userIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            var email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+            var user = User.RequireUserContext();
 
-            if (!Guid.TryParse(userIdClaim, out var userId) || email is null)
-                return Unauthorized();
-
-            return Ok(new CurrentSessionResponse(userId, email, User.IsInRole(AppRoles.Admin)));
+            return Ok(new CurrentSessionResponse(user.Id, user.Email, User.IsInRole(AppRoles.Admin)));
         }
 
         [HttpPost("logout")]

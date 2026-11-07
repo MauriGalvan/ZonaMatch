@@ -109,7 +109,9 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 // Enums are serialized as kebab-case strings ("punto-nuevo", "cerro") in requests and responses.
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)));
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)))
+    // Invalid requests answer with the same ProblemDetails shape as the global exception handler, in Spanish
+    .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = ValidationProblemFactory.Create);
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi();

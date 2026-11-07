@@ -119,9 +119,26 @@ public sealed class AuthApiTests(PostgreSqlDatabaseFixture database)
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         problem.Should().NotBeNull();
         problem!.Errors.Should().NotBeEmpty();
+        problem.Title.Should().Be("Revisá los datos enviados.");
+        problem.Errors.SelectMany(field => field.Value).Should().Contain("El email no tiene un formato válido.");
 
         await using var dbContext = database.CreateDbContext();
         (await dbContext.Users.CountAsync(user => user.Email == invalidEmail)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Register_WhenBodyHasAValueOfTheWrongType_ReturnsTheValidationErrorInSpanish()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var client = CreateClient(factory);
+        using var body = new StringContent("""{ "email": 123, "password": true }""", System.Text.Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync("/api/v1/auth/register", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        problem!.Title.Should().Be("Revisá los datos enviados.");
+        problem.Errors.SelectMany(field => field.Value).Should().OnlyContain(message => !message.Contains("JSON") && !message.StartsWith("The "));
     }
 
     private static HttpClient CreateClient(WebApplicationFactory<Program> factory) =>
