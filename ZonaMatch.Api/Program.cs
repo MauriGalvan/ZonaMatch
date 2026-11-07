@@ -74,6 +74,10 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("password-reset", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15) }));
+    // Group invitations by email: 10 per hour per signed-in user, so a group owner cannot be used to send spam.
+    options.AddPolicy("invitation-email", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.GetAuthenticatedUserId()?.ToString() ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
     // A visitor gets their PDF report by email: 3 requests per hour per IP (each one sends an email with an attachment).
     options.AddPolicy("guest-report", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",

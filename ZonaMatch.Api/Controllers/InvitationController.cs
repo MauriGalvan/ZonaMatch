@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using ZonaMatch.Application.DTOs.GroupInvitation.Requests;
 using ZonaMatch.Application.DTOs.GroupInvitation.Responses;
@@ -25,6 +26,7 @@ public class InvitationsController : ControllerBase
     // ==========================================
 
     [Authorize]
+    [EnableRateLimiting("invitation-email")]
     [HttpPost("email")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
