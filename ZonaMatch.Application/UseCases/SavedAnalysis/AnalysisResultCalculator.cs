@@ -86,6 +86,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                 HousingType = context.HousingType,
                 AreaM2 = context.AreaM2,
                 Rooms = context.Rooms,
+                CreditEligible = context.CreditEligible,
                 Mobility = (context.Mobility ?? []).ToList(),
             };
 

@@ -44,6 +44,10 @@ namespace ZonaMatch.Domain.Entities
         // Number of rooms (1 to 4, 5 = 5 or more): prices are those of that size. Null uses every size.
         public int? Rooms { get; set; }
 
+        // Buying with a mortgage: the purchase limit is compared with the sales eligible for it ("apto crédito").
+        // Always false when renting.
+        public bool CreditEligible { get; set; }
+
         public DateTimeOffset CreatedAt { get; set; }
 
         public DateTimeOffset UpdatedAt { get; set; }
@@ -71,6 +75,7 @@ namespace ZonaMatch.Domain.Entities
             HousingType = HousingType,
             AreaM2 = AreaM2,
             Rooms = Rooms,
+            CreditEligible = CreditEligible,
             CreatedAt = timestamp,
             UpdatedAt = timestamp,
             People = People

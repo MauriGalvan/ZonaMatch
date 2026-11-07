@@ -40,6 +40,9 @@ public sealed class CalculateScoresRequest
     [Range(0, 5, ErrorMessage = "Los ambientes deben estar entre 1 y 5 (5 o más).")]
     public int? Rooms { get; set; }
 
+    // Buying with a mortgage: the purchase limit is compared with the sales eligible for it ("apto crédito").
+    public bool? CreditEligible { get; set; }
+
     // Mobility options (walking, public transit, car, cycling) determine how trips are measured.
     public List<string> Mobility { get; set; } = [];
 

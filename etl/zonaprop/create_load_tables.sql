@@ -14,6 +14,15 @@ CREATE TABLE geo.load_zonaprop_totals (
     url               text,
     scraped_at        timestamptz NOT NULL
 );
+-- Sale listings eligible for a mortgage ("apto crédito") up to each price (scrape_zonaprop.py, credit_totals.csv)
+DROP TABLE IF EXISTS geo.load_zonaprop_credit;
+CREATE TABLE geo.load_zonaprop_credit (
+    zone_slug     text NOT NULL,
+    max_price_usd numeric NOT NULL,
+    listings      integer NOT NULL,
+    scraped_at    timestamptz NOT NULL
+);
+
 DROP TABLE IF EXISTS geo.load_zonaprop_listings;
 CREATE TABLE geo.load_zonaprop_listings (
     zone_slug         text NOT NULL,

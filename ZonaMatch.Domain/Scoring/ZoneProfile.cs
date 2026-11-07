@@ -62,6 +62,17 @@ namespace ZonaMatch.Domain.Scoring
         public decimal[]? SaleShares { get; init; }
         public decimal[]? SalePerM2Shares { get; init; }
 
+        // Sales eligible for a mortgage ("apto crédito"), every type: prices in dollars and the share of them priced
+        // up to each one. Null without credit data.
+        public decimal[]? CreditPricesUsd { get; init; }
+        public decimal[]? CreditShares { get; init; }
+
+        // Starts at 0 at price 0, since the first price read already leaves some listings below it
+        public PriceDistribution? CreditDistributionUsd =>
+            PriceDistribution.From(CreditPricesUsd, CreditShares) is null
+                ? null
+                : new PriceDistribution([0, .. CreditPricesUsd!], [0, .. CreditShares!]);
+
         // Separate apartment, house, and PH market data (keyed by HousingTypes); the fields above cover all types.
         public IReadOnlyDictionary<string, HousingMarket> MarketByPropertyType { get; init; } = new Dictionary<string, HousingMarket>();
 

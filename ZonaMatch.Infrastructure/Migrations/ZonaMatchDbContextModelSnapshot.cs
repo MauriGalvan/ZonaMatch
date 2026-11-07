@@ -314,6 +314,12 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_creacion");
 
+                    b.Property<bool>("CreditEligible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("apto_credito");
+
                     b.Property<string>("HousingType")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -1377,6 +1383,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Property<decimal?>("CreditEligibleShare")
                         .HasColumnType("numeric(5,4)")
                         .HasColumnName("credit_eligible_share");
+
+                    b.PrimitiveCollection<decimal[]>("CreditPrices")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("credit_prices");
+
+                    b.PrimitiveCollection<decimal[]>("CreditShares")
+                        .HasColumnType("numeric[]")
+                        .HasColumnName("credit_shares");
 
                     b.Property<string>("Currency")
                         .IsRequired()

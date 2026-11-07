@@ -29,4 +29,7 @@ public sealed class AnalysisPointsRequest
     // Number of rooms (1 to 4, 5 = 5 or more): prices are those of that size; omitted or 0 uses every size.
     [Range(0, 5, ErrorMessage = "Los ambientes deben estar entre 1 y 5 (5 o más).")]
     public int? Rooms { get; set; }
+
+    // Buying with a mortgage: compare the purchase limit with the sales eligible for it; ignored when renting.
+    public bool? CreditEligible { get; set; }
 }

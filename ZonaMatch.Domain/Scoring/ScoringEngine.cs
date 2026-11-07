@@ -15,7 +15,8 @@ namespace ZonaMatch.Domain.Scoring
         decimal? MaximumPurchasePriceUsd = null,
         string? HousingType = null,
         int? AreaM2 = null,
-        int? Rooms = null)
+        int? Rooms = null,
+        bool CreditEligible = false)
     {
         public bool IsPurchase => Operation == HousingOperations.Purchase;
     }
@@ -148,7 +149,9 @@ namespace ZonaMatch.Domain.Scoring
 
             if (request.IsPurchase && request.MaximumPurchasePriceUsd is { } maximumPurchasePriceUsd && maximumPurchasePriceUsd > 0)
             {
-                var (limit, overage) = PurchaseLimitFor(market, maximumPurchasePriceUsd, request.HousingType, request.AreaM2);
+                var (limit, overage) = request.CreditEligible
+                    ? CreditPurchaseLimitFor(zone, market, maximumPurchasePriceUsd, request.HousingType, request.AreaM2)
+                    : PurchaseLimitFor(market, maximumPurchasePriceUsd, request.HousingType, request.AreaM2);
                 limits.Add(limit);
                 budgetOverage = Math.Max(budgetOverage, overage);
             }
@@ -334,6 +337,34 @@ namespace ZonaMatch.Domain.Scoring
                 : $"Precio promedio{housingTypeSuffix} {FormatDollars(salePrice)}";
 
             return CompareWithLimit(PurchaseLimit, salePrice, maximumPriceUsd, details, $"tu tope de compra de {FormatDollars(maximumPriceUsd)}");
+        }
+
+        // Buying with a mortgage: the limit against the sales eligible for it. Zonaprop only gives them for every type
+        // together and without the area, so they are used as they are. A zone without that data uses every sale.
+        private static (LimitResult Limit, double Overage) CreditPurchaseLimitFor(
+            ZoneProfile zone, HousingMarket market, decimal maximumPriceUsd, string? housingType, int? areaM2)
+        {
+            if (zone.CreditDistributionUsd is not { } credit)
+            {
+                var (fallback, fallbackOverage) = PurchaseLimitFor(market, maximumPriceUsd, housingType, areaM2);
+                return (fallback with { Details = $"{fallback.Details} (sin datos de ventas apto crédito en esta zona)" }, fallbackOverage);
+            }
+
+            var limitDescription = $"tu tope de compra de {FormatDollars(maximumPriceUsd)}";
+            var scope = housingType is null ? string.Empty : " (departamentos, casas y PH)";
+            var percentage = credit.PercentageUpTo(maximumPriceUsd);
+            if (percentage == 0)
+            {
+                // Below the first price read, as when no listing fits
+                var shortfall = Math.Max((double)(credit.Prices[1] / maximumPriceUsd - 1), 0);
+                return (new LimitResult(PurchaseLimit, false,
+                    $"Ventas apto crédito{scope}: ninguna entra en {limitDescription}"), MinorOverage + shortfall);
+            }
+
+            var text = percentage >= 100
+                ? $"Ventas apto crédito{scope}: todas entran en {limitDescription}"
+                : $"Ventas apto crédito{scope}: entra el {percentage} % de las publicaciones apto crédito en {limitDescription}";
+            return (new LimitResult(PurchaseLimit, true, text), MinorOverage * (100 - percentage) / 100.0);
         }
 
         // Limit against the price distribution, on the same scale as ApplyPenalty:

@@ -463,5 +463,62 @@ namespace ZonaMatch.Tests.Domain
             limit.IsSatisfied.Should().BeTrue();
             limit.Details.Should().StartWith("Precio estimado de departamentos de 2 ambientes para 40 m² US$ 149.520 (US$ 3.738/m²)");
         }
+
+        // Like Ramos Mejía: sales from US$ 18.000; credit-eligible ones read at their own price points
+        private static ZoneProfile ZoneWithCreditSales(bool withCredit = true) => new()
+        {
+            Slug = "zona", Name = "zona", Level = 9, AreaKm2 = 2, Population = 1000, SchoolCount = 10,
+            AverageSalePriceUsd = 160_000,
+            SaleDecilesUsd = [18_000, 60_000, 95_000, 145_000, 400_000],
+            CreditPricesUsd = withCredit ? [46_000, 55_000, 73_000, 115_000, 180_000] : null,
+            CreditShares = withCredit ? [0.047m, 0.130m, 0.280m, 0.545m, 0.787m] : null,
+        };
+
+        private static ScoringRequest CreditPurchase(decimal cap) =>
+            new(EducationCriteria, [], null, HousingOperations.Purchase, cap, CreditEligible: true);
+
+        [Fact]
+        public void Calculate_WhenBuyingWithAMortgage_ComparesTheCapWithTheCreditEligibleSales()
+        {
+            var zone = ZoneWithCreditSales();
+
+            var limit = new ScoringEngine([zone]).Calculate(zone, CreditPurchase(115_000)).Limits.Single();
+
+            limit.IsSatisfied.Should().BeTrue();
+            limit.Details.Should().Be("Ventas apto crédito: entra el 55 % de las publicaciones apto crédito en tu tope de compra de US$ 115.000");
+        }
+
+        [Fact]
+        public void Calculate_WhenTheCapIsBelowTheFirstCreditPrice_InterpolatesFromZero()
+        {
+            var zone = ZoneWithCreditSales();
+
+            // Half of US$ 46.000: half of the 4,7 % up to it
+            var limit = new ScoringEngine([zone]).Calculate(zone, CreditPurchase(23_000)).Limits.Single();
+
+            limit.Details.Should().EndWith("entra el 2 % de las publicaciones apto crédito en tu tope de compra de US$ 23.000");
+        }
+
+        [Fact]
+        public void Calculate_WhenNoCreditEligibleSaleFits_FailsTheLimit()
+        {
+            var zone = ZoneWithCreditSales();
+
+            var limit = new ScoringEngine([zone]).Calculate(zone, CreditPurchase(1_000)).Limits.Single();
+
+            limit.IsSatisfied.Should().BeFalse();
+            limit.Details.Should().StartWith("Ventas apto crédito: ninguna entra");
+        }
+
+        [Fact]
+        public void Calculate_WhenZoneHasNoCreditData_UsesEverySaleAndSaysSo()
+        {
+            var zone = ZoneWithCreditSales(withCredit: false);
+
+            var limit = new ScoringEngine([zone]).Calculate(zone, CreditPurchase(115_000)).Limits.Single();
+
+            limit.Details.Should().StartWith("Precio: de US$ 18.000")
+                .And.EndWith("(sin datos de ventas apto crédito en esta zona)");
+        }
     }
 }

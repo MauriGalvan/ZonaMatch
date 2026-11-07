@@ -203,7 +203,8 @@ namespace ZonaMatch.Application.UseCases.Scoring
 
             return new ScoringRequest(
                 criteria, places, ParseRent(request.MaximumRent), operation, maximumPurchase, housingType,
-                HousingScoring.ValidateSurface(request.AreaM2), HousingScoring.ValidateRooms(request.Rooms));
+                HousingScoring.ValidateSurface(request.AreaM2), HousingScoring.ValidateRooms(request.Rooms),
+                CreditEligible: operation == HousingOperations.Purchase && request.CreditEligible == true);
         }
 
         // "45 min" -> 45.
