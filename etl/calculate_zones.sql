@@ -182,14 +182,21 @@ CREATE TABLE geo.zona_indicadores (
     radios                       integer NOT NULL,
     poblacion                    integer NOT NULL,
     viviendas                    integer NOT NULL,
+    personas_0_4                 integer NOT NULL,
+    personas_5_14                integer NOT NULL,
+    personas_15_29               integer NOT NULL,
+    personas_30_44               integer NOT NULL,
+    personas_45_64               integer NOT NULL,
+    personas_65_mas              integer NOT NULL,
+    edad_promedio                double precision,
     personas_0_14                integer NOT NULL,
     personas_15_64               integer NOT NULL,
-    personas_65_mas              integer NOT NULL,
     personas_con_cobertura_salud integer NOT NULL,
     personas_con_dato_cobertura  integer NOT NULL,
     personas_universitario       integer NOT NULL,
     personas_con_dato_educacion  integer NOT NULL,
     hogares                      integer NOT NULL,
+    hogares_unipersonales        integer NOT NULL,
     hogares_internet             integer NOT NULL,
     hogares_celular_internet     integer NOT NULL,
     hogares_computadora          integer NOT NULL,
@@ -228,9 +235,21 @@ WITH census_assignments AS (
 census_counts AS (
     SELECT a.osm_id,
            count(DISTINCT a.cod)::int AS radios,
-           sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '1') AS p_0_14,
-           sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '2') AS p_15_64,
-           sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '3') AS p_65,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria = '1'), 0)::int AS p_0_4,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('2', '3')), 0)::int AS p_5_14,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('4', '5', '6')), 0)::int AS p_15_29,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('7', '8', '9')), 0)::int AS p_30_44,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('10', '11', '12', '13')), 0)::int AS p_45_64,
+           coalesce(sum(i.conteo) FILTER (WHERE (i.variable = 'PERSONA_EDADQUI' AND i.categoria ~ '^[0-9]+$' AND i.categoria::int >= 14)
+                                             OR (i.variable = 'PERSONA_EDADGRU' AND i.categoria = '3')), 0)::int AS p_65,
+           round(
+               sum(i.categoria::int * i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDAD' AND i.categoria ~ '^[0-9]+$')::numeric
+               / nullif(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDAD' AND i.categoria ~ '^[0-9]+$'), 0)
+           , 1)::double precision AS edad_promedio,
+           coalesce(sum(i.conteo) FILTER (WHERE (i.variable = 'PERSONA_EDADGRU' AND i.categoria = '1')
+                                             OR (i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('1', '2', '3'))), 0)::int AS p_0_14,
+           coalesce(sum(i.conteo) FILTER (WHERE (i.variable = 'PERSONA_EDADGRU' AND i.categoria = '2')
+                                             OR (i.variable = 'PERSONA_EDADQUI' AND i.categoria ~ '^[0-9]+$' AND i.categoria::int BETWEEN 4 AND 13)), 0)::int AS p_15_64,
            -- Employer health plan, private insurance, or PAMI (1), or state health plan (2).
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_P19' AND i.categoria IN ('1', '2')) AS p_cobertura,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_P19') AS p_dato_cobertura,
@@ -238,6 +257,7 @@ census_counts AS (
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_MNI' AND i.categoria IN ('9', '10', '11')) AS p_universitario,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_MNI' AND i.categoria <> '99') AS p_dato_educacion,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24A') AS hogares,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_TOTPERS' AND i.categoria = '1'), 0)::int AS h_unipersonales,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24A' AND i.categoria = '1') AS h_internet,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24B' AND i.categoria = '1') AS h_celular,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24C' AND i.categoria = '1') AS h_computadora,
@@ -380,10 +400,13 @@ crime_totals AS (
 )
 INSERT INTO geo.zona_indicadores
 SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
-       coalesce(c.p_0_14, 0), coalesce(c.p_15_64, 0), coalesce(c.p_65, 0),
+       coalesce(c.p_0_4, 0), coalesce(c.p_5_14, 0), coalesce(c.p_15_29, 0),
+       coalesce(c.p_30_44, 0), coalesce(c.p_45_64, 0), coalesce(c.p_65, 0),
+       c.edad_promedio,
+       coalesce(c.p_0_14, 0), coalesce(c.p_15_64, 0),
        coalesce(c.p_cobertura, 0), coalesce(c.p_dato_cobertura, 0),
        coalesce(c.p_universitario, 0), coalesce(c.p_dato_educacion, 0),
-       coalesce(c.hogares, 0), coalesce(c.h_internet, 0), coalesce(c.h_celular, 0),
+       coalesce(c.hogares, 0), coalesce(c.h_unipersonales, 0), coalesce(c.h_internet, 0), coalesce(c.h_celular, 0),
        coalesce(c.h_computadora, 0), coalesce(c.h_nbi, 0), coalesce(c.h_hacinamiento, 0),
        coalesce(c.h_alquilan, 0),
        -- In CABA, a zone with no recorded crimes has 0; without SNIC data, the value is null.

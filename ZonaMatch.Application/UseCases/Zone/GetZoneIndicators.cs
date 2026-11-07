@@ -1,4 +1,5 @@
-﻿using ZonaMatch.Application.DTOs.Shared.Responses;
+using ZonaMatch.Application.DTOs.Shared.Responses;
+using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.DTOs.ZoneIndicator.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -34,14 +35,7 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             zone.Slug,
             zone.Name,
             zone.Level,
-            new ZonePopulationResponse(
-                zone.Population,
-                zone.PopulationDensityPerKm2,
-                zone.Households,
-                zone.Dwellings,
-                zone.ResidentsUnder15Percentage,
-                zone.ResidentsAged15To64Percentage,
-                zone.ResidentsAged65PlusPercentage),
+            BuildPopulation(zone, cityReference),
             new ZoneConnectivityResponse(
                 zone.HouseholdsWithInternetPercentage,
                 zone.HouseholdsWithComputerPercentage,
@@ -58,6 +52,57 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             BuildSafety(zone, cityReference),
             BuildSources(zone));
     }
+
+    private static ZonePopulationResponse BuildPopulation(ZoneIndicators zone, ZoneIndicators? cityReference)
+    {
+        var isComparingCity = cityReference is not null && !IsBuenosAiresCity(zone);
+
+        var averageAgeBadge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateAverageAge(zone.AverageAge, cityReference!.AverageAge))
+            : null;
+
+        var averageHouseholdSizeBadge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateAverageHouseholdSize(zone.AverageHouseholdSize, cityReference!.AverageHouseholdSize))
+            : null;
+
+        var singlePersonHouseholdsBadge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateSinglePersonHouseholds(zone.SinglePersonHouseholdsPercentage, cityReference!.SinglePersonHouseholdsPercentage))
+            : null;
+
+        var childrenUnder15Badge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateChildrenUnder15(zone.ResidentsUnder15Percentage, cityReference!.ResidentsUnder15Percentage))
+            : null;
+
+        var seniorsOver65Badge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateSeniorsOver65(zone.ResidentsAged65PlusPercentage, cityReference!.ResidentsAged65PlusPercentage))
+            : null;
+
+        var ageDistribution = new ZoneAgeDistributionResponse(
+            zone.ResidentsAged0To4Percentage,
+            zone.ResidentsAged5To14Percentage,
+            zone.ResidentsAged15To29Percentage,
+            zone.ResidentsAged30To44Percentage,
+            zone.ResidentsAged45To64Percentage,
+            zone.ResidentsOver65Percentage);
+
+        return new ZonePopulationResponse(
+            zone.Population,
+            zone.Households,
+            zone.Dwellings,
+            zone.AverageAge,
+            averageAgeBadge,
+            zone.AverageHouseholdSize,
+            averageHouseholdSizeBadge,
+            zone.SinglePersonHouseholdsPercentage,
+            singlePersonHouseholdsBadge,
+            childrenUnder15Badge,
+            seniorsOver65Badge,
+            ageDistribution,
+            zone.PopulationDensityPerKm2);
+    }
+
+    private static DemographicBadgeResponse? ToResponse(DemographicBadge? badge) =>
+        badge is null ? null : new DemographicBadgeResponse(badge.Label, badge.Variant);
 
     private static ZoneSafetyResponse? BuildSafety(ZoneIndicators zone, ZoneIndicators? cityReference)
     {

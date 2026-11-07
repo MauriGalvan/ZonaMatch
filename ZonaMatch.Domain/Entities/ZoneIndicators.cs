@@ -14,14 +14,28 @@ namespace ZonaMatch.Domain.Entities
         public int CensusTractCount { get; set; }
         public int Population { get; set; }
         public int Dwellings { get; set; }
+
+        // Age brackets.
+        public int ResidentsAged0To4 { get; set; }
+        public int ResidentsAged5To14 { get; set; }
+        public int ResidentsAged15To29 { get; set; }
+        public int ResidentsAged30To44 { get; set; }
+        public int ResidentsAged45To64 { get; set; }
+        public int ResidentsAged65Plus { get; set; }
+
+        // General age groups (retained for backward compatibility).
         public int ResidentsAged0To14 { get; set; }
         public int ResidentsAged15To64 { get; set; }
-        public int ResidentsAged65Plus { get; set; }
+
+        public double? AverageAge { get; set; }
+
         public int ResidentsWithHealthCoverage { get; set; }
         public int ResidentsWithHealthCoverageData { get; set; }
         public int ResidentsWithUniversityEducation { get; set; }
         public int ResidentsWithEducationData { get; set; }
+
         public int Households { get; set; }
+        public int SinglePersonHouseholds { get; set; }
         public int HouseholdsWithInternet { get; set; }
         public int HouseholdsWithMobileInternet { get; set; }
         public int HouseholdsWithComputer { get; set; }
@@ -57,9 +71,32 @@ namespace ZonaMatch.Domain.Entities
         public double? PopulationDensityPerKm2 =>
             AreaKm2 > 0 ? Math.Round(Population / AreaKm2) : null;
 
-        public double? ResidentsUnder15Percentage => Percentage(ResidentsAged0To14, ResidentsWithKnownAge);
-        public double? ResidentsAged15To64Percentage => Percentage(ResidentsAged15To64, ResidentsWithKnownAge);
-        public double? ResidentsAged65PlusPercentage => Percentage(ResidentsAged65Plus, ResidentsWithKnownAge);
+        public double? AverageHouseholdSize =>
+            Households > 0 ? Math.Round((double)Population / Households, 1) : null;
+
+        public double? SinglePersonHouseholdsPercentage =>
+            Percentage(SinglePersonHouseholds, Households);
+
+        // General group percentages (0-14, 15-64, 65+).
+        public double? ResidentsUnder15Percentage => Percentage(
+            ResidentsAged0To14 > 0 ? ResidentsAged0To14 : (ResidentsAged0To4 + ResidentsAged5To14),
+            ResidentsWithKnownAge > 0 ? ResidentsWithKnownAge : AgeDenominator);
+
+        public double? ResidentsAged15To64Percentage => Percentage(
+            ResidentsAged15To64 > 0 ? ResidentsAged15To64 : (ResidentsAged15To29 + ResidentsAged30To44 + ResidentsAged45To64),
+            ResidentsWithKnownAge > 0 ? ResidentsWithKnownAge : AgeDenominator);
+
+        public double? ResidentsAged65PlusPercentage => Percentage(
+            ResidentsAged65Plus,
+            ResidentsWithKnownAge > 0 ? ResidentsWithKnownAge : AgeDenominator);
+
+        // Detailed age distribution percentages over population (or reported ages if population is zero).
+        public double? ResidentsAged0To4Percentage => Percentage(ResidentsAged0To4, AgeDenominator);
+        public double? ResidentsAged5To14Percentage => Percentage(ResidentsAged5To14, AgeDenominator);
+        public double? ResidentsAged15To29Percentage => Percentage(ResidentsAged15To29, AgeDenominator);
+        public double? ResidentsAged30To44Percentage => Percentage(ResidentsAged30To44, AgeDenominator);
+        public double? ResidentsAged45To64Percentage => Percentage(ResidentsAged45To64, AgeDenominator);
+        public double? ResidentsOver65Percentage => Percentage(ResidentsAged65Plus, AgeDenominator);
 
         public double? HouseholdsWithInternetPercentage => Percentage(HouseholdsWithInternet, Households);
         public double? HouseholdsWithMobileInternetPercentage => Percentage(HouseholdsWithMobileInternet, Households);
@@ -75,8 +112,22 @@ namespace ZonaMatch.Domain.Entities
         public double? CrimesPerThousandResidents =>
             CrimeCount is { } crimes && Population > 0 ? Math.Round(1000.0 * crimes / Population, 1) : null;
 
-        // Age percentages use residents with a reported age, who may not represent the entire population.
-        private int ResidentsWithKnownAge => ResidentsAged0To14 + ResidentsAged15To64 + ResidentsAged65Plus;
+        private bool HasDetailedAges =>
+            ResidentsAged0To4 > 0 || ResidentsAged5To14 > 0 || ResidentsAged15To29 > 0 ||
+            ResidentsAged30To44 > 0 || ResidentsAged45To64 > 0;
+
+        private int DetailedAgesTotal =>
+            ResidentsAged0To4 + ResidentsAged5To14 + ResidentsAged15To29 + ResidentsAged30To44 + ResidentsAged45To64 + ResidentsAged65Plus;
+
+        private int GeneralAgesTotal =>
+            ResidentsAged0To14 + ResidentsAged15To64 + ResidentsAged65Plus;
+
+        // Uses detailed total when detailed brackets are filled, otherwise general bands.
+        private int ResidentsWithKnownAge =>
+            HasDetailedAges ? DetailedAgesTotal : GeneralAgesTotal;
+
+        private int AgeDenominator =>
+            Population > 0 ? Population : (ResidentsWithKnownAge > 0 ? ResidentsWithKnownAge : 0);
 
         // One decimal place; null when there is no valid denominator.
         public static double? Percentage(int numerator, int denominator) =>

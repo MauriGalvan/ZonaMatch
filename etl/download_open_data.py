@@ -26,6 +26,9 @@ AMBA_BOUNDS = {"xmin": -59.20, "xmax": -57.90, "ymin": -35.20, "ymax": -34.20}
 # Census variables used by zone details (see etl/create_geographic_tables.sql).
 CENSUS_VARIABLES = [
     "PERSONA_EDADGRU",  # Age groups.
+    "PERSONA_EDADQUI",  # Quinquennial age groups.
+    "PERSONA_EDAD",     # Exact age.
+    "HOGAR_TOTPERS",    # Persons per household.
     "PERSONA_P19",      # Health coverage.
     "PERSONA_MNI",      # Highest education level.
     "HOGAR_H24A",       # Internet access at home.

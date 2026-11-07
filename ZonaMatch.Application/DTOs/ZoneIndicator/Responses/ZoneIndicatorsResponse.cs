@@ -1,4 +1,5 @@
-﻿using ZonaMatch.Application.DTOs.Shared.Responses;
+using ZonaMatch.Application.DTOs.Shared.Responses;
+using ZonaMatch.Application.DTOs.Zone.Responses;
 
 namespace ZonaMatch.Application.DTOs.ZoneIndicator.Responses;
 
