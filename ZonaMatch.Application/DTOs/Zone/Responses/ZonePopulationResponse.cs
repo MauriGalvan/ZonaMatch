@@ -13,4 +13,7 @@ public sealed record ZonePopulationResponse(
     DemographicBadgeResponse? ChildrenUnder15Badge,
     DemographicBadgeResponse? SeniorsOver65Badge,
     ZoneAgeDistributionResponse AgeDistribution,
-    double? PopulationDensityPerKm2 = null);
+    double? PopulationDensityPerKm2 = null,
+    double? Under15Percentage = null,
+    double? Age15To64Percentage = null,
+    double? Over65Percentage = null);

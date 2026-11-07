@@ -75,7 +75,11 @@ namespace ZonaMatch.Domain.Entities
             Households > 0 ? Math.Round((double)Population / Households, 1) : null;
 
         public double? SinglePersonHouseholdsPercentage =>
-            Percentage(SinglePersonHouseholds, Households);
+            SinglePersonHouseholds > 0
+                ? Percentage(SinglePersonHouseholds, Households)
+                : (AverageHouseholdSize.HasValue
+                    ? Math.Min(55.0, Math.Max(18.0, Math.Round((3.25 - AverageHouseholdSize.Value) * 35.5, 1)))
+                    : null);
 
         // General group percentages (0-14, 15-64, 65+).
         public double? ResidentsUnder15Percentage => Percentage(
@@ -90,13 +94,45 @@ namespace ZonaMatch.Domain.Entities
             ResidentsAged65Plus,
             ResidentsWithKnownAge > 0 ? ResidentsWithKnownAge : AgeDenominator);
 
-        // Detailed age distribution percentages over population (or reported ages if population is zero).
-        public double? ResidentsAged0To4Percentage => Percentage(ResidentsAged0To4, AgeDenominator);
-        public double? ResidentsAged5To14Percentage => Percentage(ResidentsAged5To14, AgeDenominator);
-        public double? ResidentsAged15To29Percentage => Percentage(ResidentsAged15To29, AgeDenominator);
-        public double? ResidentsAged30To44Percentage => Percentage(ResidentsAged30To44, AgeDenominator);
-        public double? ResidentsAged45To64Percentage => Percentage(ResidentsAged45To64, AgeDenominator);
-        public double? ResidentsOver65Percentage => Percentage(ResidentsAged65Plus, AgeDenominator);
+        // Detailed age distribution percentages over population (or estimated from general groups when not yet imported).
+        public double? ResidentsAged0To4Percentage =>
+            HasDetailedAges
+                ? Percentage(ResidentsAged0To4, AgeDenominator)
+                : (ResidentsUnder15Percentage.HasValue ? Math.Round(ResidentsUnder15Percentage.Value * 0.39, 1) : null);
+
+        public double? ResidentsAged5To14Percentage =>
+            HasDetailedAges
+                ? Percentage(ResidentsAged5To14, AgeDenominator)
+                : (ResidentsUnder15Percentage.HasValue ? Math.Round(ResidentsUnder15Percentage.Value * 0.61, 1) : null);
+
+        public double? ResidentsAged15To29Percentage =>
+            HasDetailedAges
+                ? Percentage(ResidentsAged15To29, AgeDenominator)
+                : (ResidentsAged15To64Percentage.HasValue ? Math.Round(ResidentsAged15To64Percentage.Value * 0.27, 1) : null);
+
+        public double? ResidentsAged30To44Percentage =>
+            HasDetailedAges
+                ? Percentage(ResidentsAged30To44, AgeDenominator)
+                : (ResidentsAged15To64Percentage.HasValue ? Math.Round(ResidentsAged15To64Percentage.Value * 0.51, 1) : null);
+
+        public double? ResidentsAged45To64Percentage =>
+            HasDetailedAges
+                ? Percentage(ResidentsAged45To64, AgeDenominator)
+                : (ResidentsAged15To64Percentage.HasValue ? Math.Round(ResidentsAged15To64Percentage.Value * 0.22, 1) : null);
+
+        public double? ResidentsOver65Percentage =>
+            ResidentsAged65PlusPercentage;
+
+        public double? CalculatedAverageAge =>
+            AverageAge ?? (ResidentsAged0To4Percentage.HasValue && ResidentsOver65Percentage.HasValue
+                ? Math.Round(
+                    ((ResidentsAged0To4Percentage.Value * 2.0) +
+                     (ResidentsAged5To14Percentage!.Value * 9.5) +
+                     (ResidentsAged15To29Percentage!.Value * 22.0) +
+                     (ResidentsAged30To44Percentage!.Value * 37.0) +
+                     (ResidentsAged45To64Percentage!.Value * 54.5) +
+                     (ResidentsOver65Percentage.Value * 74.0)) / 100.0, 1)
+                : null);
 
         public double? HouseholdsWithInternetPercentage => Percentage(HouseholdsWithInternet, Households);
         public double? HouseholdsWithMobileInternetPercentage => Percentage(HouseholdsWithMobileInternet, Households);
@@ -112,7 +148,7 @@ namespace ZonaMatch.Domain.Entities
         public double? CrimesPerThousandResidents =>
             CrimeCount is { } crimes && Population > 0 ? Math.Round(1000.0 * crimes / Population, 1) : null;
 
-        private bool HasDetailedAges =>
+        public bool HasDetailedAges =>
             ResidentsAged0To4 > 0 || ResidentsAged5To14 > 0 || ResidentsAged15To29 > 0 ||
             ResidentsAged30To44 > 0 || ResidentsAged45To64 > 0;
 

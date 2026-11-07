@@ -56,9 +56,11 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
     private static ZonePopulationResponse BuildPopulation(ZoneIndicators zone, ZoneIndicators? cityReference)
     {
         var isComparingCity = cityReference is not null && !IsBuenosAiresCity(zone);
+        var effectiveAverageAge = zone.CalculatedAverageAge;
+        var cityEffectiveAverageAge = cityReference?.CalculatedAverageAge;
 
         var averageAgeBadge = isComparingCity
-            ? ToResponse(ZoneDemographicBenchmark.EvaluateAverageAge(zone.AverageAge, cityReference!.AverageAge))
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateAverageAge(effectiveAverageAge, cityEffectiveAverageAge))
             : null;
 
         var averageHouseholdSizeBadge = isComparingCity
@@ -89,7 +91,7 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             zone.Population,
             zone.Households,
             zone.Dwellings,
-            zone.AverageAge,
+            effectiveAverageAge,
             averageAgeBadge,
             zone.AverageHouseholdSize,
             averageHouseholdSizeBadge,
@@ -98,7 +100,10 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             childrenUnder15Badge,
             seniorsOver65Badge,
             ageDistribution,
-            zone.PopulationDensityPerKm2);
+            zone.PopulationDensityPerKm2,
+            zone.ResidentsUnder15Percentage,
+            zone.ResidentsAged15To64Percentage,
+            zone.ResidentsAged65PlusPercentage);
     }
 
     private static DemographicBadgeResponse? ToResponse(DemographicBadge? badge) =>
