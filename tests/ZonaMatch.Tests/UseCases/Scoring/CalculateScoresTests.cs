@@ -116,6 +116,22 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         }
 
         [Fact]
+        public async Task CalculateAsync_WhenHouseholdHasABike_MeasuresTheExpandedZonesByBikeToo()
+        {
+            AddZone("barrio-caro", 400, rent: 3_000_000);
+            AddZone("barrio-tranquilo", 0);
+            _zoneProfiles.NearbySlugs = ["barrio-caro"];
+            var request = RequestWithWorkplace();
+            request.Mobility = ["transporte-publico", "bici"];
+
+            var result = await _useCase.CalculateAsync(request);
+
+            result.SearchExpanded.Should().BeTrue();
+            // One trip by public transit and one by bike for each of the two zones
+            _routing.Modes.Count(mode => mode == TravelMode.Bicycle).Should().Be(2);
+        }
+
+        [Fact]
         public async Task CalculateAsync_WhenExpandingTheSearch_OnlyAddsZonesOfTheSameLevel()
         {
             AddZone("barrio-caro", 400, rent: 3_000_000);

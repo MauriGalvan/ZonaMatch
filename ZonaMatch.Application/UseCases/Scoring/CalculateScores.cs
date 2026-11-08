@@ -105,7 +105,8 @@ namespace ZonaMatch.Application.UseCases.Scoring
             if (!(ranking.Max(result => result.Score) >= MinimumExpectedScore))
             {
                 var expandedResults = await ScoreRestOfCatalogAsync(
-                    zoneUniverse, candidateZones, surroundingZones, scoringEngine, scoringRequest, travelMode, routeLimit, cancellationToken);
+                    zoneUniverse, candidateZones, surroundingZones, scoringEngine, scoringRequest, travelMode,
+                    TravelModes.HasBicycle(request.Mobility), routeLimit, cancellationToken);
                 var bestInitialScore = ranking.Max(result => result.Score) ?? double.MinValue;
                 searchExpanded = expandedResults.Any(result => result.Score > bestInitialScore);
                 ranking = ranking
@@ -156,7 +157,8 @@ namespace ZonaMatch.Application.UseCases.Scoring
         private async Task<ZoneScoreResult[]> ScoreRestOfCatalogAsync(
             IReadOnlyList<ZoneProfile> zoneUniverse, IReadOnlyCollection<ZoneProfile> candidateZones,
             IReadOnlyCollection<ZoneProfile> surroundingZones, ScoringEngine scoringEngine,
-            ScoringRequest scoringRequest, TravelMode travelMode, SemaphoreSlim routeLimit, CancellationToken cancellationToken)
+            ScoringRequest scoringRequest, TravelMode travelMode, bool withBicycle, SemaphoreSlim routeLimit,
+            CancellationToken cancellationToken)
         {
             var candidateSlugs = candidateZones.Select(zone => zone.Slug).ToHashSet(StringComparer.Ordinal);
             var comparableLevels = surroundingZones.Select(zone => zone.Level).ToHashSet();
@@ -171,8 +173,9 @@ namespace ZonaMatch.Application.UseCases.Scoring
             if (bestByEstimate.Length == 0)
                 return [];
 
+            // Measured like the surrounding zones, by bike too for a household with a bike
             var travelTimes = await ZoneTripTimes.MeasureAsync(
-                _routing, bestByEstimate, scoringRequest.Places, travelMode, routeLimit, cancellationToken);
+                _routing, bestByEstimate, scoringRequest.Places, travelMode, routeLimit, cancellationToken, withBicycle: withBicycle);
             return bestByEstimate
                 .Select(zone => scoringEngine.Calculate(zone, scoringRequest, travelTimes[zone.Slug]))
                 .Where(ReachesEveryPlace)
