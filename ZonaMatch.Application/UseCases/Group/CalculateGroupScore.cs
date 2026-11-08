@@ -90,7 +90,8 @@ public sealed partial class CalculateGroupScore
                         Rooms = rooms,
                     },
                     TravelModes.FromMobility(profile.Mobility ?? []),
-                    profile.Places.OrderBy(point => point.Order).ToArray());
+                    profile.Places.OrderBy(point => point.Order).ToArray(),
+                    TravelModes.HasBicycle(profile.Mobility));
             })
             .ToArray();
 
@@ -117,7 +118,9 @@ public sealed partial class CalculateGroupScore
         var calculations = members
             .Select(async member =>
             {
-                var travelTimes = await ZoneTripTimes.MeasureAsync(_routing, zonesToCalculate, member.Request.Places, member.Mode, routeLimit, cancellationToken);
+                var travelTimes = await ZoneTripTimes.MeasureAsync(
+                    _routing, zonesToCalculate, member.Request.Places, member.Mode, routeLimit, cancellationToken,
+                    withBicycle: member.HasBicycle);
                 var results = zonesToCalculate.ToDictionary(
                     zone => zone.Slug,
                     zone =>
@@ -456,7 +459,8 @@ public sealed partial class CalculateGroupScore
         Participant Participant,
         ScoringRequest Request,
         TravelMode Mode,
-        IReadOnlyList<ContextPlace> Points);
+        IReadOnlyList<ContextPlace> Points,
+        bool HasBicycle);
 
     private sealed record MemberCalculation(
         Participant Participant,

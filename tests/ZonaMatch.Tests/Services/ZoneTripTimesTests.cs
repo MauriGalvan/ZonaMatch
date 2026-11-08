@@ -65,6 +65,66 @@ namespace ZonaMatch.Tests.Services
             _routing.Requests.Should().BeEmpty();
         }
 
+        [Fact]
+        public async Task MeasureAsync_WhenHouseholdHasNoBicycle_DoesNotMeasureByBike()
+        {
+            using var limiter = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
+
+            await ZoneTripTimes.MeasureAsync(_routing, [Zone], [FarPlace], TravelMode.PublicTransit, limiter, CancellationToken.None);
+
+            _routing.Requests.Should().NotContain(request => request.Mode == TravelMode.Bicycle);
+        }
+
+        [Fact]
+        public async Task MeasureAsync_WhenBikeIsFasterForAHouseholdWithABike_KeepsTheBikeTrip()
+        {
+            using var limiter = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
+            _routing.AnswerByMode[TravelMode.Bicycle] = new TravelTime(20, false, 6);
+
+            var times = await ZoneTripTimes.MeasureAsync(
+                _routing, [Zone], [FarPlace], TravelMode.PublicTransit, limiter, CancellationToken.None, withBicycle: true);
+
+            times[Zone.Slug].Single().Should().Be(new TravelTime(20, false, 6, ByBicycle: true));
+        }
+
+        [Fact]
+        public async Task MeasureAsync_WhenBikeIsSlowerForAHouseholdWithABike_KeepsTheMainTrip()
+        {
+            using var limiter = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
+            _routing.AnswerByMode[TravelMode.Bicycle] = new TravelTime(50, false);
+
+            var times = await ZoneTripTimes.MeasureAsync(
+                _routing, [Zone], [FarPlace], TravelMode.PublicTransit, limiter, CancellationToken.None, withBicycle: true);
+
+            times[Zone.Slug].Single().Should().Be(new TravelTime(30, false));
+        }
+
+        [Fact]
+        public async Task MeasureAsync_WhenOnlyTheBikeHasARoute_KeepsTheBikeTrip()
+        {
+            using var limiter = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
+            _routing.Answer = new TravelTime(null, false);
+            _routing.AnswerByMode[TravelMode.Bicycle] = new TravelTime(41, false);
+
+            var times = await ZoneTripTimes.MeasureAsync(
+                _routing, [Zone], [FarPlace], TravelMode.PublicTransit, limiter, CancellationToken.None, withBicycle: true);
+
+            times[Zone.Slug].Single()!.ByBicycle.Should().BeTrue();
+            times[Zone.Slug].Single()!.Minutes.Should().Be(41);
+        }
+
+        [Fact]
+        public async Task MeasureAsync_WhenModeIsBicycle_MarksTheTripAsByBike()
+        {
+            using var limiter = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
+
+            var times = await ZoneTripTimes.MeasureAsync(
+                _routing, [Zone], [FarPlace], TravelMode.Bicycle, limiter, CancellationToken.None, withBicycle: true);
+
+            _routing.Requests.Should().ContainSingle();
+            times[Zone.Slug].Single()!.ByBicycle.Should().BeTrue();
+        }
+
         private sealed record RoutingRequest(
             double OriginLatitude, double OriginLongitude, double DestinationLatitude, double DestinationLongitude, TravelMode Mode);
 
@@ -73,13 +133,16 @@ namespace ZonaMatch.Tests.Services
             public List<RoutingRequest> Requests { get; } = [];
             public TravelTime? Answer { get; set; } = new(30, false);
 
+            // Answers for specific modes; the rest get Answer.
+            public Dictionary<TravelMode, TravelTime?> AnswerByMode { get; } = [];
+
             public Task<TravelTime?> GetTravelTimeAsync(
                 double originLatitude, double originLongitude, double destinationLatitude, double destinationLongitude, TravelMode mode,
                 CancellationToken cancellationToken = default)
             {
                 lock (Requests)
                     Requests.Add(new RoutingRequest(originLatitude, originLongitude, destinationLatitude, destinationLongitude, mode));
-                return Task.FromResult(Answer);
+                return Task.FromResult(AnswerByMode.TryGetValue(mode, out var answer) ? answer : Answer);
             }
         }
     }

@@ -139,12 +139,20 @@ namespace ZonaMatch.Infrastructure.Geo
         }
 
         // Public transit with walking transfers; other modes use direct routes only.
+        // The walk to the first stop, from the last one and the walk-only trip can be as long as a direct walk: MOTIS
+        // walks 15 minutes at most by default, so zones whose center is far from every stop got no trip at all even
+        // with a train nearby. A long walk is chosen only when nothing faster exists.
         private static string Modes(TravelMode mode) => mode switch
         {
             TravelMode.Car => "transitModes=&directModes=CAR",
-            TravelMode.Bicycle => $"transitModes=&directModes=BIKE&maxDirectTime={MaximumDirectRouteSeconds}",
+            // The whole trip by bike, or riding to and from a train, which carries bikes (REGIONAL_RAIL: the subway
+            // is a separate mode and does not)
+            TravelMode.Bicycle => $"transitModes=REGIONAL_RAIL&directModes=BIKE&preTransitModes=BIKE&postTransitModes=BIKE"
+                                  + $"&maxDirectTime={MaximumDirectRouteSeconds}&maxPreTransitTime={MaximumDirectRouteSeconds}"
+                                  + $"&maxPostTransitTime={MaximumDirectRouteSeconds}",
             TravelMode.Walking => $"transitModes=&directModes=WALK&maxDirectTime={MaximumDirectRouteSeconds}",
-            _ => "transitModes=TRANSIT&directModes=WALK",
+            _ => $"transitModes=TRANSIT&directModes=WALK&maxDirectTime={MaximumDirectRouteSeconds}"
+                 + $"&maxPreTransitTime={MaximumDirectRouteSeconds}&maxPostTransitTime={MaximumDirectRouteSeconds}",
         };
 
         private sealed class RoutingPlan
