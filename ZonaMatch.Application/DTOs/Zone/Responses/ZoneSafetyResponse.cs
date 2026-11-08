@@ -4,7 +4,7 @@ namespace ZonaMatch.Application.DTOs.Zone.Responses;
 
 // Detailed safety evaluation, qualitative badge, benchmark comparison and crime breakdown for a zone.
 public sealed record ZoneSafetyResponse(
-    int Score,
+    double Score,
     int MaxScore,
     SafetyBadgeResponse Badge,
     string Summary,
@@ -14,6 +14,7 @@ public sealed record ZoneSafetyResponse(
     string DominantCategoryText,
     IReadOnlyList<SafetyBreakdownItemResponse> Breakdown,
     SafetyRoadIncidentsResponse RoadIncidents,
+    int? Percentile = null,
     int Year = 0,
     string Source = "mapa-delito",
     string? Scope = null,

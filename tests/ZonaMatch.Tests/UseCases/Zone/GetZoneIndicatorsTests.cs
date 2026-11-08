@@ -32,9 +32,9 @@ namespace ZonaMatch.Tests.UseCases.Zone
             result.Connectivity.HouseholdsWithInternetPercentage.Should().Be(90.0);
             var safety = result.Safety.Should().BeOfType<ZoneSafetyResponse>().Subject;
             safety.CrimesPer1000Residents.Should().Be(38.0);
-            safety.Score.Should().Be(8);
+            safety.Score.Should().Be(5.0);
             safety.MaxScore.Should().Be(10);
-            safety.Badge.Should().Be(new SafetyBadgeResponse("Segura", "success"));
+            safety.Badge.Should().Be(new SafetyBadgeResponse("Moderada", "info"));
             safety.Breakdown.Should().HaveCount(5);
             safety.RoadIncidents.Should().NotBeNull();
             safety.Robberies.Should().Be(100);

@@ -2,8 +2,8 @@ using System.Globalization;
 
 namespace ZonaMatch.Domain.Entities;
 
-// Evaluates safety indicators of a zone against CABA thresholds and reference rates,
-// calculating a 1-10 score, qualitative badge, contextual summary, and crime breakdown.
+// Evaluates safety indicators of a zone aligned with the AMBA scoring distribution (ScoringEngine),
+// calculating a 1-10 score, qualitative badge, dynamic contextual summary, and crime breakdown.
 public static class ZoneSafetyBenchmark
 {
     public const double DefaultCityAverageRate = 46.9;
@@ -12,6 +12,8 @@ public static class ZoneSafetyBenchmark
 
     public static ZoneSafetyEvaluation? Evaluate(
         double? crimesPerThousandResidents,
+        int? percentile,
+        bool isCaba,
         double? cityAverageRate,
         int robberies,
         int thefts,
@@ -23,11 +25,11 @@ public static class ZoneSafetyBenchmark
         if (crimesPerThousandResidents is null)
             return null;
 
-        var effectiveCityRate = cityAverageRate ?? DefaultCityAverageRate;
-        var (score, badge) = CalculateScoreAndBadge(crimesPerThousandResidents.Value);
+        var effectivePercentile = percentile ?? EstimatePercentile(crimesPerThousandResidents.Value);
+        var (score, badge) = CalculateScoreAndBadge(effectivePercentile);
         var breakdown = CalculateBreakdown(robberies, thefts, injuries, threats, homicides, out var totalPenalCrimes);
         var dominantCategoryText = DetermineDominantCategoryText(breakdown, out var dominantCategorySummary);
-        var summary = GenerateSummary(score, crimesPerThousandResidents.Value, effectiveCityRate, dominantCategorySummary);
+        var summary = GenerateSummary(effectivePercentile, crimesPerThousandResidents.Value, isCaba, cityAverageRate, dominantCategorySummary);
 
         return new ZoneSafetyEvaluation(
             score,
@@ -35,29 +37,41 @@ public static class ZoneSafetyBenchmark
             badge,
             summary,
             crimesPerThousandResidents.Value,
-            effectiveCityRate,
+            effectivePercentile,
+            isCaba ? (cityAverageRate ?? DefaultCityAverageRate) : null,
             totalPenalCrimes,
             dominantCategoryText,
             breakdown,
             roadIncidents);
     }
 
-    public static (int Score, SafetyBadge Badge) CalculateScoreAndBadge(double crimesPerThousand)
+    public static (double Score, SafetyBadge Badge) CalculateScoreAndBadge(int percentile)
     {
-        return crimesPerThousand switch
+        var score = Math.Round(percentile / 10.0, 1);
+        var badge = percentile switch
         {
-            <= 30.0 => (10, new SafetyBadge("Muy segura", SafetyBadge.Success)),
-            <= 36.0 => (9, new SafetyBadge("Muy segura", SafetyBadge.Success)),
-            <= 41.0 => (8, new SafetyBadge("Segura", SafetyBadge.Success)),
-            <= 46.9 => (7, new SafetyBadge("Segura", SafetyBadge.Success)),
-            <= 52.0 => (6, new SafetyBadge("Moderada", SafetyBadge.Info)),
-            <= 58.0 => (5, new SafetyBadge("Moderada", SafetyBadge.Info)),
-            <= 68.0 => (4, new SafetyBadge("Por debajo de la media", SafetyBadge.Warning)),
-            <= 80.0 => (3, new SafetyBadge("Atención", SafetyBadge.Warning)),
-            <= 100.0 => (2, new SafetyBadge("Baja", SafetyBadge.Warning)),
-            _ => (1, new SafetyBadge("Crítica", SafetyBadge.Warning))
+            >= 80 => new SafetyBadge("Muy segura", SafetyBadge.Success),
+            >= 60 => new SafetyBadge("Segura", SafetyBadge.Success),
+            >= 40 => new SafetyBadge("Moderada", SafetyBadge.Info),
+            >= 20 => new SafetyBadge("Por debajo de la media", SafetyBadge.Warning),
+            _ => new SafetyBadge("Atención", SafetyBadge.Warning)
         };
+
+        return (score, badge);
     }
+
+    public static int EstimatePercentile(double crimesPerThousand) => crimesPerThousand switch
+    {
+        <= 15.0 => 95,
+        <= 22.0 => 90,
+        <= 28.0 => 80,
+        <= 33.0 => 64,
+        <= 38.0 => 50,
+        <= 44.0 => 35,
+        <= 52.0 => 20,
+        <= 68.0 => 5,
+        _ => 2
+    };
 
     public static IReadOnlyList<SafetyBreakdownItem> CalculateBreakdown(
         int robberies,
@@ -109,22 +123,36 @@ public static class ZoneSafetyBenchmark
     }
 
     public static string GenerateSummary(
-        int score,
+        int percentile,
         double rate,
-        double cityRate,
+        bool isCaba,
+        double? cityRate,
         string dominantCategorySummary)
     {
         var rateStr = rate.ToString("0.0", SpanishCulture);
-        var cityRateStr = cityRate.ToString("0.0", SpanishCulture);
 
-        return score switch
+        if (isCaba)
         {
-            >= 9 => $"Registra una actividad delictiva notablemente inferior a la media de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab.), ubicándose entre las zonas más seguras de la ciudad.",
-            >= 7 => $"Presenta niveles delictivos por debajo del promedio de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab.), con predominio de {dominantCategorySummary}.",
-            >= 5 => $"Presenta niveles delictivos moderados y cercanos al promedio de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab.), con predominio de {dominantCategorySummary}.",
-            4 => $"Registra una actividad delictiva superior a la media de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab.), con predominio de {dominantCategorySummary}.",
-            3 => $"Registra una tasa delictiva elevada respecto al promedio de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab.), con predominio de {dominantCategorySummary}.",
-            _ => $"Registra una concentración crítica de hechos delictivos respecto al promedio de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab.), fuertemente vinculada a áreas de alta circulación de transeúntes y actividad comercial."
+            var effectiveCityRate = cityRate ?? DefaultCityAverageRate;
+            var cityRateStr = effectiveCityRate.ToString("0.0", SpanishCulture);
+
+            return percentile switch
+            {
+                >= 80 => $"Registra una actividad delictiva notablemente baja en CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab., percentil {percentile} del AMBA), ubicándose entre las zonas más seguras de la ciudad.",
+                >= 60 => $"Presenta niveles delictivos favorables y por debajo del promedio de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab., percentil {percentile} del AMBA), con predominio de {dominantCategorySummary}.",
+                >= 40 => $"Presenta niveles delictivos moderados y cercanos a la media de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab., percentil {percentile} del AMBA), con predominio de {dominantCategorySummary}.",
+                >= 20 => $"Registra una actividad delictiva superior a la media de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab., percentil {percentile} del AMBA), con predominio de {dominantCategorySummary}.",
+                _ => $"Registra una tasa delictiva elevada respecto al promedio de CABA ({rateStr} vs. {cityRateStr} delitos cada 1.000 hab., percentil {percentile} del AMBA), con predominio de {dominantCategorySummary}."
+            };
+        }
+
+        return percentile switch
+        {
+            >= 80 => $"Registra una actividad delictiva notablemente baja dentro del AMBA ({rateStr} delitos estimados cada 1.000 hab., percentil {percentile}), ubicándose entre las zonas más seguras del conurbano.",
+            >= 60 => $"Presenta niveles de seguridad favorables dentro del AMBA ({rateStr} delitos estimados cada 1.000 hab., percentil {percentile}), con predominio de {dominantCategorySummary}.",
+            >= 40 => $"Presenta niveles delictivos moderados y cercanos a la media del AMBA ({rateStr} delitos estimados cada 1.000 hab., percentil {percentile}), con predominio de {dominantCategorySummary}.",
+            >= 20 => $"Registra una actividad delictiva superior a la media del AMBA ({rateStr} delitos estimados cada 1.000 hab., percentil {percentile}), con predominio de {dominantCategorySummary}.",
+            _ => $"Registra una tasa delictiva elevada respecto a la media del AMBA ({rateStr} delitos estimados cada 1.000 hab., percentil {percentile}), con predominio de {dominantCategorySummary}."
         };
     }
 }

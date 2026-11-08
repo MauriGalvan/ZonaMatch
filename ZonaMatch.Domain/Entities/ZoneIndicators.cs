@@ -46,6 +46,9 @@ namespace ZonaMatch.Domain.Entities
         // Crimes for the reported year. CABA uses geolocated CABA Crime Map events; the province uses SNIC district
         // counts distributed among localities by population. Null when data is unavailable.
         public int? CrimeCount { get; set; }
+
+        // Comparable crimes of a year (geo.zona_indicadores.delitos_comparables), aligned with ScoringEngine.
+        public int? ComparableCrimeCount { get; set; }
         public int? Robberies { get; set; }
         public int? Thefts { get; set; }
         public int? Injuries { get; set; }
@@ -144,9 +147,11 @@ namespace ZonaMatch.Domain.Entities
         public double? HealthCoveragePercentage => Percentage(ResidentsWithHealthCoverage, ResidentsWithHealthCoverageData);
         public double? UniversityEducationPercentage => Percentage(ResidentsWithUniversityEducation, ResidentsWithEducationData);
 
-        // Crimes per 1,000 residents for the year, excluding road incidents.
+        // Crimes per 1,000 residents for the year, aligned with ScoringEngine.
         public double? CrimesPerThousandResidents =>
-            CrimeCount is { } crimes && Population > 0 ? Math.Round(1000.0 * crimes / Population, 1) : null;
+            (ComparableCrimeCount ?? CrimeCount) is { } crimes && Population > 0
+                ? Math.Round(1000.0 * crimes / Population, 1)
+                : null;
 
         public bool HasDetailedAges =>
             ResidentsAged0To4 > 0 || ResidentsAged5To14 > 0 || ResidentsAged15To29 > 0 ||

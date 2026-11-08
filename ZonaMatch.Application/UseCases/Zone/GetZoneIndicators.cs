@@ -5,11 +5,14 @@ using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Policies;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Zone;
 
 // Population, connectivity, living conditions, and safety data for a zone, with sources.
-public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsRepository)
+public sealed class GetZoneIndicators(
+    IZoneIndicatorsRepository indicatorsRepository,
+    IZoneProfilesRepository? profilesRepository = null)
 {
     // Year of the data loaded by etl/download_open_data.py.
     public const int CensusYear = 2022;
@@ -31,6 +34,17 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             ? await indicatorsRepository.GetCapitalCityAsync(cancellationToken)
             : null;
 
+        int? safetyPercentile = null;
+        if (profilesRepository is not null && zone.CrimesPerThousandResidents is not null)
+        {
+            var zoneUniverse = await profilesRepository.ListAsync(cancellationToken);
+            if (zoneUniverse.Count > 0)
+            {
+                var scoringEngine = new ScoringEngine(zoneUniverse);
+                safetyPercentile = scoringEngine.CalculateSafetyPercentile(zone.CrimesPerThousandResidents, zone.Level <= 5);
+            }
+        }
+
         return new ZoneIndicatorsResponse(
             zone.Slug,
             zone.Name,
@@ -49,7 +63,7 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
                 zone.RentingHouseholdsPercentage,
                 zone.HealthCoveragePercentage,
                 zone.UniversityEducationPercentage),
-            BuildSafety(zone, cityReference),
+            BuildSafety(zone, cityReference, safetyPercentile),
             BuildSources(zone));
     }
 
@@ -109,12 +123,19 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
     private static DemographicBadgeResponse? ToResponse(DemographicBadge? badge) =>
         badge is null ? null : new DemographicBadgeResponse(badge.Label, badge.Variant);
 
-    private static ZoneSafetyResponse? BuildSafety(ZoneIndicators zone, ZoneIndicators? cityReference)
+    private static ZoneSafetyResponse? BuildSafety(
+        ZoneIndicators zone,
+        ZoneIndicators? cityReference,
+        int? percentile)
     {
         if (zone.CrimeCount is not { } crimes || zone.CrimeDataYear is not { } year)
             return null;
 
-        var cityAverageRate = cityReference?.CrimesPerThousandResidents ?? ZoneSafetyBenchmark.DefaultCityAverageRate;
+        var isCaba = zone.HasGeolocatedCrimes;
+        var cityAverageRate = isCaba
+            ? (cityReference?.CrimesPerThousandResidents ?? ZoneSafetyBenchmark.DefaultCityAverageRate)
+            : (double?)null;
+
         var robberies = zone.Robberies ?? 0;
         var thefts = zone.Thefts ?? 0;
         var injuries = zone.Injuries ?? 0;
@@ -124,6 +145,8 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
 
         var evaluation = ZoneSafetyBenchmark.Evaluate(
             zone.CrimesPerThousandResidents,
+            percentile,
+            isCaba,
             cityAverageRate,
             robberies,
             thefts,
@@ -141,9 +164,9 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             .ToList();
         var roadIncidentsResponse = new SafetyRoadIncidentsResponse(roadIncidents);
 
-        var referenceResponse = cityReference is null || IsBuenosAiresCity(zone)
-            ? null
-            : new IndicatorReferenceResponse(BuenosAiresCity, cityAverageRate);
+        var referenceResponse = isCaba && !IsBuenosAiresCity(zone) && cityAverageRate is not null
+            ? new IndicatorReferenceResponse(BuenosAiresCity, cityAverageRate)
+            : null;
 
         var totalCrimes = evaluation.TotalCrimes > 0 ? evaluation.TotalCrimes : crimes;
 
@@ -153,11 +176,12 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             badgeResponse,
             evaluation.Summary,
             evaluation.CrimesPerThousandResidents,
-            evaluation.CityAverageRate,
+            cityAverageRate,
             totalCrimes,
             evaluation.DominantCategoryText,
             breakdownResponse,
             roadIncidentsResponse,
+            evaluation.Percentile,
             year,
             zone.CrimeDataSource ?? ZoneIndicators.CrimeMapSource,
             zone.CrimeDataCoverage,
