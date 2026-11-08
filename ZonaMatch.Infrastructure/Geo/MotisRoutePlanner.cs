@@ -65,14 +65,19 @@ namespace ZonaMatch.Infrastructure.Geo
             }
 
             // The best of the transit itineraries and the direct trip (walking can beat a bus)
-            var best = (plan?.Itineraries ?? []).Concat(plan?.Direct ?? [])
+            var options = (plan?.Itineraries ?? []).Concat(plan?.Direct ?? [])
                 .Where(itinerary => itinerary.Legs is { Count: > 0 })
                 .Select(itinerary => (itinerary.Duration, itinerary.Transfers, Legs: itinerary.Legs!.Select(ToLeg).ToList()))
-                .MinBy(option => option.Duration
-                                 + TransferPenaltySeconds * option.Transfers
-                                 + ShortRidePenaltySeconds * option.Legs.Count(IsShortRide));
+                .ToList();
 
-            return best.Legs is null ? null : new RoutePlan(best.Duration, best.Legs);
+            // No itinerary is an answer (no trip for that mode), not a failure; MinBy throws on an empty list of tuples
+            if (options.Count == 0)
+                return null;
+
+            var best = options.MinBy(option => option.Duration
+                                               + TransferPenaltySeconds * option.Transfers
+                                               + ShortRidePenaltySeconds * option.Legs.Count(IsShortRide));
+            return new RoutePlan(best.Duration, best.Legs);
         }
 
         // Public transport with walks; the other modes, only the direct trip

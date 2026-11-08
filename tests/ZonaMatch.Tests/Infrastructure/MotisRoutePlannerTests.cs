@@ -79,6 +79,16 @@ public sealed class MotisRoutePlannerTests
     }
 
     [Fact]
+    public async Task PlanAsync_WhenMotisFindsNoItinerary_ReturnsNull()
+    {
+        using var harness = CreateHarness("""{"itineraries":[],"direct":[]}""");
+
+        var route = await harness.Planner.PlanAsync(-34.6, -58.4, -34.5, -58.3, TravelMode.Walking);
+
+        route.Should().BeNull();
+    }
+
+    [Fact]
     public async Task PlanAsync_WhenTransitLegIsShort_SelectsLongerWalkingItinerary()
     {
         const string json = """
