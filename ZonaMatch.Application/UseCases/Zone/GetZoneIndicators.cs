@@ -62,7 +62,30 @@ public sealed class GetZoneIndicators(
                 zone.OvercrowdedHouseholdsPercentage,
                 zone.RentingHouseholdsPercentage,
                 zone.HealthCoveragePercentage,
-                zone.UniversityEducationPercentage),
+                zone.UniversityEducationPercentage,
+                new ZoneInfrastructureConditionsResponse(
+                    zone.HouseholdsWithPipedWaterPercentage,
+                    zone.HouseholdsWithSewerPercentage,
+                    zone.HouseholdsWithGasNetworkPercentage,
+                    zone.HouseholdsWithPipedWater,
+                    zone.HouseholdsWithSewer,
+                    zone.HouseholdsWithGasNetwork),
+                new ZoneHabitabilityConditionsResponse(
+                    zone.HouseholdsWithGoodHousingQualityPercentage,
+                    zone.OvercrowdedHouseholdsPercentage,
+                    zone.RentingHouseholdsPercentage,
+                    zone.HouseholdsWithUnmetBasicNeedsPercentage,
+                    zone.HouseholdsWithGoodHousingQuality,
+                    zone.OvercrowdedHouseholds,
+                    zone.RentingHouseholds,
+                    zone.HouseholdsWithUnmetBasicNeeds),
+                new ZoneSocialConditionsResponse(
+                    zone.HealthCoveragePercentage,
+                    zone.SecondaryEducationPercentage,
+                    zone.UniversityEducationPercentage,
+                    zone.ResidentsWithHealthCoverage,
+                    zone.ResidentsWithSecondaryEducation,
+                    zone.ResidentsWithUniversityEducation)),
             BuildSafety(zone, cityReference, safetyPercentile),
             BuildSources(zone));
     }

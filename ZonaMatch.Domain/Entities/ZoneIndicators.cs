@@ -31,6 +31,7 @@ namespace ZonaMatch.Domain.Entities
 
         public int ResidentsWithHealthCoverage { get; set; }
         public int ResidentsWithHealthCoverageData { get; set; }
+        public int ResidentsWithSecondaryEducation { get; set; }
         public int ResidentsWithUniversityEducation { get; set; }
         public int ResidentsWithEducationData { get; set; }
 
@@ -42,6 +43,10 @@ namespace ZonaMatch.Domain.Entities
         public int HouseholdsWithUnmetBasicNeeds { get; set; }
         public int OvercrowdedHouseholds { get; set; }
         public int RentingHouseholds { get; set; }
+        public int HouseholdsWithPipedWater { get; set; }
+        public int HouseholdsWithSewer { get; set; }
+        public int HouseholdsWithGasNetwork { get; set; }
+        public int HouseholdsWithGoodHousingQuality { get; set; }
 
         // Crimes for the reported year. CABA uses geolocated CABA Crime Map events; the province uses SNIC district
         // counts distributed among localities by population. Null when data is unavailable.
@@ -143,8 +148,13 @@ namespace ZonaMatch.Domain.Entities
         public double? HouseholdsWithUnmetBasicNeedsPercentage => Percentage(HouseholdsWithUnmetBasicNeeds, Households);
         public double? OvercrowdedHouseholdsPercentage => Percentage(OvercrowdedHouseholds, Households);
         public double? RentingHouseholdsPercentage => Percentage(RentingHouseholds, Households);
+        public double? HouseholdsWithPipedWaterPercentage => Percentage(HouseholdsWithPipedWater, Households);
+        public double? HouseholdsWithSewerPercentage => Percentage(HouseholdsWithSewer, Households);
+        public double? HouseholdsWithGasNetworkPercentage => Percentage(HouseholdsWithGasNetwork, Households);
+        public double? HouseholdsWithGoodHousingQualityPercentage => Percentage(HouseholdsWithGoodHousingQuality, Households);
 
         public double? HealthCoveragePercentage => Percentage(ResidentsWithHealthCoverage, ResidentsWithHealthCoverageData);
+        public double? SecondaryEducationPercentage => Percentage(ResidentsWithSecondaryEducation, ResidentsWithEducationData);
         public double? UniversityEducationPercentage => Percentage(ResidentsWithUniversityEducation, ResidentsWithEducationData);
 
         // Crimes per 1,000 residents for the year, aligned with ScoringEngine.

@@ -32,6 +32,10 @@ CENSUS_VARIABLES = [
     "HOGAR_TOTPOBH",     # Persons per household (1 = 1 person).
     "PERSONA_P19",       # Health coverage.
     "PERSONA_MNI",      # Highest education level.
+    "HOGAR_H14",        # Piped water from public network.
+    "HOGAR_H18",        # Public sewer network connection.
+    "HOGAR_H19",        # Public gas network for cooking.
+    "HOGAR_INMAT",      # Housing material quality index (1 = Good / Calidad I).
     "HOGAR_H24A",       # Internet access at home.
     "HOGAR_H24B",       # Mobile phone with internet access.
     "HOGAR_H24C",       # Computer or tablet.

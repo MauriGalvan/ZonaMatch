@@ -123,4 +123,29 @@ public class ZoneIndicatorsTests
         zone.ResidentsOver65Percentage.Should().Be(11.8);
         zone.ResidentsUnder15Percentage.Should().Be(9.0);
     }
+
+    [Fact]
+    public void LivingConditionsPercentages_WhenDataProvided_CalculatesExactPercentages()
+    {
+        // Arrange
+        var zone = new ZoneIndicators
+        {
+            Households = 2000,
+            HouseholdsWithPipedWater = 1980,
+            HouseholdsWithSewer = 1960,
+            HouseholdsWithGasNetwork = 1800,
+            HouseholdsWithGoodHousingQuality = 1700,
+            ResidentsWithEducationData = 5000,
+            ResidentsWithSecondaryEducation = 3500,
+            ResidentsWithUniversityEducation = 1200
+        };
+
+        // Assert
+        zone.HouseholdsWithPipedWaterPercentage.Should().Be(99.0);
+        zone.HouseholdsWithSewerPercentage.Should().Be(98.0);
+        zone.HouseholdsWithGasNetworkPercentage.Should().Be(90.0);
+        zone.HouseholdsWithGoodHousingQualityPercentage.Should().Be(85.0);
+        zone.SecondaryEducationPercentage.Should().Be(70.0);
+        zone.UniversityEducationPercentage.Should().Be(24.0);
+    }
 }

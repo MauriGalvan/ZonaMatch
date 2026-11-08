@@ -206,6 +206,62 @@ namespace ZonaMatch.Tests.UseCases.Zone
             await act.Should().ThrowAsync<NotFoundException>();
         }
 
+        [Fact]
+        public async Task GetZoneIndicators_WhenZoneHasConditionsData_ReturnsGroupedConditions()
+        {
+            // Arrange
+            var zone = Zone("almagro", 9, crimeCount: 300);
+            zone.HouseholdsWithPipedWater = 3900;
+            zone.HouseholdsWithSewer = 3800;
+            zone.HouseholdsWithGasNetwork = 3600;
+            zone.HouseholdsWithGoodHousingQuality = 3400;
+            zone.HouseholdsWithUnmetBasicNeeds = 200;
+            zone.OvercrowdedHouseholds = 150;
+            zone.RentingHouseholds = 1200;
+            zone.ResidentsWithEducationData = 8000;
+            zone.ResidentsWithSecondaryEducation = 6000;
+            zone.ResidentsWithUniversityEducation = 2800;
+            zone.ResidentsWithHealthCoverageData = 9000;
+            zone.ResidentsWithHealthCoverage = 7200;
+
+            _repository.Zones.Add(zone);
+
+            // Act
+            var result = await _useCase.ExecuteAsync("almagro");
+
+            // Assert
+            var conditions = result.Conditions;
+            conditions.HouseholdsWithUnmetBasicNeedsPercentage.Should().Be(5.0);
+            conditions.OvercrowdedHouseholdsPercentage.Should().Be(3.8);
+            conditions.RentingHouseholdsPercentage.Should().Be(30.0);
+            conditions.HealthCoveragePercentage.Should().Be(80.0);
+            conditions.UniversityEducationPercentage.Should().Be(35.0);
+
+            // Grouped: Infrastructure
+            conditions.Infrastructure.Should().NotBeNull();
+            conditions.Infrastructure.PipedWaterPercentage.Should().Be(97.5);
+            conditions.Infrastructure.SewerPercentage.Should().Be(95.0);
+            conditions.Infrastructure.GasNetworkPercentage.Should().Be(90.0);
+            conditions.Infrastructure.PipedWaterHouseholds.Should().Be(3900);
+            conditions.Infrastructure.SewerHouseholds.Should().Be(3800);
+            conditions.Infrastructure.GasNetworkHouseholds.Should().Be(3600);
+
+            // Grouped: Habitability
+            conditions.Habitability.Should().NotBeNull();
+            conditions.Habitability.GoodHousingQualityPercentage.Should().Be(85.0);
+            conditions.Habitability.OvercrowdedHouseholdsPercentage.Should().Be(3.8);
+            conditions.Habitability.RentingHouseholdsPercentage.Should().Be(30.0);
+            conditions.Habitability.UnmetBasicNeedsPercentage.Should().Be(5.0);
+            conditions.Habitability.GoodHousingQualityHouseholds.Should().Be(3400);
+
+            // Grouped: Social
+            conditions.Social.Should().NotBeNull();
+            conditions.Social.HealthCoveragePercentage.Should().Be(80.0);
+            conditions.Social.SecondaryEducationPercentage.Should().Be(75.0);
+            conditions.Social.UniversityEducationPercentage.Should().Be(35.0);
+            conditions.Social.SecondaryEducationResidents.Should().Be(6000);
+        }
+
         private static ZoneIndicators Zone(
             string slug,
             int administrativeLevel,
