@@ -22,11 +22,11 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             _useCase = new CalculateScores(_zoneProfiles, _routing, _zones);
         }
 
-        private void AddZone(string slug, int crimes, decimal rent = 600_000) => _zoneProfiles.Zones.Add(new ZoneProfile
+        private void AddZone(string slug, int crimes, decimal rent = 600_000, int level = 9) => _zoneProfiles.Zones.Add(new ZoneProfile
         {
             Slug = slug,
             Name = slug,
-            Level = 9,
+            Level = level,
             Population = 1000,
             AreaKm2 = 1,
             CrimeCount = crimes,
@@ -113,6 +113,21 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             result.SearchExpanded.Should().BeFalse();
             result.Zones.Should().ContainSingle(zone => zone.Slug == "tranquila");
             result.Zones.Should().NotContain(zone => zone.Slug == "insegura");
+        }
+
+        [Fact]
+        public async Task CalculateAsync_WhenExpandingTheSearch_OnlyAddsZonesOfTheSameLevel()
+        {
+            AddZone("barrio-caro", 400, rent: 3_000_000);
+            AddZone("comuna-tranquila", 0, level: 5);
+            AddZone("barrio-tranquilo", 0);
+            _zoneProfiles.NearbySlugs = ["barrio-caro"];
+
+            var result = await _useCase.CalculateAsync(RequestWithWorkplace());
+
+            result.SearchExpanded.Should().BeTrue();
+            result.Zones.Select(zone => zone.Slug).Should().Contain("barrio-tranquilo").And.NotContain("comuna-tranquila");
+            result.Recommendations.Should().NotContain(zone => zone.Slug == "comuna-tranquila");
         }
 
         [Fact]

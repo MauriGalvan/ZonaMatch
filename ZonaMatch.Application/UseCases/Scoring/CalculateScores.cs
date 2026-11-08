@@ -104,7 +104,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
             if (!(ranking.Max(result => result.Score) >= MinimumExpectedScore))
             {
                 var expandedResults = await ScoreRestOfCatalogAsync(
-                    zoneUniverse, candidateZones, scoringEngine, scoringRequest, travelMode, routeLimit, cancellationToken);
+                    zoneUniverse, candidateZones, surroundingZones, scoringEngine, scoringRequest, travelMode, routeLimit, cancellationToken);
                 var bestInitialScore = ranking.Max(result => result.Score) ?? double.MinValue;
                 searchExpanded = expandedResults.Any(result => result.Score > bestInitialScore);
                 ranking = ranking
@@ -150,13 +150,17 @@ namespace ZonaMatch.Application.UseCases.Scoring
 
         // Scores the zones outside the initial search. Routing every zone would take too long, so they are first
         // ranked with estimated trip times and only the best ExpandedSearchZones are measured.
+        // Only zones of the same administrative level as the surrounding ones are compared, as the surrounding search
+        // does: neighborhoods with neighborhoods, never a neighborhood with the comuna or partido that contains it.
         private async Task<ZoneScoreResult[]> ScoreRestOfCatalogAsync(
-            IReadOnlyList<ZoneProfile> zoneUniverse, IReadOnlyCollection<ZoneProfile> candidateZones, ScoringEngine scoringEngine,
+            IReadOnlyList<ZoneProfile> zoneUniverse, IReadOnlyCollection<ZoneProfile> candidateZones,
+            IReadOnlyCollection<ZoneProfile> surroundingZones, ScoringEngine scoringEngine,
             ScoringRequest scoringRequest, TravelMode travelMode, SemaphoreSlim routeLimit, CancellationToken cancellationToken)
         {
             var candidateSlugs = candidateZones.Select(zone => zone.Slug).ToHashSet(StringComparer.Ordinal);
+            var comparableLevels = surroundingZones.Select(zone => zone.Level).ToHashSet();
             var bestByEstimate = zoneUniverse
-                .Where(zone => !candidateSlugs.Contains(zone.Slug))
+                .Where(zone => !candidateSlugs.Contains(zone.Slug) && comparableLevels.Contains(zone.Level))
                 .Select(zone => scoringEngine.Calculate(zone, scoringRequest, EstimateTrips(zone, scoringRequest.Places, travelMode)))
                 .Where(result => result.Score.HasValue && ReachesEveryPlace(result))
                 .OrderByDescending(result => result.Score)
