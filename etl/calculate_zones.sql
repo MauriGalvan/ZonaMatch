@@ -91,7 +91,8 @@ CREATE INDEX ON geo.delitos_caba USING gist (geom);
 -- Transit tables (etl/calculate_transit.sql) also depend on geo.zonas.
 DROP TABLE IF EXISTS geo.zona_transporte_lineas, geo.zona_transporte_paradas, geo.zona_indicadores, geo.zonas;
 
--- Same rule as ZoneSql.Slug and SlugZona.Generate: lowercase, remove accents, and replace other characters with "-".
+-- The only place where slugs are created (the zone search also uses it on the search text): lowercase, remove
+-- accents, and replace other characters with "-".
 CREATE OR REPLACE FUNCTION geo.slug_zona(nombre text) RETURNS text
 LANGUAGE sql IMMUTABLE AS $$
     SELECT trim(both '-' from regexp_replace(
@@ -169,6 +170,30 @@ unique_zone_slugs AS (
 UPDATE geo.zonas z SET slug = u.slug, elegida = true
 FROM unique_zone_slugs u
 WHERE z.osm_id = u.osm_id;
+
+-- Fixed slugs: reviews, questions, contributions, saved zones, analyses, and the market point to a zone by its slug,
+-- so a zone keeps the slug it got the first time even if OSM renames it later. This table is not dropped between
+-- imports. The first import fills it with the slugs above, so nothing changes for existing zones.
+CREATE TABLE IF NOT EXISTS geo.zona_slugs (
+    osm_id      bigint PRIMARY KEY,
+    slug        text NOT NULL UNIQUE,
+    asignado    timestamptz NOT NULL DEFAULT now()
+);
+
+-- Zones that already had a slug get it back
+UPDATE geo.zonas z SET slug = s.slug
+FROM geo.zona_slugs s
+WHERE s.osm_id = z.osm_id AND z.elegida AND z.slug <> s.slug;
+
+-- A new zone cannot take a slug that belongs to another zone: it gets its OSM id appended, as with other collisions
+UPDATE geo.zonas z SET slug = z.slug || '-' || abs(z.osm_id)
+WHERE z.elegida
+  AND NOT EXISTS (SELECT 1 FROM geo.zona_slugs s WHERE s.osm_id = z.osm_id)
+  AND EXISTS (SELECT 1 FROM geo.zona_slugs s WHERE s.slug = z.slug);
+
+INSERT INTO geo.zona_slugs (osm_id, slug)
+SELECT osm_id, slug FROM geo.zonas WHERE elegida
+ON CONFLICT (osm_id) DO NOTHING;
 
 CREATE INDEX ON geo.zonas USING gist (geom);
 CREATE UNIQUE INDEX ON geo.zonas (slug) WHERE elegida;

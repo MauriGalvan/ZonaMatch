@@ -1,13 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Entities;
 using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
 {
-    // Zones are the administrative boundaries of the OSM import (see ZoneSql).
-    // The GeoJSON is built inside PostGIS, like MapRepository.
+    // Zones are the administrative boundaries of the OSM import (see ZoneSql). PostGIS picks the zone and works out
+    // what needs the geometry (jurisdictions, center, simplified boundary); Application builds the GeoJSON.
     public class ZoneRepository : IZoneRepository
     {
         private const string Schema = ZonaMatchDbOptions.OsmSchema;
@@ -47,49 +47,58 @@ namespace ZonaMatch.Infrastructure.Repositories
                     WHERE wider_boundary.administrative_level < boundary.administrative_level
                       AND abs(wider_boundary.way_area - boundary.way_area) < 0.01 * wider_boundary.way_area)
             )
-            SELECT json_build_object(
-                'type', 'Feature',
-                'id', CASE WHEN zone.osm_id < 0 THEN 'r' || -zone.osm_id ELSE 'w' || zone.osm_id END,
-                'properties', json_build_object(
-                    'slug', @slug,
-                    'name', zone.name,
-                    'administrativeLevel', zone.administrative_level,
-                    'jurisdictions', (
-                        SELECT COALESCE(json_agg(json_build_object('name', jurisdiction.name, 'administrativeLevel', jurisdiction.administrative_level)
-                                                 ORDER BY jurisdiction.administrative_level DESC), '[]'::json)
-                        FROM jurisdictions jurisdiction),
-                    'areaKm2', round((ST_Area(zone.geom::geography) / 1e6)::numeric, 2),
-                    'center', json_build_object('latitude', ST_Y(center.center), 'longitude', ST_X(center.center))),
-                'geometry', ST_AsGeoJSON(ST_SimplifyPreserveTopology(zone.geom, @simplificationTolerance), {GeoJsonCoordinatePrecision})::json)::text AS "Value"
+            SELECT zone.osm_id AS "OsmId",
+                   @slug AS "Slug",
+                   zone.name AS "Name",
+                   zone.administrative_level AS "AdministrativeLevel",
+                   round((ST_Area(zone.geom::geography) / 1e6)::numeric, 2)::float8 AS "AreaKm2",
+                   COALESCE((SELECT array_agg(jurisdiction.name ORDER BY jurisdiction.administrative_level DESC, jurisdiction.name)
+                             FROM jurisdictions jurisdiction), ARRAY[]::text[]) AS "JurisdictionNames",
+                   COALESCE((SELECT array_agg(jurisdiction.administrative_level ORDER BY jurisdiction.administrative_level DESC, jurisdiction.name)
+                             FROM jurisdictions jurisdiction), ARRAY[]::int[]) AS "JurisdictionAdministrativeLevels",
+                   ST_Y(center.center) AS "CenterLatitude",
+                   ST_X(center.center) AS "CenterLongitude",
+                   ST_AsGeoJSON(ST_SimplifyPreserveTopology(zone.geom, @simplificationTolerance), {GeoJsonCoordinatePrecision}) AS "GeometryGeoJson"
             FROM selected_zone zone, zone_center center
             """;
 
         // Search the same selected zones as ZoneDetailsSql so each result opens its own zone. Places that share a name
         // appear separately with their own slug and jurisdictions. Jurisdictions are returned as parallel name and
         // administrative-level arrays.
+        // The search text becomes a slug with geo.slug_zona, the function the ETL uses for the zone slugs, so both
+        // follow one rule (it also leaves no LIKE wildcards: everything but a-z and 0-9 turns into "-").
         private static readonly string SearchZonesSql = $"""
-            WITH zones AS (
-                SELECT g.slug, g.nombre AS name, g.nivel AS administrative_level,
+            WITH search AS (
+                SELECT {Geo}.slug_zona(@searchText) AS fragment
+            ),
+            zones AS (
+                SELECT g.osm_id, g.slug, g.nombre AS name, g.nivel AS administrative_level,
                        sum(t.way_area) AS area,
                        sum(ST_Area(ST_Transform(t.way, 4326)::geography)) AS area_m2,
                        ST_PointOnSurface((array_agg(t.way ORDER BY t.way_area DESC))[1]) AS location
                 FROM {Geo}.zonas g
                 JOIN {Schema}.planet_osm_polygon t ON t.osm_id = g.osm_id AND t.boundary = 'administrative'
-                WHERE g.elegida AND g.slug LIKE '%' || @searchFragment || '%'
-                GROUP BY g.slug, g.nombre, g.nivel
+                CROSS JOIN search s
+                WHERE g.elegida AND s.fragment <> '' AND g.slug LIKE '%' || s.fragment || '%'
+                GROUP BY g.osm_id, g.slug, g.nombre, g.nivel
             ),
             selected_zones AS (
-                SELECT *, slug LIKE @searchFragment || '%' AS starts_with_search
-                FROM zones
-                ORDER BY starts_with_search DESC, length(slug), slug
+                SELECT zones.*, zones.slug LIKE s.fragment || '%' AS starts_with_search
+                FROM zones CROSS JOIN search s
+                ORDER BY starts_with_search DESC, length(zones.slug), zones.slug
                 LIMIT @resultLimit
             )
-            SELECT e.slug AS "Slug",
+            SELECT e.osm_id AS "OsmId",
+                   e.slug AS "Slug",
                    e.name AS "Name",
                    e.administrative_level AS "AdministrativeLevel",
                    round((e.area_m2 / 1e6)::numeric, 2)::float8 AS "AreaKm2",
                    COALESCE(j.names, ARRAY[]::text[]) AS "JurisdictionNames",
-                   COALESCE(j.administrative_levels, ARRAY[]::int[]) AS "JurisdictionAdministrativeLevels"
+                   COALESCE(j.administrative_levels, ARRAY[]::int[]) AS "JurisdictionAdministrativeLevels",
+                   -- not needed to list results; present because ZoneRow is shared with ZoneDetailsSql
+                   0::float8 AS "CenterLatitude",
+                   0::float8 AS "CenterLongitude",
+                   ''::text AS "GeometryGeoJson"
             FROM selected_zones e
             LEFT JOIN LATERAL (
                 WITH containing_boundaries AS (
@@ -100,8 +109,8 @@ namespace ZonaMatch.Infrastructure.Repositories
                       AND ST_Contains(boundary.way, e.location)
                       AND boundary.way_area >= 0.99 * e.area
                 )
-                SELECT array_agg(boundary.name ORDER BY boundary.administrative_level DESC) AS names,
-                       array_agg(boundary.administrative_level ORDER BY boundary.administrative_level DESC) AS administrative_levels
+                SELECT array_agg(boundary.name ORDER BY boundary.administrative_level DESC, boundary.name) AS names,
+                       array_agg(boundary.administrative_level ORDER BY boundary.administrative_level DESC, boundary.name) AS administrative_levels
                 FROM containing_boundaries boundary
                 WHERE NOT EXISTS (
                     SELECT 1 FROM containing_boundaries wider_boundary
@@ -143,46 +152,56 @@ namespace ZonaMatch.Infrastructure.Repositories
                     new NpgsqlParameter("longitude", longitude))
                 .SingleAsync(cancellationToken);
 
-        public async Task<string?> GetBySlugAsync(string slug, double simplificationTolerance, CancellationToken cancellationToken = default)
+        public async Task<Zone?> GetBySlugAsync(string slug, double simplificationTolerance, CancellationToken cancellationToken = default)
         {
             var rows = await _dbContext.Database
-                .SqlQueryRaw<string>(ZoneDetailsSql,
+                .SqlQueryRaw<ZoneRow>(ZoneDetailsSql,
                     new NpgsqlParameter("slug", slug),
                     new NpgsqlParameter("simplificationTolerance", simplificationTolerance))
                 .ToListAsync(cancellationToken);
 
-            return rows.SingleOrDefault();
+            return rows.SingleOrDefault()?.ToZone(withBoundary: true);
         }
 
-        public async Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(
-            string searchFragment, int resultLimit, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Zone>> SearchAsync(
+            string searchText, int resultLimit, CancellationToken cancellationToken = default)
         {
             var rows = await _dbContext.Database
-                .SqlQueryRaw<ZoneSearchRow>(SearchZonesSql,
-                    new NpgsqlParameter("searchFragment", searchFragment),
+                .SqlQueryRaw<ZoneRow>(SearchZonesSql,
+                    new NpgsqlParameter("searchText", searchText),
                     new NpgsqlParameter("resultLimit", resultLimit))
                 .ToListAsync(cancellationToken);
 
-            return rows
-                .Select(row => new ZoneSearchResultResponse(
-                    row.Slug,
-                    row.Name,
-                    row.AdministrativeLevel,
-                    row.JurisdictionNames.Zip(row.JurisdictionAdministrativeLevels,
-                        (name, administrativeLevel) => new JurisdictionResponse(name, administrativeLevel)).ToList(),
-                    row.AreaKm2))
-                .ToList();
+            return rows.Select(row => row.ToZone(withBoundary: false)).ToList();
         }
 
-        // Keyless result type for SearchZonesSql; property names match the SQL column aliases.
-        private sealed class ZoneSearchRow
+        // Keyless result type for ZoneDetailsSql and SearchZonesSql; property names match the SQL column aliases.
+        // Search results have no center or geometry columns.
+        private sealed class ZoneRow
         {
+            public long OsmId { get; set; }
             public string Slug { get; set; } = string.Empty;
             public string Name { get; set; } = string.Empty;
             public int AdministrativeLevel { get; set; }
             public double AreaKm2 { get; set; }
             public string[] JurisdictionNames { get; set; } = [];
             public int[] JurisdictionAdministrativeLevels { get; set; } = [];
+            public double CenterLatitude { get; set; }
+            public double CenterLongitude { get; set; }
+            public string GeometryGeoJson { get; set; } = string.Empty;
+
+            public Zone ToZone(bool withBoundary) => new()
+            {
+                OsmId = OsmId,
+                Slug = Slug,
+                Name = Name,
+                AdministrativeLevel = AdministrativeLevel,
+                AreaKm2 = AreaKm2,
+                Jurisdictions = JurisdictionNames
+                    .Zip(JurisdictionAdministrativeLevels, (name, level) => new ZoneJurisdiction(name, level))
+                    .ToList(),
+                Boundary = withBoundary ? new ZoneBoundary(CenterLatitude, CenterLongitude, GeometryGeoJson) : null
+            };
         }
     }
 }
