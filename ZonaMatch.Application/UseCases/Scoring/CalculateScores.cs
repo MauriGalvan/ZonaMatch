@@ -158,7 +158,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
             var bestByEstimate = zoneUniverse
                 .Where(zone => !candidateSlugs.Contains(zone.Slug))
                 .Select(zone => scoringEngine.Calculate(zone, scoringRequest, EstimateTrips(zone, scoringRequest.Places, travelMode)))
-                .Where(result => result.Score.HasValue)
+                .Where(result => result.Score.HasValue && ReachesEveryPlace(result))
                 .OrderByDescending(result => result.Score)
                 .Take(ExpandedSearchZones)
                 .Select(result => result.Zone)
@@ -170,8 +170,14 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 _routing, bestByEstimate, scoringRequest.Places, travelMode, routeLimit, cancellationToken);
             return bestByEstimate
                 .Select(zone => scoringEngine.Calculate(zone, scoringRequest, travelTimes[zone.Slug]))
+                .Where(ReachesEveryPlace)
                 .ToArray();
         }
+
+        // A far zone is only worth suggesting when every trip was measured and fits the place's maximum time: an
+        // unknown trip does not lower the score, so a zone with no route would otherwise rank first.
+        private static bool ReachesEveryPlace(ZoneScoreResult result) =>
+            result.Places.All(place => place.Minutes is { } minutes && minutes <= place.MaximumMinutes);
 
         private static TravelTime?[] EstimateTrips(ZoneProfile zone, IReadOnlyList<UserPlace> places, TravelMode travelMode) =>
             places

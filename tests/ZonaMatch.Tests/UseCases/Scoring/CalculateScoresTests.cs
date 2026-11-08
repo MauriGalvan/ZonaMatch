@@ -116,6 +116,20 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         }
 
         [Fact]
+        public async Task CalculateAsync_WhenAFarZoneHasNoRouteToThePlaces_DoesNotAddIt()
+        {
+            AddZone("insegura", 400, rent: 3_000_000);
+            AddZone("sin-viaje", 0);
+            _zoneProfiles.NearbySlugs = ["insegura"];
+            _routing.UnreachableLatitude = -34.6;
+
+            var result = await _useCase.CalculateAsync(RequestWithWorkplace());
+
+            result.SearchExpanded.Should().BeFalse();
+            result.Zones.Should().NotContain(zone => zone.Slug == "sin-viaje");
+        }
+
+        [Fact]
         public async Task CalculateAsync_WhenTheRestOfTheCatalogIsNotBetter_DoesNotFlagTheSearchAsExpanded()
         {
             AddZone("insegura-1", 400, rent: 3_000_000);
@@ -307,6 +321,10 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         private sealed class FakeRoutingClient : IRoutingClient
         {
             public bool IsAvailable { get; set; } = true;
+
+            // Trips from this latitude have no route (the routing service answers without minutes).
+            public double? UnreachableLatitude { get; set; }
+
             public List<TravelMode> Modes { get; } = [];
             public List<(double, double)> Origins { get; } = [];
 
@@ -319,6 +337,9 @@ namespace ZonaMatch.Tests.UseCases.Scoring
                     Modes.Add(mode);
                     Origins.Add((originLatitude, originLongitude));
                 }
+
+                if (UnreachableLatitude == originLatitude)
+                    return Task.FromResult<TravelTime?>(new TravelTime(null, false));
 
                 return Task.FromResult<TravelTime?>(IsAvailable ? new TravelTime(25, false, 8.75) : null);
             }
