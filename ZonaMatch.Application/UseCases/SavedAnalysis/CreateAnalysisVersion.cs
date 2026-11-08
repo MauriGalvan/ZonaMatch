@@ -53,6 +53,10 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
             };
             AnalysisCriteriaBuilder.Apply(context, request.Criterion, criteriaCatalog);
 
+            // A version adjusts the analysis it comes from; switching between renting and buying needs a new analysis.
+            if (context.Operation != sourceAnalysis.Context.Operation)
+                throw new BadRequestException("No se puede cambiar entre alquilar y comprar al ajustar un análisis. Creá un análisis nuevo.");
+
             var zones = request.Zones is { } requestedZones
                 ? await AnalysisMapping.BuildZonesAsync(requestedZones, _zoneRepository, cancellationToken)
                 : sourceAnalysis.Zones
