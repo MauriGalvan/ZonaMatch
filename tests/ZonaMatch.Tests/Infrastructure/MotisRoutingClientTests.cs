@@ -92,6 +92,8 @@ public class MotisRoutingClientTests
     [InlineData(TravelMode.Bicycle, "directModes=BIKE")]
     [InlineData(TravelMode.Walking, "directModes=WALK")]
     [InlineData(TravelMode.PublicTransit, "transitModes=TRANSIT")]
+    [InlineData(TravelMode.PublicTransit, "maxPreTransitTime=7200&maxPostTransitTime=7200")]
+    [InlineData(TravelMode.PublicTransit, "directModes=WALK&maxDirectTime=7200")]
     public async Task GetTravelTimeAsync_WhenTravelModeIsSelected_UsesItsRequestParameters(TravelMode mode, string parameter)
     {
         var (_, query) = await QueryAsync(

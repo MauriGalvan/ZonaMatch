@@ -81,7 +81,9 @@ namespace ZonaMatch.Infrastructure.Geo
             TravelMode.Car => "transitModes=&directModes=CAR",
             TravelMode.Bicycle => $"transitModes=&directModes=BIKE&maxDirectTime={MaxDirectSeconds}",
             TravelMode.Walking => $"transitModes=&directModes=WALK&maxDirectTime={MaxDirectSeconds}",
-            _ => "transitModes=TRANSIT&directModes=WALK",
+            // Same walking limits as MotisRoutingClient, so the drawn route is the trip that was scored
+            _ => $"transitModes=TRANSIT&directModes=WALK&maxDirectTime={MaxDirectSeconds}"
+                 + $"&maxPreTransitTime={MaxDirectSeconds}&maxPostTransitTime={MaxDirectSeconds}",
         };
 
         private static RouteLeg ToLeg(Leg leg)
