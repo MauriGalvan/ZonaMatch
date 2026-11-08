@@ -22,7 +22,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             _useCase = new CalculateScores(_zoneProfiles, _routing, _zones);
         }
 
-        private void AddZone(string slug, int crimes) => _zoneProfiles.Zones.Add(new ZoneProfile
+        private void AddZone(string slug, int crimes, decimal rent = 600_000) => _zoneProfiles.Zones.Add(new ZoneProfile
         {
             Slug = slug,
             Name = slug,
@@ -32,7 +32,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             CrimeCount = crimes,
             Latitude = -34.6,
             Longitude = -58.5,
-            AverageRent = 600_000,
+            AverageRent = rent,
         });
 
         private static CalculateScoresRequest BuildRequest() => new()
@@ -76,6 +76,56 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             Assert.Contains(result.Zones, zone => zone.Slug == "vecina-7");
             Assert.Equal(3, result.Recommendations.Count);
             Assert.DoesNotContain(result.Recommendations, zone => result.Zones.Any(top => top.Slug == zone.Slug));
+        }
+
+        private static CalculateScoresRequest RequestWithWorkplace()
+        {
+            var request = BuildRequest();
+            request.Places = [new PlaceScoreRequest { Name = "Trabajo", Latitude = -34.6, Longitude = -58.4, MaximumTravelTime = "60 min" }];
+            request.MaximumRent = "800000";
+            return request;
+        }
+
+        [Fact]
+        public async Task CalculateAsync_WhenNearbyZonesScoreUnderTheMinimum_AddsBetterZonesFromTheRestOfTheCatalog()
+        {
+            AddZone("insegura-1", 400, rent: 3_000_000);
+            AddZone("insegura-2", 400, rent: 3_000_000);
+            AddZone("tranquila", 0);
+            _zoneProfiles.NearbySlugs = ["insegura-1", "insegura-2"];
+
+            var result = await _useCase.CalculateAsync(RequestWithWorkplace());
+
+            result.SearchExpanded.Should().BeTrue();
+            result.Zones[0].Slug.Should().Be("tranquila");
+            result.Zones.Select(zone => zone.Slug).Should().Contain(["insegura-1", "insegura-2"]);
+        }
+
+        [Fact]
+        public async Task CalculateAsync_WhenANearbyZoneReachesTheMinimum_DoesNotExpandTheSearch()
+        {
+            AddZone("tranquila", 0);
+            AddZone("insegura", 400);
+            _zoneProfiles.NearbySlugs = ["tranquila"];
+
+            var result = await _useCase.CalculateAsync(RequestWithWorkplace());
+
+            result.SearchExpanded.Should().BeFalse();
+            result.Zones.Should().ContainSingle(zone => zone.Slug == "tranquila");
+            result.Zones.Should().NotContain(zone => zone.Slug == "insegura");
+        }
+
+        [Fact]
+        public async Task CalculateAsync_WhenTheRestOfTheCatalogIsNotBetter_DoesNotFlagTheSearchAsExpanded()
+        {
+            AddZone("insegura-1", 400, rent: 3_000_000);
+            AddZone("insegura-2", 500, rent: 3_000_000);
+            _zoneProfiles.NearbySlugs = ["insegura-1"];
+
+            var result = await _useCase.CalculateAsync(RequestWithWorkplace());
+
+            result.SearchExpanded.Should().BeFalse();
+            result.Zones[0].Slug.Should().Be("insegura-1");
         }
 
         [Fact]
@@ -240,6 +290,9 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         {
             public List<ZoneProfile> Zones { get; } = [];
 
+            // Zones around the places; every zone when null.
+            public string[]? NearbySlugs { get; set; }
+
             public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZoneProfile>>(Zones);
 
@@ -248,7 +301,7 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             public Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
                 IReadOnlyCollection<(double Latitude, double Longitude)> locations,
                 CancellationToken cancellationToken = default) =>
-                Task.FromResult<IReadOnlyList<string>>(Zones.Select(zone => zone.Slug).ToArray());
+                Task.FromResult<IReadOnlyList<string>>(NearbySlugs ?? Zones.Select(zone => zone.Slug).ToArray());
         }
 
         private sealed class FakeRoutingClient : IRoutingClient

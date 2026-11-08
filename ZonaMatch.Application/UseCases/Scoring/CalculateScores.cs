@@ -18,6 +18,12 @@ namespace ZonaMatch.Application.UseCases.Scoring
 
         public const int RecommendationsReturned = 4;
 
+        // When no zone around the user's places reaches this score, the ranking also looks at the rest of the catalog.
+        public const int MinimumExpectedScore = 30;
+
+        // Zones from the rest of the catalog whose trips are measured: the best ones by estimated trip times.
+        public const int ExpandedSearchZones = 10;
+
         // Number of routing requests sent concurrently.
 
         private readonly IZoneProfilesRepository _zoneProfiles;
@@ -94,6 +100,21 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 .ThenBy(result => result.Zone.Name, StringComparer.CurrentCulture)
                 .ToArray();
 
+            var searchExpanded = false;
+            if (!(ranking.Max(result => result.Score) >= MinimumExpectedScore))
+            {
+                var expandedResults = await ScoreRestOfCatalogAsync(
+                    zoneUniverse, candidateZones, scoringEngine, scoringRequest, travelMode, routeLimit, cancellationToken);
+                var bestInitialScore = ranking.Max(result => result.Score) ?? double.MinValue;
+                searchExpanded = expandedResults.Any(result => result.Score > bestInitialScore);
+                ranking = ranking
+                    .Concat(expandedResults)
+                    .OrderByDescending(result => result.Score.HasValue)
+                    .ThenByDescending(result => result.Score)
+                    .ThenBy(result => result.Zone.Name, StringComparer.CurrentCulture)
+                    .ToArray();
+            }
+
             var top = ranking.Take(AutomaticTopZones).ToList();
             if (initialZone is not null && top.All(result => result.Zone.Slug != initialZone.Slug))
             {
@@ -123,8 +144,43 @@ namespace ZonaMatch.Application.UseCases.Scoring
             return new ScoresResponse(
                 TravelModes.ToCode(travelMode),
                 includedZones.Select(result => ToResponse(result, scoringRequest)).ToArray(),
-                recommendations.Select(result => ToResponse(result, scoringRequest)).ToArray());
+                recommendations.Select(result => ToResponse(result, scoringRequest)).ToArray(),
+                searchExpanded);
         }
+
+        // Scores the zones outside the initial search. Routing every zone would take too long, so they are first
+        // ranked with estimated trip times and only the best ExpandedSearchZones are measured.
+        private async Task<ZoneScoreResult[]> ScoreRestOfCatalogAsync(
+            IReadOnlyList<ZoneProfile> zoneUniverse, IReadOnlyCollection<ZoneProfile> candidateZones, ScoringEngine scoringEngine,
+            ScoringRequest scoringRequest, TravelMode travelMode, SemaphoreSlim routeLimit, CancellationToken cancellationToken)
+        {
+            var candidateSlugs = candidateZones.Select(zone => zone.Slug).ToHashSet(StringComparer.Ordinal);
+            var bestByEstimate = zoneUniverse
+                .Where(zone => !candidateSlugs.Contains(zone.Slug))
+                .Select(zone => scoringEngine.Calculate(zone, scoringRequest, EstimateTrips(zone, scoringRequest.Places, travelMode)))
+                .Where(result => result.Score.HasValue)
+                .OrderByDescending(result => result.Score)
+                .Take(ExpandedSearchZones)
+                .Select(result => result.Zone)
+                .ToArray();
+            if (bestByEstimate.Length == 0)
+                return [];
+
+            var travelTimes = await ZoneTripTimes.MeasureAsync(
+                _routing, bestByEstimate, scoringRequest.Places, travelMode, routeLimit, cancellationToken);
+            return bestByEstimate
+                .Select(zone => scoringEngine.Calculate(zone, scoringRequest, travelTimes[zone.Slug]))
+                .ToArray();
+        }
+
+        private static TravelTime?[] EstimateTrips(ZoneProfile zone, IReadOnlyList<UserPlace> places, TravelMode travelMode) =>
+            places
+                .Select(place => place.HasLocation
+                    ? TravelModes.Estimate(
+                        TravelModes.ForDistance(travelMode, zone.Latitude, zone.Longitude, place.Latitude!.Value, place.Longitude!.Value),
+                        zone.Latitude, zone.Longitude, place.Latitude!.Value, place.Longitude!.Value)
+                    : (TravelTime?)null)
+                .ToArray();
 
         private static ZoneProfile[] ResolveAddedZones(
             IReadOnlyCollection<string>? requestedSlugs,
