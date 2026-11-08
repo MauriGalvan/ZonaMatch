@@ -92,7 +92,8 @@ namespace ZonaMatch.Application.UseCases.Scoring
             var origins = await ResolveOriginsAsync(request.ZoneOrigins, zonesBySlug, cancellationToken);
             using var routeLimit = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
             var travelTimes = await ZoneTripTimes.MeasureAsync(
-                _routing, candidateZones, scoringRequest.Places, travelMode, routeLimit, cancellationToken, origins);
+                _routing, candidateZones, scoringRequest.Places, travelMode, routeLimit, cancellationToken, origins,
+                TravelModes.HasBicycle(request.Mobility));
             var ranking = candidateZones
                 .Select(zone => scoringEngine.Calculate(zone, scoringRequest, travelTimes[zone.Slug]))
                 .OrderByDescending(result => result.Score.HasValue)
@@ -276,7 +277,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 result.Components.Select(component => new ScoreComponentResponse(component.Criterion, component.Priority, component.Score, component.Details)).ToList(),
                 result.Limits.Select(limit => new ScoreLimitResponse(limit.Type, limit.IsSatisfied, limit.Details)).ToList(),
                 result.Places.Select(place => new PlaceTravelTimeResponse(
-                    place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm)).ToList(),
+                    place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm, place.ByBicycle)).ToList(),
                 HousingScoring.Rent(result.Zone, request.HousingType, request.AreaM2, request.Rooms),
                 HousingScoring.Sale(result.Zone, request.HousingType, request.AreaM2, request.Rooms));
     }

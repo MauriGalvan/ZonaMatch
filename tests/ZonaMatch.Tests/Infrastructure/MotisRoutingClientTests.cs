@@ -90,6 +90,7 @@ public class MotisRoutingClientTests
     [Theory]
     [InlineData(TravelMode.Car, "directModes=CAR")]
     [InlineData(TravelMode.Bicycle, "directModes=BIKE")]
+    [InlineData(TravelMode.Bicycle, "transitModes=REGIONAL_RAIL&directModes=BIKE&preTransitModes=BIKE&postTransitModes=BIKE")]
     [InlineData(TravelMode.Walking, "directModes=WALK")]
     [InlineData(TravelMode.PublicTransit, "transitModes=TRANSIT")]
     [InlineData(TravelMode.PublicTransit, "maxPreTransitTime=7200&maxPostTransitTime=7200")]

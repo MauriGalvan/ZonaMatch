@@ -79,7 +79,9 @@ namespace ZonaMatch.Infrastructure.Geo
         private static string Modes(TravelMode mode) => mode switch
         {
             TravelMode.Car => "transitModes=&directModes=CAR",
-            TravelMode.Bicycle => $"transitModes=&directModes=BIKE&maxDirectTime={MaxDirectSeconds}",
+            // Same as MotisRoutingClient: by bike, or by bike to and from a train
+            TravelMode.Bicycle => $"transitModes=REGIONAL_RAIL&directModes=BIKE&preTransitModes=BIKE&postTransitModes=BIKE"
+                                  + $"&maxDirectTime={MaxDirectSeconds}&maxPreTransitTime={MaxDirectSeconds}&maxPostTransitTime={MaxDirectSeconds}",
             TravelMode.Walking => $"transitModes=&directModes=WALK&maxDirectTime={MaxDirectSeconds}",
             // Same walking limits as MotisRoutingClient, so the drawn route is the trip that was scored
             _ => $"transitModes=TRANSIT&directModes=WALK&maxDirectTime={MaxDirectSeconds}"

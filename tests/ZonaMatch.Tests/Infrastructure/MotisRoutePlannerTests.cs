@@ -110,7 +110,7 @@ public sealed class MotisRoutePlannerTests
 
     [Theory]
     [InlineData(TravelMode.Car, "transitModes=&directModes=CAR")]
-    [InlineData(TravelMode.Bicycle, "transitModes=&directModes=BIKE&maxDirectTime=7200")]
+    [InlineData(TravelMode.Bicycle, "transitModes=REGIONAL_RAIL&directModes=BIKE&preTransitModes=BIKE&postTransitModes=BIKE&maxDirectTime=7200")]
     [InlineData(TravelMode.Walking, "transitModes=&directModes=WALK&maxDirectTime=7200")]
     [InlineData(TravelMode.PublicTransit, "transitModes=TRANSIT&directModes=WALK&maxDirectTime=7200&maxPreTransitTime=7200&maxPostTransitTime=7200")]
     public async Task PlanAsync_WhenTravelModeIsSelected_SendsModeAndConfiguredReferenceTime(

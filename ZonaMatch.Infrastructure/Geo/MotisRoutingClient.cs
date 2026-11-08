@@ -145,7 +145,11 @@ namespace ZonaMatch.Infrastructure.Geo
         private static string Modes(TravelMode mode) => mode switch
         {
             TravelMode.Car => "transitModes=&directModes=CAR",
-            TravelMode.Bicycle => $"transitModes=&directModes=BIKE&maxDirectTime={MaximumDirectRouteSeconds}",
+            // The whole trip by bike, or riding to and from a train, which carries bikes (REGIONAL_RAIL: the subway
+            // is a separate mode and does not)
+            TravelMode.Bicycle => $"transitModes=REGIONAL_RAIL&directModes=BIKE&preTransitModes=BIKE&postTransitModes=BIKE"
+                                  + $"&maxDirectTime={MaximumDirectRouteSeconds}&maxPreTransitTime={MaximumDirectRouteSeconds}"
+                                  + $"&maxPostTransitTime={MaximumDirectRouteSeconds}",
             TravelMode.Walking => $"transitModes=&directModes=WALK&maxDirectTime={MaximumDirectRouteSeconds}",
             _ => $"transitModes=TRANSIT&directModes=WALK&maxDirectTime={MaximumDirectRouteSeconds}"
                  + $"&maxPreTransitTime={MaximumDirectRouteSeconds}&maxPostTransitTime={MaximumDirectRouteSeconds}",

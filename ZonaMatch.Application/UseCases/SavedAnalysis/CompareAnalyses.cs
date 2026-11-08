@@ -110,7 +110,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                     .OrderBy(zone => zone.Order)
                     .Select(zone => zonesBySlug[zone.ZoneSlug])
                     .ToArray();
-                var travelTimes = await ZoneTripTimes.MeasureAsync(_routingClient, analysisZones, request.Places, mode, routeLimit, cancellationToken);
+                var travelTimes = await ZoneTripTimes.MeasureAsync(
+                    _routingClient, analysisZones, request.Places, mode, routeLimit, cancellationToken,
+                    withBicycle: TravelModes.HasBicycle(context.Mobility));
                 var rankedZones = analysisZones
                     .Select(zone => ToDto(engine!.Calculate(zone, request, travelTimes[zone.Slug]), request))
                     .OrderByDescending(zone => zone.Score.HasValue)
@@ -227,7 +229,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                     .ToArray(),
                 result.Places
                     .Select(place => new PlaceTravelTimeResponse(
-                        place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm))
+                        place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm, place.ByBicycle))
                     .ToArray(),
                 HousingScoring.Rent(result.Zone, request.HousingType, request.AreaM2, request.Rooms),
                 HousingScoring.Sale(result.Zone, request.HousingType, request.AreaM2, request.Rooms));
