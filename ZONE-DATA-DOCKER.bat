@@ -115,6 +115,16 @@ if errorlevel 1 goto :err_calc
 rem Estimated rents for zones without Zonaprop data (ZONE-MARKET-DOCKER.bat).
 %PSQL% < etl\estimate_rents.sql
 if errorlevel 1 goto :err_calc
+rem sitemap.xml with every zone page, copied to the SPA when it sits next to the backend (or in FRONT_DIR).
+%PSQL% -At < etl\export_sitemap.sql > datos\sitemap.xml
+if errorlevel 1 goto :err_calc
+if not defined FRONT_DIR set FRONT_DIR=..\..\frontend\ZonaMatchSPA
+if exist "%FRONT_DIR%\public" (
+    copy /Y datos\sitemap.xml "%FRONT_DIR%\public\sitemap.xml" > nul
+    echo Sitemap copied to %FRONT_DIR%\public\sitemap.xml
+) else (
+    echo SPA not found at %FRONT_DIR%: copy datos\sitemap.xml to its public folder by hand.
+)
 
 echo.
 echo [5/5] Preparing the MOTIS routing engine...
