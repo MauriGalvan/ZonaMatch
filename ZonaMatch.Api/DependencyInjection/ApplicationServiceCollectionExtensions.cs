@@ -125,6 +125,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetRoute>();
         services.AddScoped<GetZoneIndicators>();
         services.AddScoped<GetZoneTransit>();
+        services.AddScoped<GetZoneTransitRoutes>();
 
         services.AddSingleton(TimeProvider.System);
         services.AddOptions<FrontendOptions>()
