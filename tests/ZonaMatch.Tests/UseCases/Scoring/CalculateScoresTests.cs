@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Scoring.Requests;
 using ZonaMatch.Application.Exceptions;
@@ -191,16 +191,16 @@ namespace ZonaMatch.Tests.UseCases.Scoring
         {
             public bool ContainsStartingPoint { get; set; } = true;
 
-            public Task<string?> GetBySlugAsync(string slug, double tolerance, CancellationToken cancellationToken = default) =>
-                Task.FromResult<string?>(null);
+            public Task<ZonaMatch.Domain.Entities.Zone?> GetBySlugAsync(string slug, double tolerance, CancellationToken cancellationToken = default) =>
+                Task.FromResult<ZonaMatch.Domain.Entities.Zone?>(null);
 
             public Task<bool> ExistsAsync(string slug, CancellationToken cancellationToken = default) => Task.FromResult(true);
 
             public Task<bool> ContainsPointAsync(string slug, double latitude, double longitude, CancellationToken cancellationToken = default) =>
                 Task.FromResult(ContainsStartingPoint);
 
-            public Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(string searchFragment, int resultLimit, CancellationToken cancellationToken = default) =>
-                Task.FromResult<IReadOnlyList<ZoneSearchResultResponse>>([]);
+            public Task<IReadOnlyList<ZonaMatch.Domain.Entities.Zone>> SearchAsync(string searchText, int resultLimit, CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<ZonaMatch.Domain.Entities.Zone>>([]);
         }
       
         [Theory]

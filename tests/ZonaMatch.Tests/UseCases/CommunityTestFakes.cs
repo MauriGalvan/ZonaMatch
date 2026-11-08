@@ -1,4 +1,4 @@
-﻿using ZonaMatch.Application.DTOs;
+using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
@@ -28,10 +28,10 @@ namespace ZonaMatch.Tests.UseCases
         public Task<bool> ContainsPointAsync(string slug, double latitude, double longitude, CancellationToken cancellationToken = default) =>
             Task.FromResult(slug == ZoneSlug && latitude < 0);
 
-        public Task<string?> GetBySlugAsync(string slug, double simplificationTolerance, CancellationToken cancellationToken = default) =>
+        public Task<ZonaMatch.Domain.Entities.Zone?> GetBySlugAsync(string slug, double simplificationTolerance, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(string searchFragment, int resultLimit, CancellationToken cancellationToken = default) =>
+        public Task<IReadOnlyList<ZonaMatch.Domain.Entities.Zone>> SearchAsync(string searchText, int resultLimit, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 

@@ -1,5 +1,5 @@
-using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Api.IntegrationTests.Support;
 
@@ -24,11 +24,18 @@ internal sealed class IntegrationZoneRepository : IZoneRepository
         || slug.StartsWith("integration-contribution-", StringComparison.Ordinal)
         || slug.StartsWith("integration-community-", StringComparison.Ordinal);
 
-    public Task<string?> GetBySlugAsync(
+    public Task<Zone?> GetBySlugAsync(
         string slug,
         double simplificationTolerance,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult<string?>(IsKnownZone(slug) ? "{}" : null);
+        Task.FromResult(IsKnownZone(slug)
+            ? new Zone
+            {
+                Slug = slug,
+                Name = slug,
+                Boundary = new ZoneBoundary(0, 0, """{"type":"Point","coordinates":[0,0]}""")
+            }
+            : null);
 
     public Task<bool> ExistsAsync(string slug, CancellationToken cancellationToken = default) =>
         Task.FromResult(IsKnownZone(slug));
@@ -40,9 +47,9 @@ internal sealed class IntegrationZoneRepository : IZoneRepository
         CancellationToken cancellationToken = default) =>
         Task.FromResult(IsKnownZone(slug));
 
-    public Task<IReadOnlyList<ZoneSearchResultResponse>> SearchAsync(
-        string searchFragment,
+    public Task<IReadOnlyList<Zone>> SearchAsync(
+        string searchText,
         int resultLimit,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<ZoneSearchResultResponse>>([]);
+        Task.FromResult<IReadOnlyList<Zone>>([]);
 }
