@@ -7,6 +7,7 @@ using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.SavedAnalysis;
 using ZonaMatch.Application.UseCases.Profile;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Scoring;
 using ZonaMatch.Tests.UseCases.Profile;
 
 namespace ZonaMatch.Tests.UseCases.SavedAnalysis
@@ -345,6 +346,23 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
 
             Assert.Equal(analysisCountBeforeVersion, _analyses.Analyses.Count);
             Assert.Equal(saveCountBeforeVersion, _analyses.SaveCount);
+        }
+
+        [Fact]
+        public async Task CreateVersion_WhenOperationChanges_ThrowsBadRequestWithoutSavingVersion()
+        {
+            await WithProfile();
+            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
+            var analysisCountBeforeVersion = _analyses.Analyses.Count;
+            var criterion = TestRequests.AnalysisCriteria();
+            criterion.Points.Operation = HousingOperations.Purchase;
+            criterion.Points.PurchaseLimitUsd = 150000;
+
+            var error = await Assert.ThrowsAsync<BadRequestException>(
+                () => CreateVersion.ExecuteAsync(original.Id, UserId, new() { Criterion = criterion }));
+
+            Assert.Contains("alquilar y comprar", error.Message);
+            Assert.Equal(analysisCountBeforeVersion, _analyses.Analyses.Count);
         }
 
         [Fact]
