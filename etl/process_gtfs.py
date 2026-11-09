@@ -167,6 +167,12 @@ def build_route_shapes(connection: duckdb.DuckDBPyConnection, mode: str, directo
                'LINESTRING(' || string_agg(s.shape_pt_lon || ' ' || s.shape_pt_lat, ',' ORDER BY s.shape_pt_sequence::int) || ')' AS geom_wkt
         FROM shapes s
         JOIN (SELECT DISTINCT route_id, shape_id FROM trips WHERE service_id = $service_id AND coalesce(shape_id, '') <> '') t USING (shape_id)
+        -- A shape belongs to the route with the most trips on it: the subway feed has a line A trip on line E's shape.
+        JOIN (
+            SELECT shape_id, arg_max(route_id, trip_count) AS route_id
+            FROM (SELECT shape_id, route_id, count(*) AS trip_count FROM trips WHERE coalesce(shape_id, '') <> '' GROUP BY ALL)
+            GROUP BY shape_id
+        ) owner USING (shape_id, route_id)
         JOIN routes r USING (route_id)
         GROUP BY t.route_id, s.shape_id
         HAVING count(*) >= 2

@@ -93,6 +93,13 @@ namespace ZonaMatch.Infrastructure.Repositories
         private static readonly string SqlCapitalCity = $"{SqlSelect} WHERE z.nivel = 4 ORDER BY z.superficie_km2 DESC LIMIT 1";
         private static readonly string SqlCapitalCityFallback = $"{SqlSelectFallback} WHERE z.nivel = 4 ORDER BY z.superficie_km2 DESC LIMIT 1";
 
+        // Same rounding as ZoneIndicators.CrimesPerThousandResidents.
+        private static readonly string SqlDistrictCrimeRate = $"""
+            SELECT round(1000.0 * sum(delitos_comparables) / nullif(sum(poblacion), 0), 1)::double precision AS "Value"
+            FROM {Schema}.partido_delitos
+            WHERE partido = ANY(@districts)
+            """;
+
         private readonly ZonaMatchDbContext _dbContext;
         private readonly ILogger<ZoneIndicatorsRepository> _logger;
 
@@ -107,6 +114,28 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         public Task<ZoneIndicators?> GetCapitalCityAsync(CancellationToken cancellationToken = default) =>
             QueryFirstOrDefaultAsync(SqlCapitalCity, SqlCapitalCityFallback, cancellationToken);
+
+        public async Task<double?> GetDistrictCrimeRateAsync(
+            IReadOnlyCollection<string> districts, CancellationToken cancellationToken = default)
+        {
+            if (districts.Count == 0)
+                return null;
+
+            try
+            {
+                var rates = await _dbContext.Database
+                    .SqlQueryRaw<double?>(SqlDistrictCrimeRate, new NpgsqlParameter("districts", districts.ToArray()))
+                    .ToListAsync(cancellationToken);
+
+                return rates.FirstOrDefault();
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                // Added to etl/calculate_zones.sql later than the zone indicators; databases loaded before have no average.
+                _logger.LogWarning("District crime table is missing. Run ZONE-DATA-DOCKER.bat. ({Message})", ex.MessageText);
+                return null;
+            }
+        }
 
         private async Task<ZoneIndicators?> QueryFirstOrDefaultAsync(
             string sql, string fallbackSql, CancellationToken cancellationToken, params NpgsqlParameter[] parameters)

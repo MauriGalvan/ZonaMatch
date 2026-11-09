@@ -160,6 +160,55 @@ namespace ZonaMatch.Tests.UseCases.Zone
         }
 
         [Fact]
+        public async Task GetZoneIndicators_WhenProvinceLocalityHasDistrictRate_ReturnsDistrictAverage()
+        {
+            // Arrange
+            _repository.Zones.Add(Zone("ramos-mejia", 8, crimeCount: 326, dataSource: ZoneIndicators.SnicSource, jurisdiction: "La Matanza"));
+            _repository.DistrictRate = 52.5;
+
+            // Act
+            var result = await _useCase.ExecuteAsync("ramos-mejia");
+
+            // Assert
+            var safety = result.Safety.Should().BeOfType<ZoneSafetyResponse>().Subject;
+            safety.CityAverageRate.Should().Be(52.5);
+            safety.Reference.Should().Be(new IndicatorReferenceResponse("La Matanza", 52.5));
+            _repository.RequestedDistricts.Should().Equal("La Matanza");
+            _repository.DidLoadCityReference.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task GetZoneIndicators_WhenLocalitySpansTwoDistricts_AsksForBoth()
+        {
+            // Arrange
+            _repository.Zones.Add(Zone("villa-udaondo", 8, crimeCount: 200, dataSource: ZoneIndicators.SnicSource, jurisdiction: "Merlo, Ituzaingó"));
+            _repository.DistrictRate = 39.4;
+
+            // Act
+            var result = await _useCase.ExecuteAsync("villa-udaondo");
+
+            // Assert
+            _repository.RequestedDistricts.Should().Equal("Merlo", "Ituzaingó");
+            result.Safety!.Reference.Should().Be(new IndicatorReferenceResponse("Merlo, Ituzaingó", 39.4));
+        }
+
+        [Fact]
+        public async Task GetZoneIndicators_WhenZoneIsTheDistrict_OmitsSelfComparison()
+        {
+            // Arrange
+            _repository.Zones.Add(Zone("partido-de-la-matanza", 5, crimeCount: 9650, dataSource: ZoneIndicators.SnicSource, jurisdiction: "La Matanza"));
+            _repository.DistrictRate = 52.5;
+
+            // Act
+            var result = await _useCase.ExecuteAsync("partido-de-la-matanza");
+
+            // Assert
+            result.Safety!.CityAverageRate.Should().BeNull();
+            result.Safety.Reference.Should().BeNull();
+            _repository.RequestedDistricts.Should().BeNull();
+        }
+
+        [Fact]
         public async Task GetZoneIndicators_WhenZoneHasNoCrimes_OmitsSafetyAndReference()
         {
             // Arrange
@@ -297,6 +346,15 @@ namespace ZonaMatch.Tests.UseCases.Zone
             {
                 DidLoadCityReference = true;
                 return Task.FromResult(CityReference);
+            }
+
+            public double? DistrictRate { get; set; }
+            public IReadOnlyCollection<string>? RequestedDistricts { get; private set; }
+
+            public Task<double?> GetDistrictCrimeRateAsync(IReadOnlyCollection<string> districts, CancellationToken cancellationToken = default)
+            {
+                RequestedDistricts = districts;
+                return Task.FromResult(DistrictRate);
             }
         }
     }
