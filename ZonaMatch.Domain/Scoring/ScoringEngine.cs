@@ -133,6 +133,18 @@ namespace ZonaMatch.Domain.Scoring
 
         public static bool IsKnownCriterion(string criterion) => Indicators.ContainsKey(criterion);
 
+        // Calculates the safety percentile (0 to 100) among zones of the same type (large or small).
+        public int? CalculateSafetyPercentile(double? crimesPerThousandResidents, bool isLargeZone)
+        {
+            if (crimesPerThousandResidents is not { } crimes)
+                return null;
+
+            if (!_distributions.TryGetValue((Safety, isLargeZone), out var distribution) || distribution.Length == 0)
+                return null;
+
+            return Percentile(distribution, -crimes);
+        }
+
         // Times are provided for each request place in the same order (null when a place has no location).
         public ZoneScoreResult Calculate(ZoneProfile zone, ScoringRequest request, IReadOnlyList<TravelTime?>? travelTimes = null)
         {

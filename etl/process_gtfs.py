@@ -21,6 +21,9 @@ from pathlib import Path
 
 import duckdb
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "datos"
 GTFS_DIR = DATA_DIR / "gtfs"
 
