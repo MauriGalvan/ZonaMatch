@@ -41,6 +41,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("fecha_creacion");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_eliminacion");
+
                     b.Property<string>("GroupScoresJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("puntajes_en_grupo_json");
@@ -82,9 +86,13 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.HasIndex("ContextId")
                         .IsUnique();
 
+                    b.HasIndex("DeletedAt");
+
                     b.HasIndex("OriginalAnalysisId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "DeletedAt");
 
                     b.ToTable("analisis", "app");
                 });

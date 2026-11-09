@@ -233,7 +233,10 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.UserId).HasColumnName("usuario_id");
                 e.Property(x => x.ContextId).HasColumnName("contexto_id");
                 e.Property(x => x.OriginalAnalysisId).HasColumnName("analisis_origen_id");
+                e.Property(x => x.DeletedAt).HasColumnName("fecha_eliminacion").HasColumnType("timestamptz");
                 e.HasIndex(x => x.UserId);
+                e.HasIndex(x => new { x.UserId, x.DeletedAt });
+                e.HasIndex(x => x.DeletedAt);
                 e.HasIndex(x => x.OriginalAnalysisId);
                 e.HasIndex(x => x.ContextId).IsUnique();
                 e.HasOne<User>()

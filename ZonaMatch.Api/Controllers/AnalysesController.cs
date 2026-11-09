@@ -154,7 +154,60 @@ namespace ZonaMatch.Api.Controllers
             return Ok(await renameAnalysis.ExecuteAsync(id, userId, request, cancellationToken));
         }
 
-        // DELETE /api/v1/analyses/{id} deletes an original and all of its versions.
+        // GET /api/v1/analyses/trash
+        [HttpGet("trash")]
+        [ProducesResponseType<IReadOnlyList<TrashedAnalysisResponse>>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetTrashAsync(
+            [FromServices] ListAnalysisTrash listAnalysisTrash,
+            CancellationToken cancellationToken)
+        {
+            var userId = User.RequireUserId();
+            return Ok(await listAnalysisTrash.ExecuteAsync(userId, cancellationToken));
+        }
+
+        // POST /api/v1/analyses/trash/{id}/restore
+        [HttpPost("trash/{id:guid}/restore")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> RestoreAsync(
+            [FromRoute] Guid id,
+            [FromServices] RestoreAnalysis restoreAnalysis,
+            CancellationToken cancellationToken)
+        {
+            var userId = User.RequireUserId();
+            await restoreAnalysis.ExecuteAsync(id, userId, cancellationToken);
+            return NoContent();
+        }
+
+        // DELETE /api/v1/analyses/trash/{id} permanently deletes one trashed analysis.
+        [HttpDelete("trash/{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> PermanentlyDeleteAsync(
+            [FromRoute] Guid id,
+            [FromServices] PermanentlyDeleteAnalysis permanentlyDeleteAnalysis,
+            CancellationToken cancellationToken)
+        {
+            var userId = User.RequireUserId();
+            await permanentlyDeleteAnalysis.ExecuteAsync(id, userId, cancellationToken);
+            return NoContent();
+        }
+
+        // DELETE /api/v1/analyses/trash permanently deletes all of the user's trashed analyses.
+        [HttpDelete("trash")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> EmptyTrashAsync(
+            [FromServices] EmptyAnalysisTrash emptyAnalysisTrash,
+            CancellationToken cancellationToken)
+        {
+            var userId = User.RequireUserId();
+            await emptyAnalysisTrash.ExecuteAsync(userId, cancellationToken);
+            return NoContent();
+        }
+
+        // DELETE /api/v1/analyses/{id} moves an analysis to the trash.
         [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

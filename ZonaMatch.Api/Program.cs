@@ -36,6 +36,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
 builder.Services.AddHostedService<WarmZoneProfilesService>();
+builder.Services.AddHostedService<PurgeExpiredAnalysesBackgroundService>();
 
 // Keep the database health check in the API composition root because it backs the HTTP health endpoint.
 builder.Services.AddHealthChecks().AddDbContextCheck<ZonaMatchDbContext>("postgres");
