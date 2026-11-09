@@ -224,6 +224,12 @@ namespace ZonaMatch.Tests.UseCases
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task AddAsync(User user, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     internal sealed class FakeEmailService : IEmailService
