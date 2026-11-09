@@ -53,6 +53,7 @@ public sealed partial class CalculateGroupScore
             request.Operation, request.MaximumPurchaseUsd, request.PropertyType);
         var surface = HousingScoring.ValidateSurface(request.SurfaceM2);
         var rooms = HousingScoring.ValidateRooms(request.Rooms);
+        var creditEligible = operation == HousingOperations.Purchase && request.CreditEligible;
         var participantIds = group.Participants.Select(participant => participant.Id).ToHashSet();
         var weights = ValidateWeights(request.ParticipantWeights, participantIds);
         var slugs = (request.AddedZones ?? [])
@@ -88,7 +89,7 @@ public sealed partial class CalculateGroupScore
                         HousingType = propertyType,
                         AreaM2 = surface,
                         Rooms = rooms,
-                        CreditEligible = operation == HousingOperations.Purchase && request.CreditEligible,
+                        CreditEligible = creditEligible,
                     },
                     TravelModes.FromMobility(profile.Mobility ?? []),
                     profile.Places.OrderBy(point => point.Order).ToArray(),
@@ -198,7 +199,8 @@ public sealed partial class CalculateGroupScore
             propertyType,
             BuildProfileRecommendations(profiles),
             surface,
-            rooms);
+            rooms,
+            creditEligible);
     }
 
     private static GroupProfileRecommendationsResponse BuildProfileRecommendations(IReadOnlyList<Context> profiles)
