@@ -1,5 +1,6 @@
 using ZonaMatch.Application.UseCases.Question;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Tests.UseCases.Community;
 using DomainQuestion = ZonaMatch.Domain.Entities.Question;
 
 namespace ZonaMatch.Tests.UseCases.Question

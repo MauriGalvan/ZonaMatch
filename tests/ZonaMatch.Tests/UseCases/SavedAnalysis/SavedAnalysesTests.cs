@@ -9,6 +9,7 @@ using ZonaMatch.Application.UseCases.Profile;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Scoring;
 using ZonaMatch.Tests.UseCases.Profile;
+using ZonaMatch.Tests.UseCases.Community;
 
 namespace ZonaMatch.Tests.UseCases.SavedAnalysis
 {

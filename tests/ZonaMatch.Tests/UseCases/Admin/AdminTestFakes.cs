@@ -24,6 +24,18 @@ internal sealed class FakeAdminUserRepository(params User[] users) : IUserReposi
         return Task.CompletedTask;
     }
 
+    public Task<IReadOnlyList<string>> GetAdministratorEmailsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<string>>(Users
+            .Where(user => user.IsAdministrator)
+            .Select(user => user.Email)
+            .ToList());
+
+    public Task<IReadOnlyList<Guid>> GetAdministratorIdsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Guid>>(Users
+            .Where(user => user.IsAdministrator)
+            .Select(user => user.Id)
+            .ToList());
+
     public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => throw new NotSupportedException();

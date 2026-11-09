@@ -12,4 +12,6 @@ public sealed record SaveReviewRequest(
     string Text,
     [Range(0, 100, ErrorMessage = "Los años en la zona deben estar entre 0 y 100.")]
     int? YearsInZone,
-    IReadOnlyList<string>? Topics);
+    IReadOnlyList<string>? Topics,
+    // Names returned by POST /api/v1/images; the list replaces the review's current images.
+    IReadOnlyList<string>? ImageNames = null);

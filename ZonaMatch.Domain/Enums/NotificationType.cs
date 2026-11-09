@@ -5,6 +5,7 @@ namespace ZonaMatch.Domain.Enums
         CommunityReply,
         SavedZoneReview,
         SavedZoneQuestion,
-        GroupInvitation
+        GroupInvitation,
+        ReviewPendingModeration
     }
 }

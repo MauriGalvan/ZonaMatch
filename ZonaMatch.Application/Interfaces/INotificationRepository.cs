@@ -15,6 +15,9 @@ namespace ZonaMatch.Application.Interfaces
 
         Task MarkAllAsReadAsync(Guid userId, DateTimeOffset readAt, CancellationToken cancellationToken = default);
 
+        // Marks as read the moderation notifications of every administrator for a review that no longer waits for approval.
+        Task MarkReviewModerationAsReadAsync(Guid reviewId, DateTimeOffset readAt, CancellationToken cancellationToken = default);
+
         Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }
