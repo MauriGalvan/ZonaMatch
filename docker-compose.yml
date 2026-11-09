@@ -42,7 +42,21 @@ services:
       - "127.0.0.1:8080:8080"
     shm_size: 1gb
 
+  # Local Azure Blob Storage emulator for the review images (see the README).
+  # Optional: docker compose --profile azurite up -d azurite
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    profiles: ["azurite"]
+    # Only the blob service is needed. The API version check is skipped so a newer Azure SDK keeps working.
+    command: azurite-blob --blobHost 0.0.0.0 --location /data --skipApiVersionCheck
+    ports:
+      - "127.0.0.1:10000:10000"
+    volumes:
+      - azurite_data:/data
+    restart: unless-stopped
+
 volumes:
   db_data:
   motis_data:
   nominatim_data:
+  azurite_data:

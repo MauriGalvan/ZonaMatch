@@ -14,6 +14,7 @@ using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Application.UseCases.GuestReport;
 using ZonaMatch.Application.UseCases.GroupInvitation;
 using ZonaMatch.Application.UseCases.GroupLink;
+using ZonaMatch.Application.UseCases.Image;
 using ZonaMatch.Application.UseCases.Group;
 using ZonaMatch.Application.UseCases.Map;
 using ZonaMatch.Application.UseCases.Notification;
@@ -92,6 +93,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SaveMyReview>();
         services.AddScoped<DeleteMyReview>();
         services.AddScoped<SetReviewHelpful>();
+        services.AddScoped<ReviewModerationEmails>();
+        services.AddScoped<ListPendingReviews>();
+        services.AddScoped<ResolveReview>();
         services.AddScoped<ListZoneQuestions>();
         services.AddScoped<CreateQuestion>();
         services.AddScoped<AnswerQuestion>();
@@ -145,6 +149,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SendContactMessage>();
         services.AddScoped<GuestReportQuota>();
         services.AddScoped<SendGuestReport>();
+        services.AddScoped<UploadImage>();
 
         return services;
     }

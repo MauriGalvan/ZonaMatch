@@ -54,6 +54,21 @@ dotnet user-secrets set "EmailSettings:Password" "CONTRASEÑA_SMTP" --project Zo
 
 No incluyas contraseñas, claves JWT ni cadenas de conexión reales en `appsettings.json`, `.env.example`, commits o mensajes. En otros entornos, configurá `ConnectionStrings__DefaultConnection`, `Jwt__SigningKey` y `EmailSettings__Password` como variables de entorno o ajustes del servicio de hosting.
 
+### Imágenes de las reseñas (Azurite)
+
+Las imágenes de las reseñas se guardan en Azure Blob Storage. En local se usa el emulador Azurite, que está en el perfil `azurite` del docker-compose, así que no arranca con los `docker compose up -d` habituales. Desde la raíz del proyecto, ejecutá una sola vez:
+
+```powershell
+docker compose --profile azurite up -d azurite
+az storage container create --name imagenes --connection-string "UseDevelopmentStorage=true"
+dotnet user-secrets set "Storage:ConnectionString" "UseDevelopmentStorage=true" --project ZonaMatch.Api
+```
+
+- El contenedor `imagenes` se crea a mano porque en Azure lo crea Terraform y Azurite no lo trae. Los archivos se conservan en el volumen `azurite_data`; si lo borrás, las reseñas locales quedan apuntando a imágenes que ya no existen.
+- Si no configurás `Storage:ConnectionString`, la API usa ese mismo valor por defecto. Sin Azurite levantado, la API arranca igual y solo falla subir una imagen (`POST /api/v1/images`).
+- `UseDevelopmentStorage=true` no es un secreto: Azurite usa una cuenta y una clave públicas. En Azure, `Storage__ConnectionString` la define Terraform como ajuste del App Service.
+- El comando `az` requiere Azure CLI. Como alternativa, creá el contenedor desde Azure Storage Explorer conectado a "Local storage emulator".
+
 3. Cargar los datos (schemas geo y osm) con un solo script
 
 Copiá el archivo zonamatch.sql (se comparte aparte, no está en el repositorio) en la carpeta raíz del proyecto, al lado de OSM-DATA-UPDATER-DOCKER.bat, y hacé doble clic en el .bat. El script, en orden:

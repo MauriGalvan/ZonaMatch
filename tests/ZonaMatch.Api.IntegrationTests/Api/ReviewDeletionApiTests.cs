@@ -26,8 +26,13 @@ public sealed class ReviewDeletionApiTests(PostgreSqlDatabaseFixture database)
             $"/api/v1/zones/{zoneSlug}/reviews/mine",
             CreateReview());
         createReviewResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var review = await createReviewResponse.Content.ReadFromJsonAsync<ReviewResponse>();
+        var review = await createReviewResponse.Content.ReadFromJsonAsync<ReviewResponse>(ApiJson.Options);
         review.Should().NotBeNull();
+
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        (await ReviewModeration.ResolveAsync(administrator, zoneSlug, review!.Id, approve: true))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var helpfulVoteResponse = await voter.Client.PutAsync(
             $"/api/v1/zones/{zoneSlug}/reviews/{review!.Id}/helpful-votes",
@@ -39,7 +44,7 @@ public sealed class ReviewDeletionApiTests(PostgreSqlDatabaseFixture database)
 
         var reviewBeforeDeletionResponse = await otherUser.Client.GetAsync($"/api/v1/zones/{zoneSlug}/reviews");
         reviewBeforeDeletionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var reviewsBeforeDeletion = await reviewBeforeDeletionResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>();
+        var reviewsBeforeDeletion = await reviewBeforeDeletionResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>(ApiJson.Options);
         reviewsBeforeDeletion.Should().NotBeNull();
         reviewsBeforeDeletion!.Reviews.Should().ContainSingle(item => item.Id == review.Id && item.HelpfulCount == 1);
 
@@ -48,7 +53,7 @@ public sealed class ReviewDeletionApiTests(PostgreSqlDatabaseFixture database)
 
         var reviewsAfterDeletionResponse = await voter.Client.GetAsync($"/api/v1/zones/{zoneSlug}/reviews");
         reviewsAfterDeletionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var reviewsAfterDeletion = await reviewsAfterDeletionResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>();
+        var reviewsAfterDeletion = await reviewsAfterDeletionResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>(ApiJson.Options);
         reviewsAfterDeletion.Should().NotBeNull();
         reviewsAfterDeletion!.Reviews.Should().BeEmpty();
 

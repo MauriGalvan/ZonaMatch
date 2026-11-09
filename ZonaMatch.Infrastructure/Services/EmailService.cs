@@ -42,6 +42,9 @@ public class EmailService : IEmailService
 
     public async Task SendEmailAsync(string to, string subject, string body, IReadOnlyList<EmailAttachment> attachments, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(_config["EmailSettings:Password"]))
+            throw new InvalidOperationException("EmailSettings:Password is not configured (use dotnet user-secrets or an environment variable).");
+
         var email = new MimeMessage();
         email.From.Add(MailboxAddress.Parse(_config["EmailSettings:From"]));
         email.To.Add(MailboxAddress.Parse(to));

@@ -5,6 +5,7 @@ public static class TextLimits
 {
     public const int ReviewTextMinimum = 20;
     public const int ReviewText = 1000;
+    public const int ReviewRejectionReason = 300;
     public const int QuestionTextMinimum = 10;
     public const int QuestionText = 300;
     public const int AnswerTextMinimum = 2;

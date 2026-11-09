@@ -1,3 +1,4 @@
+using Azure.Storage.Blobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,6 +67,14 @@ public static class InfrastructureServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(10);
         });
         services.AddScoped<IEmailService, EmailService>();
+
+        // Without a connection string it falls back to the local Azurite emulator: the API still starts
+        // (reviews without images never reach storage) and only uploading fails until storage is configured.
+        services.AddSingleton<IImageStorage>(_ => new AzureBlobImageStorage(
+            new BlobContainerClient(
+                configuration["Storage:ConnectionString"] ?? "UseDevelopmentStorage=true",
+                configuration["Storage:ContainerName"] ?? "imagenes"),
+            configuration.GetValue<bool>("Storage:PublicRead")));
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         // MOTIS trips and plans and Nominatim addresses. Today it lives in memory; with several instances, a distributed
