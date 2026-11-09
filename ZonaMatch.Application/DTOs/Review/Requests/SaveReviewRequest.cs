@@ -4,7 +4,7 @@ using ZonaMatch.Domain.Common;
 namespace ZonaMatch.Application.DTOs.Review.Requests;
 
 public sealed record SaveReviewRequest(
-    [Required(ErrorMessage = "Indica el puntaje de cada aspecto.")]
+    [Required(ErrorMessage = "Indicá el puntaje de cada aspecto.")]
     ReviewAspectScoresRequest? Aspects,
     [Required(ErrorMessage = "El texto de la reseña es obligatorio.")]
     [StringLength(TextLimits.ReviewText, MinimumLength = TextLimits.ReviewTextMinimum,

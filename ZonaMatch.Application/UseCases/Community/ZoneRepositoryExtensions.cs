@@ -9,7 +9,7 @@ namespace ZonaMatch.Application.UseCases.Community
         public static async Task EnsureZoneExistsAsync(this IZoneRepository zones, string zoneSlug, CancellationToken cancellationToken)
         {
             if (!await zones.ExistsAsync(zoneSlug, cancellationToken))
-                throw new NotFoundException("No se encontro una zona con ese identificador.");
+                throw new NotFoundException("No se encontró una zona con ese identificador.");
         }
 
         // A missing zone is a NotFoundException; a point outside a known zone is a BadRequestException.

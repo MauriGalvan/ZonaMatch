@@ -38,9 +38,7 @@ public sealed class ReviewsController : ControllerBase
         [FromServices] SaveMyReview saveMyReview,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserContext() is not { } currentUser)
-            return Unauthorized();
-
+        var currentUser = User.RequireUserContext();
         return Ok(await saveMyReview.ExecuteAsync(slug, currentUser, request, cancellationToken));
     }
 
@@ -55,9 +53,7 @@ public sealed class ReviewsController : ControllerBase
         [FromServices] DeleteMyReview deleteMyReview,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserId() is not { } userId)
-            return Unauthorized();
-
+        var userId = User.RequireUserId();
         await deleteMyReview.ExecuteAsync(slug, userId, cancellationToken);
         return NoContent();
     }
@@ -95,9 +91,7 @@ public sealed class ReviewsController : ControllerBase
         SetReviewHelpful setReviewHelpful,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserId() is not { } userId)
-            return Unauthorized();
-
+        var userId = User.RequireUserId();
         await setReviewHelpful.ExecuteAsync(slug, reviewId, userId, helpful, cancellationToken);
         return NoContent();
     }

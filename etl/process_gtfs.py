@@ -2,11 +2,14 @@
 Summarizes AMBA public transit GTFS data into departures by stop, route, and time window for a weekday.
 The full GTFS feed is not loaded into the database. Only this summary (datos/transporte_salidas.csv) is
 created; etl/calculate_transit.sql later assigns it to each zone.
+It also writes the weekday route shapes (datos/transporte_recorridos.csv, one WKT line per route and shape) for the
+map layer; etl/calculate_transit_routes.sql loads them. Feeds without shapes (subway) are skipped.
 
 Feeds (Buenos Aires Data, public downloads): buses (2019), trains (2020), and subway. These are the latest
 publicly available feeds without credentials; schedules may be outdated.
 
-Usage:     python etl/process_gtfs.py        (from backend/ZonaMatch)
+Usage:     python etl/process_gtfs.py                 (from backend/ZonaMatch)
+           python etl/process_gtfs.py --routes-only   only the route shapes
 Requires:  pip install duckdb
 """
 
@@ -144,7 +147,31 @@ def build_stop_departures(connection: duckdb.DuckDBPyConnection, mode: str, dire
     """)
 
 
+def build_route_shapes(connection: duckdb.DuckDBPyConnection, mode: str, directory: Path, service_id: str) -> None:
+    """Adds the shapes of the routes running on the weekday service, as WKT lines in shape order."""
+    shapes_file = directory / "shapes.txt"
+    if not shapes_file.exists() or shapes_file.stat().st_size == 0:
+        print(f"  {mode}: the feed has no shapes, skipped.")
+        return
+    for table_name in ["routes", "trips", "shapes"]:
+        load_csv(connection, directory, f"{table_name}.txt", table_name)
+
+    connection.sql(f"""
+        INSERT INTO transit_routes
+        SELECT '{mode}' AS modo,
+               coalesce(nullif(any_value(r.route_short_name), ''), any_value(r.route_long_name)) AS linea,
+               s.shape_id,
+               'LINESTRING(' || string_agg(s.shape_pt_lon || ' ' || s.shape_pt_lat, ',' ORDER BY s.shape_pt_sequence::int) || ')' AS geom_wkt
+        FROM shapes s
+        JOIN (SELECT DISTINCT route_id, shape_id FROM trips WHERE service_id = $service_id AND coalesce(shape_id, '') <> '') t USING (shape_id)
+        JOIN routes r USING (route_id)
+        GROUP BY t.route_id, s.shape_id
+        HAVING count(*) >= 2
+    """, params={"service_id": service_id})
+
+
 def main() -> int:
+    routes_only = "--routes-only" in sys.argv
     DATA_DIR.mkdir(exist_ok=True)
     started_at = time.time()
     connection = duckdb.connect()
@@ -152,16 +179,24 @@ def main() -> int:
         CREATE TABLE transit_summary (modo text, parada_id text, parada text, latitud double, longitud double,
                                      linea text, franja text, salidas integer)
     """)
+    connection.sql("CREATE TABLE transit_routes (modo text, linea text, recorrido_id text, geom_wkt text)")
 
     for mode, (file_name, url, service_id) in FEEDS.items():
         print(f"Processing {mode}...")
         directory = extract_feed(mode, download(file_name, url))
-        build_stop_departures(connection, mode, directory, service_id)
+        if not routes_only:
+            build_stop_departures(connection, mode, directory, service_id)
+        build_route_shapes(connection, mode, directory, service_id)
 
-    destination = DATA_DIR / "transporte_salidas.csv"
-    connection.sql(f"COPY (SELECT * FROM transit_summary WHERE franja IS NOT NULL) TO '{destination.as_posix()}' (HEADER)")
-    print(connection.sql("SELECT modo, count(DISTINCT parada_id) AS stops, count(DISTINCT linea) AS routes, sum(salidas) AS departures FROM transit_summary GROUP BY 1"))
-    print(f"Completed in {time.time() - started_at:.0f} s: {destination}")
+    if not routes_only:
+        destination = DATA_DIR / "transporte_salidas.csv"
+        connection.sql(f"COPY (SELECT * FROM transit_summary WHERE franja IS NOT NULL) TO '{destination.as_posix()}' (HEADER)")
+        print(connection.sql("SELECT modo, count(DISTINCT parada_id) AS stops, count(DISTINCT linea) AS routes, sum(salidas) AS departures FROM transit_summary GROUP BY 1"))
+
+    routes_destination = DATA_DIR / "transporte_recorridos.csv"
+    connection.sql(f"COPY transit_routes TO '{routes_destination.as_posix()}' (HEADER)")
+    print(connection.sql("SELECT modo, count(DISTINCT linea) AS routes, count(*) AS shapes FROM transit_routes GROUP BY 1"))
+    print(f"Completed in {time.time() - started_at:.0f} s: {routes_destination}")
     return 0
 
 

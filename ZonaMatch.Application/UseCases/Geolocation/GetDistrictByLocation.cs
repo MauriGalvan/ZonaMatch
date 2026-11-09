@@ -11,6 +11,6 @@ public sealed class GetDistrictByLocation(LocationBoundaryLookup boundaryLookup)
     {
         GeolocationRequestValidator.ValidateCoordinates(latitude, longitude);
         return await boundaryLookup.GetDistrictAsync(latitude, longitude)
-            ?? throw new NotFoundException("No se encontro un partido para esa ubicacion.");
+            ?? throw new NotFoundException("No se encontró un partido para esa ubicación.");
     }
 }

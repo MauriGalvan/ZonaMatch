@@ -28,9 +28,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] GetGroupDetails getGroupDetails,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             var response = await getGroupDetails.ExecuteAsync(groupId, userId, cancellationToken);
             return Ok(response);
         }
@@ -48,9 +46,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] CalculateGroupScore calculateGroupScore,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             var response = await calculateGroupScore.ExecuteAsync(groupId, userId, request, cancellationToken);
             return Ok(response);
         }
@@ -68,9 +64,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] SaveGroupAnalysis saveGroupAnalysis,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             var analysis = await saveGroupAnalysis.ExecuteAsync(groupId, userId, request, cancellationToken);
             return StatusCode(StatusCodes.Status201Created, analysis);
         }
@@ -124,9 +118,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] UpdateGroup updateGroup,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             await updateGroup.ExecuteAsync(groupId, userId, request, cancellationToken);
             return NoContent();
         }
@@ -143,9 +135,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] DeleteGroup deleteGroup,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             await deleteGroup.ExecuteAsync(groupId, userId, cancellationToken);
             return NoContent();
         }
@@ -164,9 +154,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] RemoveParticipant removeParticipant,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             await removeParticipant.ExecuteAsync(groupId, userIdToRemove, userId, cancellationToken);
 
             return NoContent();

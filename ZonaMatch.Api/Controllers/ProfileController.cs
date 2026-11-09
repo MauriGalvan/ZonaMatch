@@ -23,9 +23,7 @@ public sealed class ProfileController : ControllerBase
         [FromServices] GetMyProfile getMyProfile,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserId() is not { } userId)
-            return Unauthorized();
-
+        var userId = User.RequireUserId();
         var profile = await getMyProfile.ExecuteAsync(userId, cancellationToken);
         if (profile is null)
             throw new NotFoundException("Todavía no armaste tu perfil.");
@@ -43,9 +41,7 @@ public sealed class ProfileController : ControllerBase
         [FromServices] SaveMyProfile saveMyProfile,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserId() is not { } userId)
-            return Unauthorized();
-
+        var userId = User.RequireUserId();
         return Ok(await saveMyProfile.ExecuteAsync(userId, request, cancellationToken));
     }
 }

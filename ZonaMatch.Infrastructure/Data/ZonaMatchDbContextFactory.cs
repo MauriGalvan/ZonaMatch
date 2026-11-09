@@ -1,31 +1,27 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
 namespace ZonaMatch.Infrastructure.Data
 {
+    // Used by dotnet ef (migrations add, database update).
     public class ZonaMatchDbContextFactory : IDesignTimeDbContextFactory<ZonaMatchDbContext>
     {
+        // Same UserSecretsId as ZonaMatch.Api.csproj: the connection string is not in appsettings.json
         private const string ApiUserSecretsId = "d1e65f38-f0f9-4687-9a7f-2e2518016583";
 
         public ZonaMatchDbContext CreateDbContext(string[] args)
         {
+            // Same sources as the API: User Secrets locally, environment variables (ConnectionStrings__DefaultConnection) elsewhere
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "ZonaMatch.Api"))
-                .AddJsonFile("appsettings.json", optional: true)
-                // Same UserSecretsId as ZonaMatch.Api.csproj: the design-time factory
-                // bypasses the API host, so secrets must be added explicitly.
+                .AddJsonFile("appsettings.json")
                 .AddUserSecrets(ApiUserSecretsId)
                 .AddEnvironmentVariables()
                 .Build();
 
+            // Without a connection string, commands that do not touch the database (migrations add, script) still work
             var connectionString = configuration.GetConnectionString("DefaultConnection");
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw new InvalidOperationException(
-                    "ConnectionStrings:DefaultConnection is not configured. " +
-                    "Set it with: dotnet user-secrets set \"ConnectionStrings:DefaultConnection\" \"...\" --project ZonaMatch.Api");
-            }
 
             var optionsBuilder = new DbContextOptionsBuilder<ZonaMatchDbContext>();
 
