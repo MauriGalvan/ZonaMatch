@@ -37,4 +37,8 @@ public sealed class CalculateGroupScoreRequest
     // Rooms the user looks for (1 to 4, 5 = 5 or more): prices are the ones of that size in each zone
     [Range(0, 5, ErrorMessage = "Los ambientes deben estar entre 1 y 5 (5 o más).")]
     public int? Rooms { get; set; }
+
+    // Buying with a mortgage ("apto crédito"): the purchase cap is compared with the sales eligible for it. Ignored when
+    // renting.
+    public bool CreditEligible { get; set; }
 }

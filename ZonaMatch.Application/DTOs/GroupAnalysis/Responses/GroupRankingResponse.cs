@@ -11,4 +11,6 @@ public sealed record GroupRankingResponse(
     string? PropertyType = null,
     GroupProfileRecommendationsResponse? ProfileRecommendations = null,
     int? SurfaceM2 = null,
-    int? Rooms = null);
+    int? Rooms = null,
+    // Buying with a mortgage ("apto crédito"): the purchase cap was compared with the sales eligible for it
+    bool CreditEligible = false);

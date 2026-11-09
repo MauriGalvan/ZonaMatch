@@ -237,5 +237,31 @@ namespace ZonaMatch.Tests.UseCases.Profile
             Assert.Equal(["Universidad", "Trabajo"], response.Points.Places.Select(place => place.Name));
             Assert.Equal(CurrentTime, response.UpdatedAt);
         }
+
+        [Fact]
+        public async Task Save_WhenBuyingWithAMortgage_KeepsAndReturnsIt()
+        {
+            var request = TestRequests.AnalysisCriteria();
+            request.Points.Operation = "compra";
+            request.Points.PurchaseLimitUsd = 120_000;
+            request.Points.CreditEligible = true;
+
+            var response = await _useCase.ExecuteAsync(UserId, request);
+
+            Assert.True(Assert.Single(_profiles.Profiles).CreditEligible);
+            Assert.True(response.Points.CreditEligible);
+        }
+
+        [Fact]
+        public async Task Save_WhenRentingWithCreditEligible_IgnoresIt()
+        {
+            var request = TestRequests.AnalysisCriteria();
+            request.Points.Operation = "alquiler";
+            request.Points.CreditEligible = true;
+
+            await _useCase.ExecuteAsync(UserId, request);
+
+            Assert.False(Assert.Single(_profiles.Profiles).CreditEligible);
+        }
     }
 }

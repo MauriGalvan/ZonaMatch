@@ -46,4 +46,6 @@ public sealed record GroupRestrictionsResponse(
     decimal? SuggestedMaxPurchaseUsd = null,
     string? SuggestedPropertyType = null,
     int? SuggestedSurfaceM2 = null,
-    int? SuggestedRooms = null);
+    int? SuggestedRooms = null,
+    // Buying with a mortgage ("apto crédito"): a member that buys needs one
+    bool SuggestedCreditEligible = false);

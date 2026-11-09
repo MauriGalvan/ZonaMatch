@@ -99,6 +99,10 @@ class ZoneRowsTests(unittest.TestCase):
         (self.cache / (path.strip("/").replace(".html", "") + ".json")).write_text(json.dumps(data), encoding="utf-8")
 
     def rows(self):
+        """(totals, listings) of the zone."""
+        return self.all_rows()[:2]
+
+    def all_rows(self):
         reader = scraper.Scraper(self.cache, 0, download=False)
         return scraper.zone_rows(reader, self.zone, 1500)[0]
 
@@ -145,6 +149,21 @@ class ZoneRowsTests(unittest.TestCase):
         totals, _ = self.rows()
         filters = {(row[1], row[4]): row[5] for row in totals if row[4]}
         self.assertEqual({("venta", "credit"): 40, ("venta", "owner"): 3}, filters)
+
+    def test_credit_totals_are_read_at_the_zone_sale_prices(self):
+        # Every sale listing of the fixture costs US$ 100.000, so the zone has a single threshold
+        self.write(scraper.credit_path("palermo", 100_000), page(35, []))
+        _, _, credit = self.all_rows()
+        self.assertEqual([["palermo", 100_000, 35, "2026-10-30T12:00:00+00:00"]], credit)
+
+    def test_credit_totals_missing_from_the_cache_are_reported_as_incomplete(self):
+        _, _, credit = self.all_rows()
+        self.assertIsNone(credit)
+
+    def test_credit_thresholds_are_the_zone_prices_at_fixed_shares(self):
+        prices = [price * 1000 for price in range(1, 101)]
+        self.assertEqual([6000, 11000, 26000, 51000, 76000, 91000, 96000], scraper.credit_thresholds(prices))
+        self.assertEqual([], scraper.credit_thresholds([]))
 
 
 if __name__ == "__main__":

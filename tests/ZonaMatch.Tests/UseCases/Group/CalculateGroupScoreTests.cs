@@ -339,6 +339,66 @@ public class CalculateGroupScoreTests
     }
 
     [Fact]
+    public async Task CalculateGroupScore_WhenTheGroupBuysWithAMortgage_ComparesTheCapWithTheCreditEligibleSales()
+    {
+        var groupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var participant = new Participant
+        {
+            Id = Guid.NewGuid(),
+            GroupId = groupId,
+            UserId = userId,
+            Role = GroupRole.Owner,
+            User = new User { Id = userId, Email = "ana@example.com" }
+        };
+        var group = new DomainGroup { Id = groupId, Name = "Compra", Participants = [participant] };
+        var profile = new Context
+        {
+            UserId = userId,
+            Criteria = [new ContextCriterion { CriterionId = ScoringEngine.Safety, Priority = "alta" }]
+        };
+        var groups = new Mock<IGroupRepository>();
+        groups.Setup(repository => repository.GetDetailsByIdAsync(groupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+        var profiles = new Mock<IProfileRepository>();
+        profiles.Setup(repository => repository.GetByUserIdsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { profile });
+        var zoneProfiles = new Mock<IZoneProfilesRepository>();
+        zoneProfiles.Setup(repository => repository.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ZoneProfile[]
+            {
+                new()
+                {
+                    Slug = "ramos-mejia", Name = "Ramos Mejía", Level = 8, Population = 1_000, CrimeCount = 30,
+                    AverageSalePriceUsd = 150_000, AvailablePropertiesForSale = 900,
+                    CreditSalesBySegment = new Dictionary<(string Type, int Rooms), CreditSales>
+                    {
+                        [(HousingTypes.All, 0)] = new(2348, [46_000, 115_000, 180_000], [0.047m, 0.545m, 0.787m]),
+                    },
+                },
+            });
+        var request = new CalculateGroupScoreRequest
+        {
+            ParticipantWeights = [new ParticipantWeightRequest { ParticipantId = participant.Id, Weight = 100 }],
+            Operation = HousingOperations.Purchase,
+            MaximumPurchaseUsd = 115_000,
+            CreditEligible = true,
+        };
+
+        var result = await new CalculateGroupScore(
+                groups.Object, profiles.Object, zoneProfiles.Object, new Mock<IRoutingClient>().Object)
+            .ExecuteAsync(groupId, userId, request);
+
+        var zone = result.Zones.Single();
+        zone.Limits!.Should().ContainSingle(limit => limit.Type == ScoringEngine.PurchaseLimit)
+            .Which.Details.Should().StartWith("Ventas apto crédito: entra el 55 %");
+        zone.Sale!.CreditDistribution.Should().Equal(46_000, 115_000, 180_000);
+        zone.Sale.CreditListings.Should().Be(2348);
+    }
+
+    [Fact]
     public async Task CalculateGroupScore_ChangesZoneRankingWhenParticipantWeightsChange()
     {
         var owner = new Participant

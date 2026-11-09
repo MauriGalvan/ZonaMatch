@@ -42,6 +42,19 @@ namespace ZonaMatch.Tests.Domain
             percentage.Should().Be(expected);
         }
 
+        [Theory]
+        [InlineData(95_000)]
+        [InlineData(300_000)]
+        public void PercentageUpTo_WhenThePointsStopBeforeTheMostExpensive_KeepsTheLastShare(decimal limit)
+        {
+            // Credit-eligible sales read up to US$ 95.000 only: the 18 % above it is not known to fit
+            var distribution = new PriceDistribution([0, 43_000, 95_000], [0, 0.052m, 0.817m]);
+
+            var percentage = distribution.PercentageUpTo(limit);
+
+            percentage.Should().Be(82);
+        }
+
         [Fact]
         public void Scale_WhenPricesChange_KeepsTheShares()
         {
