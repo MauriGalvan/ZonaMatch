@@ -31,6 +31,8 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
         public DbSet<Context> Contexts => Set<Context>();
         public DbSet<Analysis> Analyses => Set<Analysis>();
+        public DbSet<AnalysisFollowUp> AnalysisFollowUps => Set<AnalysisFollowUp>();
+        public DbSet<UserFeedbackPreferences> UserFeedbackPreferences => Set<UserFeedbackPreferences>();
         public DbSet<AnalysisZone> AnalysisZones => Set<AnalysisZone>();
         public DbSet<Person> People => Set<Person>();
         public DbSet<ContextPlace> ContextPlaces => Set<ContextPlace>();
@@ -168,6 +170,37 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.DateOfBirth).HasColumnName("fecha_nacimiento").HasColumnType("date");
                 e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
                 e.Property(x => x.IsAdministrator).HasColumnName("es_administrador");
+            });
+
+            modelBuilder.Entity<UserFeedbackPreferences>(e =>
+            {
+                e.ToTable("user_feedback_preferences");
+                e.HasKey(x => x.UserId);
+                // An invitation must not overwrite a simultaneous opt-out or a newer waiting period.
+                e.Property(x => x.SurveysEnabled).IsConcurrencyToken();
+                e.Property(x => x.NextInvitationAt).HasColumnType("timestamptz").IsConcurrencyToken();
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AnalysisFollowUp>(e =>
+            {
+                e.ToTable("analysis_follow_ups", t =>
+                {
+                    t.HasCheckConstraint("ck_analysis_follow_ups_helpfulness", "helpfulness IS NULL OR helpfulness BETWEEN 1 AND 5");
+                    t.HasCheckConstraint("ck_analysis_follow_ups_outcome", "outcome IS NULL OR outcome IN ('still-searching', 'visited-recommended-zone', 'chose-recommended-zone', 'chose-another-zone', 'stopped-searching')");
+                    t.HasCheckConstraint("ck_analysis_follow_ups_completion", "(completed_at IS NULL AND outcome IS NULL AND helpfulness IS NULL) OR (completed_at IS NOT NULL AND outcome IS NOT NULL AND helpfulness IS NOT NULL)");
+                });
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Outcome).HasMaxLength(32);
+                e.Property(x => x.Comment).HasMaxLength(AnalysisFollowUpRules.MaximumCommentLength);
+                e.Property(x => x.InvitedAt).HasColumnType("timestamptz");
+                e.Property(x => x.PostponedUntil).HasColumnType("timestamptz");
+                // A concurrent response must not overwrite the first completed answer.
+                e.Property(x => x.CompletedAt).HasColumnType("timestamptz").IsConcurrencyToken();
+                e.HasIndex(x => x.AnalysisId).IsUnique();
+                e.HasIndex(x => new { x.UserId, x.CompletedAt, x.PostponedUntil });
+                e.HasOne(x => x.Analysis).WithMany().HasForeignKey(x => x.AnalysisId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
             // Search criteria: the user's profile or the snapshot saved with an analysis.

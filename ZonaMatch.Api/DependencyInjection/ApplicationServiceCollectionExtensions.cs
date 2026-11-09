@@ -6,6 +6,7 @@ using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Admin;
+using ZonaMatch.Application.UseCases.AnalysisFollowUp;
 using ZonaMatch.Application.UseCases.Contribution;
 using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.UseCases.Contact;
@@ -70,6 +71,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<RemoveParticipant>();
 
         services.AddScoped<GetNotifications>();
+        services.AddScoped<InviteAnalysisFollowUp>();
+        services.AddScoped<SubmitAnalysisFollowUp>();
+        services.AddScoped<PostponeAnalysisFollowUp>();
+        services.AddScoped<GetFeedbackPreferences>();
+        services.AddScoped<UpdateFeedbackPreferences>();
         services.AddScoped<MarkNotificationAsRead>();
         services.AddScoped<MarkAllNotificationsAsRead>();
 
