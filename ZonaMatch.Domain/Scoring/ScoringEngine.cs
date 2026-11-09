@@ -165,7 +165,7 @@ namespace ZonaMatch.Domain.Scoring
             if (request.IsPurchase && request.MaximumPurchasePriceUsd is { } maximumPurchasePriceUsd && maximumPurchasePriceUsd > 0)
             {
                 var (limit, overage) = request.CreditEligible
-                    ? CreditPurchaseLimitFor(zone, market, maximumPurchasePriceUsd, request.HousingType, request.AreaM2)
+                    ? CreditPurchaseLimitFor(zone, market, maximumPurchasePriceUsd, request.HousingType, request.Rooms, request.AreaM2)
                     : PurchaseLimitFor(market, maximumPurchasePriceUsd, request.HousingType, request.AreaM2);
                 limits.Add(limit);
                 budgetOverage = Math.Max(budgetOverage, overage);
@@ -355,19 +355,27 @@ namespace ZonaMatch.Domain.Scoring
             return CompareWithLimit(PurchaseLimit, salePrice, maximumPriceUsd, details, $"tu tope de compra de {FormatDollars(maximumPriceUsd)}");
         }
 
-        // Buying with a mortgage: the limit against the sales eligible for it. Zonaprop only gives them for every type
-        // together and without the area, so they are used as they are. A zone without that data uses every sale.
+        // Buying with a mortgage: the limit against the sales eligible for it, of the type and size searched when the
+        // zone has them (ZoneProfile.FindCreditSales says which segment stands in otherwise). Zonaprop gives no area for
+        // them, so the full price is compared. A zone without any credit data uses every sale.
         private static (LimitResult Limit, double Overage) CreditPurchaseLimitFor(
-            ZoneProfile zone, HousingMarket market, decimal maximumPriceUsd, string? housingType, int? areaM2)
+            ZoneProfile zone, HousingMarket market, decimal maximumPriceUsd, string? housingType, int? rooms, int? areaM2)
         {
-            if (zone.CreditDistributionUsd is not { } credit)
+            if (zone.FindCreditSales(housingType, rooms) is not { } segment)
             {
                 var (fallback, fallbackOverage) = PurchaseLimitFor(market, maximumPriceUsd, housingType, areaM2);
                 return (fallback with { Details = $"{fallback.Details} (sin datos de ventas apto crédito en esta zona)" }, fallbackOverage);
             }
 
             var limitDescription = $"tu tope de compra de {FormatDollars(maximumPriceUsd)}";
-            var scope = housingType is null ? string.Empty : " (departamentos, casas y PH)";
+            var scope = CreditScope(segment, housingType, rooms);
+            if (segment.Sales.Distribution is not { } credit)
+            {
+                // None published: the limit is not met, one step below "none fits" since there is no price to compare
+                return (new LimitResult(PurchaseLimit, false, $"Ventas apto crédito{scope}: no hay publicadas en esta zona"),
+                    MinorOverage + OverageScale);
+            }
+
             var percentage = credit.PercentageUpTo(maximumPriceUsd);
             if (percentage == 0)
             {
@@ -381,6 +389,25 @@ namespace ZonaMatch.Domain.Scoring
                 ? $"Ventas apto crédito{scope}: todas entran en {limitDescription}"
                 : $"Ventas apto crédito{scope}: entra el {percentage} % de las publicaciones apto crédito en {limitDescription}";
             return (new LimitResult(PurchaseLimit, true, text), MinorOverage * (100 - percentage) / 100.0);
+        }
+
+        // " de departamentos de 2 ambientes"; when the zone lacks that segment, the one used and why: " de departamentos
+        // de todos los tamaños (sin datos suficientes de 2 ambientes)"
+        private static string CreditScope(CreditSegment segment, string? housingType, int? rooms)
+        {
+            var requestedType = HousingTypes.IsValid(housingType) ? housingType : null;
+            var requestedRooms = rooms is { } count && count >= HousingRooms.Minimum ? Math.Min(count, HousingRooms.Maximum) : (int?)null;
+            var segmentType = segment.Type == HousingTypes.All ? null : segment.Type;
+            var segmentRooms = segment.Rooms > 0 ? segment.Rooms : (int?)null;
+
+            var typeText = segmentType is null && requestedType is not null ? " de todos los tipos" : HousingTypes.TextSuffix(segmentType);
+            var roomsText = segmentRooms is null && requestedRooms is not null ? " de todos los tamaños" : HousingRooms.TextSuffix(segmentRooms);
+            var missing = (segmentType == requestedType ? string.Empty : HousingTypes.TextSuffix(requestedType)) +
+                          (segmentRooms == requestedRooms ? string.Empty : HousingRooms.TextSuffix(requestedRooms));
+
+            return missing.Length == 0
+                ? typeText + roomsText
+                : $"{typeText}{roomsText} (sin datos suficientes{missing})";
         }
 
         // Limit against the price distribution, on the same scale as ApplyPenalty:

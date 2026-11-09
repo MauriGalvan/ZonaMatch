@@ -85,13 +85,44 @@ namespace ZonaMatch.Tests.UseCases.Scoring
             var zone = new ZoneProfile
             {
                 Slug = "ramos-mejia", Name = "Ramos Mejía", AverageSalePriceUsd = 150_000, AvailablePropertiesForSale = 900,
-                CreditPricesUsd = [60_000, 115_000, 300_000], CreditShares = [0.1m, 0.544m, 1m],
+                CreditSalesBySegment = new Dictionary<(string Type, int Rooms), CreditSales>
+                {
+                    [(HousingTypes.All, 0)] = new(2348, [60_000, 115_000, 300_000], [0.1m, 0.544m, 1m]),
+                },
             };
 
             var sale = HousingScoring.Sale(zone, null);
 
             sale!.CreditDistribution.Should().Equal(60_000, 115_000, 300_000);
             sale.CreditDistributionShares.Should().Equal(0.1m, 0.544m, 1m);
+            sale.CreditPropertyType.Should().Be(HousingTypes.All);
+            sale.CreditRooms.Should().BeNull();
+            sale.CreditListings.Should().Be(2348);
+        }
+
+        [Fact]
+        public void Sale_WhenSearchingATypeAndSize_ReturnsTheCreditSalesOfThatSegment()
+        {
+            var zone = new ZoneProfile
+            {
+                Slug = "ramos-mejia", Name = "Ramos Mejía", AverageSalePriceUsd = 150_000, AvailablePropertiesForSale = 900,
+                MarketByPropertyType = new Dictionary<string, HousingMarket>
+                {
+                    [HousingTypes.Apartment] = new(null, null, null, 120_000, 500),
+                },
+                CreditSalesBySegment = new Dictionary<(string Type, int Rooms), CreditSales>
+                {
+                    [(HousingTypes.All, 0)] = new(2348, [60_000, 115_000, 300_000], [0.1m, 0.544m, 1m]),
+                    [(HousingTypes.Apartment, 2)] = new(578, [43_000, 95_000], [0.052m, 0.817m]),
+                },
+            };
+
+            var sale = HousingScoring.Sale(zone, HousingTypes.Apartment, rooms: 2);
+
+            sale!.CreditDistribution.Should().Equal(43_000, 95_000);
+            sale.CreditPropertyType.Should().Be(HousingTypes.Apartment);
+            sale.CreditRooms.Should().Be(2);
+            sale.CreditListings.Should().Be(578);
         }
 
         [Fact]

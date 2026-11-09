@@ -14,7 +14,13 @@ public sealed record SaleResponse(
     decimal[]? Distribution = null,
     // Share of the listings (0 to 1) priced up to each point of Distribution, ties included; null spaces them evenly
     decimal[]? DistributionShares = null,
-    // Sales eligible for a mortgage ("apto crédito"), every type: prices in dollars and the share of them priced up to
-    // each one. With a mortgage the purchase cap is compared with these; null without credit data.
+    // Sales eligible for a mortgage ("apto crédito") closest to the search: prices in dollars and the share of them
+    // priced up to each one. With a mortgage the purchase cap is compared with these; null without credit data or
+    // when the segment has none published.
     decimal[]? CreditDistribution = null,
-    decimal[]? CreditDistributionShares = null);
+    decimal[]? CreditDistributionShares = null,
+    // The segment those sales are from: apartment, house, ph or all, and the rooms (null: every size)
+    string? CreditPropertyType = null,
+    int? CreditRooms = null,
+    // Credit-eligible sales published in that segment (0: none; null in data loaded before the counts)
+    int? CreditListings = null);

@@ -16,6 +16,10 @@
 --                        together (the same value on both rows); listings without expenses (0) are left out
 --   median_covered_m2    typical surface of the listings
 --   median_total_m2
+-- Sales only, every type and room group (credit_segments.csv):
+--   credit_listings        listings eligible for a mortgage ("apto crédito"); 0 when Zonaprop has none
+--   credit_prices          a few dollar prices of the segment and the share of its credit-eligible listings priced
+--   credit_shares          up to each one
 -- Only in app.zone_market, on the "all" row of each operation (Zonaprop counts them for every type together):
 --   credit_eligible_share  share of the sale listings eligible for a mortgage ("apto crédito")
 --   owner_share            share of the listings published by the owner ("dueño directo")
@@ -204,9 +208,11 @@ CREATE TEMP TABLE market (
     price_m2_deciles      numeric[],
     price_shares          numeric[],
     price_m2_shares       numeric[],
-    -- Sales, every type: prices and the share of the credit-eligible listings priced up to each one
+    -- Sales: prices and the share of the credit-eligible listings of the row's type and size priced up to each one
     credit_prices         numeric[],
-    credit_shares         numeric[]
+    credit_shares         numeric[],
+    -- Sales: credit-eligible listings of the row's type and size (0 when Zonaprop has none)
+    credit_listings       integer
 );
 
 -- Share of a distribution (prices ascending, shares from 0 to 1) priced up to x: linear between points, from 0 at
@@ -363,35 +369,57 @@ SET credit_eligible_share = s.credit, owner_share = s.owner, pets_allowed_share 
 FROM shares s
 WHERE m.zone_slug = s.zone_slug AND m.operation = s.operation AND m.property_type = 'all' AND m.rooms = 0;
 
--- Credit-eligible sales of the measured zones: the share of them priced up to each scraped price (credit_totals.csv).
--- Without that file the columns stay empty and the scoring uses every sale.
-WITH credit_total AS (
-    SELECT zone_slug, max(listings) AS listings
-    FROM geo.load_zonaprop_totals
-    WHERE operation = 'venta' AND filter = 'credit'
-    GROUP BY zone_slug
-)
-UPDATE market s
-SET credit_prices = a.prices, credit_shares = a.shares
-FROM (
-    SELECT c.zone_slug,
+-- Credit-eligible sales of the measured zones, per type and room group (credit_segments.csv): how many there are and
+-- the share of them priced up to each price read. Without that file the columns stay empty and the scoring uses
+-- every sale.
+DROP TABLE IF EXISTS pg_temp.credit_segments;
+CREATE TEMP TABLE credit_segments AS
+SELECT zone_slug,
+       CASE property_type WHEN 'departamentos' THEN 'apartment' WHEN 'casas' THEN 'house' WHEN 'ph' THEN 'ph'
+                          ELSE 'all' END AS property_type,
+       rooms, max_price_usd, listings
+FROM geo.load_zonaprop_credit_segments;
+
+WITH totals AS (
+    SELECT zone_slug, property_type, rooms, listings
+    FROM credit_segments
+    WHERE max_price_usd IS NULL
+),
+curves AS (
+    SELECT c.zone_slug, c.property_type, c.rooms,
            array_agg(c.max_price_usd ORDER BY c.max_price_usd) AS prices,
            -- The totals were read on different days: a share over 1 is the same 100 %
            array_agg(round(least(c.listings::numeric / t.listings, 1), 4) ORDER BY c.max_price_usd) AS shares
-    FROM geo.load_zonaprop_credit c
-    JOIN credit_total t ON t.zone_slug = c.zone_slug
-    WHERE t.listings > 0
-    GROUP BY c.zone_slug
-) a
-WHERE s.zone_slug = a.zone_slug AND s.source = 'zonaprop' AND s.operation = 'sale' AND s.property_type = 'all'
-  AND s.rooms = 0;
+    FROM credit_segments c
+    JOIN totals t USING (zone_slug, property_type, rooms)
+    WHERE c.max_price_usd IS NOT NULL AND t.listings > 0
+    GROUP BY c.zone_slug, c.property_type, c.rooms
+)
+UPDATE market s
+SET credit_listings = t.listings, credit_prices = c.prices, credit_shares = c.shares
+FROM totals t
+LEFT JOIN curves c ON c.zone_slug = t.zone_slug AND c.property_type = t.property_type AND c.rooms = t.rooms
+WHERE s.zone_slug = t.zone_slug AND s.property_type = t.property_type AND s.rooms = t.rooms
+  AND s.source = 'zonaprop' AND s.operation = 'sale';
+
+-- The scrape skips the segments inside one with no credit-eligible sales: the types of a zone without any, and the
+-- room groups of a type without any. They have none either.
+UPDATE market s
+SET credit_listings = 0
+FROM credit_segments t
+WHERE s.zone_slug = t.zone_slug AND s.source = 'zonaprop' AND s.operation = 'sale' AND s.credit_listings IS NULL
+  AND t.max_price_usd IS NULL AND t.listings = 0
+  AND ((t.property_type = 'all' AND t.rooms = 0)
+       OR (t.property_type = s.property_type AND t.rooms = 0)
+       OR (t.property_type = 'all' AND t.rooms = s.rooms));
 
 -- 3. Zones without a Zonaprop location of their own take the values of the smallest measured zone around them
 INSERT INTO market
 SELECT c.slug, c.osm_id, m.operation, m.property_type, m.rooms, NULL, m.sample_size, m.average_price, m.median_price,
        m.average_price_m2, m.median_price_m2, m.average_expenses_ars, m.median_covered_m2, m.median_total_m2,
        m.credit_eligible_share, m.owner_share, m.pets_allowed_share, 'zonaprop-inherited', p.slug, m.updated_at,
-       m.price_deciles, m.price_m2_deciles, m.price_shares, m.price_m2_shares, m.credit_prices, m.credit_shares
+       m.price_deciles, m.price_m2_deciles, m.price_shares, m.price_m2_shares, m.credit_prices, m.credit_shares,
+       m.credit_listings
 FROM geo.zonas c
 CROSS JOIN LATERAL (
     SELECT z.osm_id, z.slug
@@ -451,7 +479,7 @@ SELECT b.parent_slug, b.parent_id, m.operation, m.property_type, m.rooms, sum(m.
        sum(m.owner_share * m.listings) / nullif(sum(m.listings) FILTER (WHERE m.owner_share IS NOT NULL), 0),
        sum(m.pets_allowed_share * m.listings)
            / nullif(sum(m.listings) FILTER (WHERE m.pets_allowed_share IS NOT NULL), 0),
-       'zonaprop-sum', NULL, min(m.updated_at), NULL, NULL, NULL, NULL, NULL, NULL
+       'zonaprop-sum', NULL, min(m.updated_at), NULL, NULL, NULL, NULL, NULL, NULL, sum(m.credit_listings)
 FROM parent_members b
 JOIN market m ON m.osm_id = b.osm_id
 GROUP BY b.parent_id, b.parent_slug, m.operation, m.property_type, m.rooms;
@@ -489,37 +517,39 @@ FROM (
 WHERE s.osm_id = a.parent_id AND s.source = 'zonaprop-sum' AND s.operation = a.operation
   AND s.property_type = a.property_type AND s.rooms = a.rooms;
 
--- Credit-eligible sales of the sums: every member's distribution read at the parent's 21 sale prices, weighted by
--- its credit-eligible listings (each member scraped its own price points, so they cannot be added point by point)
+-- Credit-eligible sales of the sums, per type and room group: every member's distribution read at the parent's 21 sale
+-- prices of that segment, weighted by its credit-eligible listings (each member scraped its own price points, so they
+-- cannot be added point by point)
 WITH grid AS (
-    SELECT s.osm_id AS parent_id, g.price, g.i
+    SELECT s.osm_id AS parent_id, s.property_type, s.rooms, g.price, g.i
     FROM market s
     CROSS JOIN LATERAL unnest(s.price_deciles) WITH ORDINALITY AS g(price, i)
-    WHERE s.source = 'zonaprop-sum' AND s.operation = 'sale' AND s.property_type = 'all' AND s.rooms = 0
+    WHERE s.source = 'zonaprop-sum' AND s.operation = 'sale'
 ),
 members AS (
-    SELECT b.parent_id, m.credit_prices, m.credit_shares, m.credit_eligible_share * m.listings AS credit_listings
+    SELECT b.parent_id, m.property_type, m.rooms, m.credit_prices, m.credit_shares, m.credit_listings
     FROM parent_members b
-    JOIN market m ON m.osm_id = b.osm_id AND m.operation = 'sale' AND m.property_type = 'all' AND m.rooms = 0
-    WHERE m.credit_prices IS NOT NULL AND m.credit_eligible_share > 0 AND m.listings > 0
+    JOIN market m ON m.osm_id = b.osm_id AND m.operation = 'sale'
+    WHERE m.credit_prices IS NOT NULL AND m.credit_listings > 0
 ),
 points AS (
-    SELECT g.parent_id, g.i, g.price,
+    SELECT g.parent_id, g.property_type, g.rooms, g.i, g.price,
            sum(m.credit_listings * pg_temp.share_up_to(m.credit_prices, m.credit_shares, g.price))
                / sum(m.credit_listings) AS share
     FROM grid g
-    JOIN members m ON m.parent_id = g.parent_id
-    GROUP BY g.parent_id, g.i, g.price
+    JOIN members m ON m.parent_id = g.parent_id AND m.property_type = g.property_type AND m.rooms = g.rooms
+    GROUP BY g.parent_id, g.property_type, g.rooms, g.i, g.price
 )
 UPDATE market s
 SET credit_prices = a.prices, credit_shares = a.shares
 FROM (
-    SELECT parent_id, array_agg(price ORDER BY i) AS prices, array_agg(round(share, 4) ORDER BY i) AS shares
+    SELECT parent_id, property_type, rooms,
+           array_agg(price ORDER BY i) AS prices, array_agg(round(share, 4) ORDER BY i) AS shares
     FROM points
-    GROUP BY parent_id
+    GROUP BY parent_id, property_type, rooms
 ) a
-WHERE s.osm_id = a.parent_id AND s.source = 'zonaprop-sum' AND s.operation = 'sale' AND s.property_type = 'all'
-  AND s.rooms = 0;
+WHERE s.osm_id = a.parent_id AND s.source = 'zonaprop-sum' AND s.operation = 'sale'
+  AND s.property_type = a.property_type AND s.rooms = a.rooms;
 
 -- 4b. Zones still without data (not in Zonaprop and not inside a measured zone) take the values of their partido
 -- or comuna
@@ -527,7 +557,8 @@ INSERT INTO market
 SELECT c.slug, c.osm_id, m.operation, m.property_type, m.rooms, NULL, m.sample_size, m.average_price, m.median_price,
        m.average_price_m2, m.median_price_m2, m.average_expenses_ars, m.median_covered_m2, m.median_total_m2,
        m.credit_eligible_share, m.owner_share, m.pets_allowed_share, 'zonaprop-inherited', p.slug, m.updated_at,
-       m.price_deciles, m.price_m2_deciles, m.price_shares, m.price_m2_shares, m.credit_prices, m.credit_shares
+       m.price_deciles, m.price_m2_deciles, m.price_shares, m.price_m2_shares, m.credit_prices, m.credit_shares,
+       m.credit_listings
 FROM geo.zonas c
 JOIN LATERAL (
     SELECT z.osm_id, z.slug
@@ -548,7 +579,7 @@ INSERT INTO app.zone_market (zone_slug, operation, property_type, listings, samp
                              currency, average_price_m2, median_price_m2, average_expenses_ars, median_covered_m2,
                              median_total_m2, credit_eligible_share, owner_share, pets_allowed_share, source,
                              inherited_from, updated_at, price_deciles, price_m2_deciles, price_shares,
-                             price_m2_shares, credit_prices, credit_shares)
+                             price_m2_shares, credit_prices, credit_shares, credit_listings)
 SELECT DISTINCT ON (zone_slug, operation, property_type)
        zone_slug, operation, property_type, listings, sample_size,
        round(average_price, CASE operation WHEN 'rent' THEN -3 ELSE 0 END), round(median_price),
@@ -556,7 +587,7 @@ SELECT DISTINCT ON (zone_slug, operation, property_type)
        round(average_price_m2), round(median_price_m2), round(average_expenses_ars, -2), round(median_covered_m2),
        round(median_total_m2), round(credit_eligible_share, 4), round(owner_share, 4), round(pets_allowed_share, 4),
        source, inherited_from, updated_at, price_deciles, price_m2_deciles, price_shares, price_m2_shares,
-       credit_prices, credit_shares
+       credit_prices, credit_shares, credit_listings
 FROM market
 WHERE rooms = 0
 ORDER BY zone_slug, operation, property_type, osm_id
@@ -582,19 +613,21 @@ ON CONFLICT (zone_slug, operation, property_type) DO UPDATE
         price_shares = excluded.price_shares,
         price_m2_shares = excluded.price_m2_shares,
         credit_prices = excluded.credit_prices,
-        credit_shares = excluded.credit_shares;
+        credit_shares = excluded.credit_shares,
+        credit_listings = excluded.credit_listings;
 
 INSERT INTO app.zone_market_rooms (zone_slug, operation, property_type, rooms, listings, sample_size, average_price,
                                    median_price, currency, average_price_m2, median_price_m2, average_expenses_ars,
                                    median_covered_m2, median_total_m2, source, inherited_from, updated_at,
-                                   price_deciles, price_m2_deciles, price_shares, price_m2_shares)
+                                   price_deciles, price_m2_deciles, price_shares, price_m2_shares, credit_prices,
+                                   credit_shares, credit_listings)
 SELECT DISTINCT ON (zone_slug, operation, property_type, rooms)
        zone_slug, operation, property_type, rooms, listings, sample_size,
        round(average_price, CASE operation WHEN 'rent' THEN -3 ELSE 0 END), round(median_price),
        CASE operation WHEN 'rent' THEN 'ARS' ELSE 'USD' END,
        round(average_price_m2), round(median_price_m2), round(average_expenses_ars, -2), round(median_covered_m2),
        round(median_total_m2), source, inherited_from, updated_at, price_deciles, price_m2_deciles, price_shares,
-       price_m2_shares
+       price_m2_shares, credit_prices, credit_shares, credit_listings
 FROM market
 WHERE rooms > 0 AND sample_size > 0
 ORDER BY zone_slug, operation, property_type, rooms, osm_id;

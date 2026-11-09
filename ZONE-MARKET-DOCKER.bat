@@ -63,9 +63,9 @@ if errorlevel 1 goto :err_load
 if errorlevel 1 goto :err_load
 %PSQL% -c "\copy geo.load_zonaprop_listings FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\zonaprop\listings.csv
 if errorlevel 1 goto :err_load
-REM Credit-eligible sales by price: optional, runs before 2026-11 do not have it
-if exist datos\zonaprop\credit_totals.csv (
-    %PSQL% -c "\copy geo.load_zonaprop_credit FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\zonaprop\credit_totals.csv
+REM Credit-eligible sales by type, rooms and price: optional, runs before 2026-11 do not have it
+if exist datos\zonaprop\credit_segments.csv (
+    %PSQL% -c "\copy geo.load_zonaprop_credit_segments FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\zonaprop\credit_segments.csv
     if errorlevel 1 goto :err_load
 )
 %PSQL% < etl\zonaprop\calculate_market.sql

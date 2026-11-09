@@ -81,8 +81,9 @@ namespace ZonaMatch.Application.UseCases.Scoring
         {
             var market = zone.GetMarket(housingType, rooms);
             var distribution = market.SalePriceDistributionUsd(surfaceM2);
-            // As loaded, without the starting point at price 0 that scoring adds
-            var credit = PriceDistribution.From(zone.CreditPricesUsd, zone.CreditShares);
+            // The same segment the purchase limit uses, as loaded: without the starting point at price 0 that scoring adds
+            var creditSegment = zone.FindCreditSales(housingType, rooms);
+            var credit = PriceDistribution.From(creditSegment?.Sales.PricesUsd, creditSegment?.Sales.Shares);
             return market.AverageSalePriceUsd is { } average
                 ? new SaleResponse(
                     average,
@@ -95,7 +96,10 @@ namespace ZonaMatch.Application.UseCases.Scoring
                     distribution?.Prices,
                     distribution?.Shares,
                     credit?.Prices,
-                    credit?.Shares)
+                    credit?.Shares,
+                    creditSegment?.Type,
+                    creditSegment is { Rooms: > 0 } ? creditSegment.Rooms : null,
+                    creditSegment?.Sales.Listings)
                 : null;
         }
     }

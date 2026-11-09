@@ -62,16 +62,28 @@ namespace ZonaMatch.Domain.Scoring
         public decimal[]? SaleShares { get; init; }
         public decimal[]? SalePerM2Shares { get; init; }
 
-        // Sales eligible for a mortgage ("apto crédito"), every type: prices in dollars and the share of them priced
-        // up to each one. Null without credit data.
-        public decimal[]? CreditPricesUsd { get; init; }
-        public decimal[]? CreditShares { get; init; }
+        // Sales eligible for a mortgage ("apto crédito") by property type (a HousingTypes value, or All) and rooms (0 for
+        // every size, 1 to 5). Empty without credit data.
+        public IReadOnlyDictionary<(string Type, int Rooms), CreditSales> CreditSalesBySegment { get; init; } =
+            new Dictionary<(string Type, int Rooms), CreditSales>();
 
-        // Starts at 0 at price 0, since the first price read already leaves some listings below it
-        public PriceDistribution? CreditDistributionUsd =>
-            PriceDistribution.From(CreditPricesUsd, CreditShares) is null
-                ? null
-                : new PriceDistribution([0, .. CreditPricesUsd!], [0, .. CreditShares!]);
+        // The credit-eligible sales closest to the search: its type and size, then its type in every size, then every
+        // type in its size, and every type and size last. Null when the zone has none of them.
+        public CreditSegment? FindCreditSales(string? type, int? rooms)
+        {
+            var requestedType = HousingTypes.IsValid(type) ? type! : HousingTypes.All;
+            var requestedRooms = rooms is { } count && count >= HousingRooms.Minimum ? Math.Min(count, HousingRooms.Maximum) : 0;
+            (string Type, int Rooms)[] candidates =
+                [(requestedType, requestedRooms), (requestedType, 0), (HousingTypes.All, requestedRooms), (HousingTypes.All, 0)];
+
+            foreach (var segment in candidates.Distinct())
+            {
+                if (CreditSalesBySegment.TryGetValue(segment, out var sales) && sales.HasData)
+                    return new CreditSegment(segment.Type, segment.Rooms, sales);
+            }
+
+            return null;
+        }
 
         // Separate apartment, house, and PH market data (keyed by HousingTypes); the fields above cover all types.
         public IReadOnlyDictionary<string, HousingMarket> MarketByPropertyType { get; init; } = new Dictionary<string, HousingMarket>();

@@ -464,18 +464,74 @@ namespace ZonaMatch.Tests.Domain
             limit.Details.Should().StartWith("Precio estimado de departamentos de 2 ambientes para 40 m² US$ 149.520 (US$ 3.738/m²)");
         }
 
-        // Like Ramos Mejía: sales from US$ 18.000; credit-eligible ones read at their own price points
+        // Like Ramos Mejía: sales from US$ 18.000; credit-eligible ones read at their own price points. Every type and
+        // size, apartments of every size, and 2-room apartments, which are cheaper; 1-room houses have none published.
         private static ZoneProfile ZoneWithCreditSales(bool withCredit = true) => new()
         {
             Slug = "zona", Name = "zona", Level = 9, AreaKm2 = 2, Population = 1000, SchoolCount = 10,
             AverageSalePriceUsd = 160_000,
             SaleDecilesUsd = [18_000, 60_000, 95_000, 145_000, 400_000],
-            CreditPricesUsd = withCredit ? [46_000, 55_000, 73_000, 115_000, 180_000] : null,
-            CreditShares = withCredit ? [0.047m, 0.130m, 0.280m, 0.545m, 0.787m] : null,
+            CreditSalesBySegment = withCredit
+                ? new Dictionary<(string Type, int Rooms), CreditSales>
+                {
+                    [(HousingTypes.All, 0)] = new(2348, [46_000, 55_000, 73_000, 115_000, 180_000], [0.047m, 0.130m, 0.280m, 0.545m, 0.787m]),
+                    [(HousingTypes.Apartment, 0)] = new(1303, [44_000, 64_000, 89_000, 140_000], [0.051m, 0.272m, 0.550m, 0.797m]),
+                    [(HousingTypes.Apartment, 2)] = new(578, [43_000, 55_000, 72_000, 95_000], [0.052m, 0.299m, 0.588m, 0.817m]),
+                    [(HousingTypes.House, 1)] = new(0, null, null),
+                }
+                : new Dictionary<(string Type, int Rooms), CreditSales>(),
         };
 
-        private static ScoringRequest CreditPurchase(decimal cap) =>
-            new(EducationCriteria, [], null, HousingOperations.Purchase, cap, CreditEligible: true);
+        private static ScoringRequest CreditPurchase(decimal cap, string? housingType = null, int? rooms = null) =>
+            new(EducationCriteria, [], null, HousingOperations.Purchase, cap, housingType, Rooms: rooms, CreditEligible: true);
+
+        [Fact]
+        public void Calculate_WhenBuyingWithAMortgage_UsesTheCreditSalesOfTheTypeAndSize()
+        {
+            var zone = ZoneWithCreditSales();
+
+            var limit = new ScoringEngine([zone]).Calculate(zone, CreditPurchase(95_000, HousingTypes.Apartment, 2)).Limits.Single();
+
+            limit.IsSatisfied.Should().BeTrue();
+            limit.Details.Should().Be("Ventas apto crédito de departamentos de 2 ambientes: entra el 82 % de las publicaciones apto crédito en tu tope de compra de US$ 95.000");
+        }
+
+        [Fact]
+        public void Calculate_WhenTheSizeHasNoCreditData_UsesTheTypeInEverySizeAndSaysSo()
+        {
+            var zone = ZoneWithCreditSales();
+
+            var limit = new ScoringEngine([zone]).Calculate(zone, CreditPurchase(140_000, HousingTypes.Apartment, 3)).Limits.Single();
+
+            limit.Details.Should().Be("Ventas apto crédito de departamentos de todos los tamaños (sin datos suficientes de 3 ambientes): " +
+                                      "entra el 80 % de las publicaciones apto crédito en tu tope de compra de US$ 140.000");
+        }
+
+        [Fact]
+        public void Calculate_WhenTheTypeHasNoCreditData_UsesEveryTypeAndSaysSo()
+        {
+            var zone = ZoneWithCreditSales();
+
+            var limit = new ScoringEngine([zone]).Calculate(zone, CreditPurchase(115_000, HousingTypes.Ph)).Limits.Single();
+
+            limit.Details.Should().StartWith("Ventas apto crédito de todos los tipos (sin datos suficientes de PH): entra el 55 %");
+        }
+
+        [Fact]
+        public void Calculate_WhenTheSegmentHasNoCreditSalesPublished_FailsTheLimitBelowNoneFitting()
+        {
+            var zone = ZoneWithCreditSales();
+            var engine = new ScoringEngine([zone]);
+
+            var none = engine.Calculate(zone, CreditPurchase(200_000, HousingTypes.House, 1));
+            // 2 % of the credit-eligible sales fit: the limit is met with almost the whole deduction
+            var fewFit = engine.Calculate(zone, CreditPurchase(23_000));
+
+            var limit = none.Limits.Single();
+            limit.IsSatisfied.Should().BeFalse();
+            limit.Details.Should().Be("Ventas apto crédito de casas de 1 ambiente: no hay publicadas en esta zona");
+            none.Score.Should().BeLessThan(fewFit.Score!.Value);
+        }
 
         [Fact]
         public void Calculate_WhenBuyingWithAMortgage_ComparesTheCapWithTheCreditEligibleSales()
