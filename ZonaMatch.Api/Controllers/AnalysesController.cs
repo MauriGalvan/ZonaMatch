@@ -21,9 +21,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] ListMyAnalyses listMyAnalyses,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             return Ok(await listMyAnalyses.ExecuteAsync(userId, cancellationToken));
         }
 
@@ -37,9 +35,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] CompareAnalyses compareAnalyses,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             var response = await compareAnalyses.ExecuteAsync(
                 userId,
                 new CompareAnalysesRequest { AnalysisIds = legacyRequest.AnalysisIds },
@@ -57,9 +53,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] CompareAnalyses compareAnalyses,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             return Ok(await compareAnalyses.ExecuteAsync(userId, request, cancellationToken));
         }
 
@@ -73,9 +67,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] GetAnalysisById getAnalysis,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             return Ok(await getAnalysis.ExecuteAsync(id, userId, cancellationToken));
         }
 
@@ -91,9 +83,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] CreateAnalysis createAnalysis,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             var analysis = await createAnalysis.ExecuteAsync(userId, request, cancellationToken);
             return CreatedAtAction(nameof(GetByIdAsync), new { id = analysis.Id }, analysis);
         }
@@ -111,9 +101,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] CreateAnalysisVersion createAnalysisVersion,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             var version = await createAnalysisVersion.ExecuteAsync(id, userId, request, cancellationToken);
             return CreatedAtAction(nameof(GetByIdAsync), new { id = version.Id }, version);
         }
@@ -130,9 +118,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] RecalculateAnalysis useCase,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             var version = await useCase.ExecuteAsync(id, userId, cancellationToken);
             return CreatedAtAction(nameof(GetByIdAsync), new { id = version.Id }, version);
         }
@@ -149,9 +135,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] SetAnalysisFavorite useCase,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             await useCase.ExecuteAsync(id, userId, request.IsFavorite!.Value, cancellationToken);
             return NoContent();
         }
@@ -166,9 +150,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] RenameAnalysis renameAnalysis,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             return Ok(await renameAnalysis.ExecuteAsync(id, userId, request, cancellationToken));
         }
 
@@ -181,9 +163,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] DeleteAnalysis deleteAnalysis,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             await deleteAnalysis.ExecuteAsync(id, userId, cancellationToken);
             return NoContent();
         }

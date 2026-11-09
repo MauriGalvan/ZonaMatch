@@ -97,4 +97,18 @@ public sealed class ZonesController : ControllerBase
     {
         return Ok(await getZoneTransit.ExecuteAsync(slug, cancellationToken));
     }
+
+    // GET /api/v1/zones/villa-luro/transit/routes
+    // Paths of the bus, train, and subway lines inside the zone, for the map layer.
+    [HttpGet("{slug}/transit/routes")]
+    [ResponseCache(Duration = 3600)]
+    [ProducesResponseType<ZoneTransitRouteListResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetZoneTransitRoutesAsync(
+        [FromRoute] string slug,
+        [FromServices] GetZoneTransitRoutes getZoneTransitRoutes,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await getZoneTransitRoutes.ExecuteAsync(slug, cancellationToken));
+    }
 }

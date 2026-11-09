@@ -19,9 +19,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] ListSavedZones useCase,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             return Ok(await useCase.ExecuteAsync(userId, cancellationToken));
         }
 
@@ -36,9 +34,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] SaveZone useCase,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserContext() is not { } user)
-                return Unauthorized();
-
+            var user = User.RequireUserContext();
             return Ok(await useCase.ExecuteAsync(slug, user, request, cancellationToken));
         }
 
@@ -50,9 +46,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] RemoveSavedZone useCase,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             await useCase.ExecuteAsync(slug, userId, cancellationToken);
             return NoContent();
         }

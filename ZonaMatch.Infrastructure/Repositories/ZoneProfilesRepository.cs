@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using NpgsqlTypes;
@@ -223,6 +224,12 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
             _cache.GetAsync(LoadZoneProfilesAsync, cancellationToken);
+
+        public Task InvalidateAsync(CancellationToken cancellationToken = default)
+        {
+            _cache.Invalidate();
+            return Task.CompletedTask;
+        }
 
         public async Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
             IReadOnlyCollection<(double Latitude, double Longitude)> locations,

@@ -74,7 +74,12 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("password-reset", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15) }));
+    // Group invitations by email: 10 per hour per signed-in user, so a group owner cannot be used to send spam.
+    options.AddPolicy("invitation-email", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.GetAuthenticatedUserId()?.ToString() ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
     // A visitor gets their PDF report by email: 3 requests per hour per IP (each one sends an email with an attachment).
+    // PENDING: too low for live demos; see the note on SendGuestReport.MaxEmailsPerRecipientPerDay.
     options.AddPolicy("guest-report", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1) }));
@@ -105,7 +110,9 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 // Enums are serialized as kebab-case strings ("punto-nuevo", "cerro") in requests and responses.
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)));
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)))
+    // Invalid requests answer with the same ProblemDetails shape as the global exception handler, in Spanish
+    .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = ValidationProblemFactory.Create);
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi();

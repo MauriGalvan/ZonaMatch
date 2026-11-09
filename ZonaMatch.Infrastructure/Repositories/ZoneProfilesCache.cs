@@ -2,7 +2,9 @@ using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Infrastructure.Repositories;
 
-// Keeps profiles for all zones in memory so concurrent requests share one refresh.
+// Keeps the profiles of every zone in this instance's memory, and concurrent requests share one load. It is not in
+// HybridCache: HybridCache serializes each value to measure it, and these profiles (several MB, with dictionaries keyed by
+// type and rooms) exceed its payload limit; every instance can rebuild them from the database.
 public sealed class ZoneProfilesCache
 {
     public static readonly TimeSpan Lifetime = TimeSpan.FromHours(6);
@@ -18,6 +20,7 @@ public sealed class ZoneProfilesCache
         _timeProvider = timeProvider;
     }
 
+    // An empty result (data not loaded yet) is not kept, so the next request tries again.
     public async Task<IReadOnlyList<ZoneProfile>> GetAsync(
         Func<CancellationToken, Task<IReadOnlyList<ZoneProfile>>> loadProfiles,
         CancellationToken cancellationToken)
@@ -46,6 +49,9 @@ public sealed class ZoneProfilesCache
             _refreshLock.Release();
         }
     }
+
+    // After loading data with the ETL: the next request rebuilds the profiles.
+    public void Invalidate() => _profiles = null;
 
     private IReadOnlyList<ZoneProfile>? GetCurrentProfiles() =>
         _profiles is not null && _timeProvider.GetUtcNow() < _expiresAt ? _profiles : null;

@@ -6,7 +6,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
         public const int Guest = 3;
         public const int AuthenticatedUser = 15;
 
-        public const string GuestMessage = "Como visitante podés medir hasta 3 lugares. Creá tu cuenta para sumar hasta 15.";
-        public const string AuthenticatedUserMessage = "Se pueden medir hasta 15 lugares.";
+        public static string GuestMessage => $"Como visitante podés medir hasta {Guest} lugares. Creá tu cuenta para sumar hasta {AuthenticatedUser}.";
+        public static string AuthenticatedUserMessage => $"Se pueden medir hasta {AuthenticatedUser} lugares.";
     }
 }

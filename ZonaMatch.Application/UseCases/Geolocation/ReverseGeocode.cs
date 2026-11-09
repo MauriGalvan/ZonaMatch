@@ -25,7 +25,7 @@ public sealed class ReverseGeocode(
         }
         catch (HttpRequestException exception)
         {
-            throw new BadGatewayException("El servicio de geocodificacion no esta disponible.", exception);
+            throw new BadGatewayException("El servicio de geocodificación no está disponible.", exception);
         }
 
         // The repositories share a scoped DbContext, so keep these queries sequential.
@@ -33,7 +33,7 @@ public sealed class ReverseGeocode(
         var commune = await boundaryLookup.GetCommuneAsync(latitude, longitude);
 
         if (geocodedAddress is null && district is null && commune is null)
-            throw new NotFoundException("No se encontro una direccion para esa ubicacion.");
+            throw new NotFoundException("No se encontró una dirección para esa ubicación.");
 
         return new ReverseGeocodeResponse(
             Location: new CoordinateResponse(latitude, longitude),

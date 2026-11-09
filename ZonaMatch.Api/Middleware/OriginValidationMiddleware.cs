@@ -25,7 +25,7 @@ public sealed class OriginValidationMiddleware
             || string.Equals(origin, requestOrigin, StringComparison.OrdinalIgnoreCase);
 
         if (isStateChangingMethod && !string.IsNullOrWhiteSpace(origin) && !isAllowedOrigin)
-            throw new ForbiddenException("El origen de la solicitud no esta permitido.");
+            throw new ForbiddenException("El origen de la solicitud no está permitido.");
 
         await _next(context);
     }

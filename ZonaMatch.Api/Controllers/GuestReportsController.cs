@@ -24,14 +24,8 @@ public sealed class GuestReportsController : ControllerBase
         [FromForm] SendGuestReportRequest request,
         IFormFile? report,
         [FromServices] SendGuestReport sendGuestReport,
-        [FromServices] IConfiguration configuration,
         CancellationToken cancellationToken)
     {
-        var frontendBaseUrl = configuration["Frontend:BaseUrl"];
-        if (string.IsNullOrWhiteSpace(frontendBaseUrl))
-            throw new ServiceUnavailableException("No pudimos enviar el informe en este momento. Intentá de nuevo en unos minutos.",
-                new InvalidOperationException("Frontend:BaseUrl is not configured."));
-
         byte[]? content = null;
         if (report is { Length: > 0 and <= SendGuestReport.MaxReportBytes })
         {
@@ -40,7 +34,7 @@ public sealed class GuestReportsController : ControllerBase
             content = stream.ToArray();
         }
 
-        await sendGuestReport.ExecuteAsync(request, content, frontendBaseUrl, cancellationToken);
+        await sendGuestReport.ExecuteAsync(request, content, cancellationToken);
         return NoContent();
     }
 }

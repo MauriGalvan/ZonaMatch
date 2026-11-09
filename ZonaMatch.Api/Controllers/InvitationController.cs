@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using ZonaMatch.Application.DTOs.GroupInvitation.Requests;
 using ZonaMatch.Application.DTOs.GroupInvitation.Responses;
@@ -25,6 +26,7 @@ public class InvitationsController : ControllerBase
     // ==========================================
 
     [Authorize]
+    [EnableRateLimiting("invitation-email")]
     [HttpPost("email")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -34,27 +36,9 @@ public class InvitationsController : ControllerBase
     public async Task<IActionResult> CreateEmailInvitationAsync(
         [FromBody] CreateInvitationRequest request,
         [FromServices] CreateInvitation createInvitation,
-        [FromServices] IConfiguration configuration,
-        [FromServices] IHostEnvironment environment,
         CancellationToken cancellationToken)
     {
-        var frontendBaseUrl = configuration["Frontend:BaseUrl"]?.TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(frontendBaseUrl))
-        {
-            var requestOrigin = Request.Headers["Origin"].ToString().TrimEnd('/');
-            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-            frontendBaseUrl = allowedOrigins.FirstOrDefault(origin =>
-                string.Equals(origin.TrimEnd('/'), requestOrigin, StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (string.IsNullOrWhiteSpace(frontendBaseUrl) && environment.IsDevelopment())
-            frontendBaseUrl = "http://localhost:5173";
-
-        // Deployment mistake, not a client error: the global exception handler logs it and answers 500
-        if (string.IsNullOrWhiteSpace(frontendBaseUrl))
-            throw new InvalidOperationException("Frontend:BaseUrl is not configured; cannot build the invitation link.");
-
-        await createInvitation.ExecuteAsync(request, GetCurrentUserId(), cancellationToken, frontendBaseUrl);
+        await createInvitation.ExecuteAsync(request, GetCurrentUserId(), cancellationToken);
         return Ok(new { Message = "Invitación enviada por correo exitosamente." });
     }
 

@@ -8,6 +8,9 @@ namespace ZonaMatch.Application.Interfaces
         // All zones with data; the engine compares each zone with others at the same level.
         Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default);
 
+        // Drops the cached profiles, so the next ListAsync reads the data loaded by the ETL without restarting the API.
+        Task InvalidateAsync(CancellationToken cancellationToken = default);
+
         // Zones containing geocoded locations, contiguous zones at the same level, and zones crossed by direct
         // segments between each pair of locations (using the more detailed level of the pair).
         Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(

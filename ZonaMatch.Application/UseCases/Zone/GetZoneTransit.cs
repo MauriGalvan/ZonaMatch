@@ -25,7 +25,7 @@ public sealed class GetZoneTransit(
 
         // No stops may mean the zone has no transit service or does not exist.
         if (stops.Count == 0 && !await zoneRepository.ExistsAsync(slug, cancellationToken))
-            throw new NotFoundException("No se encontro una zona con ese identificador.");
+            throw new NotFoundException("No se encontró una zona con ese identificador.");
 
         var departures = stops.Count == 0
             ? []

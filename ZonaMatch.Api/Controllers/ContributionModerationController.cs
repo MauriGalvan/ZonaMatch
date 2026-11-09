@@ -29,9 +29,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] ResolveContribution useCase,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } administratorId)
-                return Unauthorized();
-
+            var administratorId = User.RequireUserId();
             var contribution = await useCase.ExecuteAsync(slug, id, administratorId, request.Approve!.Value, cancellationToken);
             return Ok(contribution);
         }
