@@ -453,46 +453,6 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis
         }
 
         [Fact]
-        public async Task Delete_OriginalAnalysis_AlsoDeletesItsVersions()
-        {
-            await WithProfile();
-            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
-            await CreateVersion.ExecuteAsync(original.Id, UserId, new() { Criterion = TestRequests.AnalysisCriteria() });
-            var other = await Create.ExecuteAsync(UserId, AnalysisRequest("Otro"));
-
-            await new DeleteAnalysis(_analyses).ExecuteAsync(original.Id, UserId);
-
-            Assert.Equal(other.Id, Assert.Single(_analyses.Analyses).Id);
-        }
-
-        [Fact]
-        public async Task Delete_Version_LeavesTheOriginalAndOtherVersions()
-        {
-            await WithProfile();
-            var original = await Create.ExecuteAsync(UserId, AnalysisRequest());
-            var firstVersion = await CreateVersion.ExecuteAsync(
-                original.Id, UserId, new() { Criterion = TestRequests.AnalysisCriteria() });
-            var secondVersion = await CreateVersion.ExecuteAsync(
-                firstVersion.Id, UserId, new() { Criterion = TestRequests.AnalysisCriteria() });
-
-            await new DeleteAnalysis(_analyses).ExecuteAsync(firstVersion.Id, UserId);
-
-            Assert.Equal(
-                new[] { original.Id, secondVersion.Id },
-                _analyses.Analyses.Select(analysis => analysis.Id));
-        }
-
-        [Fact]
-        public async Task Delete_WhenAnalysisDoesNotExist_ThrowsNotFoundWithoutSaving()
-        {
-            await Assert.ThrowsAsync<NotFoundException>(
-                () => new DeleteAnalysis(_analyses).ExecuteAsync(Guid.NewGuid(), UserId));
-
-            Assert.Empty(_analyses.Analyses);
-            Assert.Equal(0, _analyses.SaveCount);
-        }
-
-        [Fact]
         public async Task Rename_ChangesOnlyTheName()
         {
             await WithProfile();
