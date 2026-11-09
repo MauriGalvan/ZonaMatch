@@ -1,6 +1,7 @@
 using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Tests.UseCases.Community;
 using CriterionRepository = ZonaMatch.Application.Interfaces.ICriterionRepository;
 using DomainCriterion = ZonaMatch.Domain.Entities.Criterion;
 

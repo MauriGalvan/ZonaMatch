@@ -3,6 +3,7 @@ using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Zone;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Tests.UseCases;
+using ZonaMatch.Tests.UseCases.Community;
 
 namespace ZonaMatch.Tests.UseCases.Zone;
 

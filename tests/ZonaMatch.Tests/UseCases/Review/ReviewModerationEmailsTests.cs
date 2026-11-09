@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.UseCases.Review;
+using ZonaMatch.Tests.UseCases.Community;
 using DomainReview = ZonaMatch.Domain.Entities.Review;
 
 namespace ZonaMatch.Tests.UseCases.Review;

@@ -2,6 +2,7 @@ using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Profile;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Tests.UseCases.Community;
 
 namespace ZonaMatch.Tests.UseCases.Profile
 {
