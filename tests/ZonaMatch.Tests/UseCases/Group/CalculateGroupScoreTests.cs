@@ -391,8 +391,11 @@ public class CalculateGroupScoreTests
                 groups.Object, profiles.Object, zoneProfiles.Object, new Mock<IRoutingClient>().Object)
             .ExecuteAsync(groupId, userId, request);
 
-        result.Zones.Single().Limits!.Should().ContainSingle(limit => limit.Type == ScoringEngine.PurchaseLimit)
+        var zone = result.Zones.Single();
+        zone.Limits!.Should().ContainSingle(limit => limit.Type == ScoringEngine.PurchaseLimit)
             .Which.Details.Should().StartWith("Ventas apto crédito: entra el 55 %");
+        zone.Sale!.CreditDistribution.Should().Equal(46_000, 115_000, 180_000);
+        zone.Sale.CreditListings.Should().Be(2348);
     }
 
     [Fact]

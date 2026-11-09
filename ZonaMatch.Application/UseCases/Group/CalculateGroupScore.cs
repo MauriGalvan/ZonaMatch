@@ -428,7 +428,9 @@ public sealed partial class CalculateGroupScore
         var sale = HousingScoring.Sale(zone, propertyType, surface, rooms) is { } zoneSale
             ? new ZoneSaleResponse(
                 zoneSale.AverageUsd, zoneSale.AvailableProperties, zoneSale.Expenses,
-                zoneSale.PricePerM2Usd, zoneSale.SurfaceM2, zoneSale.EstimatedUsd, zoneSale.Rooms, zoneSale.Distribution, zoneSale.DistributionShares)
+                zoneSale.PricePerM2Usd, zoneSale.SurfaceM2, zoneSale.EstimatedUsd, zoneSale.Rooms, zoneSale.Distribution, zoneSale.DistributionShares,
+                zoneSale.CreditDistribution, zoneSale.CreditDistributionShares, zoneSale.CreditPropertyType, zoneSale.CreditRooms,
+                zoneSale.CreditListings)
             : null;
 
         return new RankedZoneResponse(zone.Slug, zone.Name, groupScore, breakdown, componentGroups, limits, places, rent, sale);
