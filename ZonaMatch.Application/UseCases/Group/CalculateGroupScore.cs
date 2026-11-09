@@ -88,6 +88,7 @@ public sealed partial class CalculateGroupScore
                         HousingType = propertyType,
                         AreaM2 = surface,
                         Rooms = rooms,
+                        CreditEligible = operation == HousingOperations.Purchase && request.CreditEligible,
                     },
                     TravelModes.FromMobility(profile.Mobility ?? []),
                     profile.Places.OrderBy(point => point.Order).ToArray(),
