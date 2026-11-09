@@ -304,6 +304,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.CreatedAt).HasColumnType("timestamptz");
                 e.Property(x => x.ReadAt).HasColumnType("timestamptz");
                 e.HasIndex(x => new { x.UserId, x.ReadAt, x.CreatedAt });
+                e.HasIndex(x => x.ReviewId);
                 e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -465,11 +466,19 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Text).HasColumnName("texto").HasMaxLength(TextLimits.ReviewText);
                 e.Property(x => x.YearsInZone).HasColumnName("anios_en_zona");
                 e.Property(x => x.Topics).HasColumnName("temas").HasColumnType("text[]");
+                e.Property(x => x.ImageNames).HasColumnName("imagenes").HasColumnType("text[]");
                 e.Property(x => x.IsVerified).HasColumnName("verificada");
+                // Stored as text so it stays readable in the database.
+                e.Property(x => x.Status).HasColumnName("estado").HasConversion<string>().HasMaxLength(20);
+                e.Property(x => x.RejectionReason).HasColumnName("motivo_rechazo").HasMaxLength(TextLimits.ReviewRejectionReason);
+                e.Property(x => x.ResolvedAt).HasColumnName("fecha_resolucion").HasColumnType("timestamptz");
+                e.Property(x => x.ResolvedByUserId).HasColumnName("resuelta_por_id");
+                e.Property(x => x.PublishedAt).HasColumnName("fecha_publicacion").HasColumnType("timestamptz");
                 e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
                 e.Property(x => x.UpdatedAt).HasColumnName("fecha_actualizacion").HasColumnType("timestamptz");
                 e.HasIndex(x => new { x.ZoneSlug, x.UserId }).IsUnique();
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.ResolvedByUserId).OnDelete(DeleteBehavior.SetNull);
                 e.HasMany(x => x.HelpfulVotes).WithOne().HasForeignKey(x => x.ReviewId).OnDelete(DeleteBehavior.Cascade);
             });
 

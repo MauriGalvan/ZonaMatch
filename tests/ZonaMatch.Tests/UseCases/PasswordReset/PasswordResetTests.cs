@@ -141,6 +141,9 @@ public class PasswordResetTests
         public List<User> All { get; } = [];
         public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(All.Any(u => u.Email == email));
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(All.FirstOrDefault(u => u.Email == email));
+        public Task<IReadOnlyList<string>> GetAdministratorEmailsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<Guid>> GetAdministratorIdsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task AddAsync(User user, CancellationToken cancellationToken = default) { All.Add(user); return Task.CompletedTask; }
     }
 

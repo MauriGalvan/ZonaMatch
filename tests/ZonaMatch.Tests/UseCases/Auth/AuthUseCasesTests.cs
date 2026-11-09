@@ -202,6 +202,12 @@ public sealed class AuthUseCasesTests
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
             Task.FromResult(SavedUsers.FirstOrDefault(user => user.Email == email));
 
+        public Task<IReadOnlyList<string>> GetAdministratorEmailsAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<Guid>> GetAdministratorIdsAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task AddAsync(User user, CancellationToken cancellationToken = default)
         {
             if (ThrowConflictOnAdd)

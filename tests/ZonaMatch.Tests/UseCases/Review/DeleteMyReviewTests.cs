@@ -10,13 +10,25 @@ namespace ZonaMatch.Tests.UseCases.Review
         private const string Zone = FakeZoneRepository.ZoneSlug;
 
         private readonly FakeReviewRepository _reviews = new();
+        private readonly FakeNotificationRepository _notifications = new();
         private readonly DeleteMyReview _useCase;
         private readonly Guid _ana = Guid.NewGuid();
         private readonly Guid _luis = Guid.NewGuid();
 
         public DeleteMyReviewTests()
         {
-            _useCase = new DeleteMyReview(_reviews);
+            _useCase = new DeleteMyReview(_reviews, _notifications, new FixedTimeProvider(new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero)));
+        }
+
+        [Fact]
+        public async Task Delete_ClearsTheModerationNotificationsOfTheDeletedReview()
+        {
+            var review = new DomainReview { ZoneSlug = Zone, UserId = _ana };
+            _reviews.Add(review);
+
+            await _useCase.ExecuteAsync(Zone, _ana);
+
+            Assert.Equal(review.Id, Assert.Single(_notifications.ReadModerationReviewIds));
         }
 
         [Fact]

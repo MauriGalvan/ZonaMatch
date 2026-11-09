@@ -19,7 +19,7 @@ namespace ZonaMatch.Tests.UseCases.Review
         public SetReviewHelpfulTests()
         {
             _useCase = new SetReviewHelpful(_reviews, new FixedTimeProvider(CurrentTime));
-            _anaReview = new DomainReview { ZoneSlug = Zone, UserId = _ana, CreatedAt = CurrentTime };
+            _anaReview = new DomainReview { ZoneSlug = Zone, UserId = _ana, Status = ReviewStatus.Approved, CreatedAt = CurrentTime };
             _reviews.Add(_anaReview);
         }
 
@@ -53,6 +53,19 @@ namespace ZonaMatch.Tests.UseCases.Review
             await Assert.ThrowsAsync<ConflictException>(
                 () => _useCase.ExecuteAsync(Zone, _anaReview.Id, _ana, helpful: true));
             Assert.Empty(_anaReview.HelpfulVotes);
+        }
+
+        [Theory]
+        [InlineData(ReviewStatus.Pending)]
+        [InlineData(ReviewStatus.Rejected)]
+        public async Task MarkHelpful_OnAReviewThatIsNotApproved_ThrowsNotFound(ReviewStatus status)
+        {
+            _anaReview.Status = status;
+
+            await Assert.ThrowsAsync<NotFoundException>(
+                () => _useCase.ExecuteAsync(Zone, _anaReview.Id, _luis, helpful: true));
+            Assert.Empty(_anaReview.HelpfulVotes);
+            Assert.Equal(0, _reviews.SaveCount);
         }
 
         [Fact]
