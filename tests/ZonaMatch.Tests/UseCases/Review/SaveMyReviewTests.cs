@@ -8,6 +8,7 @@ using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
 using ZonaMatch.Tests.UseCases.Image;
+using ZonaMatch.Tests.UseCases.Community;
 
 namespace ZonaMatch.Tests.UseCases.Review
 {

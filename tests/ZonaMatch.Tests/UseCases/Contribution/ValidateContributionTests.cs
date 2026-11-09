@@ -2,6 +2,7 @@
 using ZonaMatch.Application.DTOs.Contribution.Requests;
 using ZonaMatch.Application.UseCases.Contribution;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Tests.UseCases.Community;
 using DomainContribution = ZonaMatch.Domain.Entities.Contribution;
 
 namespace ZonaMatch.Tests.UseCases.Contribution
