@@ -25,7 +25,8 @@ CREATE TABLE geo.load_zonaprop_credit_segments (
     rooms         integer NOT NULL,
     max_price_usd numeric,
     listings      integer NOT NULL,
-    scraped_at    timestamptz NOT NULL
+    -- Empty for a few segments with no listings that the scrape filled in without reading a page
+    scraped_at    timestamptz
 );
 
 DROP TABLE IF EXISTS geo.load_zonaprop_listings;
