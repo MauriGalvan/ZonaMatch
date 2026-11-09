@@ -198,6 +198,15 @@ ON CONFLICT (osm_id) DO NOTHING;
 CREATE INDEX ON geo.zonas USING gist (geom);
 CREATE UNIQUE INDEX ON geo.zonas (slug) WHERE elegida;
 
+-- Estimated crimes of each province district as a whole: the average shown next to its localities. Most districts
+-- have no zone of their own in the OSM extract, so the rate is kept here instead of in geo.zona_indicadores.
+DROP TABLE IF EXISTS geo.partido_delitos;
+CREATE TABLE geo.partido_delitos (
+    partido             text PRIMARY KEY,
+    poblacion           integer NOT NULL,
+    delitos_comparables integer
+);
+
 -- ---------------------------------------------------------------------------------------------------
 -- Raw indicator counts by zone. Percentages and rates are calculated by the application so each indicator's rule
 -- remains in the domain layer instead of SQL.
@@ -434,6 +443,32 @@ crime_totals AS (
                       ELSE d.estimados END)::int AS comparables
     FROM base_crime_totals d
     LEFT JOIN homicide_scale e USING (fuente)
+),
+-- Each province district with the same estimate as a zone covering it whole. etl/crime/spread_crimes.sql keeps
+-- district totals, so this rate is the average of the district's localities.
+district_crimes AS (
+    SELECT s.department_name,
+           sum(s.hechos * coalesce(c.factor, 1)) FILTER (WHERE s.crime_group NOT IN ('road', 'homicides_5y')) AS estimados,
+           sum(s.hechos) FILTER (WHERE s.crime_group = 'homicides_5y') AS homicidios_5a
+    FROM snic_tract_rates s
+    LEFT JOIN reporting_adjustments c USING (crime_group)
+    WHERE NOT s.en_caba
+    GROUP BY s.department_name
+),
+district_population AS (
+    SELECT department_name, sum(poblacion) AS poblacion
+    FROM (SELECT DISTINCT cod, department_name, poblacion FROM snic_tract_rates WHERE NOT en_caba) t
+    GROUP BY department_name
+),
+saved_district_crimes AS (
+    INSERT INTO geo.partido_delitos (partido, poblacion, delitos_comparables)
+    SELECT d.department_name, p.poblacion,
+           round(CASE WHEN d.homicidios_5a > 0 AND e.factor IS NOT NULL
+                      THEN sqrt(round(d.estimados) * d.homicidios_5a * e.factor)
+                      ELSE d.estimados END)::int
+    FROM district_crimes d
+    JOIN district_population p USING (department_name)
+    LEFT JOIN homicide_scale e ON e.fuente = 'snic'
 )
 INSERT INTO geo.zona_indicadores
 SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,

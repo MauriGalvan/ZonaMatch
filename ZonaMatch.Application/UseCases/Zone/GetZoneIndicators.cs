@@ -19,6 +19,13 @@ public sealed class GetZoneIndicators(
 
     private const string BuenosAiresCity = "CABA";
     private const int BuenosAiresCityAdminLevel = 4;
+    private const int DistrictAdminLevel = 5;
+
+    // geo.zona_indicadores.delitos_ambito lists the districts as "Merlo, Ituzaingó".
+    private static List<string> SplitDistricts(string? coverage) =>
+        string.IsNullOrWhiteSpace(coverage)
+            ? []
+            : coverage.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
 
     public async Task<ZoneIndicatorsResponse> ExecuteAsync(
         string slug,
@@ -32,6 +39,15 @@ public sealed class GetZoneIndicators(
         // Zones with geolocated crimes are compared against the whole city.
         var cityReference = zone.HasGeolocatedCrimes
             ? await indicatorsRepository.GetCapitalCityAsync(cancellationToken)
+            : null;
+
+        // Province localities are compared against their district (or districts, when they span two). A district
+        // zone is not compared against itself.
+        var districts = zone.HasGeolocatedCrimes || zone.Level <= DistrictAdminLevel
+            ? []
+            : SplitDistricts(zone.CrimeDataCoverage);
+        var districtCrimeRate = districts.Count > 0
+            ? await indicatorsRepository.GetDistrictCrimeRateAsync(districts, cancellationToken)
             : null;
 
         int? safetyPercentile = null;
@@ -86,7 +102,7 @@ public sealed class GetZoneIndicators(
                     zone.ResidentsWithHealthCoverage,
                     zone.ResidentsWithSecondaryEducation,
                     zone.ResidentsWithUniversityEducation)),
-            BuildSafety(zone, cityReference, safetyPercentile),
+            BuildSafety(zone, cityReference, safetyPercentile, districtCrimeRate),
             BuildSources(zone));
     }
 
@@ -149,7 +165,8 @@ public sealed class GetZoneIndicators(
     private static ZoneSafetyResponse? BuildSafety(
         ZoneIndicators zone,
         ZoneIndicators? cityReference,
-        int? percentile)
+        int? percentile,
+        double? districtCrimeRate)
     {
         if (zone.CrimeCount is not { } crimes || zone.CrimeDataYear is not { } year)
             return null;
@@ -158,6 +175,8 @@ public sealed class GetZoneIndicators(
         var cityAverageRate = isCaba
             ? (cityReference?.CrimesPerThousandResidents ?? ZoneSafetyBenchmark.DefaultCityAverageRate)
             : (double?)null;
+        // In the province the average shown is the district's; the summary keeps its own wording.
+        var averageRate = isCaba ? cityAverageRate : districtCrimeRate;
 
         var robberies = zone.Robberies ?? 0;
         var thefts = zone.Thefts ?? 0;
@@ -187,9 +206,9 @@ public sealed class GetZoneIndicators(
             .ToList();
         var roadIncidentsResponse = new SafetyRoadIncidentsResponse(roadIncidents);
 
-        var referenceResponse = isCaba && !IsBuenosAiresCity(zone) && cityAverageRate is not null
-            ? new IndicatorReferenceResponse(BuenosAiresCity, cityAverageRate)
-            : null;
+        var referenceResponse = isCaba
+            ? (!IsBuenosAiresCity(zone) && cityAverageRate is not null ? new IndicatorReferenceResponse(BuenosAiresCity, cityAverageRate) : null)
+            : (districtCrimeRate is not null ? new IndicatorReferenceResponse(zone.CrimeDataCoverage!, districtCrimeRate) : null);
 
         var totalCrimes = evaluation.TotalCrimes > 0 ? evaluation.TotalCrimes : crimes;
 
@@ -199,7 +218,7 @@ public sealed class GetZoneIndicators(
             badgeResponse,
             evaluation.Summary,
             evaluation.CrimesPerThousandResidents,
-            cityAverageRate,
+            averageRate,
             totalCrimes,
             evaluation.DominantCategoryText,
             breakdownResponse,
