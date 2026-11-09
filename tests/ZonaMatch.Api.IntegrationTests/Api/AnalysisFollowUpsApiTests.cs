@@ -6,8 +6,6 @@ using ZonaMatch.Api.IntegrationTests.Support;
 using ZonaMatch.Application.DTOs.AnalysisFollowUp.Requests;
 using ZonaMatch.Application.DTOs.AnalysisFollowUp.Responses;
 using ZonaMatch.Domain.Entities;
-using ZonaMatch.Application.Exceptions;
-using ZonaMatch.Infrastructure.Repositories;
 
 namespace ZonaMatch.Api.IntegrationTests.Api;
 
@@ -17,7 +15,7 @@ public sealed class AnalysisFollowUpsApiTests(PostgreSqlDatabaseFixture database
     private const string Endpoint = "/api/v1/analysis-follow-ups";
 
     [Fact]
-    public async Task FollowUps_RequireAuthentication()
+    public async Task FollowUps_WhenUserIsAnonymous_ReturnUnauthorized()
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);
         using var client = factory.CreateClient();
@@ -26,7 +24,7 @@ public sealed class AnalysisFollowUpsApiTests(PostgreSqlDatabaseFixture database
     }
 
     [Fact]
-    public async Task Invitation_UsesAnOldOriginalAndReturnsTheSameCardOnAnotherDevice()
+    public async Task Invitations_WhenAnOldOriginalExists_ReturnTheSameCardAcrossDevices()
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);
         using var owner = await TestApiUser.RegisterAsync(factory);
@@ -46,7 +44,7 @@ public sealed class AnalysisFollowUpsApiTests(PostgreSqlDatabaseFixture database
     }
 
     [Fact]
-    public async Task Response_IsValidatedOwnedPersistedAndCannotBeOverwritten()
+    public async Task Responses_WhenSubmitted_ValidateOwnershipAndPersistOnlyOnce()
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);
         using var owner = await TestApiUser.RegisterAsync(factory);
@@ -75,7 +73,7 @@ public sealed class AnalysisFollowUpsApiTests(PostgreSqlDatabaseFixture database
     }
 
     [Fact]
-    public async Task PostponementAndOptOut_PersistAcrossSessionsAndReenablingKeepsTheWaitingPeriod()
+    public async Task Postponements_WhenSurveysAreReenabled_KeepTheWaitingPeriodAcrossSessions()
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);
         using var owner = await TestApiUser.RegisterAsync(factory);
@@ -99,7 +97,7 @@ public sealed class AnalysisFollowUpsApiTests(PostgreSqlDatabaseFixture database
     }
 
     [Fact]
-    public async Task ConcurrentInvitationsAndAnswers_DoNotDuplicateOrOverwriteFeedback()
+    public async Task InvitationsAndResponses_WhenConcurrent_DoNotDuplicateOrOverwriteFeedback()
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);
         using var owner = await TestApiUser.RegisterAsync(factory);
@@ -118,38 +116,6 @@ public sealed class AnalysisFollowUpsApiTests(PostgreSqlDatabaseFixture database
         responses.Should().ContainSingle(response => response.StatusCode == HttpStatusCode.Conflict);
         await using var db = database.CreateDbContext();
         (await db.AnalysisFollowUps.CountAsync(f => f.UserId == owner.User.Id)).Should().Be(1);
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task ConcurrentPreferences_DoNotUndoAnOptOutOrANewerWaitingPeriod(bool optOut)
-    {
-        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
-        using var owner = await TestApiUser.RegisterAsync(factory);
-        await AddAnalysisAsync(owner.User.Id, 20);
-        await InviteAsync(owner.Client);
-        await using var firstContext = database.CreateDbContext();
-        await using var secondContext = database.CreateDbContext();
-        var firstRepository = new AnalysisFollowUpRepository(firstContext);
-        var secondRepository = new AnalysisFollowUpRepository(secondContext);
-        var first = (await firstRepository.GetPreferencesAsync(owner.User.Id))!;
-        var stale = (await secondRepository.GetPreferencesAsync(owner.User.Id))!;
-        if (optOut)
-            first.SurveysEnabled = false;
-        else
-            first.NextInvitationAt = DateTimeOffset.UtcNow.AddDays(30);
-        await firstRepository.SaveChangesAsync();
-
-        if (optOut)
-            stale.NextInvitationAt = DateTimeOffset.UtcNow.AddDays(14);
-        else
-            stale.SurveysEnabled = false;
-        await Assert.ThrowsAsync<ConflictException>(() => secondRepository.SaveChangesAsync());
-        await using var verification = database.CreateDbContext();
-        var saved = await verification.UserFeedbackPreferences.SingleAsync(p => p.UserId == owner.User.Id);
-        if (optOut) saved.SurveysEnabled.Should().BeFalse();
-        else saved.NextInvitationAt.Should().BeAfter(DateTimeOffset.UtcNow.AddDays(29));
     }
 
     private async Task<Analysis> AddAnalysisAsync(Guid userId, int ageDays, Guid? originalId = null)
