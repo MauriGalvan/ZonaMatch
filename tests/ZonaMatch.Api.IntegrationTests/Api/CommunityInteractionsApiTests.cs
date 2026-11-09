@@ -10,6 +10,7 @@ using ZonaMatch.Application.DTOs.Question.Responses;
 using ZonaMatch.Application.DTOs.Review.Requests;
 using ZonaMatch.Application.DTOs.Review.Responses;
 using ZonaMatch.Application.DTOs.SavedZone.Requests;
+using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
 
 namespace ZonaMatch.Api.IntegrationTests.Api;
@@ -81,8 +82,13 @@ public sealed class CommunityInteractionsApiTests(PostgreSqlDatabaseFixture data
             $"/api/v1/zones/{zoneSlug}/reviews/mine",
             CreateReview("La zona tiene buenos servicios y conexiones."));
         createReviewResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var review = await createReviewResponse.Content.ReadFromJsonAsync<ReviewResponse>();
+        var review = await createReviewResponse.Content.ReadFromJsonAsync<ReviewResponse>(ApiJson.Options);
         review.Should().NotBeNull();
+
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        (await ReviewModeration.ResolveAsync(administrator, zoneSlug, review!.Id, approve: true))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var selfVoteResponse = await author.Client.PutAsync(
             $"/api/v1/zones/{zoneSlug}/reviews/{review!.Id}/helpful-votes",
@@ -100,7 +106,7 @@ public sealed class CommunityInteractionsApiTests(PostgreSqlDatabaseFixture data
 
         var votedReviewsResponse = await voter.Client.GetAsync($"/api/v1/zones/{zoneSlug}/reviews");
         votedReviewsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var votedReviews = await votedReviewsResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>();
+        var votedReviews = await votedReviewsResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>(ApiJson.Options);
         votedReviews.Should().NotBeNull();
         votedReviews!.Reviews.Should().ContainSingle(item =>
             item.Id == review.Id && item.HelpfulCount == 1 && item.MarkedHelpfulByMe && !item.IsMine);
@@ -113,7 +119,7 @@ public sealed class CommunityInteractionsApiTests(PostgreSqlDatabaseFixture data
         repeatedUnvoteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var unvotedReviewsResponse = await voter.Client.GetAsync($"/api/v1/zones/{zoneSlug}/reviews");
-        var unvotedReviews = await unvotedReviewsResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>();
+        var unvotedReviews = await unvotedReviewsResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>(ApiJson.Options);
         unvotedReviews.Should().NotBeNull();
         unvotedReviews!.Reviews.Should().ContainSingle(item =>
             item.Id == review.Id && item.HelpfulCount == 0 && !item.MarkedHelpfulByMe);
@@ -142,21 +148,31 @@ public sealed class CommunityInteractionsApiTests(PostgreSqlDatabaseFixture data
             $"/api/v1/zones/{zoneSlug}/reviews/mine",
             CreateReview("La zona tiene buenos servicios y conexiones."));
         firstSaveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var firstReview = await firstSaveResponse.Content.ReadFromJsonAsync<ReviewResponse>();
+        var firstReview = await firstSaveResponse.Content.ReadFromJsonAsync<ReviewResponse>(ApiJson.Options);
         firstReview.Should().NotBeNull();
+
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        (await ReviewModeration.ResolveAsync(administrator, zoneSlug, firstReview!.Id, approve: true))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var updateResponse = await author.Client.PutAsJsonAsync(
             $"/api/v1/zones/{zoneSlug}/reviews/mine",
             CreateReview("Actualicé mi opinión sobre los servicios y conexiones."));
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updatedReview = await updateResponse.Content.ReadFromJsonAsync<ReviewResponse>();
+        var updatedReview = await updateResponse.Content.ReadFromJsonAsync<ReviewResponse>(ApiJson.Options);
         updatedReview.Should().NotBeNull();
         updatedReview!.Id.Should().Be(firstReview!.Id);
         updatedReview.Text.Should().Be("Actualicé mi opinión sobre los servicios y conexiones.");
 
+        // Changing the text sends the review back to pending; approving it again must not notify the subscriber twice.
+        updatedReview.Status.Should().Be(ReviewStatus.Pending);
+        (await ReviewModeration.ResolveAsync(administrator, zoneSlug, updatedReview.Id, approve: true))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
         var reviewsResponse = await subscriber.Client.GetAsync($"/api/v1/zones/{zoneSlug}/reviews");
         reviewsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var reviews = await reviewsResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>();
+        var reviews = await reviewsResponse.Content.ReadFromJsonAsync<ZoneReviewListResponse>(ApiJson.Options);
         reviews.Should().NotBeNull();
         reviews!.Reviews.Should().ContainSingle(item => item.Id == firstReview.Id && item.Text == updatedReview.Text);
 

@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations;
 namespace ZonaMatch.Application.DTOs.Contact.Requests;
 
 public sealed record SendContactMessageRequest(
-    [Required(ErrorMessage = "Ingresa tu email.")]
-    [EmailAddress(ErrorMessage = "Ingresa un email valido.")]
+    [Required(ErrorMessage = "Ingresá tu email.")]
+    [EmailAddress(ErrorMessage = "Ingresá un email válido.")]
     [StringLength(254, ErrorMessage = "El email es demasiado largo.")]
     string Email,
     [StringLength(80, ErrorMessage = "El nombre puede tener hasta 80 caracteres.")]

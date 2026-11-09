@@ -93,7 +93,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
             ScoresResponse result;
             try
             {
-                result = await scoring.ExecuteAsync(request, cancellationToken);
+                result = await scoring.CalculateAsync(request, cancellationToken);
             }
             catch (Exception ex) when (ex is NotFoundException or BadRequestException)
             {

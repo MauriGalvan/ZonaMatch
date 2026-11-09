@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
@@ -14,12 +14,16 @@ namespace ZonaMatch.Infrastructure.Geo
     // keeps each plan in memory for a day. Of the itineraries MOTIS offers, the best one is kept: the fastest, with
     // every transfer counted as TransferPenaltySeconds more and every public transport leg shorter than five blocks as
     // ShortRidePenaltySeconds more, so a bus for three blocks or an unnecessary transfer does not win by a minute.
-    public class MotisRoutePlanner(HttpClient http, IMemoryCache cache, IConfiguration configuration) : IRoutePlanner
+    public class MotisRoutePlanner(HttpClient http, HybridCache cache, IConfiguration configuration) : IRoutePlanner
     {
         // Tuesday, March 3, 2026, 8:00 in Buenos Aires (UTC-3), as in MotisRoutingClient
         private const string DefaultReferenceTime = "2026-03-03T11:00:00Z";
 
-        private static readonly TimeSpan PlanLifetime = TimeSpan.FromDays(1);
+        private static readonly HybridCacheEntryOptions PlanLifetime = new()
+        {
+            Expiration = TimeSpan.FromDays(1),
+            LocalCacheExpiration = TimeSpan.FromDays(1),
+        };
 
         private const int TransferPenaltySeconds = 300;
 
@@ -38,9 +42,15 @@ namespace ZonaMatch.Infrastructure.Geo
             var key = string.Create(CultureInfo.InvariantCulture,
                 $"motis-plan:{mode}:{fromLatitude:F4},{fromLongitude:F4}:{toLatitude:F4},{toLongitude:F4}");
 
-            if (cache.TryGetValue(key, out RoutePlan? cached))
-                return cached;
+            // An unavailable MOTIS throws, and HybridCache does not keep exceptions
+            return await cache.GetOrCreateAsync(key, token => new ValueTask<RoutePlan?>(QueryAsync(fromLatitude, fromLongitude, toLatitude, toLongitude, mode, token)),
+                PlanLifetime, cancellationToken: cancellationToken);
+        }
 
+        private async Task<RoutePlan?> QueryAsync(
+            double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, TravelMode mode,
+            CancellationToken cancellationToken)
+        {
             var url = string.Create(CultureInfo.InvariantCulture,
                 $"api/v1/plan?fromPlace={fromLatitude},{fromLongitude}&toPlace={toLatitude},{toLongitude}&time={_referenceTime}&{Modes(mode)}");
 
@@ -51,29 +61,36 @@ namespace ZonaMatch.Infrastructure.Geo
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
             {
-                throw new ServiceUnavailableException("The routing service (MOTIS) is not available.", ex);
+                throw new ServiceUnavailableException("El servicio de recorridos no está disponible.", ex);
             }
 
             // The best of the transit itineraries and the direct trip (walking can beat a bus)
-            var best = (plan?.Itineraries ?? []).Concat(plan?.Direct ?? [])
+            var options = (plan?.Itineraries ?? []).Concat(plan?.Direct ?? [])
                 .Where(itinerary => itinerary.Legs is { Count: > 0 })
                 .Select(itinerary => (itinerary.Duration, itinerary.Transfers, Legs: itinerary.Legs!.Select(ToLeg).ToList()))
-                .MinBy(option => option.Duration
-                                 + TransferPenaltySeconds * option.Transfers
-                                 + ShortRidePenaltySeconds * option.Legs.Count(IsShortRide));
+                .ToList();
 
-            var result = best.Legs is null ? null : new RoutePlan(best.Duration, best.Legs);
-            cache.Set(key, result, PlanLifetime);
-            return result;
+            // No itinerary is an answer (no trip for that mode), not a failure; MinBy throws on an empty list of tuples
+            if (options.Count == 0)
+                return null;
+
+            var best = options.MinBy(option => option.Duration
+                                               + TransferPenaltySeconds * option.Transfers
+                                               + ShortRidePenaltySeconds * option.Legs.Count(IsShortRide));
+            return new RoutePlan(best.Duration, best.Legs);
         }
 
         // Public transport with walks; the other modes, only the direct trip
         private static string Modes(TravelMode mode) => mode switch
         {
             TravelMode.Car => "transitModes=&directModes=CAR",
-            TravelMode.Bicycle => $"transitModes=&directModes=BIKE&maxDirectTime={MaxDirectSeconds}",
+            // Same as MotisRoutingClient: by bike, or by bike to and from a train
+            TravelMode.Bicycle => $"transitModes=REGIONAL_RAIL&directModes=BIKE&preTransitModes=BIKE&postTransitModes=BIKE"
+                                  + $"&maxDirectTime={MaxDirectSeconds}&maxPreTransitTime={MaxDirectSeconds}&maxPostTransitTime={MaxDirectSeconds}",
             TravelMode.Walking => $"transitModes=&directModes=WALK&maxDirectTime={MaxDirectSeconds}",
-            _ => "transitModes=TRANSIT&directModes=WALK",
+            // Same walking limits as MotisRoutingClient, so the drawn route is the trip that was scored
+            _ => $"transitModes=TRANSIT&directModes=WALK&maxDirectTime={MaxDirectSeconds}"
+                 + $"&maxPreTransitTime={MaxDirectSeconds}&maxPostTransitTime={MaxDirectSeconds}",
         };
 
         private static RouteLeg ToLeg(Leg leg)

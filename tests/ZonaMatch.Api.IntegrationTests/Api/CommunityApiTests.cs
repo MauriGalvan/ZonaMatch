@@ -51,10 +51,15 @@ public sealed class CommunityApiTests(PostgreSqlDatabaseFixture database)
                 Topics: ["transporte"]));
 
         reviewResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var review = await reviewResponse.Content.ReadFromJsonAsync<ReviewResponse>();
+        var review = await reviewResponse.Content.ReadFromJsonAsync<ReviewResponse>(ApiJson.Options);
         review.Should().NotBeNull();
         review!.Text.Should().Be("La zona es tranquila y tiene buen acceso al transporte.");
         review.IsMine.Should().BeTrue();
+
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        (await ReviewModeration.ResolveAsync(administrator, IntegrationZoneRepository.ZoneSlug, review.Id, approve: true))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var subscriberNotificationsResponse = await subscriber.Client.GetAsync("/api/v1/notifications");
         subscriberNotificationsResponse.StatusCode.Should().Be(HttpStatusCode.OK);

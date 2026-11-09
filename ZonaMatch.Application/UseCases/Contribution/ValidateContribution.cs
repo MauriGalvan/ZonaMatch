@@ -32,7 +32,7 @@ namespace ZonaMatch.Application.UseCases.Contribution
                 throw new ConflictException("El aporte ya fue resuelto por otros vecinos.");
 
             if (contribution.UserId == userId)
-                throw new ConflictException("No podes validar tu propio aporte.");
+                throw new ConflictException("No podés validar tu propio aporte.");
 
             var now = _clock.GetUtcNow();
             contribution.RecordVote(userId, confirms, now);

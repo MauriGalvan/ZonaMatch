@@ -1,4 +1,7 @@
-﻿namespace ZonaMatch.Application.DTOs.Review.Responses;
+﻿using ZonaMatch.Application.DTOs.Image.Responses;
+using ZonaMatch.Domain.Entities;
+
+namespace ZonaMatch.Application.DTOs.Review.Responses;
 
 public sealed record ReviewResponse(
     Guid Id,
@@ -12,4 +15,8 @@ public sealed record ReviewResponse(
     DateTimeOffset CreatedAt,
     int HelpfulCount,
     bool MarkedHelpfulByMe,
-    bool IsMine);
+    bool IsMine,
+    IReadOnlyList<ImageResponse> Images,
+    ReviewStatus Status,
+    // Only filled in for the author of a rejected review.
+    string? RejectionReason);

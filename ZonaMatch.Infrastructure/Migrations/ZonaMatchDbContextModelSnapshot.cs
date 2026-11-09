@@ -755,6 +755,30 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("GroupInvitations", "app");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.GuestReportSend", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("RecipientHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("recipient_hash");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("sent_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipientHash", "SentAt");
+
+                    b.ToTable("guest_report_sends", "app");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.MunicipalityAlias", b =>
                 {
                     b.Property<string>("MunicipalityName")
@@ -798,9 +822,10 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GroupId");
-
                     b.HasIndex("UserId");
+
+                    b.HasIndex("GroupId", "UserId")
+                        .IsUnique();
 
                     b.ToTable("Participant", "app");
                 });
@@ -935,13 +960,41 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("puntaje_espacios_verdes");
 
+                    b.PrimitiveCollection<List<string>>("ImageNames")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("imagenes");
+
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean")
                         .HasColumnName("verificada");
 
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_publicacion");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("motivo_rechazo");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_resolucion");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resuelta_por_id");
+
                     b.Property<int>("SafetyScore")
                         .HasColumnType("integer")
                         .HasColumnName("puntaje_seguridad");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("estado");
 
                     b.Property<string>("Text")
                         .IsRequired()
@@ -977,6 +1030,8 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnName("zona_slug");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ResolvedByUserId");
 
                     b.HasIndex("UserId");
 
@@ -1328,6 +1383,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("read_at");
 
+                    b.Property<Guid?>("ReviewId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("review_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -1345,6 +1404,8 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ReviewId");
 
                     b.HasIndex("UserId", "ReadAt", "CreatedAt");
 
@@ -1787,6 +1848,11 @@ namespace ZonaMatch.Infrastructure.Migrations
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>
                 {
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ResolvedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ZonaMatch.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")

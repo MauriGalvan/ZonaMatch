@@ -45,9 +45,7 @@ public sealed class ContributionsController : ControllerBase
         [FromServices] CreatePointContribution useCase,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserContext() is not { } currentUser)
-            return Unauthorized();
-
+        var currentUser = User.RequireUserContext();
         var contribution = await useCase.ExecuteAsync(slug, currentUser, request, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, contribution);
     }
@@ -67,9 +65,7 @@ public sealed class ContributionsController : ControllerBase
         [FromServices] CreateContributionCorrection useCase,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserContext() is not { } currentUser)
-            return Unauthorized();
-
+        var currentUser = User.RequireUserContext();
         var contribution = await useCase.ExecuteAsync(slug, currentUser, request, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, contribution);
     }
@@ -90,9 +86,7 @@ public sealed class ContributionsController : ControllerBase
         [FromServices] ValidateContribution useCase,
         CancellationToken cancellationToken)
     {
-        if (User.GetAuthenticatedUserId() is not { } userId)
-            return Unauthorized();
-
+        var userId = User.RequireUserId();
         var contribution = await useCase.ExecuteAsync(slug, id, userId, request, cancellationToken);
         return Ok(contribution);
     }

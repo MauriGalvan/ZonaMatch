@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using ZonaMatch.Application.UseCases.Scoring;
 
 namespace ZonaMatch.Application.DTOs.Scoring.Requests;
 
 /// <summary>Input used to calculate an automatic zone ranking.</summary>
 public sealed class CalculateScoresRequest
 {
-    [MaxLength(5, ErrorMessage = "Se pueden agregar hasta 5 zonas después del ranking.")]
+    [MaxLength(ScoringZoneLimits.AddedZones, ErrorMessage = "Se pueden agregar hasta {1} zonas después del ranking.")]
     public List<string> AddedZones { get; set; } = [];
 
     [StringLength(100)]
@@ -15,7 +16,7 @@ public sealed class CalculateScoresRequest
     public Dictionary<string, string?> Criteria { get; set; } = [];
 
     // Visitors: up to 3 (ScoresController); signed-in users: up to 15.
-    [MaxLength(15, ErrorMessage = "Se pueden medir hasta 15 lugares.")]
+    [MaxLength(ScoringPlaceLimits.AuthenticatedUser, ErrorMessage = "Se pueden medir hasta {1} lugares.")]
     public List<PlaceScoreRequest> Places { get; set; } = [];
 
     // Maximum monthly expense in Argentine pesos, as entered by the user.
@@ -47,6 +48,6 @@ public sealed class CalculateScoresRequest
     public List<string> Mobility { get; set; } = [];
 
     // Starting points chosen inside a zone instead of its center.
-    [MaxLength(10, ErrorMessage = "Se pueden elegir hasta 10 puntos de partida.")]
+    [MaxLength(ScoringZoneLimits.StartingPoints, ErrorMessage = "Se pueden elegir hasta {1} puntos de partida.")]
     public List<ZoneOriginRequest> ZoneOrigins { get; set; } = [];
 }

@@ -12,6 +12,10 @@ namespace ZonaMatch.Domain.Scoring
     {
         // Derive the travel mode from the household's mobility options (walking, public transit, car, or bicycle).
         // If no mode is provided, or public transit is selected, use public transit because most residents use it.
+        // A household with a bike can also ride the whole trip or ride to and from a train (trains carry bikes;
+        // buses and the subway do not), whichever is faster than its main mode.
+        public static bool HasBicycle(IReadOnlyCollection<string>? mobility) => mobility?.Contains("bici") == true;
+
         public static TravelMode FromMobility(IReadOnlyCollection<string> mobility)
         {
             if (mobility.Count == 0 || mobility.Contains("transporte-publico"))

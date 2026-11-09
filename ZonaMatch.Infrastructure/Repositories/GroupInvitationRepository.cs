@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Enums;
 using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories;
@@ -35,5 +36,13 @@ public class GroupInvitationRepository : IGroupInvitationRepository
     {
         _context.GroupInvitations.Update(invitation);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<GroupInvitation>> ListPendingAsync(Guid groupId, DateTime now, CancellationToken cancellationToken)
+    {
+        return await _context.GroupInvitations
+            .AsNoTracking()
+            .Where(i => i.GroupId == groupId && i.Status == InvitationStatus.Pending && i.ExpiresAt > now)
+            .ToListAsync(cancellationToken);
     }
 }

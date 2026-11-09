@@ -1,15 +1,17 @@
 using System.ComponentModel.DataAnnotations;
+using ZonaMatch.Application.UseCases.Scoring;
+using DomainGroup = ZonaMatch.Domain.Entities.Group;
 
 namespace ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
 
 public sealed class CalculateGroupScoreRequest
 {
-    [MaxLength(5, ErrorMessage = "Se pueden agregar hasta 5 zonas después del ranking.")]
+    [MaxLength(ScoringZoneLimits.AddedZones, ErrorMessage = "Se pueden agregar hasta {1} zonas después del ranking.")]
     public List<string> AddedZones { get; set; } = [];
 
     [Required]
     [MinLength(1, ErrorMessage = "Indicá el peso de cada participante.")]
-    [MaxLength(5, ErrorMessage = "Un grupo puede tener hasta 5 participantes.")]
+    [MaxLength(DomainGroup.MaximumParticipants, ErrorMessage = "Un grupo puede tener hasta {1} participantes.")]
     public List<ParticipantWeightRequest> ParticipantWeights { get; set; } = [];
 
     // Monthly budget in pesos: rent plus expenses, or only expenses when buying

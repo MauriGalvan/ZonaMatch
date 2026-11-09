@@ -28,10 +28,12 @@ namespace ZonaMatch.Domain.Scoring
     }
 
     // Trip duration; minutes are null when no route is available. Estimated when routing did not calculate it.
+    // ByBicycle: the trip is by bike, alone or with a train (TravelModes.HasBicycle).
     public sealed record TravelTime(
         int? Minutes,
         bool IsEstimated,
-        double? DistanceKm = null);
+        double? DistanceKm = null,
+        bool ByBicycle = false);
 
     // Route distance in kilometers; null when only travel time could be estimated.
     public sealed record PlaceScoreResult(
@@ -41,7 +43,8 @@ namespace ZonaMatch.Domain.Scoring
         int MaximumMinutes,
         bool IsEstimated,
         int? Score,
-        double? DistanceKm = null);
+        double? DistanceKm = null,
+        bool ByBicycle = false);
 
     public sealed record ScoreComponent(string Criterion, string Priority, int? Score, string Details);
     public sealed record LimitResult(string Type, bool? IsSatisfied, string Details);
@@ -130,6 +133,18 @@ namespace ZonaMatch.Domain.Scoring
         }
 
         public static bool IsKnownCriterion(string criterion) => Indicators.ContainsKey(criterion);
+
+        // Calculates the safety percentile (0 to 100) among zones of the same type (large or small).
+        public int? CalculateSafetyPercentile(double? crimesPerThousandResidents, bool isLargeZone)
+        {
+            if (crimesPerThousandResidents is not { } crimes)
+                return null;
+
+            if (!_distributions.TryGetValue((Safety, isLargeZone), out var distribution) || distribution.Length == 0)
+                return null;
+
+            return Percentile(distribution, -crimes);
+        }
 
         // Times are provided for each request place in the same order (null when a place has no location).
         public ZoneScoreResult Calculate(ZoneProfile zone, ScoringRequest request, IReadOnlyList<TravelTime?>? travelTimes = null)
@@ -252,7 +267,8 @@ namespace ZonaMatch.Domain.Scoring
                     place.MaximumTravelTimeMinutes,
                     travelTime.IsEstimated,
                     TravelScore(travelTime.Minutes, place.MaximumTravelTimeMinutes),
-                    travelTime.DistanceKm));
+                    travelTime.DistanceKm,
+                    travelTime.ByBicycle));
             }
 
             return results;

@@ -19,8 +19,10 @@ namespace ZonaMatch.Application.UseCases.Review
         public async Task ExecuteAsync(
             string zoneSlug, Guid reviewId, Guid userId, bool helpful, CancellationToken cancellationToken = default)
         {
-            var review = await _reviews.GetAsync(zoneSlug, reviewId, cancellationToken)
-                ?? throw new NotFoundException("La reseña no existe.");
+            // Other users only see approved reviews, so for them any other review does not exist.
+            var review = await _reviews.GetAsync(zoneSlug, reviewId, cancellationToken);
+            if (review is not { Status: ReviewStatus.Approved })
+                throw new NotFoundException("La reseña no existe.");
 
             if (review.UserId == userId)
                 throw new ConflictException("No podés marcar como útil tu propia reseña.");
