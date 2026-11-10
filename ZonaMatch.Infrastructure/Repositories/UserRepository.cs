@@ -25,6 +25,19 @@ public sealed class UserRepository(ZonaMatchDbContext dbContext) : IUserReposito
         dbContext.Users
             .Where(user => user.Id == id)
             .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.IsAdministrator, isAdministrator), cancellationToken);
+    public async Task<IReadOnlyList<string>> GetAdministratorEmailsAsync(CancellationToken cancellationToken = default) =>
+        await dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.IsAdministrator)
+            .Select(user => user.Email)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> GetAdministratorIdsAsync(CancellationToken cancellationToken = default) =>
+        await dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.IsAdministrator)
+            .Select(user => user.Id)
+            .ToListAsync(cancellationToken);
 
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)
     {

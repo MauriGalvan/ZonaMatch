@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Enums;
 using ZonaMatch.Infrastructure.Data;
 
 namespace ZonaMatch.Infrastructure.Repositories
@@ -36,6 +37,13 @@ namespace ZonaMatch.Infrastructure.Repositories
         public async Task MarkAllAsReadAsync(Guid userId, DateTimeOffset readAt, CancellationToken cancellationToken = default) =>
             await _context.Notifications
                 .Where(notification => notification.UserId == userId && notification.ReadAt == null)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(notification => notification.ReadAt, readAt), cancellationToken);
+
+        public async Task MarkReviewModerationAsReadAsync(Guid reviewId, DateTimeOffset readAt, CancellationToken cancellationToken = default) =>
+            await _context.Notifications
+                .Where(notification => notification.ReviewId == reviewId
+                    && notification.Type == NotificationType.ReviewPendingModeration
+                    && notification.ReadAt == null)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(notification => notification.ReadAt, readAt), cancellationToken);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>

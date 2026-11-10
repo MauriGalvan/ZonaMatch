@@ -3,6 +3,7 @@ using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Contact;
+using ZonaMatch.Tests.UseCases.Community;
 
 namespace ZonaMatch.Tests.UseCases.Contact;
 

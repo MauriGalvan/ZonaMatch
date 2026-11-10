@@ -53,6 +53,7 @@ public sealed partial class CalculateGroupScore
             request.Operation, request.MaximumPurchaseUsd, request.PropertyType);
         var surface = HousingScoring.ValidateSurface(request.SurfaceM2);
         var rooms = HousingScoring.ValidateRooms(request.Rooms);
+        var creditEligible = operation == HousingOperations.Purchase && request.CreditEligible;
         var participantIds = group.Participants.Select(participant => participant.Id).ToHashSet();
         var weights = ValidateWeights(request.ParticipantWeights, participantIds);
         var slugs = (request.AddedZones ?? [])
@@ -88,9 +89,11 @@ public sealed partial class CalculateGroupScore
                         HousingType = propertyType,
                         AreaM2 = surface,
                         Rooms = rooms,
+                        CreditEligible = creditEligible,
                     },
                     TravelModes.FromMobility(profile.Mobility ?? []),
-                    profile.Places.OrderBy(point => point.Order).ToArray());
+                    profile.Places.OrderBy(point => point.Order).ToArray(),
+                    TravelModes.HasBicycle(profile.Mobility));
             })
             .ToArray();
 
@@ -117,7 +120,9 @@ public sealed partial class CalculateGroupScore
         var calculations = members
             .Select(async member =>
             {
-                var travelTimes = await ZoneTripTimes.MeasureAsync(_routing, zonesToCalculate, member.Request.Places, member.Mode, routeLimit, cancellationToken);
+                var travelTimes = await ZoneTripTimes.MeasureAsync(
+                    _routing, zonesToCalculate, member.Request.Places, member.Mode, routeLimit, cancellationToken,
+                    withBicycle: member.HasBicycle);
                 var results = zonesToCalculate.ToDictionary(
                     zone => zone.Slug,
                     zone =>
@@ -194,7 +199,8 @@ public sealed partial class CalculateGroupScore
             propertyType,
             BuildProfileRecommendations(profiles),
             surface,
-            rooms);
+            rooms,
+            creditEligible);
     }
 
     private static GroupProfileRecommendationsResponse BuildProfileRecommendations(IReadOnlyList<Context> profiles)
@@ -422,7 +428,9 @@ public sealed partial class CalculateGroupScore
         var sale = HousingScoring.Sale(zone, propertyType, surface, rooms) is { } zoneSale
             ? new ZoneSaleResponse(
                 zoneSale.AverageUsd, zoneSale.AvailableProperties, zoneSale.Expenses,
-                zoneSale.PricePerM2Usd, zoneSale.SurfaceM2, zoneSale.EstimatedUsd, zoneSale.Rooms, zoneSale.Distribution, zoneSale.DistributionShares)
+                zoneSale.PricePerM2Usd, zoneSale.SurfaceM2, zoneSale.EstimatedUsd, zoneSale.Rooms, zoneSale.Distribution, zoneSale.DistributionShares,
+                zoneSale.CreditDistribution, zoneSale.CreditDistributionShares, zoneSale.CreditPropertyType, zoneSale.CreditRooms,
+                zoneSale.CreditListings)
             : null;
 
         return new RankedZoneResponse(zone.Slug, zone.Name, groupScore, breakdown, componentGroups, limits, places, rent, sale);
@@ -456,7 +464,8 @@ public sealed partial class CalculateGroupScore
         Participant Participant,
         ScoringRequest Request,
         TravelMode Mode,
-        IReadOnlyList<ContextPlace> Points);
+        IReadOnlyList<ContextPlace> Points,
+        bool HasBicycle);
 
     private sealed record MemberCalculation(
         Participant Participant,

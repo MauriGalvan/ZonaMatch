@@ -20,12 +20,12 @@ public sealed class ReviewsController : ControllerBase
         string slug,
         [FromServices] ListZoneReviews listZoneReviews,
         CancellationToken cancellationToken) =>
-        Ok(await listZoneReviews.ExecuteAsync(slug, User.GetAuthenticatedUserId(), cancellationToken));
+        Ok(await listZoneReviews.ExecuteAsync(slug, User.GetAuthenticatedUserId(), User.IsInRole(AppRoles.Admin), cancellationToken));
 
     // PUT /api/v1/zones/villa-luro/reviews/mine
     // Body: { "aspects": { "safety": 3, "transport": 5, "connectivity": 4, "commerce": 4, "greenSpaces": 3 },
-    //         "text": "...", "yearsInZone": 9, "topics": ["transporte"] }
-    // Creates or replaces your review for the zone (one per user and zone).
+    //         "text": "...", "yearsInZone": 9, "topics": ["transporte"], "imageNames": ["<name from POST /api/v1/images>"] }
+    // Creates or replaces your review for the zone (one per user and zone), with up to 3 images.
     [Authorize]
     [HttpPut("mine")]
     [ProducesResponseType<ReviewResponse>(StatusCodes.Status200OK)]

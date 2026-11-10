@@ -65,6 +65,16 @@ CREATE TABLE geo.carga_delitos_fracciones (
     homicide_factor double precision
 );
 
+DROP TABLE IF EXISTS geo.carga_transporte_recorridos;
+
+-- GTFS route shapes (etl/process_gtfs.py): one WKT line per route and shape.
+CREATE TABLE geo.carga_transporte_recorridos (
+    modo          text,
+    linea         text,
+    recorrido_id  text,
+    geom_wkt      text
+);
+
 DROP TABLE IF EXISTS geo.carga_transporte_salidas;
 
 -- GTFS summary (etl/process_gtfs.py): weekday departures by stop, route, and time window.

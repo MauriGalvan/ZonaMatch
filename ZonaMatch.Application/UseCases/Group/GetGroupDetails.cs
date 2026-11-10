@@ -109,7 +109,8 @@ public sealed class GetGroupDetails
             housing.MaxPurchaseUsd,
             housing.PropertyType,
             housing.SurfaceM2,
-            housing.Rooms);
+            housing.Rooms,
+            housing.CreditEligible);
     }
 
     private static int CountRestrictions(Context? profile)

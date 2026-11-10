@@ -1,4 +1,6 @@
-﻿using ZonaMatch.Application.DTOs.Review.Responses;
+﻿using ZonaMatch.Application.DTOs.Image.Responses;
+using ZonaMatch.Application.DTOs.Review.Responses;
+using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
@@ -27,7 +29,7 @@ namespace ZonaMatch.Application.UseCases.Review
                 ]);
         }
 
-        public static ReviewResponse ToResponse(DomainReview review, string? authorEmail, Guid? currentUserId) =>
+        public static ReviewResponse ToResponse(DomainReview review, string? authorEmail, Guid? currentUserId, IImageStorage imageStorage) =>
             new(
                 review.Id,
                 AuthorInitials.GetInitials(authorEmail),
@@ -45,6 +47,9 @@ namespace ZonaMatch.Application.UseCases.Review
                 review.CreatedAt,
                 review.HelpfulVotes.Count,
                 currentUserId is not null && review.HelpfulVotes.Any(vote => vote.UserId == currentUserId),
-                review.UserId == currentUserId);
+                review.UserId == currentUserId,
+                review.ImageNames.Select(name => new ImageResponse(name, imageStorage.GetUrl(name))).ToList(),
+                review.Status,
+                review.UserId == currentUserId ? review.RejectionReason : null);
     }
 }

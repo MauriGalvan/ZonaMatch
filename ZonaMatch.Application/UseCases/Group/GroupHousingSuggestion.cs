@@ -9,8 +9,10 @@ namespace ZonaMatch.Application.UseCases.Group;
 // - the monthly budget and the purchase cap add up the members that search the same way (shared costs)
 // - the property type is suggested only when every member that chose one chose the same
 // - the surface and the rooms are the largest ones a member asked for: the group lives together
+// - "apto crédito" when buying and a member needs a mortgage: the property has to qualify for that member
 public sealed record GroupHousingSuggestion(
-    string Operation, decimal MonthlyBudget, decimal? MaxPurchaseUsd, string? PropertyType, int? SurfaceM2 = null, int? Rooms = null)
+    string Operation, decimal MonthlyBudget, decimal? MaxPurchaseUsd, string? PropertyType, int? SurfaceM2 = null, int? Rooms = null,
+    bool CreditEligible = false)
 {
     public static GroupHousingSuggestion From(IReadOnlyList<Context> profiles)
     {
@@ -32,8 +34,10 @@ public sealed record GroupHousingSuggestion(
         var surface = profiles.Max(profile => profile.AreaM2);
         var rooms = profiles.Max(profile => profile.Rooms);
 
+        var credit = operation == HousingOperations.Purchase && sameSearch.Any(profile => profile.CreditEligible);
+
         return new GroupHousingSuggestion(
-            operation, monthly, purchase > 0 ? purchase : null, types.Length == 1 ? types[0] : null, surface, rooms);
+            operation, monthly, purchase > 0 ? purchase : null, types.Length == 1 ? types[0] : null, surface, rooms, credit);
     }
 
     private static decimal? ParseAmount(string? value)

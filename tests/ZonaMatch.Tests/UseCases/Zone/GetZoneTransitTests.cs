@@ -3,6 +3,7 @@ using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Zone;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Tests.UseCases;
+using ZonaMatch.Tests.UseCases.Community;
 
 namespace ZonaMatch.Tests.UseCases.Zone;
 
@@ -110,5 +111,8 @@ public class GetZoneTransitTests
 
         public Task<IReadOnlyList<TransitLineDepartures>> ListDeparturesAsync(string slug, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<TransitLineDepartures>>(slug == ZoneSlug ? Departures : []);
+
+        public Task<IReadOnlyList<TransitRouteGeometry>> ListRoutesAsync(string slug, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<TransitRouteGeometry>>([]);
     }
 }

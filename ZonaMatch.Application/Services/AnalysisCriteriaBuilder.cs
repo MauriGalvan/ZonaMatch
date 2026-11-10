@@ -3,6 +3,7 @@ using ZonaMatch.Application.DTOs.Analysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Scoring;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.Services;
 
@@ -37,6 +38,8 @@ public static class AnalysisCriteriaBuilder
         context.HousingType = propertyType;
         context.AreaM2 = areaM2;
         context.Rooms = rooms;
+        // Only sales are eligible for a mortgage.
+        context.CreditEligible = operation == HousingOperations.Purchase && request.Points.CreditEligible == true;
 
         Replace(context.People, householdMembers);
         Replace(context.Criteria, criteria);
@@ -185,5 +188,6 @@ public static class AnalysisCriteriaBuilder
             context.MaximumPurchasePriceUsd,
             context.HousingType,
             context.AreaM2,
-            context.Rooms);
+            context.Rooms,
+            context.CreditEligible);
 }

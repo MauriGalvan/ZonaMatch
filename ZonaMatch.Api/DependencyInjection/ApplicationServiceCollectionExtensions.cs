@@ -6,6 +6,7 @@ using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Admin;
+using ZonaMatch.Application.UseCases.AnalysisFollowUp;
 using ZonaMatch.Application.UseCases.Contribution;
 using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.UseCases.Contact;
@@ -14,6 +15,7 @@ using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Application.UseCases.GuestReport;
 using ZonaMatch.Application.UseCases.GroupInvitation;
 using ZonaMatch.Application.UseCases.GroupLink;
+using ZonaMatch.Application.UseCases.Image;
 using ZonaMatch.Application.UseCases.Group;
 using ZonaMatch.Application.UseCases.Map;
 using ZonaMatch.Application.UseCases.Notification;
@@ -69,6 +71,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<RemoveParticipant>();
 
         services.AddScoped<GetNotifications>();
+        services.AddScoped<InviteAnalysisFollowUp>();
+        services.AddScoped<SubmitAnalysisFollowUp>();
+        services.AddScoped<PostponeAnalysisFollowUp>();
+        services.AddScoped<GetFeedbackPreferences>();
+        services.AddScoped<UpdateFeedbackPreferences>();
         services.AddScoped<MarkNotificationAsRead>();
         services.AddScoped<MarkAllNotificationsAsRead>();
 
@@ -87,11 +94,15 @@ public static class ApplicationServiceCollectionExtensions
 
         services.AddScoped<ListUsers>();
         services.AddScoped<UpdateUserRole>();
+        services.AddScoped<GetAdminStats>();
 
         services.AddScoped<ListZoneReviews>();
         services.AddScoped<SaveMyReview>();
         services.AddScoped<DeleteMyReview>();
         services.AddScoped<SetReviewHelpful>();
+        services.AddScoped<ReviewModerationEmails>();
+        services.AddScoped<ListPendingReviews>();
+        services.AddScoped<ResolveReview>();
         services.AddScoped<ListZoneQuestions>();
         services.AddScoped<CreateQuestion>();
         services.AddScoped<AnswerQuestion>();
@@ -130,6 +141,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetRoute>();
         services.AddScoped<GetZoneIndicators>();
         services.AddScoped<GetZoneTransit>();
+        services.AddScoped<GetZoneTransitRoutes>();
 
         services.AddSingleton(TimeProvider.System);
         services.AddOptions<FrontendOptions>()
@@ -149,6 +161,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SendContactMessage>();
         services.AddScoped<GuestReportQuota>();
         services.AddScoped<SendGuestReport>();
+        services.AddScoped<UploadImage>();
 
         return services;
     }

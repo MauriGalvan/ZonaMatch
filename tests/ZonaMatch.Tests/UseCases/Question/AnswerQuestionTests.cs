@@ -8,6 +8,7 @@ using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Question;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
+using ZonaMatch.Tests.UseCases.Community;
 using DomainQuestion = ZonaMatch.Domain.Entities.Question;
 
 namespace ZonaMatch.Tests.UseCases.Question;

@@ -31,6 +31,8 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
         public DbSet<Context> Contexts => Set<Context>();
         public DbSet<Analysis> Analyses => Set<Analysis>();
+        public DbSet<AnalysisFollowUp> AnalysisFollowUps => Set<AnalysisFollowUp>();
+        public DbSet<UserFeedbackPreferences> UserFeedbackPreferences => Set<UserFeedbackPreferences>();
         public DbSet<AnalysisZone> AnalysisZones => Set<AnalysisZone>();
         public DbSet<Person> People => Set<Person>();
         public DbSet<ContextPlace> ContextPlaces => Set<ContextPlace>();
@@ -170,6 +172,37 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.IsAdministrator).HasColumnName("es_administrador");
             });
 
+            modelBuilder.Entity<UserFeedbackPreferences>(e =>
+            {
+                e.ToTable("user_feedback_preferences");
+                e.HasKey(x => x.UserId);
+                // An invitation must not overwrite a simultaneous opt-out or a newer waiting period.
+                e.Property(x => x.SurveysEnabled).IsConcurrencyToken();
+                e.Property(x => x.NextInvitationAt).HasColumnType("timestamptz").IsConcurrencyToken();
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AnalysisFollowUp>(e =>
+            {
+                e.ToTable("analysis_follow_ups", t =>
+                {
+                    t.HasCheckConstraint("ck_analysis_follow_ups_helpfulness", "helpfulness IS NULL OR helpfulness BETWEEN 1 AND 5");
+                    t.HasCheckConstraint("ck_analysis_follow_ups_outcome", "outcome IS NULL OR outcome IN ('still-searching', 'visited-recommended-zone', 'chose-recommended-zone', 'chose-another-zone', 'stopped-searching')");
+                    t.HasCheckConstraint("ck_analysis_follow_ups_completion", "(completed_at IS NULL AND outcome IS NULL AND helpfulness IS NULL) OR (completed_at IS NOT NULL AND outcome IS NOT NULL AND helpfulness IS NOT NULL)");
+                });
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Outcome).HasMaxLength(32);
+                e.Property(x => x.Comment).HasMaxLength(AnalysisFollowUpRules.MaximumCommentLength);
+                e.Property(x => x.InvitedAt).HasColumnType("timestamptz");
+                e.Property(x => x.PostponedUntil).HasColumnType("timestamptz");
+                // A concurrent response must not overwrite the first completed answer.
+                e.Property(x => x.CompletedAt).HasColumnType("timestamptz").IsConcurrencyToken();
+                e.HasIndex(x => x.AnalysisId).IsUnique();
+                e.HasIndex(x => new { x.UserId, x.CompletedAt, x.PostponedUntil });
+                e.HasOne(x => x.Analysis).WithMany().HasForeignKey(x => x.AnalysisId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
             // Search criteria: the user's profile or the snapshot saved with an analysis.
             modelBuilder.Entity<Context>(e =>
             {
@@ -192,6 +225,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.HousingType).HasColumnName("tipo_vivienda").HasMaxLength(20);
                 e.Property(x => x.AreaM2).HasColumnName("superficie_m2");
                 e.Property(x => x.Rooms).HasColumnName("ambientes");
+                e.Property(x => x.CreditEligible).HasColumnName("apto_credito").HasDefaultValue(false);
                 e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
                 e.Property(x => x.UpdatedAt).HasColumnName("fecha_actualizacion").HasColumnType("timestamptz");
                 e.Property(x => x.UserId).HasColumnName("usuario_id");
@@ -317,6 +351,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.CreatedAt).HasColumnType("timestamptz");
                 e.Property(x => x.ReadAt).HasColumnType("timestamptz");
                 e.HasIndex(x => new { x.UserId, x.ReadAt, x.CreatedAt });
+                e.HasIndex(x => x.ReviewId);
                 e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -395,6 +430,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.PriceM2Deciles).HasColumnType("numeric[]");
                 e.Property(x => x.PriceShares).HasColumnType("numeric[]");
                 e.Property(x => x.PriceM2Shares).HasColumnType("numeric[]");
+                e.Property(x => x.CreditPrices).HasColumnType("numeric[]");
+                e.Property(x => x.CreditShares).HasColumnType("numeric[]");
                 e.ToTable("zone_market", t =>
                 {
                     t.HasCheckConstraint("ck_zone_market_operation", "operation IN ('sale', 'rent')");
@@ -431,6 +468,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.PriceM2Deciles).HasColumnType("numeric[]");
                 e.Property(x => x.PriceShares).HasColumnType("numeric[]");
                 e.Property(x => x.PriceM2Shares).HasColumnType("numeric[]");
+                e.Property(x => x.CreditPrices).HasColumnType("numeric[]");
+                e.Property(x => x.CreditShares).HasColumnType("numeric[]");
                 e.ToTable("zone_market_rooms", t =>
                 {
                     t.HasCheckConstraint("ck_zone_market_rooms_operation", "operation IN ('sale', 'rent')");
@@ -478,11 +517,19 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.Text).HasColumnName("texto").HasMaxLength(TextLimits.ReviewText);
                 e.Property(x => x.YearsInZone).HasColumnName("anios_en_zona");
                 e.Property(x => x.Topics).HasColumnName("temas").HasColumnType("text[]");
+                e.Property(x => x.ImageNames).HasColumnName("imagenes").HasColumnType("text[]");
                 e.Property(x => x.IsVerified).HasColumnName("verificada");
+                // Stored as text so it stays readable in the database.
+                e.Property(x => x.Status).HasColumnName("estado").HasConversion<string>().HasMaxLength(20);
+                e.Property(x => x.RejectionReason).HasColumnName("motivo_rechazo").HasMaxLength(TextLimits.ReviewRejectionReason);
+                e.Property(x => x.ResolvedAt).HasColumnName("fecha_resolucion").HasColumnType("timestamptz");
+                e.Property(x => x.ResolvedByUserId).HasColumnName("resuelta_por_id");
+                e.Property(x => x.PublishedAt).HasColumnName("fecha_publicacion").HasColumnType("timestamptz");
                 e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
                 e.Property(x => x.UpdatedAt).HasColumnName("fecha_actualizacion").HasColumnType("timestamptz");
                 e.HasIndex(x => new { x.ZoneSlug, x.UserId }).IsUnique();
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.ResolvedByUserId).OnDelete(DeleteBehavior.SetNull);
                 e.HasMany(x => x.HelpfulVotes).WithOne().HasForeignKey(x => x.ReviewId).OnDelete(DeleteBehavior.Cascade);
             });
 
