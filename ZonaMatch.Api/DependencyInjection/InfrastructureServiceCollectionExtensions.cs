@@ -35,6 +35,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IGroupInvitationRepository, GroupInvitationRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IAnalysisRepository, AnalysisRepository>();
+        services.AddScoped<IAnalysisFollowUpRepository, AnalysisFollowUpRepository>();
         services.AddScoped<ISavedZoneRepository, SavedZoneRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAdminStatsRepository, AdminStatsRepository>();
