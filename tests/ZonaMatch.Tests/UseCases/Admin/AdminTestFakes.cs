@@ -65,10 +65,4 @@ internal sealed class FakeAdminUserRepository(params User[] users) : IUserReposi
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public Task AddAsync(User user, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-    public Task<IReadOnlyList<string>> GetAdministratorEmailsAsync(CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
-
-    public Task<IReadOnlyList<Guid>> GetAdministratorIdsAsync(CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
 }
