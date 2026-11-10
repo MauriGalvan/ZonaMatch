@@ -49,18 +49,61 @@ internal sealed class FakeAnalysisRepository : IAnalysisRepository
 
     public Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Analysis>>(
-            Analyses.Where(analysis => analysis.UserId == userId).OrderByDescending(analysis => analysis.UpdatedAt).ToList());
+            Analyses.Where(analysis => analysis.UserId == userId && analysis.DeletedAt is null)
+                .OrderByDescending(analysis => analysis.UpdatedAt)
+                .ToList());
 
     public Task<Analysis?> GetAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Analyses.FirstOrDefault(analysis => analysis.Id == id && analysis.UserId == userId));
+        Task.FromResult(Analyses.FirstOrDefault(
+            analysis => analysis.Id == id && analysis.UserId == userId && analysis.DeletedAt is null));
 
     public Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid originalAnalysisId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Analysis>>(
-            Analyses.Where(analysis => analysis.OriginalAnalysisId == originalAnalysisId).OrderBy(analysis => analysis.CreatedAt).ToList());
+            Analyses.Where(analysis => analysis.OriginalAnalysisId == originalAnalysisId && analysis.DeletedAt is null)
+                .OrderBy(analysis => analysis.CreatedAt)
+                .ToList());
+
+    public Task<IReadOnlyList<Analysis>> GetTrashedForUserAsync(
+        Guid userId,
+        DateTimeOffset deletedAfter,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Analysis>>(
+            Analyses.Where(analysis => analysis.UserId == userId && analysis.DeletedAt > deletedAfter)
+                .OrderByDescending(analysis => analysis.DeletedAt)
+                .ToList());
+
+    public Task<IReadOnlyList<Analysis>> GetDeletedForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Analysis>>(
+            Analyses.Where(analysis => analysis.UserId == userId && analysis.DeletedAt is not null)
+                .OrderByDescending(analysis => analysis.DeletedAt)
+                .ToList());
+
+    public Task<Analysis?> GetTrashedAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Analyses.FirstOrDefault(
+            analysis => analysis.Id == id && analysis.UserId == userId && analysis.DeletedAt is not null));
+
+    public Task<Analysis?> GetIncludingDeletedAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Analyses.FirstOrDefault(analysis => analysis.Id == id && analysis.UserId == userId));
+
+    public Task<IReadOnlyList<Analysis>> ListVersionsIncludingDeletedAsync(
+        Guid originalAnalysisId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Analysis>>(
+            Analyses.Where(analysis => analysis.OriginalAnalysisId == originalAnalysisId)
+                .OrderBy(analysis => analysis.CreatedAt)
+                .ToList());
+
+    public Task<IReadOnlyList<Analysis>> GetExpiredTrashedAsync(
+        DateTimeOffset deletedBefore,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Analysis>>(
+            Analyses.Where(analysis => analysis.DeletedAt is not null && analysis.DeletedAt <= deletedBefore)
+                .OrderBy(analysis => analysis.DeletedAt)
+                .ToList());
 
     public void Add(Analysis analysis) => Analyses.Add(analysis);
 
-    public void Delete(Analysis analysis) => Analyses.Remove(analysis);
+    public void PermanentlyDelete(Analysis analysis) => Analyses.Remove(analysis);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {

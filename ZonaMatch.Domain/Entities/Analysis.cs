@@ -5,6 +5,10 @@ namespace ZonaMatch.Domain.Entities
     // criteria adjusted for that case only; OriginalAnalysisId points to the original.
     public class Analysis
     {
+        public const int TrashRetentionDays = 30;
+
+        public static TimeSpan TrashRetentionPeriod => TimeSpan.FromDays(TrashRetentionDays);
+
         // UUIDv7: unique and time-ordered, so the primary key index stays compact
         public Guid Id { get; set; } = Guid.CreateVersion7();
 
@@ -37,6 +41,9 @@ namespace ZonaMatch.Domain.Entities
         public DateTimeOffset CreatedAt { get; set; }
 
         public DateTimeOffset UpdatedAt { get; set; }
+
+        // Null while the saved analysis is active; set when it is moved to the user's trash.
+        public DateTimeOffset? DeletedAt { get; set; }
 
         // app.analisis_zonas rows, ordered as selected by the user.
         public ICollection<AnalysisZone> Zones { get; set; } = new List<AnalysisZone>();

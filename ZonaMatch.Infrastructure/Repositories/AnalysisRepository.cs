@@ -26,22 +26,76 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         public async Task<IReadOnlyList<Analysis>> GetForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
             await WithDetails
-                .Where(a => a.UserId == userId)
+                .Where(a => a.UserId == userId && a.DeletedAt == null)
                 .OrderByDescending(a => a.UpdatedAt)
                 .ToListAsync(cancellationToken);
 
         public async Task<Analysis?> GetAsync(Guid id, Guid userId, CancellationToken cancellationToken = default) =>
-            await WithDetails.FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId, cancellationToken);
+            await WithDetails.FirstOrDefaultAsync(
+                a => a.Id == id && a.UserId == userId && a.DeletedAt == null,
+                cancellationToken);
 
         public async Task<IReadOnlyList<Analysis>> ListVersionsAsync(Guid originalAnalysisId, CancellationToken cancellationToken = default) =>
             await WithDetails
+                .Where(a => a.OriginalAnalysisId == originalAnalysisId && a.DeletedAt == null)
+                .OrderBy(a => a.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+        public async Task<IReadOnlyList<Analysis>> GetTrashedForUserAsync(
+            Guid userId,
+            DateTimeOffset deletedAfter,
+            CancellationToken cancellationToken = default) =>
+            await _context.Analyses
+                .Where(a => a.UserId == userId && a.DeletedAt != null && a.DeletedAt > deletedAfter)
+                .OrderByDescending(a => a.DeletedAt)
+                .ToListAsync(cancellationToken);
+
+        public async Task<IReadOnlyList<Analysis>> GetDeletedForUserAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default) =>
+            await _context.Analyses
+                .Include(a => a.Context)
+                .Where(a => a.UserId == userId && a.DeletedAt != null)
+                .OrderByDescending(a => a.DeletedAt)
+                .ToListAsync(cancellationToken);
+
+        public async Task<Analysis?> GetTrashedAsync(
+            Guid id,
+            Guid userId,
+            CancellationToken cancellationToken = default) =>
+            await _context.Analyses
+                .Include(a => a.Context)
+                .FirstOrDefaultAsync(
+                    a => a.Id == id && a.UserId == userId && a.DeletedAt != null,
+                    cancellationToken);
+
+        public async Task<Analysis?> GetIncludingDeletedAsync(
+            Guid id,
+            Guid userId,
+            CancellationToken cancellationToken = default) =>
+            await _context.Analyses.FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId, cancellationToken);
+
+        public async Task<IReadOnlyList<Analysis>> ListVersionsIncludingDeletedAsync(
+            Guid originalAnalysisId,
+            CancellationToken cancellationToken = default) =>
+            await _context.Analyses
+                .Include(a => a.Context)
                 .Where(a => a.OriginalAnalysisId == originalAnalysisId)
                 .OrderBy(a => a.CreatedAt)
                 .ToListAsync(cancellationToken);
 
+        public async Task<IReadOnlyList<Analysis>> GetExpiredTrashedAsync(
+            DateTimeOffset deletedBefore,
+            CancellationToken cancellationToken = default) =>
+            await _context.Analyses
+                .Include(a => a.Context)
+                .Where(a => a.DeletedAt != null && a.DeletedAt <= deletedBefore)
+                .OrderBy(a => a.DeletedAt)
+                .ToListAsync(cancellationToken);
+
         public void Add(Analysis analysis) => _context.Analyses.Add(analysis);
 
-        public void Delete(Analysis analysis)
+        public void PermanentlyDelete(Analysis analysis)
         {
             _context.Analyses.Remove(analysis);
             // The criteria snapshot belongs only to this analysis.

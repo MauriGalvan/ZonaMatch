@@ -128,6 +128,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SetAnalysisFavorite>();
         services.AddScoped<RenameAnalysis>();
         services.AddScoped<DeleteAnalysis>();
+        services.AddScoped<ListAnalysisTrash>();
+        services.AddScoped<RestoreAnalysis>();
+        services.AddScoped<PermanentlyDeleteAnalysis>();
+        services.AddScoped<EmptyAnalysisTrash>();
+        services.AddScoped<PurgeExpiredAnalyses>();
         services.AddScoped<ListSavedZones>();
         services.AddScoped<SaveZone>();
         services.AddScoped<RemoveSavedZone>();
