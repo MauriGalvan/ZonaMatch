@@ -26,8 +26,10 @@ namespace ZonaMatch.Domain.Scoring
         {
             if (limit < Prices[0])
                 return 0;
+            // At or above the last point, its share: 100 % when it is the most expensive listing, less when the points
+            // stop before it (credit-eligible sales are read up to a few prices only)
             if (limit >= Prices[^1])
-                return 100;
+                return (int)Math.Round(ShareAt(Prices.Length - 1) * 100, MidpointRounding.AwayFromZero);
 
             for (var i = 1; i < Prices.Length; i++)
             {

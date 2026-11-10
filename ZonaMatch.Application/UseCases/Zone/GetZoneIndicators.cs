@@ -1,20 +1,31 @@
-﻿using ZonaMatch.Application.DTOs.Shared.Responses;
+using ZonaMatch.Application.DTOs.Shared.Responses;
+using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.DTOs.ZoneIndicator.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Policies;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Zone;
 
 // Population, connectivity, living conditions, and safety data for a zone, with sources.
-public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsRepository)
+public sealed class GetZoneIndicators(
+    IZoneIndicatorsRepository indicatorsRepository,
+    IZoneProfilesRepository? profilesRepository = null)
 {
     // Year of the data loaded by etl/download_open_data.py.
     public const int CensusYear = 2022;
 
     private const string BuenosAiresCity = "CABA";
     private const int BuenosAiresCityAdminLevel = 4;
+    private const int DistrictAdminLevel = 5;
+
+    // geo.zona_indicadores.delitos_ambito lists the districts as "Merlo, Ituzaingó".
+    private static List<string> SplitDistricts(string? coverage) =>
+        string.IsNullOrWhiteSpace(coverage)
+            ? []
+            : coverage.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
 
     public async Task<ZoneIndicatorsResponse> ExecuteAsync(
         string slug,
@@ -30,18 +41,31 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
             ? await indicatorsRepository.GetCapitalCityAsync(cancellationToken)
             : null;
 
+        // Province localities are compared against their district (or districts, when they span two). A district
+        // zone is not compared against itself.
+        var districts = zone.HasGeolocatedCrimes || zone.Level <= DistrictAdminLevel
+            ? []
+            : SplitDistricts(zone.CrimeDataCoverage);
+        var districtCrimeRate = districts.Count > 0
+            ? await indicatorsRepository.GetDistrictCrimeRateAsync(districts, cancellationToken)
+            : null;
+
+        int? safetyPercentile = null;
+        if (profilesRepository is not null && zone.CrimesPerThousandResidents is not null)
+        {
+            var zoneUniverse = await profilesRepository.ListAsync(cancellationToken);
+            if (zoneUniverse.Count > 0)
+            {
+                var scoringEngine = new ScoringEngine(zoneUniverse);
+                safetyPercentile = scoringEngine.CalculateSafetyPercentile(zone.CrimesPerThousandResidents, zone.Level <= 5);
+            }
+        }
+
         return new ZoneIndicatorsResponse(
             zone.Slug,
             zone.Name,
             zone.Level,
-            new ZonePopulationResponse(
-                zone.Population,
-                zone.PopulationDensityPerKm2,
-                zone.Households,
-                zone.Dwellings,
-                zone.ResidentsUnder15Percentage,
-                zone.ResidentsAged15To64Percentage,
-                zone.ResidentsAged65PlusPercentage),
+            BuildPopulation(zone, cityReference),
             new ZoneConnectivityResponse(
                 zone.HouseholdsWithInternetPercentage,
                 zone.HouseholdsWithComputerPercentage,
@@ -54,31 +78,163 @@ public sealed class GetZoneIndicators(IZoneIndicatorsRepository indicatorsReposi
                 zone.OvercrowdedHouseholdsPercentage,
                 zone.RentingHouseholdsPercentage,
                 zone.HealthCoveragePercentage,
-                zone.UniversityEducationPercentage),
-            BuildSafety(zone, cityReference),
+                zone.UniversityEducationPercentage,
+                new ZoneInfrastructureConditionsResponse(
+                    zone.HouseholdsWithPipedWaterPercentage,
+                    zone.HouseholdsWithSewerPercentage,
+                    zone.HouseholdsWithGasNetworkPercentage,
+                    zone.HouseholdsWithPipedWater,
+                    zone.HouseholdsWithSewer,
+                    zone.HouseholdsWithGasNetwork),
+                new ZoneHabitabilityConditionsResponse(
+                    zone.HouseholdsWithGoodHousingQualityPercentage,
+                    zone.OvercrowdedHouseholdsPercentage,
+                    zone.RentingHouseholdsPercentage,
+                    zone.HouseholdsWithUnmetBasicNeedsPercentage,
+                    zone.HouseholdsWithGoodHousingQuality,
+                    zone.OvercrowdedHouseholds,
+                    zone.RentingHouseholds,
+                    zone.HouseholdsWithUnmetBasicNeeds),
+                new ZoneSocialConditionsResponse(
+                    zone.HealthCoveragePercentage,
+                    zone.SecondaryEducationPercentage,
+                    zone.UniversityEducationPercentage,
+                    zone.ResidentsWithHealthCoverage,
+                    zone.ResidentsWithSecondaryEducation,
+                    zone.ResidentsWithUniversityEducation)),
+            BuildSafety(zone, cityReference, safetyPercentile, districtCrimeRate),
             BuildSources(zone));
     }
 
-    private static ZoneSafetyResponse? BuildSafety(ZoneIndicators zone, ZoneIndicators? cityReference)
+    private static ZonePopulationResponse BuildPopulation(ZoneIndicators zone, ZoneIndicators? cityReference)
+    {
+        var isComparingCity = cityReference is not null && !IsBuenosAiresCity(zone);
+        var effectiveAverageAge = zone.CalculatedAverageAge;
+        var cityEffectiveAverageAge = cityReference?.CalculatedAverageAge;
+
+        var averageAgeBadge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateAverageAge(effectiveAverageAge, cityEffectiveAverageAge))
+            : null;
+
+        var averageHouseholdSizeBadge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateAverageHouseholdSize(zone.AverageHouseholdSize, cityReference!.AverageHouseholdSize))
+            : null;
+
+        var singlePersonHouseholdsBadge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateSinglePersonHouseholds(zone.SinglePersonHouseholdsPercentage, cityReference!.SinglePersonHouseholdsPercentage))
+            : null;
+
+        var childrenUnder15Badge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateChildrenUnder15(zone.ResidentsUnder15Percentage, cityReference!.ResidentsUnder15Percentage))
+            : null;
+
+        var seniorsOver65Badge = isComparingCity
+            ? ToResponse(ZoneDemographicBenchmark.EvaluateSeniorsOver65(zone.ResidentsAged65PlusPercentage, cityReference!.ResidentsAged65PlusPercentage))
+            : null;
+
+        var ageDistribution = new ZoneAgeDistributionResponse(
+            zone.ResidentsAged0To4Percentage,
+            zone.ResidentsAged5To14Percentage,
+            zone.ResidentsAged15To29Percentage,
+            zone.ResidentsAged30To44Percentage,
+            zone.ResidentsAged45To64Percentage,
+            zone.ResidentsOver65Percentage);
+
+        return new ZonePopulationResponse(
+            zone.Population,
+            zone.Households,
+            zone.Dwellings,
+            effectiveAverageAge,
+            averageAgeBadge,
+            zone.AverageHouseholdSize,
+            averageHouseholdSizeBadge,
+            zone.SinglePersonHouseholdsPercentage,
+            singlePersonHouseholdsBadge,
+            childrenUnder15Badge,
+            seniorsOver65Badge,
+            ageDistribution,
+            zone.PopulationDensityPerKm2,
+            zone.ResidentsUnder15Percentage,
+            zone.ResidentsAged15To64Percentage,
+            zone.ResidentsAged65PlusPercentage);
+    }
+
+    private static DemographicBadgeResponse? ToResponse(DemographicBadge? badge) =>
+        badge is null ? null : new DemographicBadgeResponse(badge.Label, badge.Variant);
+
+    private static ZoneSafetyResponse? BuildSafety(
+        ZoneIndicators zone,
+        ZoneIndicators? cityReference,
+        int? percentile,
+        double? districtCrimeRate)
     {
         if (zone.CrimeCount is not { } crimes || zone.CrimeDataYear is not { } year)
             return null;
 
+        var isCaba = zone.HasGeolocatedCrimes;
+        var cityAverageRate = isCaba
+            ? (cityReference?.CrimesPerThousandResidents ?? ZoneSafetyBenchmark.DefaultCityAverageRate)
+            : (double?)null;
+        // In the province the average shown is the district's; the summary keeps its own wording.
+        var averageRate = isCaba ? cityAverageRate : districtCrimeRate;
+
+        var robberies = zone.Robberies ?? 0;
+        var thefts = zone.Thefts ?? 0;
+        var injuries = zone.Injuries ?? 0;
+        var threats = zone.Threats ?? 0;
+        var homicides = zone.Homicides ?? 0;
+        var roadIncidents = zone.TrafficIncidents ?? 0;
+
+        var evaluation = ZoneSafetyBenchmark.Evaluate(
+            zone.CrimesPerThousandResidents,
+            percentile,
+            isCaba,
+            cityAverageRate,
+            robberies,
+            thefts,
+            injuries,
+            threats,
+            homicides,
+            roadIncidents);
+
+        if (evaluation is null)
+            return null;
+
+        var badgeResponse = new SafetyBadgeResponse(evaluation.Badge.Label, evaluation.Badge.Variant);
+        var breakdownResponse = evaluation.Breakdown
+            .Select(b => new SafetyBreakdownItemResponse(b.Category, b.Count, b.Percentage))
+            .ToList();
+        var roadIncidentsResponse = new SafetyRoadIncidentsResponse(roadIncidents);
+
+        var referenceResponse = isCaba
+            ? (!IsBuenosAiresCity(zone) && cityAverageRate is not null ? new IndicatorReferenceResponse(BuenosAiresCity, cityAverageRate) : null)
+            : (districtCrimeRate is not null ? new IndicatorReferenceResponse(zone.CrimeDataCoverage!, districtCrimeRate) : null);
+
+        var totalCrimes = evaluation.TotalCrimes > 0 ? evaluation.TotalCrimes : crimes;
+
         return new ZoneSafetyResponse(
+            evaluation.Score,
+            evaluation.MaxScore,
+            badgeResponse,
+            evaluation.Summary,
+            evaluation.CrimesPerThousandResidents,
+            averageRate,
+            totalCrimes,
+            evaluation.DominantCategoryText,
+            breakdownResponse,
+            roadIncidentsResponse,
+            evaluation.Percentile,
             year,
             zone.CrimeDataSource ?? ZoneIndicators.CrimeMapSource,
             zone.CrimeDataCoverage,
-            crimes,
+            totalCrimes,
             zone.CrimesPerThousandResidents,
-            zone.Robberies ?? 0,
-            zone.Thefts ?? 0,
-            zone.Injuries ?? 0,
-            zone.Homicides ?? 0,
-            zone.Threats ?? 0,
-            zone.TrafficIncidents ?? 0,
-            cityReference is null || IsBuenosAiresCity(zone)
-                ? null
-                : new IndicatorReferenceResponse(BuenosAiresCity, cityReference.CrimesPerThousandResidents));
+            robberies,
+            thefts,
+            injuries,
+            homicides,
+            threats,
+            referenceResponse);
     }
 
     private static IReadOnlyList<DataSourceResponse> BuildSources(ZoneIndicators zone)

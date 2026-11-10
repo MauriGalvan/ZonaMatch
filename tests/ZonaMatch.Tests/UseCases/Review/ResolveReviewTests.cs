@@ -4,6 +4,7 @@ using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Review;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
+using ZonaMatch.Tests.UseCases.Community;
 using DomainReview = ZonaMatch.Domain.Entities.Review;
 using DomainSavedZone = ZonaMatch.Domain.Entities.SavedZone;
 

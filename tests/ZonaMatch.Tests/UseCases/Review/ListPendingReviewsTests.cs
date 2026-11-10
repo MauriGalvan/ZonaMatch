@@ -1,6 +1,7 @@
 using ZonaMatch.Application.UseCases.Review;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Tests.UseCases.Image;
+using ZonaMatch.Tests.UseCases.Community;
 using DomainReview = ZonaMatch.Domain.Entities.Review;
 
 namespace ZonaMatch.Tests.UseCases.Review

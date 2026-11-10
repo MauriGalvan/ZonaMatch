@@ -7,4 +7,5 @@ public sealed record AnalysisPointsResponse(
     decimal? PurchaseLimitUsd = null,
     string? PropertyType = null,
     int? AreaM2 = null,
-    int? Rooms = null);
+    int? Rooms = null,
+    bool CreditEligible = false);

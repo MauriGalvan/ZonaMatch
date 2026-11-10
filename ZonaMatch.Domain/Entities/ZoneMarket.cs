@@ -59,6 +59,12 @@ namespace ZonaMatch.Domain.Entities
         public decimal[]? PriceShares { get; set; }
         public decimal[]? PriceM2Shares { get; set; }
 
+        // Sales only: listings eligible for a mortgage ("apto crédito") of this type (0 when Zonaprop has none), prices
+        // in dollars and the share (0 to 1) of them priced up to each one. Null without credit data (runs before 2026-11)
+        public int? CreditListings { get; set; }
+        public decimal[]? CreditPrices { get; set; }
+        public decimal[]? CreditShares { get; set; }
+
         // ZoneMarketSource: where the values come from
         public string Source { get; set; } = string.Empty;
 

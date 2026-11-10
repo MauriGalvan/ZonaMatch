@@ -225,6 +225,7 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.HousingType).HasColumnName("tipo_vivienda").HasMaxLength(20);
                 e.Property(x => x.AreaM2).HasColumnName("superficie_m2");
                 e.Property(x => x.Rooms).HasColumnName("ambientes");
+                e.Property(x => x.CreditEligible).HasColumnName("apto_credito").HasDefaultValue(false);
                 e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
                 e.Property(x => x.UpdatedAt).HasColumnName("fecha_actualizacion").HasColumnType("timestamptz");
                 e.Property(x => x.UserId).HasColumnName("usuario_id");
@@ -426,6 +427,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.PriceM2Deciles).HasColumnType("numeric[]");
                 e.Property(x => x.PriceShares).HasColumnType("numeric[]");
                 e.Property(x => x.PriceM2Shares).HasColumnType("numeric[]");
+                e.Property(x => x.CreditPrices).HasColumnType("numeric[]");
+                e.Property(x => x.CreditShares).HasColumnType("numeric[]");
                 e.ToTable("zone_market", t =>
                 {
                     t.HasCheckConstraint("ck_zone_market_operation", "operation IN ('sale', 'rent')");
@@ -462,6 +465,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.PriceM2Deciles).HasColumnType("numeric[]");
                 e.Property(x => x.PriceShares).HasColumnType("numeric[]");
                 e.Property(x => x.PriceM2Shares).HasColumnType("numeric[]");
+                e.Property(x => x.CreditPrices).HasColumnType("numeric[]");
+                e.Property(x => x.CreditShares).HasColumnType("numeric[]");
                 e.ToTable("zone_market_rooms", t =>
                 {
                     t.HasCheckConstraint("ck_zone_market_rooms_operation", "operation IN ('sale', 'rent')");

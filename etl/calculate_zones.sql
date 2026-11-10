@@ -198,6 +198,15 @@ ON CONFLICT (osm_id) DO NOTHING;
 CREATE INDEX ON geo.zonas USING gist (geom);
 CREATE UNIQUE INDEX ON geo.zonas (slug) WHERE elegida;
 
+-- Estimated crimes of each province district as a whole: the average shown next to its localities. Most districts
+-- have no zone of their own in the OSM extract, so the rate is kept here instead of in geo.zona_indicadores.
+DROP TABLE IF EXISTS geo.partido_delitos;
+CREATE TABLE geo.partido_delitos (
+    partido             text PRIMARY KEY,
+    poblacion           integer NOT NULL,
+    delitos_comparables integer
+);
+
 -- ---------------------------------------------------------------------------------------------------
 -- Raw indicator counts by zone. Percentages and rates are calculated by the application so each indicator's rule
 -- remains in the domain layer instead of SQL.
@@ -207,20 +216,37 @@ CREATE TABLE geo.zona_indicadores (
     radios                       integer NOT NULL,
     poblacion                    integer NOT NULL,
     viviendas                    integer NOT NULL,
+    personas_0_4                 integer NOT NULL,
+    personas_5_14                integer NOT NULL,
+    personas_15_29               integer NOT NULL,
+    personas_30_44               integer NOT NULL,
+    personas_45_64               integer NOT NULL,
+    personas_65_mas              integer NOT NULL,
+    edad_promedio                double precision,
     personas_0_14                integer NOT NULL,
     personas_15_64               integer NOT NULL,
-    personas_65_mas              integer NOT NULL,
     personas_con_cobertura_salud integer NOT NULL,
     personas_con_dato_cobertura  integer NOT NULL,
     personas_universitario       integer NOT NULL,
     personas_con_dato_educacion  integer NOT NULL,
     hogares                      integer NOT NULL,
+    hogares_unipersonales        integer NOT NULL,
     hogares_internet             integer NOT NULL,
     hogares_celular_internet     integer NOT NULL,
     hogares_computadora          integer NOT NULL,
     hogares_nbi                  integer NOT NULL,
     hogares_hacinamiento         integer NOT NULL,
     hogares_alquilan             integer NOT NULL,
+    hogares_agua_red             integer NOT NULL DEFAULT 0,
+    hogares_agua_red_pct         double precision,
+    hogares_cloacas              integer NOT NULL DEFAULT 0,
+    hogares_cloacas_pct          double precision,
+    hogares_gas_red              integer NOT NULL DEFAULT 0,
+    hogares_gas_red_pct          double precision,
+    hogares_calidad_buena        integer NOT NULL DEFAULT 0,
+    hogares_calidad_buena_pct    double precision,
+    personas_secundario_completo integer NOT NULL DEFAULT 0,
+    personas_secundario_pct      double precision,
     -- Safety data for delitos_periodo. CABA: Crime Map (delitos_fuente 'mapa-delito'); province: population-weighted
     -- SNIC district totals ('snic'), with source districts recorded in delitos_ambito.
     delitos_anio                 integer,
@@ -253,9 +279,18 @@ WITH census_assignments AS (
 census_counts AS (
     SELECT a.osm_id,
            count(DISTINCT a.cod)::int AS radios,
-           sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '1') AS p_0_14,
-           sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '2') AS p_15_64,
-           sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADGRU' AND i.categoria = '3') AS p_65,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria = '1'), 0)::int AS p_0_4,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('2', '3')), 0)::int AS p_5_14,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('4', '5', '6')), 0)::int AS p_15_29,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('7', '8', '9')), 0)::int AS p_30_44,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('10', '11', '12', '13')), 0)::int AS p_45_64,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria ~ '^[0-9]+$' AND i.categoria::int >= 14), 0)::int AS p_65,
+           round(
+               sum(i.categoria::int * i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDAD' AND i.categoria ~ '^[0-9]+$')::numeric
+               / nullif(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDAD' AND i.categoria ~ '^[0-9]+$'), 0)
+           , 1)::double precision AS edad_promedio,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria IN ('1', '2', '3')), 0)::int AS p_0_14,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_EDADQUI' AND i.categoria ~ '^[0-9]+$' AND i.categoria::int BETWEEN 4 AND 13), 0)::int AS p_15_64,
            -- Employer health plan, private insurance, or PAMI (1), or state health plan (2).
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_P19' AND i.categoria IN ('1', '2')) AS p_cobertura,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_P19') AS p_dato_cobertura,
@@ -263,13 +298,19 @@ census_counts AS (
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_MNI' AND i.categoria IN ('9', '10', '11')) AS p_universitario,
            sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_MNI' AND i.categoria <> '99') AS p_dato_educacion,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24A') AS hogares,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_TIPHOGAR' AND i.categoria = '1'), 0)::int AS h_unipersonales,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24A' AND i.categoria = '1') AS h_internet,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24B' AND i.categoria = '1') AS h_celular,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H24C' AND i.categoria = '1') AS h_computadora,
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_NBI_TOT' AND i.categoria = '1') AS h_nbi,
            -- More than 2 people per room (INDEC: 2.00 to 3.00 and above 3.00).
            sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H20CP' AND i.categoria IN ('5', '6')) AS h_hacinamiento,
-           sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H22' AND i.categoria = '2') AS h_alquilan
+           sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H22' AND i.categoria = '2') AS h_alquilan,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H14' AND i.categoria = '1'), 0)::int AS h_agua_red,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H18' AND i.categoria = '1'), 0)::int AS h_cloacas,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_H19' AND i.categoria = '2'), 0)::int AS h_gas_red,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'HOGAR_INMAT' AND i.categoria = '1'), 0)::int AS h_calidad_buena,
+           coalesce(sum(i.conteo) FILTER (WHERE i.variable = 'PERSONA_MNI' AND i.categoria ~ '^[0-9]+$' AND i.categoria::int BETWEEN 5 AND 11), 0)::int AS p_secundario
     FROM census_assignments a
     JOIN geo.censo_indicadores i USING (cod)
     GROUP BY a.osm_id
@@ -402,15 +443,54 @@ crime_totals AS (
                       ELSE d.estimados END)::int AS comparables
     FROM base_crime_totals d
     LEFT JOIN homicide_scale e USING (fuente)
+),
+-- Each province district with the same estimate as a zone covering it whole. etl/crime/spread_crimes.sql keeps
+-- district totals, so this rate is the average of the district's localities.
+district_crimes AS (
+    SELECT s.department_name,
+           sum(s.hechos * coalesce(c.factor, 1)) FILTER (WHERE s.crime_group NOT IN ('road', 'homicides_5y')) AS estimados,
+           sum(s.hechos) FILTER (WHERE s.crime_group = 'homicides_5y') AS homicidios_5a
+    FROM snic_tract_rates s
+    LEFT JOIN reporting_adjustments c USING (crime_group)
+    WHERE NOT s.en_caba
+    GROUP BY s.department_name
+),
+district_population AS (
+    SELECT department_name, sum(poblacion) AS poblacion
+    FROM (SELECT DISTINCT cod, department_name, poblacion FROM snic_tract_rates WHERE NOT en_caba) t
+    GROUP BY department_name
+),
+saved_district_crimes AS (
+    INSERT INTO geo.partido_delitos (partido, poblacion, delitos_comparables)
+    SELECT d.department_name, p.poblacion,
+           round(CASE WHEN d.homicidios_5a > 0 AND e.factor IS NOT NULL
+                      THEN sqrt(round(d.estimados) * d.homicidios_5a * e.factor)
+                      ELSE d.estimados END)::int
+    FROM district_crimes d
+    JOIN district_population p USING (department_name)
+    LEFT JOIN homicide_scale e ON e.fuente = 'snic'
 )
 INSERT INTO geo.zona_indicadores
 SELECT t.osm_id, c.radios, t.poblacion, t.viviendas,
-       coalesce(c.p_0_14, 0), coalesce(c.p_15_64, 0), coalesce(c.p_65, 0),
+       coalesce(c.p_0_4, 0), coalesce(c.p_5_14, 0), coalesce(c.p_15_29, 0),
+       coalesce(c.p_30_44, 0), coalesce(c.p_45_64, 0), coalesce(c.p_65, 0),
+       c.edad_promedio,
+       coalesce(c.p_0_14, 0), coalesce(c.p_15_64, 0),
        coalesce(c.p_cobertura, 0), coalesce(c.p_dato_cobertura, 0),
        coalesce(c.p_universitario, 0), coalesce(c.p_dato_educacion, 0),
-       coalesce(c.hogares, 0), coalesce(c.h_internet, 0), coalesce(c.h_celular, 0),
+       coalesce(c.hogares, 0), coalesce(c.h_unipersonales, 0), coalesce(c.h_internet, 0), coalesce(c.h_celular, 0),
        coalesce(c.h_computadora, 0), coalesce(c.h_nbi, 0), coalesce(c.h_hacinamiento, 0),
        coalesce(c.h_alquilan, 0),
+       coalesce(c.h_agua_red, 0),
+       round(100.0 * coalesce(c.h_agua_red, 0) / nullif(c.hogares, 0), 1)::double precision,
+       coalesce(c.h_cloacas, 0),
+       round(100.0 * coalesce(c.h_cloacas, 0) / nullif(c.hogares, 0), 1)::double precision,
+       coalesce(c.h_gas_red, 0),
+       round(100.0 * coalesce(c.h_gas_red, 0) / nullif(c.hogares, 0), 1)::double precision,
+       coalesce(c.h_calidad_buena, 0),
+       round(100.0 * coalesce(c.h_calidad_buena, 0) / nullif(c.hogares, 0), 1)::double precision,
+       coalesce(c.p_secundario, 0),
+       round(100.0 * coalesce(c.p_secundario, 0) / nullif(c.p_dato_educacion, 0), 1)::double precision,
        -- In CABA, a zone with no recorded crimes has 0; without SNIC data, the value is null.
        d.total, d.robos, d.hurtos, d.lesiones, d.homicidios, d.amenazas, d.viales,
        -- Per-resident rates are not meaningful for places with very few residents (clubs, small gated communities);

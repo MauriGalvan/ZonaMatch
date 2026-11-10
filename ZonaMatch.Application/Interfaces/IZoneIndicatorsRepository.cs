@@ -11,5 +11,9 @@ namespace ZonaMatch.Application.Interfaces
 
         // CABA as a whole, for comparison with neighborhoods and communes.
         Task<ZoneIndicators?> GetCapitalCityAsync(CancellationToken cancellationToken = default);
+
+        // Comparable crimes per 1,000 residents of the given province districts together (geo.partido_delitos),
+        // the average shown next to their localities. Null when the districts are unknown or the table is missing.
+        Task<double?> GetDistrictCrimeRateAsync(IReadOnlyCollection<string> districts, CancellationToken cancellationToken = default);
     }
 }
