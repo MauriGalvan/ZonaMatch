@@ -33,7 +33,7 @@ namespace ZonaMatch.Infrastructure.Geo
             catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested))
             {
                 // Nominatim is down or not started: a typed 503 instead of a generic 500
-                throw new ServiceUnavailableException("The place search service is not available.", ex);
+                throw new ServiceUnavailableException("El servicio de búsqueda de lugares no está disponible.", ex);
             }
 
             using var _ = response;

@@ -58,11 +58,18 @@ if errorlevel 1 goto :err_download
 :transit
 if exist "datos\transporte_salidas.csv" (
     echo Transit data already processed. Delete datos\transporte_salidas.csv to refresh it.
-    goto :load
+    goto :transit_routes
 )
 echo Summarizing bus, train, and subway GTFS feeds (about 210 MB downloaded on the first run)...
 python etl\process_gtfs.py
 if errorlevel 1 goto :err_download
+
+:transit_routes
+rem Route shapes for the map layer; older runs only produced the departures summary.
+if not exist "datos\transporte_recorridos.csv" (
+    python etl\process_gtfs.py --routes-only
+    if errorlevel 1 goto :err_download
+)
 
 :load
 echo.
@@ -79,12 +86,16 @@ if errorlevel 1 goto :err_load
 if errorlevel 1 goto :err_load
 %PSQL% -c "\copy geo.carga_transporte_salidas FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\transporte_salidas.csv
 if errorlevel 1 goto :err_load
+%PSQL% -c "\copy geo.carga_transporte_recorridos FROM STDIN WITH (FORMAT csv, HEADER true)" < datos\transporte_recorridos.csv
+if errorlevel 1 goto :err_load
 
 echo.
 echo [4/5] Calculating zone indicators (takes about one minute)...
 %PSQL% < etl\calculate_zones.sql
 if errorlevel 1 goto :err_calc
 %PSQL% < etl\calculate_transit.sql
+if errorlevel 1 goto :err_calc
+%PSQL% < etl\calculate_transit_routes.sql
 if errorlevel 1 goto :err_calc
 rem Province crime data is distributed across each district's localities using a model fitted on CABA data.
 python -c "import numpy" >nul 2>&1
@@ -104,6 +115,16 @@ if errorlevel 1 goto :err_calc
 rem Estimated rents for zones without Zonaprop data (ZONE-MARKET-DOCKER.bat).
 %PSQL% < etl\estimate_rents.sql
 if errorlevel 1 goto :err_calc
+rem sitemap.xml with every zone page, copied to the SPA when it sits next to the backend (or in FRONT_DIR).
+%PSQL% -At < etl\export_sitemap.sql > datos\sitemap.xml
+if errorlevel 1 goto :err_calc
+if not defined FRONT_DIR set FRONT_DIR=..\..\frontend\ZonaMatchSPA
+if exist "%FRONT_DIR%\public" (
+    copy /Y datos\sitemap.xml "%FRONT_DIR%\public\sitemap.xml" > nul
+    echo Sitemap copied to %FRONT_DIR%\public\sitemap.xml
+) else (
+    echo SPA not found at %FRONT_DIR%: copy datos\sitemap.xml to its public folder by hand.
+)
 
 echo.
 echo [5/5] Preparing the MOTIS routing engine...

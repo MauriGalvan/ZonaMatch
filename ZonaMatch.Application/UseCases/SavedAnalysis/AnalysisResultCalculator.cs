@@ -86,13 +86,14 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                 HousingType = context.HousingType,
                 AreaM2 = context.AreaM2,
                 Rooms = context.Rooms,
+                CreditEligible = context.CreditEligible,
                 Mobility = (context.Mobility ?? []).ToList(),
             };
 
             ScoresResponse result;
             try
             {
-                result = await scoring.ExecuteAsync(request, cancellationToken);
+                result = await scoring.CalculateAsync(request, cancellationToken);
             }
             catch (Exception ex) when (ex is NotFoundException or BadRequestException)
             {

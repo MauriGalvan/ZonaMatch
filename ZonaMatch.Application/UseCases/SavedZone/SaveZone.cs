@@ -25,11 +25,11 @@ namespace ZonaMatch.Application.UseCases.SavedZone
             string zoneSlug, AuthenticatedUserContext user, SaveZoneRequest request, CancellationToken cancellationToken = default)
         {
             if (!await _zones.ExistsAsync(zoneSlug, cancellationToken))
-                throw new NotFoundException("Zone not found.");
+                throw new NotFoundException("No se encontró la zona.");
 
             var name = request.Name.Trim();
             if (string.IsNullOrWhiteSpace(name))
-                throw new BadRequestException("Zone name is required.");
+                throw new BadRequestException("El nombre de la zona es obligatorio.");
 
             var savedZone = await _savedZones.GetAsync(user.Id, zoneSlug, cancellationToken);
             if (savedZone is null)

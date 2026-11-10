@@ -8,12 +8,35 @@ namespace ZonaMatch.Tests.UseCases.Group;
 public class GroupHousingSuggestionTests
 {
     private static Context Profile(
-        string operation, string? monthly, decimal? purchase = null, string? type = null, int? surface = null, int? rooms = null) =>
+        string operation, string? monthly, decimal? purchase = null, string? type = null, int? surface = null, int? rooms = null,
+        bool credit = false) =>
         new()
         {
             Operation = operation, MaximumRent = monthly, MaximumPurchasePriceUsd = purchase, HousingType = type, AreaM2 = surface,
-            Rooms = rooms,
+            Rooms = rooms, CreditEligible = credit,
         };
+
+    [Fact]
+    public void From_WhenTheGroupBuysAndAMemberNeedsAMortgage_SuggestsCreditEligible()
+    {
+        var suggestion = GroupHousingSuggestion.From([
+            Profile(HousingOperations.Purchase, "100000", purchase: 90_000, credit: true),
+            Profile(HousingOperations.Purchase, "80000", purchase: 60_000),
+        ]);
+
+        suggestion.CreditEligible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void From_WhenTheGroupRents_DoesNotSuggestCreditEligible()
+    {
+        var suggestion = GroupHousingSuggestion.From([
+            Profile(HousingOperations.Purchase, "100000", purchase: 90_000, credit: true),
+            Profile(HousingOperations.Rent, "400000"),
+        ]);
+
+        suggestion.CreditEligible.Should().BeFalse();
+    }
 
     [Fact]
     public void From_WhenMembersAskForRooms_SuggestsTheLargestNumber()

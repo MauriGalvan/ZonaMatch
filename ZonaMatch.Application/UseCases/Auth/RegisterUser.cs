@@ -22,7 +22,7 @@ public sealed class RegisterUser(
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
         if (await users.EmailExistsAsync(normalizedEmail, cancellationToken))
-            throw new ConflictException("El email ya esta registrado.");
+            throw new ConflictException("El email ya está registrado.");
 
         var user = new User
         {

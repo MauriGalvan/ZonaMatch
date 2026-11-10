@@ -18,9 +18,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] GetNotifications useCase,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             return Ok(await useCase.ExecuteAsync(userId, cancellationToken));
         }
 
@@ -33,9 +31,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] MarkNotificationAsRead useCase,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             await useCase.ExecuteAsync(id, userId, cancellationToken);
             return NoContent();
         }
@@ -47,9 +43,7 @@ namespace ZonaMatch.Api.Controllers
             [FromServices] MarkAllNotificationsAsRead useCase,
             CancellationToken cancellationToken)
         {
-            if (User.GetAuthenticatedUserId() is not { } userId)
-                return Unauthorized();
-
+            var userId = User.RequireUserId();
             await useCase.ExecuteAsync(userId, cancellationToken);
             return NoContent();
         }

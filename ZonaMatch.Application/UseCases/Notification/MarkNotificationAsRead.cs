@@ -17,7 +17,7 @@ namespace ZonaMatch.Application.UseCases.Notification
         public async Task ExecuteAsync(Guid notificationId, Guid userId, CancellationToken cancellationToken = default)
         {
             var notification = await _notifications.GetAsync(notificationId, userId, cancellationToken)
-                ?? throw new NotFoundException("Notification not found.");
+                ?? throw new NotFoundException("No se encontró la notificación.");
 
             notification.ReadAt ??= _timeProvider.GetUtcNow();
             await _notifications.SaveChangesAsync(cancellationToken);

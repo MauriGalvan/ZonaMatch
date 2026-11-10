@@ -25,9 +25,17 @@ AMBA_BOUNDS = {"xmin": -59.20, "xmax": -57.90, "ymin": -35.20, "ymax": -34.20}
 
 # Census variables used by zone details (see etl/create_geographic_tables.sql).
 CENSUS_VARIABLES = [
-    "PERSONA_EDADGRU",  # Age groups.
-    "PERSONA_P19",      # Health coverage.
+    "PERSONA_EDADGRU",   # Age groups.
+    "PERSONA_EDADQUI",   # Quinquennial age groups.
+    "PERSONA_EDAD",      # Exact age.
+    "HOGAR_TIPHOGAR",    # Household type (1 = Hogar unipersonal).
+    "HOGAR_TOTPOBH",     # Persons per household (1 = 1 person).
+    "PERSONA_P19",       # Health coverage.
     "PERSONA_MNI",      # Highest education level.
+    "HOGAR_H14",        # Piped water from public network.
+    "HOGAR_H18",        # Public sewer network connection.
+    "HOGAR_H19",        # Public gas network for cooking.
+    "HOGAR_INMAT",      # Housing material quality index (1 = Good / Calidad I).
     "HOGAR_H24A",       # Internet access at home.
     "HOGAR_H24B",       # Mobile phone with internet access.
     "HOGAR_H24C",       # Computer or tablet.
@@ -50,17 +58,21 @@ def download_census(connection: duckdb.DuckDBPyConnection) -> None:
     census_tracts_file = DATA_DIR / "censo_radios_amba.csv"
     indicators_file = DATA_DIR / "censo_indicadores_amba.csv"
 
-    print("Census 2022: AMBA tracts with population and geometry...")
-    connection.sql(f"""
-        CREATE OR REPLACE TABLE census_tracts AS
-        SELECT COD_2022 AS cod, PROV AS prov, DEPTO AS depto, FRACC AS fracc, RADIO AS radio,
-               POB_TOT_P AS poblacion, VIV_TOT_P AS viviendas, ST_AsText(geometry) AS wkt
-        FROM '{CENSUS_BASE_URL}radios-2022.parquet'
-        WHERE PROV IN ('02', '06')
-          AND bbox.xmin > {AMBA_BOUNDS['xmin']} AND bbox.xmax < {AMBA_BOUNDS['xmax']}
-          AND bbox.ymin > {AMBA_BOUNDS['ymin']} AND bbox.ymax < {AMBA_BOUNDS['ymax']}
-    """)
-    connection.sql(f"COPY census_tracts TO '{census_tracts_file.as_posix()}' (HEADER)")
+    if census_tracts_file.exists():
+        print("Census 2022: Using existing AMBA tracts CSV...")
+        connection.sql(f"CREATE OR REPLACE TABLE census_tracts AS SELECT * FROM '{census_tracts_file.as_posix()}'")
+    else:
+        print("Census 2022: AMBA tracts with population and geometry...")
+        connection.sql(f"""
+            CREATE OR REPLACE TABLE census_tracts AS
+            SELECT COD_2022 AS cod, PROV AS prov, DEPTO AS depto, FRACC AS fracc, RADIO AS radio,
+                   POB_TOT_P AS poblacion, VIV_TOT_P AS viviendas, ST_AsText(geometry) AS wkt
+            FROM '{CENSUS_BASE_URL}radios-2022.parquet'
+            WHERE PROV IN ('02', '06')
+              AND bbox.xmin > {AMBA_BOUNDS['xmin']} AND bbox.xmax < {AMBA_BOUNDS['xmax']}
+              AND bbox.ymin > {AMBA_BOUNDS['ymin']} AND bbox.ymax < {AMBA_BOUNDS['ymax']}
+        """)
+        connection.sql(f"COPY census_tracts TO '{census_tracts_file.as_posix()}' (HEADER)")
 
     print("Census 2022: indicators for those tracts...")
     variable_list = ", ".join(f"'{variable}'" for variable in CENSUS_VARIABLES)

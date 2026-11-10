@@ -41,7 +41,7 @@ public sealed class SendContactMessage(IEmailService emailService, ContactOption
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            throw new ServiceUnavailableException("No pudimos enviar el formulario en este momento. Intenta de nuevo en unos minutos.", exception);
+            throw new ServiceUnavailableException("No pudimos enviar el formulario en este momento. Intentá de nuevo en unos minutos.", exception);
         }
     }
 

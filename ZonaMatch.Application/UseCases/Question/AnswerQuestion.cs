@@ -39,7 +39,7 @@ namespace ZonaMatch.Application.UseCases.Question
             string zoneSlug, Guid questionId, AuthenticatedUserContext currentUser, CreateAnswerRequest request, CancellationToken cancellationToken = default)
         {
             var question = await _questions.GetByIdAsync(zoneSlug, questionId, cancellationToken)
-                ?? throw new NotFoundException("Question not found.");
+                ?? throw new NotFoundException("No se encontró la pregunta.");
 
             var answer = new Answer
             {

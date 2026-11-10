@@ -22,6 +22,7 @@ public class CreateInvitation
     private readonly IEmailService _emailService;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<CreateInvitation> _logger;
+    private readonly FrontendLinks _links;
 
     public CreateInvitation(
         IGroupRepository groupRepository,
@@ -30,7 +31,8 @@ public class CreateInvitation
         INotificationRepository notifications,
         IEmailService emailService,
         TimeProvider timeProvider,
-        ILogger<CreateInvitation> logger)
+        ILogger<CreateInvitation> logger,
+        FrontendLinks links)
     {
         _groupRepository = groupRepository;
         _invitationRepository = invitationRepository;
@@ -39,14 +41,14 @@ public class CreateInvitation
         _emailService = emailService;
         _timeProvider = timeProvider;
         _logger = logger;
+        _links = links;
     }
 
     // currentUserId is read from the JWT by the controller.
     public async Task ExecuteAsync(
         CreateInvitationRequest request,
         Guid currentUserId,
-        CancellationToken cancellationToken,
-        string? frontendBaseUrl = null)
+        CancellationToken cancellationToken)
     {
         // 1. Find the group and ensure it exists.
         var group = await _groupRepository.GetByIdAsync(request.GroupId, cancellationToken);
@@ -64,22 +66,41 @@ public class CreateInvitation
 
         if (group.Participants.Count >= DomainGroup.MaximumParticipants)
         {
-            throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
+            throw new ConflictException($"El grupo ya alcanzó el máximo de {DomainGroup.MaximumParticipants} participantes.");
         }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var invitedUser = await _userRepository.GetByEmailAsync(email, cancellationToken);
+
+        // The owner is already in the group.
+        if (invitedUser?.Id == currentUserId)
+            throw new BadRequestException("No podés invitarte a vos mismo.");
+
+        // Inviting a member again would only send a useless email.
+        if (invitedUser is not null && group.Participants.Any(p => p.UserId == invitedUser.Id))
+            throw new ConflictException("Esa persona ya está en el grupo.");
+
+        var pending = await _invitationRepository.ListPendingAsync(group.Id, now, cancellationToken);
+        if (pending.Any(p => string.Equals(p.Email, email, StringComparison.OrdinalIgnoreCase)))
+            throw new ConflictException("Ya hay una invitación pendiente para ese email.");
+
+        // Pending invitations cannot outnumber the free places, or some of them could never be accepted.
+        if (group.Participants.Count + pending.Count >= DomainGroup.MaximumParticipants)
+            throw new ConflictException("Ya hay invitaciones pendientes para todos los lugares libres del grupo.");
 
         // 3. Create the invitation with a random token.
         var invitation = new DomainGroupInvitation
         {
             GroupId = request.GroupId,
-            Email = request.Email,
+            Email = email,
             Token = Guid.NewGuid(), // This UUIDv4 is included in the invitation link.
             Status = InvitationStatus.Pending,
-            ExpiresAt = DateTime.UtcNow.AddDays(7) // Invitations are valid for seven days.
+            CreatedAt = now,
+            ExpiresAt = now.AddDays(7) // Invitations are valid for seven days.
         };
 
-        var invitedUser = await _userRepository.GetByEmailAsync(
-            request.Email.Trim().ToLowerInvariant(), cancellationToken);
-        if (invitedUser is not null && invitedUser.Id != currentUserId)
+        if (invitedUser is not null)
         {
             _notifications.AddRange([
                 new UserNotification
@@ -98,12 +119,9 @@ public class CreateInvitation
         await _invitationRepository.AddAsync(invitation, cancellationToken);
 
         // 5. Send the invitation email.
-        var frontendUrl = string.IsNullOrWhiteSpace(frontendBaseUrl)
-            ? "http://localhost:5173"
-            : frontendBaseUrl.TrimEnd('/');
-        string inviteLink = $"{frontendUrl}/invitations/email/{invitation.Token}";
+        string inviteLink = _links.To($"/invitations/email/{invitation.Token}");
         string subject = $"Te invitaron al grupo {group.Name} en ZonaMatch";
-        var days = Math.Max(1, (int)Math.Ceiling((invitation.ExpiresAt - DateTime.UtcNow).TotalDays));
+        var days = Math.Max(1, (int)Math.Ceiling((invitation.ExpiresAt - now).TotalDays));
         // The group name is typed by a user: it is encoded so it cannot inject HTML
         string body = BrandEmail.Render(new BrandEmailContent(
             Preheader: $"Sumate al grupo {group.Name} para buscar zona juntos.",

@@ -1,30 +1,32 @@
-using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
+using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.GuestReport;
 
-// Reports emailed to each address today (Argentina time). Kept in memory: a restart resets it,
-// which is fine for a limit meant to stop someone from flooding an inbox.
-public sealed class GuestReportQuota(TimeProvider clock)
+// Reports emailed to each address today (Argentina time). Stored in the database, so the limit survives a restart
+// and is shared by every API instance. Only a hash of the address is kept.
+public sealed class GuestReportQuota(IGuestReportSendRepository sends, TimeProvider clock)
 {
     private static readonly TimeSpan ArgentinaOffset = TimeSpan.FromHours(-3);
 
-    private readonly ConcurrentDictionary<string, (DateOnly Day, int Count)> _sent = new();
+    public Task<int> SentTodayAsync(string recipient, CancellationToken cancellationToken = default) =>
+        sends.CountSinceAsync(Hash(recipient), StartOfToday(), cancellationToken);
 
-    public int SentToday(string recipient) =>
-        _sent.TryGetValue(Key(recipient), out var entry) && entry.Day == Today() ? entry.Count : 0;
+    public Task RegisterAsync(string recipient, CancellationToken cancellationToken = default) =>
+        sends.AddAsync(
+            new GuestReportSend { RecipientHash = Hash(recipient), SentAt = clock.GetUtcNow() },
+            deleteBefore: StartOfToday(),
+            cancellationToken);
 
-    public void Register(string recipient)
+    private static string Hash(string recipient) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(recipient.Trim().ToLowerInvariant())));
+
+    // Midnight in Argentina, as an instant
+    private DateTimeOffset StartOfToday()
     {
-        var today = Today();
-        _sent.AddOrUpdate(Key(recipient), (today, 1), (_, entry) => entry.Day == today ? (today, entry.Count + 1) : (today, 1));
-
-        // Addresses from previous days no longer count
-        foreach (var (key, entry) in _sent)
-            if (entry.Day != today)
-                _sent.TryRemove(key, out _);
+        var local = clock.GetUtcNow().ToOffset(ArgentinaOffset);
+        return new DateTimeOffset(local.Date, ArgentinaOffset);
     }
-
-    private static string Key(string recipient) => recipient.Trim().ToLowerInvariant();
-
-    private DateOnly Today() => DateOnly.FromDateTime(clock.GetUtcNow().ToOffset(ArgentinaOffset).DateTime);
 }

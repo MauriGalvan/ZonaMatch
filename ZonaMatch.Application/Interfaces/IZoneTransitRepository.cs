@@ -10,5 +10,8 @@ namespace ZonaMatch.Application.Interfaces
         Task<IReadOnlyList<ZoneTransitModeStops>> ListStopsAsync(string slug, CancellationToken cancellationToken = default);
 
         Task<IReadOnlyList<TransitLineDepartures>> ListDeparturesAsync(string slug, CancellationToken cancellationToken = default);
+
+        // Line paths clipped to the zone (etl/calculate_transit_routes.sql), one per mode and line.
+        Task<IReadOnlyList<TransitRouteGeometry>> ListRoutesAsync(string slug, CancellationToken cancellationToken = default);
     }
 }

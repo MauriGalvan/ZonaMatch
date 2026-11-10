@@ -3,6 +3,7 @@ using ZonaMatch.Application.DTOs.Scoring.Requests;
 using ZonaMatch.Application.DTOs.Scoring.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Services;
 using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Application.UseCases.Scoring
@@ -17,8 +18,13 @@ namespace ZonaMatch.Application.UseCases.Scoring
 
         public const int RecommendationsReturned = 4;
 
+        // When no zone around the user's places reaches this score, the ranking also looks at the rest of the catalog.
+        public const int MinimumExpectedScore = 30;
+
+        // Zones from the rest of the catalog whose trips are measured: the best ones by estimated trip times.
+        public const int ExpandedSearchZones = 10;
+
         // Number of routing requests sent concurrently.
-        private const int ConcurrentTrips = 6;
 
         private readonly IZoneProfilesRepository _zoneProfiles;
         private readonly IRoutingClient _routing;
@@ -31,7 +37,21 @@ namespace ZonaMatch.Application.UseCases.Scoring
             _zones = zones;
         }
 
-        public async Task<ScoresResponse> ExecuteAsync(CalculateScoresRequest request, CancellationToken cancellationToken = default)
+        // A ranking requested by a person: guests score fewer places, and every limit is required.
+        public Task<ScoresResponse> ExecuteAsync(CalculateScoresRequest request, bool isGuest, CancellationToken cancellationToken = default)
+        {
+            // Reject more places than a guest can score.
+            if (isGuest && request.Places.Count > ScoringPlaceLimits.Guest)
+                throw new BadRequestException(ScoringPlaceLimits.GuestMessage);
+
+            MandatoryScoringLimits.Validate(
+                request.MaximumRent, request.Operation, request.MaximumPurchasePriceUsd, request.Places.Select(place => place.MaximumTravelTime));
+
+            return CalculateAsync(request, cancellationToken);
+        }
+
+        // Only calculates. Saved analyses recalculate through here, so older ones saved without limits still work.
+        public async Task<ScoresResponse> CalculateAsync(CalculateScoresRequest request, CancellationToken cancellationToken = default)
         {
             var zoneUniverse = await _zoneProfiles.ListAsync(cancellationToken);
             var zonesBySlug = zoneUniverse.ToDictionary(zone => zone.Slug);
@@ -70,13 +90,32 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 .ToArray();
 
             var origins = await ResolveOriginsAsync(request.ZoneOrigins, zonesBySlug, cancellationToken);
-            var travelTimes = await MeasureTripsAsync(candidateZones, scoringRequest.Places, travelMode, origins, cancellationToken);
+            using var routeLimit = new SemaphoreSlim(ZoneTripTimes.ConcurrentTrips);
+            var travelTimes = await ZoneTripTimes.MeasureAsync(
+                _routing, candidateZones, scoringRequest.Places, travelMode, routeLimit, cancellationToken, origins,
+                TravelModes.HasBicycle(request.Mobility));
             var ranking = candidateZones
                 .Select(zone => scoringEngine.Calculate(zone, scoringRequest, travelTimes[zone.Slug]))
                 .OrderByDescending(result => result.Score.HasValue)
                 .ThenByDescending(result => result.Score)
                 .ThenBy(result => result.Zone.Name, StringComparer.CurrentCulture)
                 .ToArray();
+
+            var searchExpanded = false;
+            if (!(ranking.Max(result => result.Score) >= MinimumExpectedScore))
+            {
+                var expandedResults = await ScoreRestOfCatalogAsync(
+                    zoneUniverse, candidateZones, surroundingZones, scoringEngine, scoringRequest, travelMode,
+                    TravelModes.HasBicycle(request.Mobility), routeLimit, cancellationToken);
+                var bestInitialScore = ranking.Max(result => result.Score) ?? double.MinValue;
+                searchExpanded = expandedResults.Any(result => result.Score > bestInitialScore);
+                ranking = ranking
+                    .Concat(expandedResults)
+                    .OrderByDescending(result => result.Score.HasValue)
+                    .ThenByDescending(result => result.Score)
+                    .ThenBy(result => result.Zone.Name, StringComparer.CurrentCulture)
+                    .ToArray();
+            }
 
             var top = ranking.Take(AutomaticTopZones).ToList();
             if (initialZone is not null && top.All(result => result.Zone.Slug != initialZone.Slug))
@@ -107,8 +146,55 @@ namespace ZonaMatch.Application.UseCases.Scoring
             return new ScoresResponse(
                 TravelModes.ToCode(travelMode),
                 includedZones.Select(result => ToResponse(result, scoringRequest)).ToArray(),
-                recommendations.Select(result => ToResponse(result, scoringRequest)).ToArray());
+                recommendations.Select(result => ToResponse(result, scoringRequest)).ToArray(),
+                searchExpanded);
         }
+
+        // Scores the zones outside the initial search. Routing every zone would take too long, so they are first
+        // ranked with estimated trip times and only the best ExpandedSearchZones are measured.
+        // Only zones of the same administrative level as the surrounding ones are compared, as the surrounding search
+        // does: neighborhoods with neighborhoods, never a neighborhood with the comuna or partido that contains it.
+        private async Task<ZoneScoreResult[]> ScoreRestOfCatalogAsync(
+            IReadOnlyList<ZoneProfile> zoneUniverse, IReadOnlyCollection<ZoneProfile> candidateZones,
+            IReadOnlyCollection<ZoneProfile> surroundingZones, ScoringEngine scoringEngine,
+            ScoringRequest scoringRequest, TravelMode travelMode, bool withBicycle, SemaphoreSlim routeLimit,
+            CancellationToken cancellationToken)
+        {
+            var candidateSlugs = candidateZones.Select(zone => zone.Slug).ToHashSet(StringComparer.Ordinal);
+            var comparableLevels = surroundingZones.Select(zone => zone.Level).ToHashSet();
+            var bestByEstimate = zoneUniverse
+                .Where(zone => !candidateSlugs.Contains(zone.Slug) && comparableLevels.Contains(zone.Level))
+                .Select(zone => scoringEngine.Calculate(zone, scoringRequest, EstimateTrips(zone, scoringRequest.Places, travelMode)))
+                .Where(result => result.Score.HasValue && ReachesEveryPlace(result))
+                .OrderByDescending(result => result.Score)
+                .Take(ExpandedSearchZones)
+                .Select(result => result.Zone)
+                .ToArray();
+            if (bestByEstimate.Length == 0)
+                return [];
+
+            // Measured like the surrounding zones, by bike too for a household with a bike
+            var travelTimes = await ZoneTripTimes.MeasureAsync(
+                _routing, bestByEstimate, scoringRequest.Places, travelMode, routeLimit, cancellationToken, withBicycle: withBicycle);
+            return bestByEstimate
+                .Select(zone => scoringEngine.Calculate(zone, scoringRequest, travelTimes[zone.Slug]))
+                .Where(ReachesEveryPlace)
+                .ToArray();
+        }
+
+        // A far zone is only worth suggesting when every trip was measured and fits the place's maximum time: an
+        // unknown trip does not lower the score, so a zone with no route would otherwise rank first.
+        private static bool ReachesEveryPlace(ZoneScoreResult result) =>
+            result.Places.All(place => place.Minutes is { } minutes && minutes <= place.MaximumMinutes);
+
+        private static TravelTime?[] EstimateTrips(ZoneProfile zone, IReadOnlyList<UserPlace> places, TravelMode travelMode) =>
+            places
+                .Select(place => place.HasLocation
+                    ? TravelModes.Estimate(
+                        TravelModes.ForDistance(travelMode, zone.Latitude, zone.Longitude, place.Latitude!.Value, place.Longitude!.Value),
+                        zone.Latitude, zone.Longitude, place.Latitude!.Value, place.Longitude!.Value)
+                    : (TravelTime?)null)
+                .ToArray();
 
         private static ZoneProfile[] ResolveAddedZones(
             IReadOnlyCollection<string>? requestedSlugs,
@@ -151,42 +237,6 @@ namespace ZonaMatch.Application.UseCases.Scoring
 
         // One trip per zone and located place, starting at the zone center or at the point the user chose in it.
         // Estimate the time if routing is unavailable.
-        private async Task<Dictionary<string, IReadOnlyList<TravelTime?>>> MeasureTripsAsync(
-            IReadOnlyList<ZoneProfile> zones, IReadOnlyList<UserPlace> places, TravelMode travelMode,
-            IReadOnlyDictionary<string, (double Latitude, double Longitude)> origins,
-            CancellationToken cancellationToken)
-        {
-            using var concurrencyLimit = new SemaphoreSlim(ConcurrentTrips);
-
-            async Task<TravelTime?> MeasureAsync(ZoneProfile zone, UserPlace place)
-            {
-                if (!place.HasLocation)
-                    return null;
-
-                var (latitude, longitude) = origins.TryGetValue(zone.Slug, out var origin) ? origin : (zone.Latitude, zone.Longitude);
-
-                await concurrencyLimit.WaitAsync(cancellationToken);
-                try
-                {
-                    // Five blocks or less are walked (TravelModes.WalkingDistanceThresholdKm)
-                    var routeMode = TravelModes.ForDistance(travelMode, latitude, longitude, place.Latitude!.Value, place.Longitude!.Value);
-                    return await _routing.GetTravelTimeAsync(latitude, longitude, place.Latitude!.Value, place.Longitude!.Value, routeMode, cancellationToken)
-                           ?? TravelModes.Estimate(routeMode, latitude, longitude, place.Latitude!.Value, place.Longitude!.Value);
-                }
-                finally
-                {
-                    concurrencyLimit.Release();
-                }
-            }
-
-            var byZone = zones
-                .DistinctBy(z => z.Slug)
-                .Select(async zone => (zone.Slug, Times: await Task.WhenAll(places.Select(place => MeasureAsync(zone, place)))))
-                .ToList();
-
-            var results = await Task.WhenAll(byZone);
-            return results.ToDictionary(result => result.Slug, result => (IReadOnlyList<TravelTime?>)result.Times);
-        }
 
         private static ScoringRequest BuildRequest(CalculateScoresRequest request)
         {
@@ -203,7 +253,8 @@ namespace ZonaMatch.Application.UseCases.Scoring
 
             return new ScoringRequest(
                 criteria, places, ParseRent(request.MaximumRent), operation, maximumPurchase, housingType,
-                HousingScoring.ValidateSurface(request.AreaM2), HousingScoring.ValidateRooms(request.Rooms));
+                HousingScoring.ValidateSurface(request.AreaM2), HousingScoring.ValidateRooms(request.Rooms),
+                CreditEligible: operation == HousingOperations.Purchase && request.CreditEligible == true);
         }
 
         // "45 min" -> 45.
@@ -230,7 +281,7 @@ namespace ZonaMatch.Application.UseCases.Scoring
                 result.Components.Select(component => new ScoreComponentResponse(component.Criterion, component.Priority, component.Score, component.Details)).ToList(),
                 result.Limits.Select(limit => new ScoreLimitResponse(limit.Type, limit.IsSatisfied, limit.Details)).ToList(),
                 result.Places.Select(place => new PlaceTravelTimeResponse(
-                    place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm)).ToList(),
+                    place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm, place.ByBicycle)).ToList(),
                 HousingScoring.Rent(result.Zone, request.HousingType, request.AreaM2, request.Rooms),
                 HousingScoring.Sale(result.Zone, request.HousingType, request.AreaM2, request.Rooms));
     }

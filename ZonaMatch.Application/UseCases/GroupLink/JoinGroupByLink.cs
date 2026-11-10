@@ -37,7 +37,7 @@ public class JoinGroupByLink
 
         if (group.Participants.Count >= DomainGroup.MaximumParticipants)
         {
-            throw new ConflictException("El grupo ya alcanzó el máximo de 5 participantes.");
+            throw new ConflictException($"El grupo ya alcanzó el máximo de {DomainGroup.MaximumParticipants} participantes.");
         }
 
         // Create the participant record.

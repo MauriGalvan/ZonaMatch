@@ -22,7 +22,7 @@ public class CalculateScoresCandidateZoneTests
         var useCase = new CalculateScores(
             zoneProfiles.Object, new Mock<IRoutingClient>().Object, new Mock<IZoneRepository>().Object);
 
-        Func<Task> action = () => useCase.ExecuteAsync(new CalculateScoresRequest());
+        Func<Task> action = () => useCase.CalculateAsync(new CalculateScoresRequest());
 
         await action.Should().ThrowAsync<NotFoundException>();
     }
@@ -54,7 +54,7 @@ public class CalculateScoresCandidateZoneTests
         };
 
         var result = await new CalculateScores(zoneProfiles.Object, routing.Object, new Mock<IZoneRepository>().Object)
-            .ExecuteAsync(request);
+            .CalculateAsync(request);
 
         var rankedSlugs = result.Zones.Select(zone => zone.Slug).ToArray();
         rankedSlugs.Should().HaveCount(2);
@@ -87,7 +87,7 @@ public class CalculateScoresCandidateZoneTests
         };
 
         Func<Task> action = () => new CalculateScores(zoneProfiles.Object, routing.Object, new Mock<IZoneRepository>().Object)
-            .ExecuteAsync(request);
+            .CalculateAsync(request);
 
         await action.Should().ThrowAsync<BadRequestException>();
         routing.Verify(client => client.GetTravelTimeAsync(

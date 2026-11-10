@@ -36,6 +36,8 @@ internal sealed class IntegrationZoneProfilesRepository : IZoneProfilesRepositor
     public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(ZoneProfiles);
 
+    public Task InvalidateAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
     public Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
         IReadOnlyCollection<(double Latitude, double Longitude)> locations,
         CancellationToken cancellationToken = default) =>

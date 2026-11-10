@@ -17,17 +17,67 @@ namespace ZonaMatch.Infrastructure.Repositories
         private static readonly string SqlSelect = $"""
             SELECT z.slug AS "Slug", z.nombre AS "Name", z.nivel AS "Level", z.superficie_km2 AS "AreaKm2",
                    i.radios AS "CensusTractCount", i.poblacion AS "Population", i.viviendas AS "Dwellings",
-                   i.personas_0_14 AS "ResidentsAged0To14", i.personas_15_64 AS "ResidentsAged15To64",
+                   i.personas_0_4 AS "ResidentsAged0To4",
+                   i.personas_5_14 AS "ResidentsAged5To14",
+                   i.personas_15_29 AS "ResidentsAged15To29",
+                   i.personas_30_44 AS "ResidentsAged30To44",
+                   i.personas_45_64 AS "ResidentsAged45To64",
                    i.personas_65_mas AS "ResidentsAged65Plus",
+                   i.edad_promedio AS "AverageAge",
+                   i.personas_0_14 AS "ResidentsAged0To14", i.personas_15_64 AS "ResidentsAged15To64",
                    i.personas_con_cobertura_salud AS "ResidentsWithHealthCoverage",
                    i.personas_con_dato_cobertura AS "ResidentsWithHealthCoverageData",
                    i.personas_universitario AS "ResidentsWithUniversityEducation",
+                   i.personas_secundario_completo AS "ResidentsWithSecondaryEducation",
                    i.personas_con_dato_educacion AS "ResidentsWithEducationData",
-                   i.hogares AS "Households", i.hogares_internet AS "HouseholdsWithInternet",
+                   i.hogares AS "Households",
+                   i.hogares_unipersonales AS "SinglePersonHouseholds",
+                   i.hogares_internet AS "HouseholdsWithInternet",
                    i.hogares_celular_internet AS "HouseholdsWithMobileInternet",
                    i.hogares_computadora AS "HouseholdsWithComputer", i.hogares_nbi AS "HouseholdsWithUnmetBasicNeeds",
                    i.hogares_hacinamiento AS "OvercrowdedHouseholds", i.hogares_alquilan AS "RentingHouseholds",
-                   i.delitos_anio AS "CrimeCount", i.delitos_robos AS "Robberies", i.delitos_hurtos AS "Thefts",
+                   i.hogares_agua_red AS "HouseholdsWithPipedWater",
+                   i.hogares_cloacas AS "HouseholdsWithSewer",
+                   i.hogares_gas_red AS "HouseholdsWithGasNetwork",
+                   i.hogares_calidad_buena AS "HouseholdsWithGoodHousingQuality",
+                   i.delitos_anio AS "CrimeCount", i.delitos_comparables AS "ComparableCrimeCount",
+                   i.delitos_robos AS "Robberies", i.delitos_hurtos AS "Thefts",
+                   i.delitos_lesiones AS "Injuries", i.delitos_homicidios AS "Homicides",
+                   i.delitos_amenazas AS "Threats", i.siniestros_viales AS "TrafficIncidents",
+                   i.delitos_fuente AS "CrimeDataSource", i.delitos_periodo AS "CrimeDataYear",
+                   i.delitos_ambito AS "CrimeDataCoverage"
+            FROM {Schema}.zonas z
+            JOIN {Schema}.zona_indicadores i USING (osm_id)
+            """;
+
+        private static readonly string SqlSelectFallback = $"""
+            SELECT z.slug AS "Slug", z.nombre AS "Name", z.nivel AS "Level", z.superficie_km2 AS "AreaKm2",
+                   i.radios AS "CensusTractCount", i.poblacion AS "Population", i.viviendas AS "Dwellings",
+                   0 AS "ResidentsAged0To4",
+                   0 AS "ResidentsAged5To14",
+                   0 AS "ResidentsAged15To29",
+                   0 AS "ResidentsAged30To44",
+                   0 AS "ResidentsAged45To64",
+                   i.personas_65_mas AS "ResidentsAged65Plus",
+                   NULL::double precision AS "AverageAge",
+                   i.personas_0_14 AS "ResidentsAged0To14", i.personas_15_64 AS "ResidentsAged15To64",
+                   i.personas_con_cobertura_salud AS "ResidentsWithHealthCoverage",
+                   i.personas_con_dato_cobertura AS "ResidentsWithHealthCoverageData",
+                   i.personas_universitario AS "ResidentsWithUniversityEducation",
+                   0 AS "ResidentsWithSecondaryEducation",
+                   i.personas_con_dato_educacion AS "ResidentsWithEducationData",
+                   i.hogares AS "Households",
+                   0 AS "SinglePersonHouseholds",
+                   i.hogares_internet AS "HouseholdsWithInternet",
+                   i.hogares_celular_internet AS "HouseholdsWithMobileInternet",
+                   i.hogares_computadora AS "HouseholdsWithComputer", i.hogares_nbi AS "HouseholdsWithUnmetBasicNeeds",
+                   i.hogares_hacinamiento AS "OvercrowdedHouseholds", i.hogares_alquilan AS "RentingHouseholds",
+                   0 AS "HouseholdsWithPipedWater",
+                   0 AS "HouseholdsWithSewer",
+                   0 AS "HouseholdsWithGasNetwork",
+                   0 AS "HouseholdsWithGoodHousingQuality",
+                   i.delitos_anio AS "CrimeCount", NULL::integer AS "ComparableCrimeCount",
+                   i.delitos_robos AS "Robberies", i.delitos_hurtos AS "Thefts",
                    i.delitos_lesiones AS "Injuries", i.delitos_homicidios AS "Homicides",
                    i.delitos_amenazas AS "Threats", i.siniestros_viales AS "TrafficIncidents",
                    i.delitos_fuente AS "CrimeDataSource", i.delitos_periodo AS "CrimeDataYear",
@@ -37,9 +87,18 @@ namespace ZonaMatch.Infrastructure.Repositories
             """;
 
         private static readonly string SqlBySlug = $"{SqlSelect} WHERE z.elegida AND z.slug = @slug";
+        private static readonly string SqlBySlugFallback = $"{SqlSelectFallback} WHERE z.elegida AND z.slug = @slug";
 
         // The city is the only level-4 zone in the AMBA extract.
         private static readonly string SqlCapitalCity = $"{SqlSelect} WHERE z.nivel = 4 ORDER BY z.superficie_km2 DESC LIMIT 1";
+        private static readonly string SqlCapitalCityFallback = $"{SqlSelectFallback} WHERE z.nivel = 4 ORDER BY z.superficie_km2 DESC LIMIT 1";
+
+        // Same rounding as ZoneIndicators.CrimesPerThousandResidents.
+        private static readonly string SqlDistrictCrimeRate = $"""
+            SELECT round(1000.0 * sum(delitos_comparables) / nullif(sum(poblacion), 0), 1)::double precision AS "Value"
+            FROM {Schema}.partido_delitos
+            WHERE partido = ANY(@districts)
+            """;
 
         private readonly ZonaMatchDbContext _dbContext;
         private readonly ILogger<ZoneIndicatorsRepository> _logger;
@@ -51,18 +110,49 @@ namespace ZonaMatch.Infrastructure.Repositories
         }
 
         public Task<ZoneIndicators?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-            QueryFirstOrDefaultAsync(SqlBySlug, cancellationToken, new NpgsqlParameter("slug", slug));
+            QueryFirstOrDefaultAsync(SqlBySlug, SqlBySlugFallback, cancellationToken, new NpgsqlParameter("slug", slug));
 
         public Task<ZoneIndicators?> GetCapitalCityAsync(CancellationToken cancellationToken = default) =>
-            QueryFirstOrDefaultAsync(SqlCapitalCity, cancellationToken);
+            QueryFirstOrDefaultAsync(SqlCapitalCity, SqlCapitalCityFallback, cancellationToken);
+
+        public async Task<double?> GetDistrictCrimeRateAsync(
+            IReadOnlyCollection<string> districts, CancellationToken cancellationToken = default)
+        {
+            if (districts.Count == 0)
+                return null;
+
+            try
+            {
+                var rates = await _dbContext.Database
+                    .SqlQueryRaw<double?>(SqlDistrictCrimeRate, new NpgsqlParameter("districts", districts.ToArray()))
+                    .ToListAsync(cancellationToken);
+
+                return rates.FirstOrDefault();
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedTable)
+            {
+                // Added to etl/calculate_zones.sql later than the zone indicators; databases loaded before have no average.
+                _logger.LogWarning("District crime table is missing. Run ZONE-DATA-DOCKER.bat. ({Message})", ex.MessageText);
+                return null;
+            }
+        }
 
         private async Task<ZoneIndicators?> QueryFirstOrDefaultAsync(
-            string sql, CancellationToken cancellationToken, params NpgsqlParameter[] parameters)
+            string sql, string fallbackSql, CancellationToken cancellationToken, params NpgsqlParameter[] parameters)
         {
             try
             {
                 var rows = await _dbContext.Database
                     .SqlQueryRaw<ZoneIndicators>(sql, parameters)
+                    .ToListAsync(cancellationToken);
+
+                return rows.FirstOrDefault();
+            }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedColumn)
+            {
+                _logger.LogWarning("Detailed demographic columns missing in {Schema}.zona_indicadores. Using fallback query.", Schema);
+                var rows = await _dbContext.Database
+                    .SqlQueryRaw<ZoneIndicators>(fallbackSql, parameters)
                     .ToListAsync(cancellationToken);
 
                 return rows.FirstOrDefault();

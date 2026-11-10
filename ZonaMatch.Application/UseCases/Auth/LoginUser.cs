@@ -22,7 +22,7 @@ public sealed class LoginUser(
         {
             // Same message for unknown email and wrong password (no user enumeration), but the log keeps a correlatable hash
             logger.LogWarning("Failed login attempt for {EmailHash}", LogHash.Of(normalizedEmail));
-            throw new UnauthorizedException("Email o contrasena incorrectos.");
+            throw new UnauthorizedException("Email o contraseña incorrectos.");
         }
 
         var (accessToken, expiresAt) = tokenService.Generate(user);

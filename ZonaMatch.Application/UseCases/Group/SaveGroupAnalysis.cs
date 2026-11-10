@@ -57,6 +57,7 @@ public sealed class SaveGroupAnalysis
                 PropertyType = request.PropertyType,
                 SurfaceM2 = request.SurfaceM2,
                 Rooms = request.Rooms,
+                CreditEligible = request.CreditEligible,
             },
             cancellationToken);
 

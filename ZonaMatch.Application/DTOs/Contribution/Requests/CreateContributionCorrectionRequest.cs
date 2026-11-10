@@ -5,14 +5,14 @@ using ZonaMatch.Domain.Entities;
 namespace ZonaMatch.Application.DTOs.Contribution.Requests;
 
 public sealed record CreateContributionCorrectionRequest(
-    [Required(ErrorMessage = "Indica el lugar a corregir.")]
+    [Required(ErrorMessage = "Indicá el lugar a corregir.")]
     [RegularExpression("^([nwr][0-9]{1,19}|a[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
-        ErrorMessage = "El identificador del lugar no es valido.")]
+        ErrorMessage = "El identificador del lugar no es válido.")]
     string PointOfInterestId,
-    [Required(ErrorMessage = "Indica el nombre del lugar a corregir.")]
+    [Required(ErrorMessage = "Indicá el nombre del lugar a corregir.")]
     [StringLength(TextLimits.Address, ErrorMessage = "El nombre del lugar no puede superar los 200 caracteres.")]
     string PointOfInterestName,
-    [Required(ErrorMessage = "Indica que hay que corregir.")]
+    [Required(ErrorMessage = "Indicá qué hay que corregir.")]
     CorrectionReason? Reason,
     [StringLength(TextLimits.PlaceName, ErrorMessage = "El nombre propuesto no puede superar los 120 caracteres.")]
     string? ProposedName,

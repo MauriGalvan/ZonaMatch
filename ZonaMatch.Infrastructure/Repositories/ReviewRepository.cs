@@ -16,14 +16,27 @@ namespace ZonaMatch.Infrastructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<Review>> ListByZoneAsync(string zoneSlug, CancellationToken cancellationToken = default) =>
+        public async Task<IReadOnlyList<Review>> ListByZoneAsync(
+            string zoneSlug, Guid? currentUserId, bool includeAllPending = false, CancellationToken cancellationToken = default) =>
             await _dbContext.Reviews
                 .AsNoTracking()
                 .AsSplitQuery()
                 .Include(r => r.User)
                 .Include(review => review.HelpfulVotes)
-                .Where(review => review.ZoneSlug == zoneSlug)
+                .Where(review => review.ZoneSlug == zoneSlug
+                    && (review.Status == ReviewStatus.Approved
+                        || review.UserId == currentUserId
+                        || (includeAllPending && review.Status == ReviewStatus.Pending)))
                 .OrderByDescending(review => review.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+        // Ordered by the last save, so an edited review waits in line from the moment it was resubmitted.
+        public async Task<IReadOnlyList<Review>> ListPendingAsync(CancellationToken cancellationToken = default) =>
+            await _dbContext.Reviews
+                .AsNoTracking()
+                .Include(review => review.User)
+                .Where(review => review.Status == ReviewStatus.Pending)
+                .OrderBy(review => review.UpdatedAt)
                 .ToListAsync(cancellationToken);
 
         public Task<Review?> GetByUserAsync(string zoneSlug, Guid userId, CancellationToken cancellationToken = default) =>
@@ -33,6 +46,7 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         public Task<Review?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Reviews
+                .Include(review => review.User)
                 .Include(review => review.HelpfulVotes)
                 .FirstOrDefaultAsync(review => review.ZoneSlug == zoneSlug && review.Id == id, cancellationToken);
 
@@ -49,7 +63,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
                 // Two requests created the user's review for the zone at the same time or marked the same review useful.
-                throw new ConflictException("La operacion ya se habia registrado. Actualiza la pagina.");
+                throw new ConflictException("La operación ya se había registrado. Actualizá la página.");
             }
         }
     }
