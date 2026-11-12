@@ -339,6 +339,52 @@ public class CalculateGroupScoreTests
     }
 
     [Fact]
+    public async Task CalculateGroupScore_WhenParticipantPlaceHasFrequency_ReturnsItInParticipantPoints()
+    {
+        var groupId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var participant = new Participant
+        {
+            Id = Guid.NewGuid(),
+            GroupId = groupId,
+            UserId = userId,
+            Role = GroupRole.Owner,
+            User = new User { Id = userId, Email = "ana@example.com" }
+        };
+        var group = new DomainGroup { Id = groupId, Name = "Weekend search", Participants = [participant] };
+        var profile = new Context
+        {
+            UserId = userId,
+            Criteria = [new ContextCriterion { CriterionId = ScoringEngine.Safety, Priority = "alta" }],
+            Places = [new ContextPlace { Name = "Trabajo", Frequency = "diaria" }]
+        };
+        var groups = new Mock<IGroupRepository>();
+        groups.Setup(repository => repository.GetDetailsByIdAsync(groupId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(group);
+        var profiles = new Mock<IProfileRepository>();
+        profiles.Setup(repository => repository.GetByUserIdsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { profile });
+        var zoneProfiles = new Mock<IZoneProfilesRepository>();
+        zoneProfiles.Setup(repository => repository.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ZoneProfile[]
+            {
+                new() { Slug = "safe-zone", Name = "Safe Zone", Level = 9, Population = 1_000, CrimeCount = 10 }
+            });
+
+        var result = await new CalculateGroupScore(
+                groups.Object, profiles.Object, zoneProfiles.Object, new Mock<IRoutingClient>().Object)
+            .ExecuteAsync(groupId, userId, new CalculateGroupScoreRequest
+            {
+                ParticipantWeights = [new ParticipantWeightRequest { ParticipantId = participant.Id, Weight = 100 }]
+            });
+
+        result.ParticipantPoints.Should().ContainSingle()
+            .Which.Frequency.Should().Be("diaria");
+    }
+
+    [Fact]
     public async Task CalculateGroupScore_WhenTheGroupBuysWithAMortgage_ComparesTheCapWithTheCreditEligibleSales()
     {
         var groupId = Guid.NewGuid();

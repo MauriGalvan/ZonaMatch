@@ -81,6 +81,7 @@ public sealed class SaveGroupAnalysis
             UpdatedAt = now,
             Zones = zones,
             GroupScoresJson = JsonSerializer.Serialize(ranked, JsonOptions),
+            ResultGeneratedAt = now,
         };
 
         _analyses.Add(analysis);

@@ -276,7 +276,7 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                     .ToArray(),
                 zone.Places
                     .Select(place => new ComparedPlaceTravelTimeResponse(
-                        place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm))
+                        place.Name, place.Minutes, place.MaximumMinutes, place.IsEstimated, place.DistanceKm, place.ByBicycle))
                     .ToArray(),
                 zone.Rent is { } rent
                     ? new ComparedRentResponse(
