@@ -41,9 +41,13 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Po
 Generá una clave JWT aleatoria para el entorno local:
 
 ```powershell
-$jwtKey = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
-dotnet user-secrets set "Jwt:SigningKey" $jwtKey --project ZonaMatch.Api
-Remove-Variable jwtKey
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 48
+$rng.GetBytes($bytes)
+$jwtKey = [Convert]::ToBase64String($bytes)
+$rng.Dispose()
+dotnet user-secrets set "Jwt:SigningKey" "$jwtKey" --project ZonaMatch.Api
+Remove-Variable jwtKey, bytes, rng
 ```
 
 Para habilitar los flujos que envían correos, configurá la contraseña de aplicación SMTP que les hayan compartido por un canal seguro:
