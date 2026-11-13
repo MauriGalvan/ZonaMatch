@@ -97,9 +97,60 @@ Tarda unos minutos y se puede volver a ejecutar. Los datos se consultan en GET /
 
 Los GTFS públicos son de 2019 (colectivos y subte) y 2020 (trenes) y sus fechas no se superponen, así que MOTIS los usa con un calendario semanal proyectado a una semana de referencia (2 al 8 de marzo de 2026, ver etl\motis\config.yml): los viajes en transporte público se consultan en esas fechas. Hasta que se corre la importación, el contenedor de MOTIS queda esperando sin fallar.
 
-6. Buscador de direcciones con Nominatim local
+6. Buscador de direcciones con Photon
 
-La búsqueda de calles, alturas y lugares usa una instancia local de Nominatim con el recorte OSM del AMBA. No requiere un servicio de geocodificación externo. El servicio está en el perfil `nominatim`, así que los `docker compose up -d` de los pasos anteriores no lo arrancan antes de que el archivo del mapa esté preparado.
+La búsqueda de calles, alturas y lugares, y la dirección que se muestra al tocar un punto del mapa, usan Photon: un motor que tolera errores de tipeo y palabras a medio escribir, pensado para autocompletar. Funciona con datos de OpenStreetMap del AMBA y no requiere ningún servicio externo.
+
+6.1. Levantar Photon en tu máquina
+
+Photon se publica como una imagen de Docker que ya trae el índice del AMBA adentro, así que no hay que descargar datos ni importar nada. Necesitás Docker Desktop con al menos 2 GB de memoria disponibles y unos 2 GB de disco libres. Desde la raíz del repositorio:
+
+```powershell
+docker compose --profile photon pull photon
+docker compose --profile photon up -d photon
+```
+
+La primera vez tarda unos minutos en descargar la imagen. Photon necesita unos 30 a 60 segundos para arrancar; comprobá que esté listo en `http://localhost:2322/status` y probá una búsqueda en `http://localhost:2322/api?q=gutenberg&limit=5` (devuelve GeoJSON).
+
+No hace falta configurar nada más: en Development (`appsettings.Development.json`) la API ya usa Photon para buscar (`PlaceSearch:Provider = Photon`) y para la dirección del punto tocado en el mapa (`Geocoding:Provider = Photon`), y lo consulta en `http://localhost:2322/` (`Photon:BaseUrl`). Si la API corre dentro de Docker, usá `http://photon:2322/`. Con Photon apagado, la búsqueda responde 503.
+
+Cosas útiles:
+
+- **Comparar o volver a otro motor (solo Development):** `GET /api/v1/geolocation/places?search=...&provider=nominatim|photon` y `GET /api/v1/geolocation/address?...&provider=osm|nominatim|photon` eligen el motor por pedido. Para cambiar el motor por defecto sin tocar archivos versionados: `dotnet user-secrets set "PlaceSearch:Provider" "Nominatim" --project ZonaMatch.Api` (necesita Nominatim local, paso 6.3).
+- **Siglas:** Photon no conoce siglas como UNLa, UNLaM o UBA. Las más usadas se reemplazan por el nombre completo antes de buscar; la lista está en `PlaceQueryVariants.cs` (`Siglas`). Para agregar una, sumá una línea con el nombre tal como figura en OpenStreetMap.
+- **Qué aporta Photon al tocar el mapa:** calle, número, lugar y localidad. El partido, la comuna y la provincia salen de las tablas de límites de la base. Si no hay una dirección con número cerca del punto, se muestra solo la calle.
+- **La búsqueda queda acotada al AMBA** con un recuadro (bbox) en la API y en el índice.
+- **`pull access denied` o `manifest unknown`:** la imagen todavía no está publicada o el paquete en GitHub no es público. Pedile a quien mantiene el despliegue que la publique (paso 6.2 y `docs/deploy-photon-dev.md` del repo de infraestructura), o construí el índice vos mismo con el paso 6.2 y levantalo con `PHOTON_IMAGE`.
+- **La búsqueda responde 503 aunque Photon esté corriendo:** revisá `dotnet user-secrets list --project ZonaMatch.Api`; no debería haber un `Photon:BaseUrl` ni un `PlaceSearch:Provider` distinto de Photon. Si los hay, borralos con `dotnet user-secrets remove "<clave>" --project ZonaMatch.Api`.
+- **El puerto 2322 ya está en uso:** apagá el otro servicio o cambiá el puerto publicado en `docker-compose.yml` y actualizá `Photon:BaseUrl`.
+
+6.2. Reconstruir o actualizar el índice (solo quien publica la imagen)
+
+Esto lo hace una persona cuando se quiere refrescar los datos; el resto del equipo solo baja la imagen nueva. El índice se arma desde el dump JSON que GraphHopper publica cada semana para Argentina (https://download1.graphhopper.com/public/, archivo `photon-dump-argentina-1.0-latest.jsonl.zst`, unos 1 GB), que se recorta al recuadro del AMBA con `docker/photon/filter_dump_amba.py`. El recorte intermedio ocupa más de 20 GB mientras dura la importación: verificá el espacio libre.
+
+Los comandos son para PowerShell, en la raíz del repositorio. La versión del dump (`1.0`) debe corresponder a la de Photon (`1.x`, hoy 1.3.0 en `docker/photon/Dockerfile`).
+
+```powershell
+# 1) Descargar el dump y recortarlo al AMBA sin descomprimirlo a disco
+New-Item -ItemType Directory -Force .\datos\photon | Out-Null
+docker run --rm -v "${PWD}/datos/photon:/data" alpine sh -c "apk add --no-cache curl && curl -fL -o /data/ar.jsonl.zst https://download1.graphhopper.com/public/photon-dump-argentina-1.0-latest.jsonl.zst"
+docker run --rm -v "${PWD}/datos/photon:/data" -v "${PWD}/docker/photon:/scripts:ro" python:3-alpine sh -c "apk add --no-cache zstd > /dev/null && zstd -dc /data/ar.jsonl.zst | python /scripts/filter_dump_amba.py - /data/amba.jsonl"
+
+# 2) Construir el índice en el volumen photon_amba_data (reemplaza el contenido anterior)
+docker compose --profile photon-amba build photon-amba
+docker compose --profile photon-amba run --rm -e JAVA_TOOL_OPTIONS="-Xms512m -Xmx3g" -v "${PWD}/datos/photon:/import:ro" photon-amba import -import-file /import/amba.jsonl -languages es,en -country-codes ar -j 4
+
+# 3) Probarlo antes de publicar
+docker compose --profile photon-amba up -d photon-amba
+```
+
+El dump no trae español por defecto: por eso se pasa `-languages es,en`. La importación tarda unos 15 minutos con `-j 4` y necesita unos 3 GB de memoria para Docker (si falla por memoria, subí el límite en Docker Desktop o bajá `-Xmx3g` a `-Xmx2g`). Probá el índice nuevo en `http://localhost:2324/api?q=gutenberg&limit=5` (para usarlo desde la API con `dotnet run`, ejecutá antes en esa misma terminal `$env:Photon__BaseUrl = "http://localhost:2324/"`; no queda guardado). Después, `datos\photon` se puede borrar (`ar.jsonl.zst` y `amba.jsonl`).
+
+Para convertir el índice en la imagen que usan el equipo y Azure, seguí `docs/deploy-photon-dev.md` del repo de infraestructura (exportar el volumen, construir la imagen y publicarla en GHCR).
+
+6.3. Nominatim local (opcional)
+
+Nominatim ya no es necesario para buscar: el buscador usa Photon (pasos 6.1 y 6.2). Este paso es opcional y sirve para comparar los dos motores (`?provider=nominatim` en Development) o como respaldo (`PlaceSearch:Provider = Nominatim`). Es una instancia local de Nominatim con el recorte OSM del AMBA. El servicio está en el perfil `nominatim`, así que los `docker compose up -d` de los pasos anteriores no lo arrancan antes de que el archivo del mapa esté preparado.
 
 Después de ejecutar `ZONE-DATA-DOCKER.bat`, verificá que exista `datos\motis\amba.osm.pbf`. Si no existe, revisá que la preparación de MOTIS del paso anterior haya terminado. Desde PowerShell, en la raíz del repositorio, ejecutá estos comandos para crear automáticamente la carpeta de Nominatim si hace falta y copiar el recorte:
 

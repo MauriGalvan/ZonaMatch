@@ -42,6 +42,34 @@ services:
       - "127.0.0.1:8080:8080"
     shm_size: 1gb
 
+  # Photon: place search (search-as-you-type) and reverse geocoding. The published image already
+  # includes the AMBA index, so there is nothing to import: README step 6.1.
+  #   docker compose --profile photon pull photon
+  #   docker compose --profile photon up -d photon
+  # Set PHOTON_IMAGE to use another tag (or a locally built image).
+  photon:
+    image: ${PHOTON_IMAGE:-ghcr.io/sergabrubio/zonamatch-photon:1}
+    profiles: ["photon"]
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx1g"
+    ports:
+      - "127.0.0.1:2322:2322"
+    restart: unless-stopped
+
+  # Only for whoever builds or refreshes the Photon index (README step 6.2): it imports the GraphHopper
+  # dump cut to the AMBA into the photon_amba_data volume and can serve it on port 2324 to test it before
+  # publishing the image (infrastructure repo, docs/deploy-photon-dev.md). Teammates do not need it.
+  photon-amba:
+    build: ./docker/photon
+    profiles: ["photon-amba"]
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms512m -Xmx2g"
+    volumes:
+      - photon_amba_data:/photon/photon_data
+    ports:
+      - "127.0.0.1:2324:2322"
+    restart: unless-stopped
+
   # Local Azure Blob Storage emulator for the review images (see the README).
   # Optional: docker compose --profile azurite up -d azurite
   azurite:
@@ -59,4 +87,5 @@ volumes:
   db_data:
   motis_data:
   nominatim_data:
+  photon_amba_data:
   azurite_data:
