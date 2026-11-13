@@ -2,6 +2,7 @@ using ZonaMatch.Application.DTOs.Admin.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Tests.UseCases.Admin;
 
@@ -65,4 +66,18 @@ internal sealed class FakeAdminUserRepository(params User[] users) : IUserReposi
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public Task AddAsync(User user, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+}
+
+// Fixed zone profiles for the admin zone use cases.
+internal sealed class FakeAdminZoneProfilesRepository(params ZoneProfile[] zones) : IZoneProfilesRepository
+{
+    public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ZoneProfile>>(zones);
+
+    public Task InvalidateAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
+        IReadOnlyCollection<(double Latitude, double Longitude)> locations,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<string>>(zones.Select(zone => zone.Slug).ToArray());
 }

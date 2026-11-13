@@ -95,6 +95,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ListUsers>();
         services.AddScoped<UpdateUserRole>();
         services.AddScoped<GetAdminStats>();
+        services.AddScoped<ListAdminZones>();
+        services.AddScoped<GetAdminZone>();
 
         services.AddScoped<ListZoneReviews>();
         services.AddScoped<SaveMyReview>();
