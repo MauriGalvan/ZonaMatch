@@ -220,7 +220,7 @@ namespace ZonaMatch.Infrastructure.Data
                     t.HasCheckConstraint("ck_contextos_ambientes", "ambientes IS NULL OR ambientes BETWEEN 1 AND 5");
                 });
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Type).HasColumnName("tipo").HasMaxLength(10).IsRequired();
+                e.Property(x => x.Type).HasColumnName("tipo").HasMaxLength(20).IsRequired();
                 e.Property(x => x.PeopleCount).HasColumnName("personas").IsRequired();
                 e.Property(x => x.Pets).HasColumnName("mascotas").HasColumnType("text[]");
                 e.Property(x => x.Mobility).HasColumnName("movilidad").HasColumnType("text[]");

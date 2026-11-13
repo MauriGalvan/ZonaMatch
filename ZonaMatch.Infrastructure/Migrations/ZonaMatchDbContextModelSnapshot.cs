@@ -427,8 +427,8 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("tipo");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
