@@ -40,7 +40,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                     .ToList(),
                 AnalysisResultCalculator.Deserialize(analysis.ResultJson),
                 analysis.ResultGeneratedAt,
-                analysis.IsFavorite);
+                analysis.IsFavorite,
+                analysis.Context?.Type == ContextType.InvestorAnalysis ? AnalysisResponse.InvestorProfile : AnalysisResponse.HouseholdProfile);
 
         // Request zones must exist, be unique, and include at most one initial zone.
         public static async Task<List<AnalysisZone>> BuildZonesAsync(

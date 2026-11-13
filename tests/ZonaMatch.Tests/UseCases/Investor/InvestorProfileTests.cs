@@ -97,7 +97,7 @@ public class InvestorProfileTests
             new() { Slug = "sin-ventas", Name = "Sin ventas", Level = 8, Population = 1_000 },
         });
 
-        var ranking = await new CalculateInvestmentRanking(_users, _profiles, zones.Object, new MarketExchangeRate(1500))
+        var ranking = await new CalculateInvestmentRanking(_users, _profiles, _criteria.Object, zones.Object, new MarketExchangeRate(1500))
             .ExecuteAsync(_investor.Id);
 
         ranking.Zones.Select(zone => zone.Slug).Should().Equal("buena", "floja");
@@ -105,19 +105,61 @@ public class InvestorProfileTests
         ranking.UsdArs.Should().Be(1500);
     }
 
-    [Fact]
-    public async Task Ranking_KeepsTheTopTenZones()
+    // Twelve zones with their own sales: zona-12 has the best yield, zona-1 the worst
+    private CalculateInvestmentRanking Ranking()
     {
-        await Save().ExecuteAsync(_investor.Id, Request(("rentabilidad", "alta")));
         var zones = new Mock<IZoneProfilesRepository>();
         zones.Setup(repository => repository.ListAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Enumerable.Range(1, 12).Select(i => Zone($"zona-{i}", rent: 400_000 + i * 20_000, price: 100_000)).ToList());
+        return new CalculateInvestmentRanking(_users, _profiles, _criteria.Object, zones.Object, new MarketExchangeRate(1500));
+    }
 
-        var ranking = await new CalculateInvestmentRanking(_users, _profiles, zones.Object, new MarketExchangeRate(1500))
-            .ExecuteAsync(_investor.Id);
+    [Fact]
+    public async Task Ranking_ShowsTheTopFiveAndRecommendsTheNextOnes()
+    {
+        await Save().ExecuteAsync(_investor.Id, Request(("rentabilidad", "alta")));
 
-        ranking.Zones.Should().HaveCount(CalculateInvestmentRanking.MaximumZones);
-        ranking.Zones[0].Slug.Should().Be("zona-12");
+        var ranking = await Ranking().ExecuteAsync(_investor.Id);
+
+        ranking.Zones.Select(zone => zone.Slug).Should().Equal("zona-12", "zona-11", "zona-10", "zona-9", "zona-8");
+        ranking.Recommendations.Select(zone => zone.Slug).Should().Equal("zona-7", "zona-6", "zona-5", "zona-4");
+        ranking.Criteria.Should().Equal(new Dictionary<string, string> { ["rentabilidad"] = "alta" });
+    }
+
+    [Fact]
+    public async Task Ranking_AddsTheZonesTheUserChoseInScoreOrder()
+    {
+        await Save().ExecuteAsync(_investor.Id, Request(("rentabilidad", "alta")));
+
+        var ranking = await Ranking().ExecuteAsync(_investor.Id, new InvestmentRankingRequest { AddedZones = ["zona-1", "zona-7"] });
+
+        ranking.Zones.Select(zone => zone.Slug).Should().Equal("zona-12", "zona-11", "zona-10", "zona-9", "zona-8", "zona-7", "zona-1");
+        ranking.Recommendations.Select(zone => zone.Slug).Should().NotContain(["zona-7", "zona-1"]);
+    }
+
+    [Fact]
+    public async Task Ranking_WithMoreThanTenZones_IsRejected()
+    {
+        await Save().ExecuteAsync(_investor.Id, Request(("rentabilidad", "alta")));
+
+        var act = () => Ranking().ExecuteAsync(
+            _investor.Id, new InvestmentRankingRequest { AddedZones = Enumerable.Range(1, 6).Select(i => $"zona-{i}").ToList() });
+
+        await act.Should().ThrowAsync<BadRequestException>();
+    }
+
+    [Fact]
+    public async Task Ranking_WithSettingsOfAnAnalysis_UsesThemAndLeavesTheProfileUnchanged()
+    {
+        await Save().ExecuteAsync(_investor.Id, Request(("rentabilidad", "alta")));
+        var settings = Request(("seguridad", "media"));
+        settings.CapitalUsd = 90_000;
+
+        var ranking = await Ranking().ExecuteAsync(_investor.Id, new InvestmentRankingRequest { Settings = settings });
+
+        ranking.CapitalUsd.Should().Be(90_000);
+        ranking.Criteria.Should().ContainKey("seguridad");
+        _profiles.Profiles.Single().Criteria.Single().CriterionId.Should().Be("rentabilidad");
     }
 
     // Apartment market of 2 rooms, the size of the profile

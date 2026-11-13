@@ -19,4 +19,10 @@ public sealed record AnalysisResponse(
     ScoresResponse? Result = null,
     DateTimeOffset? CalculatedAt = null,
     // Starred in the user's "Mis análisis" list.
-    bool IsFavorite = false);
+    bool IsFavorite = false,
+    // Profile the analysis was made with: "hogar" or "inversor".
+    string Profile = AnalysisResponse.HouseholdProfile)
+{
+    public const string HouseholdProfile = "hogar";
+    public const string InvestorProfile = "inversor";
+}

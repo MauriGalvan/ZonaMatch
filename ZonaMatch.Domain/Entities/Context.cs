@@ -110,5 +110,8 @@ namespace ZonaMatch.Domain.Entities
 
         // The investor profile: capital, credit, type, rooms and investment criteria (no household or places).
         public const string Investor = "inversor";
+
+        // A saved investment analysis: a copy of the investor profile, adjusted for that analysis.
+        public const string InvestorAnalysis = "analisis-inversor";
     }
 }

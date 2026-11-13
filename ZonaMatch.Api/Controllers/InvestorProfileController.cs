@@ -36,14 +36,16 @@ public sealed class InvestorProfileController : ControllerBase
         CancellationToken cancellationToken) =>
         Ok(await useCase.ExecuteAsync(User.RequireUserId(), request, cancellationToken));
 
-    // POST /api/v1/investor-profile/ranking    Zones ranked for the saved investor profile.
+    // POST /api/v1/investor-profile/ranking    Zones ranked for the saved investor profile, or for the settings and
+    // added zones of one analysis when the body sends them.
     [HttpPost("ranking")]
     [ProducesResponseType<InvestmentRankingResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<InvestmentRankingResponse>> RankAsync(
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] InvestmentRankingRequest? request,
         [FromServices] CalculateInvestmentRanking useCase,
         CancellationToken cancellationToken) =>
-        Ok(await useCase.ExecuteAsync(User.RequireUserId(), cancellationToken));
+        Ok(await useCase.ExecuteAsync(User.RequireUserId(), request, cancellationToken));
 }

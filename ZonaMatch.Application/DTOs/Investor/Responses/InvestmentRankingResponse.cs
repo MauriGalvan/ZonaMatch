@@ -2,9 +2,12 @@ using ZonaMatch.Application.DTOs.Scoring.Responses;
 
 namespace ZonaMatch.Application.DTOs.Investor.Responses;
 
-// Zones ranked for the investor profile, best first, for the property type and size of the profile.
+// Zones ranked for the investor profile, best first, for the property type and size of the profile: the automatic top
+// and the zones the user added, plus the next best as recommendations.
 public sealed record InvestmentRankingResponse(
     IReadOnlyList<InvestmentZoneResponse> Zones,
+    IReadOnlyList<InvestmentZoneResponse> Recommendations,
+    IReadOnlyDictionary<string, string> Criteria,
     decimal CapitalUsd,
     string? PropertyType,
     int? Rooms,

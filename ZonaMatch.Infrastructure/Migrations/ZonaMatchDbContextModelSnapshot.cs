@@ -458,7 +458,7 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
 
-                            t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis', 'inversor')");
+                            t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis', 'inversor', 'analisis-inversor')");
 
                             t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
                         });
