@@ -6,6 +6,8 @@ namespace ZonaMatch.Domain.Enums
         SavedZoneReview,
         SavedZoneQuestion,
         GroupInvitation,
-        ReviewPendingModeration
+        ReviewPendingModeration,
+        InvestorAccessRequested,
+        InvestorAccessGranted
     }
 }

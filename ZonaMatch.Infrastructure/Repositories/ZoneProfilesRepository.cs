@@ -78,9 +78,23 @@ namespace ZonaMatch.Infrastructure.Repositories
             peak_hour_departures AS (
                 SELECT osm_id, sum(salidas)::int AS departure_count FROM {Geo}.zona_transporte_lineas
                 WHERE franja = 'manana' GROUP BY osm_id
+            ),
+            -- Partido or comuna of each smaller zone: the reference its prices are compared with
+            parents AS (
+                SELECT z.osm_id, parent.slug AS parent_slug
+                FROM zones z
+                CROSS JOIN LATERAL (
+                    SELECT p.slug FROM zones p
+                    WHERE p.level = 5 AND p.osm_id <> z.osm_id AND ST_Contains(p.geom, ST_PointOnSurface(z.geom))
+                    ORDER BY p.area_km2
+                    LIMIT 1
+                ) parent
+                WHERE z.level > 5
             )
             SELECT z.slug AS "Slug", z.name AS "Name", z.level AS "Level", z.area_km2 AS "AreaKm2",
                    COALESCE(i.poblacion, 0) AS "Population", i.delitos_comparables AS "CrimeCount",
+                   round(100.0 * i.hogares_alquilan / nullif(i.hogares, 0), 1)::double precision AS "RentingHouseholdsPercentage",
+                   parents.parent_slug AS "ParentSlug",
                    COALESCE(transit.line_count, 0) AS "TransitLineCount", COALESCE(peak.departure_count, 0) AS "PeakHourDepartures",
                    amenities.school_count AS "SchoolCount", amenities.health_center_count AS "HealthCenterCount", amenities.green_space_count AS "GreenSpaceCount",
                    green_areas.area_m2 AS "GreenSpaceAreaM2",
@@ -89,6 +103,7 @@ namespace ZonaMatch.Infrastructure.Repositories
             LEFT JOIN {Geo}.zona_indicadores i USING (osm_id)
             LEFT JOIN transit_line_counts transit USING (osm_id)
             LEFT JOIN peak_hour_departures peak USING (osm_id)
+            LEFT JOIN parents USING (osm_id)
             JOIN amenities USING (osm_id)
             JOIN green_areas USING (osm_id)
             """;
@@ -313,6 +328,8 @@ namespace ZonaMatch.Infrastructure.Repositories
             public double AreaKm2 { get; set; }
             public int Population { get; set; }
             public int? CrimeCount { get; set; }
+            public double? RentingHouseholdsPercentage { get; set; }
+            public string? ParentSlug { get; set; }
             public int TransitLineCount { get; set; }
             public int PeakHourDepartures { get; set; }
             public int SchoolCount { get; set; }
@@ -365,6 +382,8 @@ namespace ZonaMatch.Infrastructure.Repositories
                 AreaKm2 = AreaKm2,
                 Population = Population,
                 CrimeCount = CrimeCount,
+                RentingHouseholdsPercentage = RentingHouseholdsPercentage,
+                ParentSlug = ParentSlug,
                 TransitLineCount = TransitLineCount,
                 PeakHourDepartures = PeakHourDepartures,
                 SchoolCount = SchoolCount,

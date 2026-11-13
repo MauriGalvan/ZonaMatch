@@ -21,6 +21,7 @@ public sealed class UpdateUserRole(IUserRepository users)
         if (user.IsAdministrator != isAdmin)
             await users.SetAdministratorAsync(userId, isAdmin, cancellationToken);
 
-        return new AdminUserResponse(user.Id, user.Email, user.DateOfBirth, isAdmin);
+        user.IsAdministrator = isAdmin;
+        return UpdateInvestorAccess.ToResponse(user);
     }
 }

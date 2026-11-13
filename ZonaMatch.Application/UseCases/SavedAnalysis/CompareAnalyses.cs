@@ -55,6 +55,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                 throw new NotFoundException("El análisis no existe.");
 
             var selectedAnalyses = request.AnalysisIds.Select(id => byId[id]).ToArray();
+            if (selectedAnalyses.Any(analysis => analysis.Context?.Type == ContextType.InvestorAnalysis))
+                throw new BadRequestException("Por ahora solo se comparan análisis de hogar.");
             var analysesWithoutZones = selectedAnalyses.Where(analysis => analysis.Zones.Count == 0).ToArray();
             if (analysesWithoutZones.Length > 0)
                 throw new BadRequestException("Todos los análisis elegidos deben tener al menos una zona.");

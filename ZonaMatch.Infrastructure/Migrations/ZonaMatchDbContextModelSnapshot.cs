@@ -427,8 +427,8 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("tipo");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
@@ -446,6 +446,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasDatabaseName("ux_contextos_perfil_usuario")
                         .HasFilter("tipo = 'perfil'");
 
+                    b.HasIndex(new[] { "UserId" }, "ux_contextos_inversor_usuario")
+                        .IsUnique()
+                        .HasFilter("tipo = 'inversor'");
+
                     b.ToTable("contextos", "app", t =>
                         {
                             t.HasCheckConstraint("ck_contextos_ambientes", "ambientes IS NULL OR ambientes BETWEEN 1 AND 5");
@@ -454,7 +458,7 @@ namespace ZonaMatch.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
 
-                            t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
+                            t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis', 'inversor', 'analisis-inversor')");
 
                             t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
                         });
@@ -692,6 +696,18 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("descripcion");
+
+                    b.Property<bool>("ForHousehold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("perfil_hogar");
+
+                    b.Property<bool>("ForInvestor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("perfil_inversor");
 
                     b.Property<string>("IconCssClass")
                         .IsRequired()
@@ -1405,6 +1421,19 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("character varying(254)")
                         .HasColumnName("email");
 
+                    b.Property<string>("InvestorAccess")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("acceso_inversor");
+
+                    b.Property<DateTimeOffset?>("InvestorAccessGrantedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("acceso_inversor_habilitado");
+
+                    b.Property<DateTimeOffset?>("InvestorAccessRequestedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("acceso_inversor_solicitado");
+
                     b.Property<bool>("IsAdministrator")
                         .HasColumnType("boolean")
                         .HasColumnName("es_administrador");
@@ -1420,7 +1449,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("usuarios", "app");
+                    b.ToTable("usuarios", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_usuarios_acceso_inversor", "acceso_inversor IN ('solicitado', 'habilitado')");
+                        });
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.UserFeedbackPreferences", b =>

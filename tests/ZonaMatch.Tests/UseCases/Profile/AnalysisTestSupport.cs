@@ -25,7 +25,10 @@ internal sealed class FakeProfileRepository : IProfileRepository
     public int SaveCount { get; private set; }
 
     public Task<Context?> GetByUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Profiles.FirstOrDefault(profile => profile.UserId == userId));
+        Task.FromResult(Profiles.FirstOrDefault(profile => profile.UserId == userId && profile.Type == ContextType.Profile));
+
+    public Task<Context?> GetInvestorProfileAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Profiles.FirstOrDefault(profile => profile.UserId == userId && profile.Type == ContextType.Investor));
 
     public Task<IReadOnlyList<Context>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,
