@@ -23,4 +23,8 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default);
+
+    // Investor profile access (User.InvestorAccess) and when it was requested and granted.
+    Task SetInvestorAccessAsync(
+        Guid id, string? access, DateTimeOffset? requestedAt, DateTimeOffset? grantedAt, CancellationToken cancellationToken = default);
 }

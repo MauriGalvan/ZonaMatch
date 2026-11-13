@@ -9,10 +9,12 @@ namespace ZonaMatch.Api.Controllers;
 [Route("api/v1/criteria")]
 public sealed class CriteriaController : ControllerBase
 {
+    // GET /api/v1/criteria?perfil=inversor    Without perfil, the household profile criteria.
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<CriterionResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<CriterionResponse>>> List(
         [FromServices] ListCriteria listCriteria,
+        [FromQuery(Name = "perfil")] string? profile,
         CancellationToken cancellationToken) =>
-        Ok(await listCriteria.ExecuteAsync(cancellationToken));
+        Ok(await listCriteria.ExecuteAsync(profile, cancellationToken));
 }

@@ -49,25 +49,46 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IGuestReportSendRepository, GuestReportSendRepository>();
         services.AddScoped<IZoneProfilesRepository, ZoneProfilesRepository>();
 
-        if (string.Equals(configuration["Geocoding:Provider"], "Nominatim", StringComparison.OrdinalIgnoreCase))
+        // The three reverse geocoders are registered; Geocoding:Provider (Osm, Nominatim or Photon) is the default and,
+        // with Geocoding:AllowProviderOverride, a request can pick one (?provider=) to compare them.
+        services.AddScoped<OsmGeocodingClient>();
+        services.AddHttpClient<NominatimGeocodingClient>(client =>
         {
-            services.AddHttpClient<IGeocodingClient, NominatimGeocodingClient>(client =>
-            {
-                client.BaseAddress = new Uri(configuration["Nominatim:BaseUrl"] ?? "https://nominatim.openstreetmap.org/");
-                client.DefaultRequestHeaders.UserAgent.ParseAdd(configuration["Nominatim:UserAgent"] ?? "ZonaMatch/1.0");
-                client.Timeout = TimeSpan.FromSeconds(10);
-            });
-        }
-        else
+            client.BaseAddress = new Uri(configuration["Nominatim:BaseUrl"] ?? "https://nominatim.openstreetmap.org/");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(configuration["Nominatim:UserAgent"] ?? "ZonaMatch/1.0");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+        services.AddHttpClient<PhotonGeocodingClient>(client =>
         {
-            services.AddScoped<IGeocodingClient, OsmGeocodingClient>();
-        }
+            client.BaseAddress = new Uri(configuration["Photon:BaseUrl"] ?? "http://localhost:2322/");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+        services.AddScoped<IGeocodingClientSelector>(serviceProvider => new GeocodingClientSelector(
+            serviceProvider,
+            configuration["Geocoding:Provider"] ?? "Osm",
+            configuration.GetValue<bool>("Geocoding:AllowProviderOverride")));
+        services.AddScoped<IGeocodingClient>(serviceProvider =>
+            serviceProvider.GetRequiredService<IGeocodingClientSelector>().Resolve(null));
 
-        services.AddHttpClient<IPlaceSearchClient, NominatimPlaceSearchClient>(client =>
+        // Both search engines are available; PlaceSearch:Provider chooses the default and, with
+        // PlaceSearch:AllowProviderOverride, the request can pick one (?provider=nominatim|photon) to compare them.
+        services.AddHttpClient<NominatimPlaceSearchClient>(client =>
         {
             client.BaseAddress = new Uri(configuration["Nominatim:BaseUrl"] ?? "http://localhost:8080/");
             client.Timeout = TimeSpan.FromSeconds(10);
         });
+        services.AddSingleton(new PhotonSearchOptions(configuration["Photon:Language"]));
+        services.AddHttpClient<PhotonPlaceSearchClient>(client =>
+        {
+            client.BaseAddress = new Uri(configuration["Photon:BaseUrl"] ?? "http://localhost:2322/");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+        services.AddScoped<IPlaceSearchClientSelector>(serviceProvider => new PlaceSearchClientSelector(
+            serviceProvider,
+            configuration["PlaceSearch:Provider"] ?? "Nominatim",
+            configuration.GetValue<bool>("PlaceSearch:AllowProviderOverride")));
+        services.AddScoped<IPlaceSearchClient>(serviceProvider =>
+            serviceProvider.GetRequiredService<IPlaceSearchClientSelector>().Resolve(null));
         services.AddScoped<IEmailService, EmailService>();
 
         // Without a connection string it falls back to the local Azurite emulator: the API still starts

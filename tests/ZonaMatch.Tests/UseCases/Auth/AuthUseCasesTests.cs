@@ -225,6 +225,10 @@ public sealed class AuthUseCasesTests
 
         public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public Task SetInvestorAccessAsync(
+            Guid id, string? access, DateTimeOffset? requestedAt, DateTimeOffset? grantedAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakePasswordHasher : IPasswordHasher

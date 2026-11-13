@@ -18,7 +18,7 @@ public sealed class GeolocationController : ControllerBase
         [FromServices] SearchPlaces searchPlaces,
         CancellationToken cancellationToken)
     {
-        var results = await searchPlaces.ExecuteAsync(request.Search, cancellationToken);
+        var results = await searchPlaces.ExecuteAsync(request.Search, request.Provider, cancellationToken);
         return Ok(results);
     }
 
@@ -136,8 +136,10 @@ public sealed class GeolocationController : ControllerBase
         [FromQuery] double latitude,
         [FromQuery] double longitude,
         [FromServices] ReverseGeocode reverseGeocode,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] string? provider = null)
     {
-        return Ok(await reverseGeocode.ExecuteAsync(latitude, longitude, cancellationToken));
+        // provider (osm, nominatim or photon) only counts when Geocoding:AllowProviderOverride is true (comparison in dev)
+        return Ok(await reverseGeocode.ExecuteAsync(latitude, longitude, provider, cancellationToken));
     }
 }

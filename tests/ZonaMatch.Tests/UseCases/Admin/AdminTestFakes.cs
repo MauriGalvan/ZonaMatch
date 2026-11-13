@@ -42,6 +42,16 @@ internal sealed class FakeAdminUserRepository(params User[] users) : IUserReposi
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Users.FirstOrDefault(user => user.Id == id));
 
+    public Task SetInvestorAccessAsync(
+        Guid id, string? access, DateTimeOffset? requestedAt, DateTimeOffset? grantedAt, CancellationToken cancellationToken = default)
+    {
+        var user = Users.Single(user => user.Id == id);
+        user.InvestorAccess = access;
+        user.InvestorAccessRequestedAt = requestedAt;
+        user.InvestorAccessGrantedAt = grantedAt;
+        return Task.CompletedTask;
+    }
+
     public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default)
     {
         SetAdministratorCalls++;
