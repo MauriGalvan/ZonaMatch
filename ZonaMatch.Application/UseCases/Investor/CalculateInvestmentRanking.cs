@@ -19,7 +19,7 @@ public sealed class CalculateInvestmentRanking(
     IZoneProfilesRepository zoneProfiles,
     MarketExchangeRate exchangeRate)
 {
-    public const int MaximumZones = 20;
+    public const int MaximumZones = 10;
     public const int MinimumSaleListings = 10;
 
     public async Task<InvestmentRankingResponse> ExecuteAsync(Guid userId, CancellationToken cancellationToken = default)

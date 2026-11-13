@@ -105,6 +105,21 @@ public class InvestorProfileTests
         ranking.UsdArs.Should().Be(1500);
     }
 
+    [Fact]
+    public async Task Ranking_KeepsTheTopTenZones()
+    {
+        await Save().ExecuteAsync(_investor.Id, Request(("rentabilidad", "alta")));
+        var zones = new Mock<IZoneProfilesRepository>();
+        zones.Setup(repository => repository.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Enumerable.Range(1, 12).Select(i => Zone($"zona-{i}", rent: 400_000 + i * 20_000, price: 100_000)).ToList());
+
+        var ranking = await new CalculateInvestmentRanking(_users, _profiles, zones.Object, new MarketExchangeRate(1500))
+            .ExecuteAsync(_investor.Id);
+
+        ranking.Zones.Should().HaveCount(CalculateInvestmentRanking.MaximumZones);
+        ranking.Zones[0].Slug.Should().Be("zona-12");
+    }
+
     // Apartment market of 2 rooms, the size of the profile
     private static ZoneProfile Zone(string slug, decimal rent, decimal price)
     {
