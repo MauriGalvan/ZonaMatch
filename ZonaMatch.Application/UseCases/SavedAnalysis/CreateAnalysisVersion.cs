@@ -41,7 +41,9 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                 ? await _analysisRepository.GetAsync(originalId, userId, cancellationToken) ?? throw new NotFoundException("El análisis no existe.")
                 : sourceAnalysis;
 
-            var criteriaCatalog = await _criteriaRepository.ListAsync(cancellationToken);
+            var criteriaCatalog = (await _criteriaRepository.ListAsync(cancellationToken))
+                .Where(criterion => criterion.ForHousehold)
+                .ToList();
             var now = _clock.GetUtcNow();
 
             var context = new Context

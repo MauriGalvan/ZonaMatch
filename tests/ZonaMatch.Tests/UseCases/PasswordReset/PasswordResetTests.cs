@@ -148,6 +148,10 @@ public class PasswordResetTests
         public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<User>>(All);
         public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(All.FirstOrDefault(u => u.Id == id));
         public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task SetInvestorAccessAsync(
+            Guid id, string? access, DateTimeOffset? requestedAt, DateTimeOffset? grantedAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class FakeResets(FakeUsers users) : IPasswordResetRepository

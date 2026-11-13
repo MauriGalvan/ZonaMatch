@@ -107,5 +107,8 @@ namespace ZonaMatch.Domain.Entities
     {
         public const string Profile = "perfil";
         public const string Analysis = "analisis";
+
+        // The investor profile: capital, credit, type, rooms and investment criteria (no household or places).
+        public const string Investor = "inversor";
     }
 }

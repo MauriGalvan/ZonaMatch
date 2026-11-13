@@ -17,6 +17,12 @@ namespace ZonaMatch.Domain.Scoring
         // victimization survey, so CABA and the province can be compared
         public int? CrimeCount { get; init; }
 
+        // Share of the households that rent (census), 0 to 100; null without census data.
+        public double? RentingHouseholdsPercentage { get; init; }
+
+        // Partido or comuna the zone belongs to; null for partidos, comunas and the city themselves.
+        public string? ParentSlug { get; init; }
+
         // Public transit lines and departures during the morning peak period in this zone.
         public int TransitLineCount { get; init; }
         public int PeakHourDepartures { get; init; }
