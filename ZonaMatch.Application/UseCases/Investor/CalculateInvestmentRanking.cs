@@ -37,11 +37,10 @@ public sealed class CalculateInvestmentRanking(
 
         var universe = await zoneProfiles.ListAsync(cancellationToken);
         var zonesBySlug = universe.ToDictionary(zone => zone.Slug, StringComparer.Ordinal);
-        var added = (request?.AddedZones ?? [])
-            .Select(slug => slug.Trim())
-            .Distinct(StringComparer.Ordinal)
-            .Select(slug => zonesBySlug.TryGetValue(slug, out var zone) ? zone : throw new NotFoundException($"No hay datos para la zona {slug}."))
-            .ToList();
+        ZoneProfile Find(string slug) =>
+            zonesBySlug.TryGetValue(slug.Trim(), out var zone) ? zone : throw new NotFoundException($"No hay datos para la zona {slug}.");
+        var fixedZones = request?.Zones?.Distinct(StringComparer.Ordinal).Select(Find).ToList();
+        var added = (request?.AddedZones ?? []).Distinct(StringComparer.Ordinal).Select(Find).ToList();
 
         var engine = new ScoringEngine(universe, exchangeRate.UsdArs);
         var scoringRequest = new ScoringRequest(
@@ -63,8 +62,10 @@ public sealed class CalculateInvestmentRanking(
             .ThenBy(result => result.Zone.Name, StringComparer.Ordinal)
             .ToList();
 
-        var top = ranking.Take(InitialZones).ToList();
-        var extra = added
+        // A saved analysis keeps its zones; a new one starts from the automatic top
+        var top = fixedZones is null ? ranking.Take(InitialZones).ToList() : [];
+        var extra = (fixedZones ?? []).Concat(added)
+            .DistinctBy(zone => zone.Slug, StringComparer.Ordinal)
             .Where(zone => top.All(result => result.Zone.Slug != zone.Slug))
             .Select(zone => ranking.FirstOrDefault(result => result.Zone.Slug == zone.Slug) ?? engine.Calculate(zone, scoringRequest))
             .ToList();

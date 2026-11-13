@@ -138,6 +138,18 @@ public class InvestorProfileTests
     }
 
     [Fact]
+    public async Task Ranking_OfASavedAnalysis_KeepsItsZones()
+    {
+        await Save().ExecuteAsync(_investor.Id, Request(("rentabilidad", "alta")));
+
+        var ranking = await Ranking().ExecuteAsync(
+            _investor.Id, new InvestmentRankingRequest { Zones = ["zona-2", "zona-11"], AddedZones = ["zona-5"] });
+
+        ranking.Zones.Select(zone => zone.Slug).Should().Equal("zona-11", "zona-5", "zona-2");
+        ranking.Recommendations.Select(zone => zone.Slug).Should().Equal("zona-12", "zona-10", "zona-9", "zona-8");
+    }
+
+    [Fact]
     public async Task Ranking_WithMoreThanTenZones_IsRejected()
     {
         await Save().ExecuteAsync(_investor.Id, Request(("rentabilidad", "alta")));

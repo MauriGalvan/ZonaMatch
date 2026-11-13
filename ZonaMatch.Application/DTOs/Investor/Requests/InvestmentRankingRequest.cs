@@ -7,4 +7,7 @@ public sealed class InvestmentRankingRequest
     public InvestorProfileRequest? Settings { get; set; }
 
     public IReadOnlyList<string>? AddedZones { get; set; }
+
+    // The exact zones of a saved analysis, instead of the automatic top: they stay the same when it is opened again.
+    public IReadOnlyList<string>? Zones { get; set; }
 }
