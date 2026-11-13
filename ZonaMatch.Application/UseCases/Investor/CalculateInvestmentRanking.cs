@@ -10,8 +10,9 @@ namespace ZonaMatch.Application.UseCases.Investor;
 
 // Ranks barrios and localidades for the saved investor profile: the investment criteria with their priorities, and
 // the capital as a purchase limit (against the sales eligible for a mortgage when the profile buys with one). Only
-// zones with sale prices for the property type searched are ranked. Partidos, comunas and the city are left out:
-// they add up the zones inside them.
+// zones with listings of their own for the property type and size searched are ranked, at least MinimumSaleListings:
+// zones that inherit the prices of the zone around them would repeat its figures, and a handful of listings gives no
+// reliable yield. Partidos, comunas and the city are left out: they add up the zones inside them.
 public sealed class CalculateInvestmentRanking(
     IUserRepository users,
     IProfileRepository profiles,
@@ -19,6 +20,7 @@ public sealed class CalculateInvestmentRanking(
     MarketExchangeRate exchangeRate)
 {
     public const int MaximumZones = 20;
+    public const int MinimumSaleListings = 10;
 
     public async Task<InvestmentRankingResponse> ExecuteAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -40,7 +42,7 @@ public sealed class CalculateInvestmentRanking(
             profile.CreditEligible);
 
         var zones = universe
-            .Where(zone => !zone.IsLargeZone && zone.GetMarket(profile.HousingType, profile.Rooms).AverageSalePriceUsd is not null)
+            .Where(zone => !zone.IsLargeZone && HasOwnSales(zone.GetMarket(profile.HousingType, profile.Rooms)))
             .Select(zone => (Zone: zone, Result: engine.Calculate(zone, request)))
             .Where(item => item.Result.Score is not null)
             .OrderByDescending(item => item.Result.Score)
@@ -57,6 +59,9 @@ public sealed class CalculateInvestmentRanking(
             profile.CreditEligible,
             exchangeRate.UsdArs);
     }
+
+    private static bool HasOwnSales(HousingMarket market) =>
+        market.AverageSalePriceUsd is not null && market.AvailablePropertiesForSale >= MinimumSaleListings;
 
     private static InvestmentZoneResponse ToResponse(
         ZoneProfile zone, ZoneScoreResult result, ScoringEngine engine, string? housingType, int? rooms)
