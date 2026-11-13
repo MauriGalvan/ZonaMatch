@@ -162,7 +162,8 @@ namespace ZonaMatch.Infrastructure.Data
             // Application model: created by migrations in the "app" schema
             modelBuilder.Entity<User>(e =>
             {
-                e.ToTable("usuarios");
+                e.ToTable("usuarios", t =>
+                    t.HasCheckConstraint("ck_usuarios_acceso_inversor", "acceso_inversor IN ('solicitado', 'habilitado')"));
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Email).HasMaxLength(254).IsRequired();
                 e.HasIndex(x => x.Email).IsUnique();
@@ -170,6 +171,10 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.DateOfBirth).HasColumnName("fecha_nacimiento").HasColumnType("date");
                 e.Property(x => x.CreatedAt).HasColumnName("fecha_creacion").HasColumnType("timestamptz");
                 e.Property(x => x.IsAdministrator).HasColumnName("es_administrador");
+                e.Property(x => x.InvestorAccess).HasColumnName("acceso_inversor").HasMaxLength(20);
+                e.Property(x => x.InvestorAccessRequestedAt).HasColumnName("acceso_inversor_solicitado").HasColumnType("timestamptz");
+                e.Property(x => x.InvestorAccessGrantedAt).HasColumnName("acceso_inversor_habilitado").HasColumnType("timestamptz");
+                e.Ignore(x => x.HasInvestorAccess);
             });
 
             modelBuilder.Entity<UserFeedbackPreferences>(e =>
@@ -208,14 +213,14 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("contextos", t =>
                 {
-                    t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis')");
+                    t.HasCheckConstraint("ck_contextos_tipo", "tipo IN ('perfil', 'analisis', 'inversor', 'analisis-inversor')");
                     t.HasCheckConstraint("ck_contextos_operacion", "operacion IN ('alquiler', 'compra')");
                     t.HasCheckConstraint("ck_contextos_tipo_vivienda", "tipo_vivienda IS NULL OR tipo_vivienda IN ('apartment', 'house', 'ph')");
                     t.HasCheckConstraint("ck_contextos_superficie_m2", "superficie_m2 IS NULL OR superficie_m2 BETWEEN 10 AND 2000");
                     t.HasCheckConstraint("ck_contextos_ambientes", "ambientes IS NULL OR ambientes BETWEEN 1 AND 5");
                 });
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Type).HasColumnName("tipo").HasMaxLength(10).IsRequired();
+                e.Property(x => x.Type).HasColumnName("tipo").HasMaxLength(20).IsRequired();
                 e.Property(x => x.PeopleCount).HasColumnName("personas").IsRequired();
                 e.Property(x => x.Pets).HasColumnName("mascotas").HasColumnType("text[]");
                 e.Property(x => x.Mobility).HasColumnName("movilidad").HasColumnType("text[]");
@@ -234,6 +239,10 @@ namespace ZonaMatch.Infrastructure.Data
                     .IsUnique()
                     .HasFilter("tipo = 'perfil'")
                     .HasDatabaseName("ux_contextos_perfil_usuario");
+                // One investor profile per user as well
+                e.HasIndex(x => x.UserId, "ux_contextos_inversor_usuario")
+                    .IsUnique()
+                    .HasFilter("tipo = 'inversor'");
                 e.HasOne<User>()
                     .WithMany()
                     .HasForeignKey(x => x.UserId)
@@ -420,6 +429,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.IconCssClass).HasColumnName("icono").HasMaxLength(40).IsRequired();
                 e.Property(x => x.Order).HasColumnName("orden");
                 e.Property(x => x.IsActive).HasColumnName("activo");
+                e.Property(x => x.ForHousehold).HasColumnName("perfil_hogar").HasDefaultValue(true);
+                e.Property(x => x.ForInvestor).HasColumnName("perfil_inversor").HasDefaultValue(false);
                 e.HasIndex(x => x.Order);
             });
 

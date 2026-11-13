@@ -11,7 +11,7 @@ public sealed class ListUsers(IUserRepository users)
         var registeredUsers = await users.ListAsync(cancellationToken);
 
         return registeredUsers
-            .Select(user => new AdminUserResponse(user.Id, user.Email, user.DateOfBirth, user.IsAdministrator))
+            .Select(UpdateInvestorAccess.ToResponse)
             .ToList();
     }
 }

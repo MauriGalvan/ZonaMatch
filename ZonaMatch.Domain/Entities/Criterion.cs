@@ -21,5 +21,10 @@ namespace ZonaMatch.Domain.Entities
 
         // Hide a criterion from the wizard without deleting existing analyses that use it.
         public bool IsActive { get; set; } = true;
+
+        // Profiles that use the criterion: the household one, the investor one, or both (safety and mobility).
+        public bool ForHousehold { get; set; } = true;
+
+        public bool ForInvestor { get; set; }
     }
 }
