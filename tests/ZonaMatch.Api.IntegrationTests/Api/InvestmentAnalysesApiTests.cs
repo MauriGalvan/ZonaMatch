@@ -46,10 +46,13 @@ public sealed class InvestmentAnalysesApiTests(PostgreSqlDatabaseFixture databas
         var version = await user.Client.PostAsJsonAsync($"/api/v1/investment-analyses/{analysis!.Id}/versions", request);
         version.StatusCode.Should().Be(HttpStatusCode.Created);
 
+        var recalculated = await user.Client.PostAsync($"/api/v1/investment-analyses/{analysis.Id}/recalculate", null);
+        recalculated.StatusCode.Should().Be(HttpStatusCode.Created);
+
         var list = await user.Client.GetFromJsonAsync<List<AnalysisResponse>>("/api/v1/analyses");
         var saved = list.Should().ContainSingle().Subject;
         saved.Profile.Should().Be(AnalysisResponse.InvestorProfile);
         saved.Points.PurchaseLimitUsd.Should().Be(100_000);
-        saved.Versions.Should().ContainSingle().Which.Points.PurchaseLimitUsd.Should().Be(80_000);
+        saved.Versions.Select(item => item.Points.PurchaseLimitUsd).Should().BeEquivalentTo(new decimal?[] { 80_000, 100_000 });
     }
 }

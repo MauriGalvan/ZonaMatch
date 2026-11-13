@@ -21,7 +21,9 @@ public sealed record AnalysisResponse(
     // Starred in the user's "Mis análisis" list.
     bool IsFavorite = false,
     // Profile the analysis was made with: "hogar" or "inversor".
-    string Profile = AnalysisResponse.HouseholdProfile)
+    string Profile = AnalysisResponse.HouseholdProfile,
+    // Ranking saved with an investment analysis, as Result is for the household ones
+    ZonaMatch.Application.DTOs.Investor.Responses.InvestmentRankingResponse? InvestmentResult = null)
 {
     public const string HouseholdProfile = "hogar";
     public const string InvestorProfile = "inversor";

@@ -104,6 +104,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<CalculateInvestmentRanking>();
         services.AddScoped<SaveInvestmentAnalysis>();
         services.AddScoped<CreateInvestmentAnalysisVersion>();
+        services.AddScoped<RecalculateInvestmentAnalysis>();
         services.AddScoped<GetAdminStats>();
 
         services.AddScoped<ListZoneReviews>();

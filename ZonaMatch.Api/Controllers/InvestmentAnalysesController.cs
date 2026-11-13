@@ -46,4 +46,20 @@ public sealed class InvestmentAnalysesController : ControllerBase
         var version = await useCase.ExecuteAsync(id, User.RequireUserId(), request, cancellationToken);
         return Created($"/api/v1/analyses/{version.Id}", version);
     }
+
+    // POST /api/v1/investment-analyses/{id}/recalculate    Same settings and zones with current data, as a new version.
+    [HttpPost("{id:guid}/recalculate")]
+    [ProducesResponseType<AnalysisResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AnalysisResponse>> RecalculateAsync(
+        Guid id,
+        [FromServices] RecalculateInvestmentAnalysis useCase,
+        CancellationToken cancellationToken)
+    {
+        var version = await useCase.ExecuteAsync(id, User.RequireUserId(), cancellationToken);
+        return Created($"/api/v1/analyses/{version.Id}", version);
+    }
 }
