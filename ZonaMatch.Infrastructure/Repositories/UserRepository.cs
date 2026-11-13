@@ -15,8 +15,12 @@ public sealed class UserRepository(ZonaMatchDbContext dbContext) : IUserReposito
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         dbContext.Users.AsNoTracking().FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
 
+    // Newest accounts first; accounts created at the same moment keep a stable order by email.
     public async Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) =>
-        await dbContext.Users.AsNoTracking().OrderBy(user => user.Email).ToListAsync(cancellationToken);
+        await dbContext.Users.AsNoTracking()
+            .OrderByDescending(user => user.CreatedAt)
+            .ThenBy(user => user.Email)
+            .ToListAsync(cancellationToken);
 
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         dbContext.Users.AsNoTracking().FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
