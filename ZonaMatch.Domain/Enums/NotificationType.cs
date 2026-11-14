@@ -8,6 +8,8 @@ namespace ZonaMatch.Domain.Enums
         GroupInvitation,
         ReviewPendingModeration,
         InvestorAccessRequested,
-        InvestorAccessGranted
+        InvestorAccessGranted,
+        AdministratorRoleGranted,
+        NewUserRegistered
     }
 }

@@ -19,6 +19,8 @@ internal sealed class FakeNotificationRepository : INotificationRepository
 
     public void AddRange(IEnumerable<UserNotification> notifications) => Notifications.AddRange(notifications);
 
+    public int SaveCount { get; private set; }
+
     public Task MarkAllAsReadAsync(Guid userId, DateTimeOffset readAt, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
@@ -30,5 +32,9 @@ internal sealed class FakeNotificationRepository : INotificationRepository
         return Task.CompletedTask;
     }
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        SaveCount++;
+        return Task.CompletedTask;
+    }
 }

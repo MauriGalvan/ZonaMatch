@@ -3,8 +3,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using ZonaMatch.Application.DTOs.Auth.Requests;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.UseCases.Admin;
 using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Enums;
+using ZonaMatch.Tests.UseCases.Community;
 
 namespace ZonaMatch.Tests.UseCases.Auth;
 
@@ -13,13 +16,16 @@ public sealed class AuthUseCasesTests
     private static readonly DateTimeOffset CurrentTime = new(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
 
     private readonly FakeUserRepository _users = new();
+    private readonly FakeNotificationRepository _notifications = new();
     private readonly RegisterUser _registerUser;
     private readonly LoginUser _loginUser;
 
     public AuthUseCasesTests()
     {
         var passwordHasher = new FakePasswordHasher();
-        _registerUser = new RegisterUser(_users, passwordHasher, new FixedTimeProvider(CurrentTime), NullLogger<RegisterUser>.Instance);
+        var clock = new FixedTimeProvider(CurrentTime);
+        _registerUser = new RegisterUser(
+            _users, passwordHasher, clock, new NotifyNewUserRegistered(_users, _notifications, clock), NullLogger<RegisterUser>.Instance);
         _loginUser = new LoginUser(_users, passwordHasher, new FakeTokenService(), NullLogger<LoginUser>.Instance);
     }
 
@@ -39,6 +45,21 @@ public sealed class AuthUseCasesTests
         Assert.Equal("ana@example.com", response.Email);
         Assert.Equal(new DateOnly(1990, 5, 31), response.BirthDate);
         Assert.Equal(CurrentTime, savedUser.CreatedAt);
+    }
+
+    [Fact]
+    public async Task Register_WhenThereAreAdministrators_NotifiesEachOneWithALinkToTheUserList()
+    {
+        var administrator = new User { Email = "admin@example.com", IsAdministrator = true };
+        _users.SavedUsers.Add(administrator);
+
+        await _registerUser.ExecuteAsync(CreateRegisterRequest());
+
+        var notification = Assert.Single(_notifications.Notifications);
+        Assert.Equal(administrator.Id, notification.UserId);
+        Assert.Equal(NotificationType.NewUserRegistered, notification.Type);
+        Assert.Equal("Nuevo usuario", notification.Title);
+        Assert.Equal(NotifyNewUserRegistered.UserListLink, notification.Link);
     }
 
     [Fact]
@@ -206,7 +227,7 @@ public sealed class AuthUseCasesTests
             throw new NotSupportedException();
 
         public Task<IReadOnlyList<Guid>> GetAdministratorIdsAsync(CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+            Task.FromResult<IReadOnlyList<Guid>>(SavedUsers.Where(user => user.IsAdministrator).Select(user => user.Id).ToList());
 
         public Task AddAsync(User user, CancellationToken cancellationToken = default)
         {

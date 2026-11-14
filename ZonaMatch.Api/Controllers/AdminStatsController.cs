@@ -22,4 +22,14 @@ public sealed class AdminStatsController : ControllerBase
         var stats = await useCase.ExecuteAsync(cancellationToken);
         return Ok(stats);
     }
+
+    // GET /api/v1/admin/stats/groups
+    [HttpGet("groups")]
+    [ProducesResponseType<IReadOnlyList<AdminGroupResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListGroupsAsync([FromServices] ListAdminGroups useCase, CancellationToken cancellationToken)
+    {
+        return Ok(await useCase.ExecuteAsync(cancellationToken));
+    }
 }

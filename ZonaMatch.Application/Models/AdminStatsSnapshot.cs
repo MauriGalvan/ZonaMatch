@@ -14,4 +14,4 @@ public sealed record AdminStatsSnapshot(
     AdminOperationSplit Operations);
 
 // Time window for the statistics, computed by the use case from the current time.
-public sealed record AdminStatsPeriod(DateTimeOffset Since7Days, DateTimeOffset Since30Days, DateTimeOffset RegistrationsSince, int TopZoneCount);
+public sealed record AdminStatsPeriod(DateTimeOffset SinceLastDay, DateTimeOffset Since7Days, DateTimeOffset Since30Days, DateTimeOffset RegistrationsSince, int TopZoneCount);

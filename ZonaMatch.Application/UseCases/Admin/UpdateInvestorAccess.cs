@@ -48,5 +48,5 @@ public sealed class UpdateInvestorAccess(IUserRepository users, INotificationRep
     }
 
     public static AdminUserResponse ToResponse(User user) =>
-        new(user.Id, user.Email, user.DateOfBirth, user.IsAdministrator, InvestorAccessStatus.Of(user), user.InvestorAccessRequestedAt);
+        new(user.Id, user.Email, user.DateOfBirth, user.IsAdministrator, InvestorAccessStatus.Of(user), user.InvestorAccessRequestedAt, user.CreatedAt);
 }

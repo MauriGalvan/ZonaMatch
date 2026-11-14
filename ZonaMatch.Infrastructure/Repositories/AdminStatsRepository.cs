@@ -58,12 +58,33 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
             await GetOperationSplitAsync(cancellationToken));
     }
 
+    public async Task<IReadOnlyList<AdminGroupResponse>> ListGroupsAsync(CancellationToken cancellationToken = default) =>
+        (await dbContext.Groups.AsNoTracking()
+            .Select(group => new
+            {
+                group.Id,
+                group.Name,
+                group.CreatedAt,
+                Members = group.Participants
+                    .Select(participant => new { participant.UserId, participant.User.Email, participant.Role })
+                    .ToList(),
+            })
+            .ToListAsync(cancellationToken))
+        .Select(group => new AdminGroupResponse(
+            group.Id,
+            group.Name,
+            // Groups store their creation date as a UTC DateTime.
+            new DateTimeOffset(DateTime.SpecifyKind(group.CreatedAt, DateTimeKind.Utc)),
+            group.Members.Select(member => new AdminGroupMemberResponse(member.UserId, member.Email, member.Role == GroupRole.Owner)).ToList()))
+        .ToList();
+
     private async Task<AdminUserStats> GetUserStatsAsync(AdminStatsPeriod period, CancellationToken cancellationToken)
     {
         var users = dbContext.Users.AsNoTracking();
 
         return new AdminUserStats(
             Total: await users.CountAsync(cancellationToken),
+            NewLastDay: await users.CountAsync(user => user.CreatedAt >= period.SinceLastDay, cancellationToken),
             NewLast7Days: await users.CountAsync(user => user.CreatedAt >= period.Since7Days, cancellationToken),
             NewLast30Days: await users.CountAsync(user => user.CreatedAt >= period.Since30Days, cancellationToken),
             Administrators: await users.CountAsync(user => user.IsAdministrator, cancellationToken),

@@ -12,6 +12,10 @@ namespace ZonaMatch.Application.Interfaces
         // Reviews of every zone waiting for approval, with their authors, oldest first (read-only).
         Task<IReadOnlyList<Review>> ListPendingAsync(CancellationToken cancellationToken = default);
 
+        // The latest approved or rejected reviews of every zone, with their authors, most recently resolved first
+        // (read-only).
+        Task<IReadOnlyList<Review>> ListResolvedAsync(int limit, CancellationToken cancellationToken = default);
+
         // Tracked entities are persisted by the repository.
         Task<Review?> GetByUserAsync(string zoneSlug, Guid userId, CancellationToken cancellationToken = default);
 

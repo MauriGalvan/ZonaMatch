@@ -9,7 +9,12 @@ namespace ZonaMatch.Tests.UseCases.Admin;
 // Returns a fixed snapshot and records the period the use case asked for.
 internal sealed class FakeAdminStatsRepository(params DateTimeOffset[] registrationDates) : IAdminStatsRepository
 {
-    public static readonly AdminUserStats Users = new(Total: 10, NewLast7Days: 2, NewLast30Days: 5, Administrators: 1, WithProfile: 7, WithAnalysis: 4);
+    public List<AdminGroupResponse> Groups { get; } = [];
+
+    public Task<IReadOnlyList<AdminGroupResponse>> ListGroupsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AdminGroupResponse>>(Groups);
+
+    public static readonly AdminUserStats Users = new(Total: 10, NewLastDay: 1, NewLast7Days: 2, NewLast30Days: 5, Administrators: 1, WithProfile: 7, WithAnalysis: 4);
 
     public AdminStatsPeriod? RequestedPeriod { get; private set; }
 
