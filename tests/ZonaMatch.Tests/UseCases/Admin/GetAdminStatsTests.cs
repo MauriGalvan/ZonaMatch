@@ -59,14 +59,15 @@ public class GetAdminStatsTests
     }
 
     [Fact]
-    public async Task GetStats_RequestsTheLast7And30DaysAndTheFirstWeek()
+    public async Task GetStats_RequestsTheLastDay7And30DaysAndTheFirstWeek()
     {
         var repository = new FakeAdminStatsRepository();
 
         await CreateUseCase(repository).ExecuteAsync();
 
         repository.RequestedPeriod.Should().NotBeNull();
-        repository.RequestedPeriod!.Since7Days.Should().Be(Now.AddDays(-7));
+        repository.RequestedPeriod!.SinceLastDay.Should().Be(Now.AddDays(-1));
+        repository.RequestedPeriod.Since7Days.Should().Be(Now.AddDays(-7));
         repository.RequestedPeriod.Since30Days.Should().Be(Now.AddDays(-30));
         repository.RequestedPeriod.RegistrationsSince.Should().Be(new DateTimeOffset(2026, 8, 24, 0, 0, 0, Argentina));
         // Npgsql only accepts UTC values.

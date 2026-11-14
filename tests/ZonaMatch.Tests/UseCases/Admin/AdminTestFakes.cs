@@ -2,13 +2,19 @@ using ZonaMatch.Application.DTOs.Admin.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Scoring;
 
 namespace ZonaMatch.Tests.UseCases.Admin;
 
 // Returns a fixed snapshot and records the period the use case asked for.
 internal sealed class FakeAdminStatsRepository(params DateTimeOffset[] registrationDates) : IAdminStatsRepository
 {
-    public static readonly AdminUserStats Users = new(Total: 10, NewLast7Days: 2, NewLast30Days: 5, Administrators: 1, WithProfile: 7, WithAnalysis: 4);
+    public List<AdminGroupResponse> Groups { get; } = [];
+
+    public Task<IReadOnlyList<AdminGroupResponse>> ListGroupsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AdminGroupResponse>>(Groups);
+
+    public static readonly AdminUserStats Users = new(Total: 10, NewLastDay: 1, NewLast7Days: 2, NewLast30Days: 5, Administrators: 1, WithProfile: 7, WithAnalysis: 4);
 
     public AdminStatsPeriod? RequestedPeriod { get; private set; }
 
@@ -75,4 +81,18 @@ internal sealed class FakeAdminUserRepository(params User[] users) : IUserReposi
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public Task AddAsync(User user, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+}
+
+// Fixed zone profiles for the admin zone use cases.
+internal sealed class FakeAdminZoneProfilesRepository(params ZoneProfile[] zones) : IZoneProfilesRepository
+{
+    public Task<IReadOnlyList<ZoneProfile>> ListAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ZoneProfile>>(zones);
+
+    public Task InvalidateAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<IReadOnlyList<string>> ListNearbyZoneSlugsAsync(
+        IReadOnlyCollection<(double Latitude, double Longitude)> locations,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<string>>(zones.Select(zone => zone.Slug).ToArray());
 }
