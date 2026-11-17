@@ -184,6 +184,7 @@ public sealed partial class CalculateGroupScore
                     point.Latitude,
                     point.Longitude,
                     point.Type,
+                    point.Frequency,
                     point.Priority,
                     point.MaximumTravelTime)))
             .ToArray();

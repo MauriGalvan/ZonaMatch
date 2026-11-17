@@ -3,6 +3,8 @@ using ZonaMatch.Application.DTOs.Admin.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.UseCases.Admin;
 using ZonaMatch.Domain.Entities;
+using ZonaMatch.Domain.Enums;
+using ZonaMatch.Tests.UseCases.Community;
 
 namespace ZonaMatch.Tests.UseCases.Admin;
 
@@ -10,13 +12,15 @@ public class UpdateUserRoleTests
 {
     private readonly User _administrator = new() { Email = "admin@example.com", IsAdministrator = true };
     private readonly User _member = new() { Email = "ana@example.com", DateOfBirth = new DateOnly(1995, 8, 23) };
+    private static readonly DateTimeOffset Now = new(2026, 11, 13, 20, 30, 0, TimeSpan.Zero);
     private readonly FakeAdminUserRepository _users;
+    private readonly FakeNotificationRepository _notifications = new();
     private readonly UpdateUserRole _useCase;
 
     public UpdateUserRoleTests()
     {
         _users = new FakeAdminUserRepository(_administrator, _member);
-        _useCase = new UpdateUserRole(_users);
+        _useCase = new UpdateUserRole(_users, _notifications, new FixedTimeProvider(Now));
     }
 
     [Fact]
@@ -34,7 +38,8 @@ public class UpdateUserRoleTests
     {
         var response = await _useCase.ExecuteAsync(_member.Id, isAdmin: true, _administrator.Id);
 
-        response.Should().Be(new AdminUserResponse(_member.Id, "ana@example.com", new DateOnly(1995, 8, 23), IsAdmin: true));
+        response.Should().Be(new AdminUserResponse(
+            _member.Id, "ana@example.com", new DateOnly(1995, 8, 23), IsAdmin: true, RegisteredAt: _member.CreatedAt));
     }
 
     [Fact]
@@ -95,5 +100,36 @@ public class UpdateUserRoleTests
 
         await act.Should().ThrowAsync<NotFoundException>().WithMessage("El usuario no existe.");
         _users.SetAdministratorCalls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task UpdateRole_WhenGrantingAdmin_NotifiesTheUserWithALinkToTheAdminDashboard()
+    {
+        await _useCase.ExecuteAsync(_member.Id, isAdmin: true, _administrator.Id);
+
+        var notification = _notifications.Notifications.Should().ContainSingle().Subject;
+        notification.UserId.Should().Be(_member.Id);
+        notification.Type.Should().Be(NotificationType.AdministratorRoleGranted);
+        notification.Title.Should().Be("Rol de administrador habilitado");
+        notification.Link.Should().Be(UpdateUserRole.AdminDashboardLink).And.Be("/admin");
+        notification.CreatedAt.Should().Be(Now);
+    }
+
+    [Fact]
+    public async Task UpdateRole_WhenUserIsAlreadyAdmin_DoesNotNotifyAgain()
+    {
+        await _useCase.ExecuteAsync(_administrator.Id, isAdmin: true, _administrator.Id);
+
+        _notifications.Notifications.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UpdateRole_WhenRemovingAdmin_DoesNotNotify()
+    {
+        _member.IsAdministrator = true;
+
+        await _useCase.ExecuteAsync(_member.Id, isAdmin: false, _administrator.Id);
+
+        _notifications.Notifications.Should().BeEmpty();
     }
 }

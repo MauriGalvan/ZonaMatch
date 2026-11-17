@@ -39,6 +39,16 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .OrderBy(review => review.UpdatedAt)
                 .ToListAsync(cancellationToken);
 
+        public async Task<IReadOnlyList<Review>> ListResolvedAsync(int limit, CancellationToken cancellationToken = default) =>
+            await _dbContext.Reviews
+                .AsNoTracking()
+                .Include(review => review.User)
+                .Where(review => review.Status != ReviewStatus.Pending)
+                .OrderByDescending(review => review.ResolvedAt)
+                .ThenByDescending(review => review.UpdatedAt)
+                .Take(limit)
+                .ToListAsync(cancellationToken);
+
         public Task<Review?> GetByUserAsync(string zoneSlug, Guid userId, CancellationToken cancellationToken = default) =>
             _dbContext.Reviews
                 .Include(review => review.HelpfulVotes)

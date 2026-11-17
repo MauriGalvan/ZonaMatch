@@ -21,7 +21,7 @@ public sealed class GetAdminStats(IAdminStatsRepository stats, TimeProvider time
         var registrationsSince = new DateTimeOffset(weekStarts[0].ToDateTime(TimeOnly.MinValue), ArgentinaOffset).ToUniversalTime();
 
         var snapshot = await stats.GetSnapshotAsync(
-            new AdminStatsPeriod(now.AddDays(-7), now.AddDays(-30), registrationsSince, TopZoneCount),
+            new AdminStatsPeriod(now.AddDays(-1), now.AddDays(-7), now.AddDays(-30), registrationsSince, TopZoneCount),
             cancellationToken);
 
         return new AdminStatsResponse(

@@ -24,6 +24,11 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(c => c.UserId == userId && c.Type == ContextType.Profile, cancellationToken);
 
+        public async Task<Context?> GetInvestorProfileAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            await _context.Contexts
+                .Include(c => c.Criteria)
+                .FirstOrDefaultAsync(c => c.UserId == userId && c.Type == ContextType.Investor, cancellationToken);
+
         public async Task<IReadOnlyList<Context>> GetByUserIdsAsync(
             IReadOnlyCollection<Guid> userIds,
             CancellationToken cancellationToken = default)

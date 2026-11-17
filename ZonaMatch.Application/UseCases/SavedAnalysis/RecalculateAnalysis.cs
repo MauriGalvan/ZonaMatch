@@ -17,6 +17,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
         {
             var source = await analyses.GetAsync(analysisId, userId, cancellationToken)
                 ?? throw new NotFoundException("El análisis no existe.");
+            if (source.Context?.Type == ContextType.InvestorAnalysis)
+                throw new BadRequestException("Los análisis de inversión se ajustan desde su pantalla.");
 
             // A group ranking mixes the profiles of several people: it is recalculated from the group
             if (source.GroupScoresJson is not null)

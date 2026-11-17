@@ -122,29 +122,53 @@ public sealed class GroupAnalysisApiTests(PostgreSqlDatabaseFixture database)
         var savedAnalysis = await saveResponse.Content.ReadFromJsonAsync<AnalysisResponse>();
 
         savedAnalysis.Should().NotBeNull();
-        savedAnalysis!.Name.Should().Be("Shared group ranking");
-        savedAnalysis.Zones.Should().ContainSingle(zone => zone.IsInitial)
+        var savedGroupAnalysis = savedAnalysis!;
+        savedGroupAnalysis.Name.Should().Be("Shared group ranking");
+        savedGroupAnalysis.Zones.Should().ContainSingle(zone => zone.IsInitial)
             .Which.Slug.Should().Be(IntegrationZoneRepository.SafetyZoneSlug);
-        savedAnalysis.GroupScores.Should().NotBeNull();
-        savedAnalysis.GroupScores!.Zones.Should().HaveCount(2);
-        savedAnalysis.GroupScores.Zones[0].Slug.Should().Be(IntegrationZoneRepository.SafetyZoneSlug);
-        savedAnalysis.Context.PersonNames.Should().ContainSingle().Which.Should().Be("Ana");
+        savedGroupAnalysis.GroupScores.Should().NotBeNull();
+        savedGroupAnalysis.GroupScores!.Zones.Should().HaveCount(2);
+        savedGroupAnalysis.GroupScores.Zones[0].Slug.Should().Be(IntegrationZoneRepository.SafetyZoneSlug);
+        savedGroupAnalysis.Context.PersonNames.Should().ContainSingle().Which.Should().Be("Ana");
 
-        var savedAnalysisResponse = await owner.Client.GetAsync($"/api/v1/analyses/{savedAnalysis.Id}");
+        var savedAnalysisResponse = await owner.Client.GetAsync($"/api/v1/analyses/{savedGroupAnalysis.Id}");
         savedAnalysisResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var savedAnalysisDetails = await savedAnalysisResponse.Content.ReadFromJsonAsync<AnalysisResponse>();
         savedAnalysisDetails.Should().NotBeNull();
         savedAnalysisDetails!.GroupScores.Should().NotBeNull();
         savedAnalysisDetails.GroupScores!.Zones.Should().HaveCount(2);
-        savedAnalysisDetails.GroupScores.Zones[0].Score.Should().Be(savedAnalysis.GroupScores.Zones[0].Score);
+        savedAnalysisDetails.GroupScores.Zones[0].Score.Should().Be(savedGroupAnalysis.GroupScores.Zones[0].Score);
 
-        var guestSavedAnalysisResponse = await guest.Client.GetAsync($"/api/v1/analyses/{savedAnalysis.Id}");
+        var guestSavedAnalysisResponse = await guest.Client.GetAsync($"/api/v1/analyses/{savedGroupAnalysis.Id}");
         guestSavedAnalysisResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var outsiderSaveResponse = await outsider.Client.PostAsJsonAsync(
             $"/api/v1/groups/{group.Id}/analyses",
             saveRequest);
         outsiderSaveResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var moveGroupAnalysisToTrashResponse = await owner.Client.DeleteAsync(
+            $"/api/v1/analyses/{savedGroupAnalysis.Id}");
+        moveGroupAnalysisToTrashResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var groupTrashResponse = await owner.Client.GetAsync("/api/v1/analyses/trash");
+        var groupTrash = await groupTrashResponse.Content.ReadFromJsonAsync<IReadOnlyList<TrashedAnalysisResponse>>();
+        groupTrashResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var trashedGroupAnalysis = groupTrash!.Should().ContainSingle().Which;
+        trashedGroupAnalysis.Id.Should().Be(savedGroupAnalysis.Id);
+        trashedGroupAnalysis.Name.Should().Be(savedGroupAnalysis.Name);
+        trashedGroupAnalysis.IsGroupAnalysis.Should().BeTrue();
+
+        var restoreGroupAnalysisResponse = await owner.Client.PostAsync(
+            $"/api/v1/analyses/trash/{savedGroupAnalysis.Id}/restore",
+            content: null);
+        restoreGroupAnalysisResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var restoredGroupAnalysisResponse = await owner.Client.GetAsync($"/api/v1/analyses/{savedGroupAnalysis.Id}");
+        restoredGroupAnalysisResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var restoredGroupAnalysis = await restoredGroupAnalysisResponse.Content.ReadFromJsonAsync<AnalysisResponse>();
+        restoredGroupAnalysis.Should().NotBeNull();
+        restoredGroupAnalysis!.GroupScores.Should().NotBeNull();
     }
 
     private static AnalysisCriteriaRequest CreateMemberProfile(

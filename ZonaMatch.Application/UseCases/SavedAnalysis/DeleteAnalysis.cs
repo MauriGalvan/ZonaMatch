@@ -3,14 +3,16 @@ using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.SavedAnalysis
 {
-    // Deletes an analysis and its criteria snapshot. Deleting an original also deletes its versions.
+    // Moves an analysis to the user's trash. Deleting an original also moves all its versions.
     public class DeleteAnalysis
     {
         private readonly IAnalysisRepository _analysisRepository;
+        private readonly TimeProvider _clock;
 
-        public DeleteAnalysis(IAnalysisRepository analysisRepository)
+        public DeleteAnalysis(IAnalysisRepository analysisRepository, TimeProvider clock)
         {
             _analysisRepository = analysisRepository;
+            _clock = clock;
         }
 
         public async Task ExecuteAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
@@ -18,13 +20,16 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
             var analysis = await _analysisRepository.GetAsync(id, userId, cancellationToken)
                 ?? throw new NotFoundException("El análisis no existe.");
 
+            var deletedAt = _clock.GetUtcNow();
+            analysis.DeletedAt = deletedAt;
+
             if (analysis.OriginalAnalysisId is null)
             {
-                foreach (var version in await _analysisRepository.ListVersionsAsync(analysis.Id, cancellationToken))
-                    _analysisRepository.Delete(version);
+                var versions = await _analysisRepository.ListVersionsIncludingDeletedAsync(analysis.Id, cancellationToken);
+                foreach (var version in versions)
+                    version.DeletedAt = deletedAt;
             }
 
-            _analysisRepository.Delete(analysis);
             await _analysisRepository.SaveChangesAsync(cancellationToken);
         }
     }

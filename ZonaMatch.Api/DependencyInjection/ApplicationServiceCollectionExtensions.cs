@@ -6,6 +6,8 @@ using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Admin;
+using ZonaMatch.Application.Models;
+using ZonaMatch.Application.UseCases.Investor;
 using ZonaMatch.Application.UseCases.AnalysisFollowUp;
 using ZonaMatch.Application.UseCases.Contribution;
 using ZonaMatch.Application.UseCases.Auth;
@@ -94,7 +96,21 @@ public static class ApplicationServiceCollectionExtensions
 
         services.AddScoped<ListUsers>();
         services.AddScoped<UpdateUserRole>();
+        services.AddScoped<UpdateInvestorAccess>();
+        services.AddScoped<GetInvestorAccess>();
+        services.AddScoped<RequestInvestorAccess>();
+        services.AddScoped<GetMyInvestorProfile>();
+        services.AddScoped<SaveMyInvestorProfile>();
+        services.AddScoped<CalculateInvestmentRanking>();
+        services.AddScoped<SaveInvestmentAnalysis>();
+        services.AddScoped<CreateInvestmentAnalysisVersion>();
+        services.AddScoped<RecalculateInvestmentAnalysis>();
         services.AddScoped<GetAdminStats>();
+        services.AddScoped<ListAdminGroups>();
+        services.AddScoped<ListAdminReviews>();
+        services.AddScoped<NotifyNewUserRegistered>();
+        services.AddScoped<ListAdminZones>();
+        services.AddScoped<GetAdminZone>();
 
         services.AddScoped<ListZoneReviews>();
         services.AddScoped<SaveMyReview>();
@@ -128,6 +144,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SetAnalysisFavorite>();
         services.AddScoped<RenameAnalysis>();
         services.AddScoped<DeleteAnalysis>();
+        services.AddScoped<ListAnalysisTrash>();
+        services.AddScoped<RestoreAnalysis>();
+        services.AddScoped<PermanentlyDeleteAnalysis>();
+        services.AddScoped<EmptyAnalysisTrash>();
+        services.AddScoped<PurgeExpiredAnalyses>();
         services.AddScoped<ListSavedZones>();
         services.AddScoped<SaveZone>();
         services.AddScoped<RemoveSavedZone>();
@@ -153,6 +174,7 @@ public static class ApplicationServiceCollectionExtensions
             configuration["Contact:RecipientEmail"]
                 ?? configuration["Contacto:Destinatario"]
                 ?? "zonamatchtpi@gmail.com"));
+        services.AddSingleton(new MarketExchangeRate(configuration.GetValue<decimal?>("Market:UsdArs") ?? MarketExchangeRate.Default));
         services.AddScoped<SendContactMessage>();
         services.AddScoped<GuestReportQuota>();
         services.AddScoped<SendGuestReport>();

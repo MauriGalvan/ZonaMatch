@@ -15,6 +15,39 @@ namespace ZonaMatch.Tests.UseCases.SavedAnalysis;
 public class CompareAnalysisDistanceTests
 {
     [Fact]
+    public async Task CompareAnalyses_WhenSavedPlaceWasByBicycle_PreservesBicycleFlag()
+    {
+        var userId = Guid.NewGuid();
+        var savedResult = JsonSerializer.Serialize(
+            new ScoresResponse("auto", [new ScoredZoneResponse(
+                "recoleta", "Recoleta", 82, [], [],
+                [new PlaceTravelTimeResponse("Trabajo", 20, 45, false, 8.75, ByBicycle: true)],
+                null)], []),
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var analyses = Enumerable.Range(1, 2).Select(index => new Analysis
+        {
+            UserId = userId,
+            Name = $"Analysis {index}",
+            ResultJson = savedResult,
+            Zones = [new AnalysisZone { ZoneSlug = "recoleta", Name = "Recoleta", Order = 1 }]
+        }).ToArray();
+        var repository = new Mock<IAnalysisRepository>();
+        repository.Setup(item => item.GetForUserAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(analyses);
+
+        var response = await new CompareAnalyses(
+                repository.Object,
+                new Mock<IZoneProfilesRepository>().Object,
+                new Mock<IRoutingClient>().Object)
+            .ExecuteAsync(userId, new CompareAnalysesRequest
+            {
+                AnalysisIds = analyses.Select(analysis => analysis.Id).ToList()
+            });
+
+        response.Analyses.Should().AllSatisfy(analysis =>
+            analysis.Zones.Should().ContainSingle().Which.Places.Should().ContainSingle().Which.ByBicycle.Should().BeTrue());
+    }
+
+    [Fact]
     public async Task CompareAnalyses_WhenPlacesHaveRouteDistances_PreservesDistanceInEachAnalysis()
     {
         var userId = Guid.NewGuid();

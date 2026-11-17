@@ -3,7 +3,8 @@ using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Application.UseCases.Criterion;
 
-// Lists active criteria in display order for the detailed and guest analysis wizards.
+// Lists active criteria in display order for the wizards: the household profile and guest analysis by default, or
+// the investor profile.
 public sealed class ListCriteria
 {
     private readonly ICriterionRepository _criteria;
@@ -13,12 +14,15 @@ public sealed class ListCriteria
         _criteria = criteria;
     }
 
-    public async Task<IReadOnlyList<CriterionResponse>> ExecuteAsync(CancellationToken cancellationToken = default)
+    public const string InvestorProfile = "inversor";
+
+    public async Task<IReadOnlyList<CriterionResponse>> ExecuteAsync(string? profile = null, CancellationToken cancellationToken = default)
     {
         var criteria = await _criteria.ListAsync(cancellationToken);
+        var forInvestor = profile == InvestorProfile;
 
         return criteria
-            .Where(criterion => criterion.IsActive)
+            .Where(criterion => criterion.IsActive && (forInvestor ? criterion.ForInvestor : criterion.ForHousehold))
             .Select(criterion => new CriterionResponse(
                 criterion.Id, criterion.Name, criterion.Description, criterion.IconCssClass, criterion.Order))
             .ToList();

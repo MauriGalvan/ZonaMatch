@@ -36,12 +36,16 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
         {
             var sourceAnalysis = await _analysisRepository.GetAsync(analysisId, userId, cancellationToken)
                 ?? throw new NotFoundException("El análisis no existe.");
+            if (sourceAnalysis.Context?.Type == ContextType.InvestorAnalysis)
+                throw new BadRequestException("Los análisis de inversión se ajustan desde su pantalla.");
 
             var original = sourceAnalysis.OriginalAnalysisId is { } originalId
                 ? await _analysisRepository.GetAsync(originalId, userId, cancellationToken) ?? throw new NotFoundException("El análisis no existe.")
                 : sourceAnalysis;
 
-            var criteriaCatalog = await _criteriaRepository.ListAsync(cancellationToken);
+            var criteriaCatalog = (await _criteriaRepository.ListAsync(cancellationToken))
+                .Where(criterion => criterion.ForHousehold)
+                .ToList();
             var now = _clock.GetUtcNow();
 
             var context = new Context

@@ -489,6 +489,7 @@ restore-geo.log
 *.osm.pbf
 # Datos abiertos descargados por etl/download_open_data.py (censo, delitos, GTFS)
 datos/
+datos/photon/
 
 # Assistant rules and guides
 GEMINI.md

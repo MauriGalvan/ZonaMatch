@@ -23,6 +23,10 @@ internal sealed class FakeReviewRepository : IReviewRepository
         Task.FromResult<IReadOnlyList<DomainReview>>(
             Reviews.Where(r => r.Status == ReviewStatus.Pending).OrderBy(r => r.UpdatedAt).ToList());
 
+    public Task<IReadOnlyList<DomainReview>> ListResolvedAsync(int limit, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<DomainReview>>(
+            Reviews.Where(r => r.Status != ReviewStatus.Pending).OrderByDescending(r => r.ResolvedAt).Take(limit).ToList());
+
     public Task<DomainReview?> GetByUserAsync(string zoneSlug, Guid userId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Reviews.FirstOrDefault(r => r.ZoneSlug == zoneSlug && r.UserId == userId));
 

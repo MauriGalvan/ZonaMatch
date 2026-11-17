@@ -6,6 +6,7 @@ using ZonaMatch.Application.DTOs.GroupAnalysis.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.UseCases.Community;
+using ZonaMatch.Application.UseCases.Investor;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Domain.Entities;
 
@@ -38,9 +39,13 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
                     .OrderBy(v => v.CreatedAt)
                     .Select(v => ToResponse(v))
                     .ToList(),
-                AnalysisResultCalculator.Deserialize(analysis.ResultJson),
+                IsInvestment(analysis) ? null : AnalysisResultCalculator.Deserialize(analysis.ResultJson),
                 analysis.ResultGeneratedAt,
-                analysis.IsFavorite);
+                analysis.IsFavorite,
+                IsInvestment(analysis) ? AnalysisResponse.InvestorProfile : AnalysisResponse.HouseholdProfile,
+                IsInvestment(analysis) ? InvestmentAnalyses.DeserializeResult(analysis.ResultJson) : null);
+
+        private static bool IsInvestment(Analysis analysis) => analysis.Context?.Type == ContextType.InvestorAnalysis;
 
         // Request zones must exist, be unique, and include at most one initial zone.
         public static async Task<List<AnalysisZone>> BuildZonesAsync(

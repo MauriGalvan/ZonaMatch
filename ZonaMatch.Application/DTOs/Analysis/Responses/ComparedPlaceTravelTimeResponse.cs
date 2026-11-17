@@ -5,4 +5,5 @@ public sealed record ComparedPlaceTravelTimeResponse(
     int? Minutes,
     int MaximumMinutes,
     bool IsEstimated,
-    double? DistanceKm = null);
+    double? DistanceKm = null,
+    bool ByBicycle = false);

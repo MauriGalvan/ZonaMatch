@@ -3,6 +3,7 @@ using ZonaMatch.Application.DTOs.Auth.Requests;
 using ZonaMatch.Application.DTOs.Auth.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.UseCases.Admin;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Auth;
@@ -11,6 +12,7 @@ public sealed class RegisterUser(
     IUserRepository users,
     IPasswordHasher passwordHasher,
     TimeProvider timeProvider,
+    NotifyNewUserRegistered notifyAdministrators,
     ILogger<RegisterUser> logger)
 {
     public async Task<UserResponse> ExecuteAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -35,6 +37,16 @@ public sealed class RegisterUser(
         await users.AddAsync(user, cancellationToken);
 
         logger.LogInformation("User {UserId} registered", user.Id);
+
+        // The account already exists, so a failure to notify the administrators must not fail the registration.
+        try
+        {
+            await notifyAdministrators.ExecuteAsync(user, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(exception, "Could not notify administrators about user {UserId}", user.Id);
+        }
 
         return new UserResponse(user.Id, user.Email, user.DateOfBirth);
     }

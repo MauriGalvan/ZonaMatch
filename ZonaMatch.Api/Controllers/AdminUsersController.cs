@@ -44,4 +44,19 @@ public sealed class AdminUsersController : ControllerBase
         var user = await useCase.ExecuteAsync(id, request.IsAdmin!.Value, administratorId, cancellationToken);
         return Ok(user);
     }
+
+    // PUT /api/v1/admin/users/{id}/investor-access    Body: { "granted": true }
+    // Applies at once: the investor profile endpoints read the access from the database.
+    [HttpPut("{id:guid}/investor-access")]
+    [ProducesResponseType<AdminUserResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateInvestorAccessAsync(
+        [FromRoute] Guid id,
+        [FromBody] UpdateInvestorAccessRequest request,
+        [FromServices] UpdateInvestorAccess useCase,
+        CancellationToken cancellationToken) =>
+        Ok(await useCase.ExecuteAsync(id, request.Granted!.Value, cancellationToken));
 }

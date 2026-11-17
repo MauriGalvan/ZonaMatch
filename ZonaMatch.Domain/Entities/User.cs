@@ -18,5 +18,22 @@ namespace ZonaMatch.Domain.Entities
 
         // Site administrator: can approve or reject community contributions directly
         public bool IsAdministrator { get; set; }
+
+        // Investor profile access (InvestorAccess values): null until the user asks for it. For now an administrator
+        // grants it; later it will follow a subscription.
+        public string? InvestorAccess { get; set; }
+
+        public DateTimeOffset? InvestorAccessRequestedAt { get; set; }
+
+        public DateTimeOffset? InvestorAccessGrantedAt { get; set; }
+
+        public bool HasInvestorAccess => InvestorAccess == Entities.InvestorAccess.Granted;
+    }
+
+    // Stored values of User.InvestorAccess.
+    public static class InvestorAccess
+    {
+        public const string Requested = "solicitado";
+        public const string Granted = "habilitado";
     }
 }

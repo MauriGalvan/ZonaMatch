@@ -13,7 +13,7 @@ namespace ZonaMatch.Api.IntegrationTests.Api;
 public sealed class AnalysisVersionsApiTests(PostgreSqlDatabaseFixture database)
 {
     [Fact]
-    public async Task AnalysisVersions_WhenCreatedFromProfileSnapshot_StayIndependentAndDeleteWithOriginal()
+    public async Task AnalysisVersions_WhenOriginalIsMovedToTrash_CanBeRestoredWithAllVersions()
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);
         using var user = await TestApiUser.RegisterAsync(factory);
@@ -115,12 +115,51 @@ public sealed class AnalysisVersionsApiTests(PostgreSqlDatabaseFixture database)
         (await user.Client.GetAsync($"/api/v1/analyses/{secondVersion.Id}")).StatusCode
             .Should().Be(HttpStatusCode.NotFound);
 
+        var activeAnalysesResponse = await user.Client.GetAsync("/api/v1/analyses");
+        var activeAnalyses = await activeAnalysesResponse.Content.ReadFromJsonAsync<IReadOnlyList<AnalysisResponse>>();
+        activeAnalysesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        activeAnalyses.Should().NotBeNull();
+        activeAnalyses!.Should().BeEmpty();
+
+        var trashResponse = await user.Client.GetAsync("/api/v1/analyses/trash");
+        trashResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var trashedAnalyses = await trashResponse.Content.ReadFromJsonAsync<IReadOnlyList<TrashedAnalysisResponse>>();
+        trashedAnalyses.Should().NotBeNull();
+        trashedAnalyses!.Select(analysis => analysis.Id).Should()
+            .BeEquivalentTo(new[] { original.Id, version.Id, secondVersion.Id });
+        trashedAnalyses.Should().OnlyContain(analysis => !analysis.IsGroupAnalysis);
+        trashedAnalyses.Should().OnlyContain(analysis => analysis.ExpiresAt == analysis.DeletedAt.AddDays(30));
+
         await using var dbContext = database.CreateDbContext();
-        (await dbContext.Analyses.CountAsync(analysis => analysis.UserId == user.User.Id)).Should().Be(0);
+        var trashedIds = new[] { original.Id, version.Id, secondVersion.Id };
+        (await dbContext.Analyses.CountAsync(analysis =>
+            analysis.UserId == user.User.Id && trashedIds.Contains(analysis.Id))).Should().Be(3);
+        (await dbContext.Analyses.CountAsync(analysis =>
+            analysis.UserId == user.User.Id && trashedIds.Contains(analysis.Id) && analysis.DeletedAt != null))
+            .Should().Be(3);
         (await dbContext.Contexts.CountAsync(context =>
             context.UserId == user.User.Id && context.Type == ZonaMatch.Domain.Entities.ContextType.Analysis))
+            .Should().Be(3);
+        (await dbContext.AnalysisZones.CountAsync(zone => trashedIds.Contains(zone.AnalysisId))).Should().Be(3);
+
+        var restoreResponse = await user.Client.PostAsync(
+            $"/api/v1/analyses/trash/{original.Id}/restore",
+            content: null);
+        restoreResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var restoredResponse = await user.Client.GetAsync($"/api/v1/analyses/{original.Id}");
+        restoredResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var restoredAnalysis = await restoredResponse.Content.ReadFromJsonAsync<AnalysisResponse>();
+        restoredAnalysis.Should().NotBeNull();
+        restoredAnalysis!.Versions.Select(analysis => analysis.Id).Should()
+            .Equal(version.Id, secondVersion.Id);
+        var restoredTrashResponse = await user.Client.GetAsync("/api/v1/analyses/trash");
+        restoredTrashResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var restoredTrash = await restoredTrashResponse.Content.ReadFromJsonAsync<IReadOnlyList<TrashedAnalysisResponse>>();
+        restoredTrash.Should().NotBeNull();
+        restoredTrash!.Should().BeEmpty();
+        (await dbContext.Analyses.CountAsync(analysis =>
+            analysis.UserId == user.User.Id && trashedIds.Contains(analysis.Id) && analysis.DeletedAt != null))
             .Should().Be(0);
-        var analysisIds = new[] { original.Id, version.Id, secondVersion.Id };
-        (await dbContext.AnalysisZones.CountAsync(zone => analysisIds.Contains(zone.AnalysisId))).Should().Be(0);
     }
 }

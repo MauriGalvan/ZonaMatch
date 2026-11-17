@@ -35,6 +35,27 @@ public class ReverseGeocodeTests
     }
 
     [Fact]
+    public async Task ReverseGeocode_WithProvider_UsesTheClientTheSelectorReturns()
+    {
+        var defaultGeocoder = new Mock<IGeocodingClient>();
+        var photonGeocoder = new Mock<IGeocodingClient>();
+        photonGeocoder.Setup(client => client.ReverseAsync(-34.6, -58.4, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GeocodedAddress(null, "Gutenberg", "666", "Villa Luzuriaga", null, null, "Gutenberg 666, Villa Luzuriaga"));
+        var selector = new Mock<IGeocodingClientSelector>();
+        selector.Setup(s => s.Resolve("photon")).Returns(photonGeocoder.Object);
+        var districts = new Mock<IDistrictRepository>();
+        var communes = new Mock<ICommuneRepository>();
+        var useCase = new ReverseGeocode(
+            defaultGeocoder.Object, new LocationBoundaryLookup(districts.Object, communes.Object), selector.Object);
+
+        var result = await useCase.ExecuteAsync(-34.6, -58.4, "photon");
+
+        result.StreetNumber.Should().Be("666");
+        defaultGeocoder.Verify(
+            client => client.ReverseAsync(It.IsAny<double>(), It.IsAny<double>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task ReverseGeocode_WhenProviderAndBoundariesHaveNoResult_ThrowsNotFound()
     {
         var geocoder = new Mock<IGeocodingClient>();

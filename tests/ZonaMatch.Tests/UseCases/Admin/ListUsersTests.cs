@@ -17,8 +17,8 @@ public class ListUsersTests
         var users = await useCase.ExecuteAsync();
 
         users.Should().Equal(
-            new AdminUserResponse(administrator.Id, "admin@example.com", new DateOnly(1990, 4, 12), IsAdmin: true),
-            new AdminUserResponse(member.Id, "ana@example.com", new DateOnly(1995, 8, 23), IsAdmin: false));
+            new AdminUserResponse(administrator.Id, "admin@example.com", new DateOnly(1990, 4, 12), IsAdmin: true, RegisteredAt: administrator.CreatedAt),
+            new AdminUserResponse(member.Id, "ana@example.com", new DateOnly(1995, 8, 23), IsAdmin: false, RegisteredAt: member.CreatedAt));
     }
 
     [Fact]
@@ -56,5 +56,16 @@ public class ListUsersTests
 
         users.Where(user => user.IsAdmin).Select(user => user.Email)
             .Should().BeEquivalentTo("admin1@example.com", "admin2@example.com");
+    }
+
+    [Fact]
+    public async Task ListUsers_ReturnsTheRegistrationDateOfEachUser()
+    {
+        var registeredAt = new DateTimeOffset(2026, 11, 13, 20, 30, 0, TimeSpan.Zero);
+        var useCase = new ListUsers(new FakeAdminUserRepository(new User { Email = "ana@example.com", CreatedAt = registeredAt }));
+
+        var users = await useCase.ExecuteAsync();
+
+        users.Should().ContainSingle().Which.RegisteredAt.Should().Be(registeredAt);
     }
 }

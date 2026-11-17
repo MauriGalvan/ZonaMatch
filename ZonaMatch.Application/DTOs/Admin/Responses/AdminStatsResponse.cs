@@ -17,6 +17,8 @@ public sealed record AdminStatsResponse(
 
 public sealed record AdminUserStats(
     int Total,
+    // Accounts created in the last 24 hours, 7 days and 30 days.
+    int NewLastDay,
     int NewLast7Days,
     int NewLast30Days,
     int Administrators,

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 
 namespace ZonaMatch.Domain.Scoring
@@ -72,6 +73,12 @@ namespace ZonaMatch.Domain.Scoring
         public const string Health = "salud";
         public const string Places = "lugares";
 
+        // Investor profile criteria (InvestmentMetrics). Safety and mobility are shared with the household profile.
+        public const string Yield = "rentabilidad";
+        public const string Opportunity = "oportunidad";
+        public const string Liquidity = "liquidez";
+        public const string RentalDemand = "demanda-alquiler";
+
         public const string RentLimit = "alquiler";
         public const string ExpensesLimit = "expensas";
         public const string PurchaseLimit = "compra";
@@ -113,13 +120,34 @@ namespace ZonaMatch.Domain.Scoring
                 [GreenSpaces] = z => z.GreenSpaceM2PerResident,
                 [Education] = z => z.SchoolsPerTenThousandResidents,
                 [Health] = z => z.HealthCentersPerTenThousandResidents,
+                [RentalDemand] = z => z.RentingHouseholdsPercentage,
             };
+
+        // Investment criteria whose value depends on the property type and size searched: their distributions are
+        // built for each search, the first time they are needed.
+        private static readonly IReadOnlyDictionary<string, Func<InvestmentMetrics, double?>> SearchIndicators =
+            new Dictionary<string, Func<InvestmentMetrics, double?>>
+            {
+                [Yield] = metrics => metrics.GrossYieldPercent,
+                [Opportunity] = metrics => metrics.PriceBelowParentPercent,
+                [Liquidity] = metrics => metrics.SaleListingsPerThousandResidents,
+            };
+
+        private readonly IReadOnlyCollection<ZoneProfile> _zones;
+        private readonly Dictionary<string, ZoneProfile> _zonesBySlug;
+        private readonly decimal? _usdArs;
+        private readonly ConcurrentDictionary<(string Criterion, bool IsLargeZone, string? Type, int? Rooms), double[]> _searchDistributions = new();
 
         // Sorted indicator values by zone type (large or small), used to calculate percentiles.
         private readonly Dictionary<(string Criterion, bool IsLargeZone), double[]> _distributions = [];
 
-        public ScoringEngine(IReadOnlyCollection<ZoneProfile> zoneProfiles)
+        // usdArs: the dollar rate the market was loaded with, for the yield of the investor profile.
+        public ScoringEngine(IReadOnlyCollection<ZoneProfile> zoneProfiles, decimal? usdArs = null)
         {
+            _zones = zoneProfiles;
+            _zonesBySlug = zoneProfiles.GroupBy(zone => zone.Slug).ToDictionary(group => group.Key, group => group.First());
+            _usdArs = usdArs;
+
             foreach (var (criterion, indicator) in Indicators)
                 foreach (var isLargeZone in new[] { false, true })
                 {
@@ -132,7 +160,16 @@ namespace ZonaMatch.Domain.Scoring
                 }
         }
 
-        public static bool IsKnownCriterion(string criterion) => Indicators.ContainsKey(criterion);
+        public static bool IsKnownCriterion(string criterion) => Indicators.ContainsKey(criterion) || SearchIndicators.ContainsKey(criterion);
+
+        // Investment figures of a zone for a property type and size.
+        public InvestmentMetrics MetricsFor(ZoneProfile zone, string? housingType, int? rooms) =>
+            InvestmentMetrics.For(
+                zone,
+                zone.ParentSlug is { } parentSlug ? _zonesBySlug.GetValueOrDefault(parentSlug) : null,
+                housingType,
+                rooms,
+                _usdArs);
 
         // Calculates the safety percentile (0 to 100) among zones of the same type (large or small).
         public int? CalculateSafetyPercentile(double? crimesPerThousandResidents, bool isLargeZone)
@@ -150,8 +187,8 @@ namespace ZonaMatch.Domain.Scoring
         public ZoneScoreResult Calculate(ZoneProfile zone, ScoringRequest request, IReadOnlyList<TravelTime?>? travelTimes = null)
         {
             var components = request.Criteria
-                .Where(c => Indicators.ContainsKey(c.Key) && PriorityWeights.ContainsKey(c.Value))
-                .Select(c => BuildComponent(zone, c.Key, c.Value))
+                .Where(c => IsKnownCriterion(c.Key) && PriorityWeights.ContainsKey(c.Value))
+                .Select(c => BuildComponent(zone, c.Key, c.Value, request))
                 .ToList();
 
             var places = BuildPlaceResults(request.Places, travelTimes);
@@ -228,8 +265,25 @@ namespace ZonaMatch.Domain.Scoring
             return (int)RoundAwayFromZero(ApplyPenalty(80, (double)elapsedMinutes / maximumMinutes - 1));
         }
 
-        private ScoreComponent BuildComponent(ZoneProfile zone, string criterion, string priority)
+        private ScoreComponent BuildComponent(ZoneProfile zone, string criterion, string priority, ScoringRequest request)
         {
+            if (SearchIndicators.TryGetValue(criterion, out var searchIndicator))
+            {
+                var metrics = MetricsFor(zone, request.HousingType, request.Rooms);
+                var distribution = _searchDistributions.GetOrAdd(
+                    (criterion, zone.IsLargeZone, request.HousingType, request.Rooms),
+                    key => _zones
+                        .Where(other => other.IsLargeZone == key.IsLargeZone)
+                        .Select(other => searchIndicator(MetricsFor(other, key.Type, key.Rooms)))
+                        .OfType<double>()
+                        .Order()
+                        .ToArray());
+                int? searchScore = searchIndicator(metrics) is { } searchValue && distribution.Length > 0
+                    ? Percentile(distribution, searchValue)
+                    : null;
+                return new ScoreComponent(criterion, priority, searchScore, InvestmentDetails(criterion, metrics));
+            }
+
             var value = Indicators[criterion](zone);
             int? score = value is { } indicatorValue ? Percentile(_distributions[(criterion, zone.IsLargeZone)], indicatorValue) : null;
 
@@ -247,6 +301,25 @@ namespace ZonaMatch.Domain.Scoring
                 : "Sin datos de población para comparar",
             Education => $"{zone.SchoolCount.ToString("N0", SpanishCulture)} escuelas y jardines",
             Health => $"{zone.HealthCenterCount.ToString("N0", SpanishCulture)} hospitales, clínicas y centros de salud",
+            RentalDemand => zone.RentingHouseholdsPercentage is { } renting
+                ? $"El {renting.ToString("N0", SpanishCulture)} % de los hogares alquila"
+                : "Sin datos del censo",
+            _ => string.Empty,
+        };
+
+        private static string InvestmentDetails(string criterion, InvestmentMetrics metrics) => criterion switch
+        {
+            Yield => metrics.GrossYieldPercent is { } yield
+                ? $"Rentabilidad bruta {yield.ToString("N1", SpanishCulture)} % anual: el alquiler recupera el precio en {metrics.PaybackYears?.ToString("N0", SpanishCulture)} años"
+                : "Sin precios de alquiler y de venta para comparar",
+            Opportunity => metrics.PriceBelowParentPercent is { } below
+                ? below >= 0
+                    ? $"El m² cuesta {below.ToString("N0", SpanishCulture)} % menos que en {metrics.ParentName}"
+                    : $"El m² cuesta {(-below).ToString("N0", SpanishCulture)} % más que en {metrics.ParentName}"
+                : "Sin precio del m² de la zona o de su partido o comuna",
+            Liquidity => metrics.SaleListings is { } listings
+                ? $"{listings.ToString("N0", SpanishCulture)} publicaciones de venta ({metrics.SaleListingsPerThousandResidents?.ToString("N1", SpanishCulture)} cada 1.000 hab.)"
+                : "Sin publicaciones de venta",
             _ => string.Empty,
         };
 

@@ -23,7 +23,8 @@ public sealed class SaveMyProfile
     public async Task<ProfileResponse> ExecuteAsync(
         Guid userId, AnalysisCriteriaRequest request, CancellationToken cancellationToken = default)
     {
-        var catalog = await _criteria.ListAsync(cancellationToken);
+        // Investor criteria belong to the investor profile only
+        var catalog = (await _criteria.ListAsync(cancellationToken)).Where(criterion => criterion.ForHousehold).ToList();
         var now = _clock.GetUtcNow();
         var profile = await _profiles.GetByUserAsync(userId, cancellationToken);
         var isNewProfile = profile is null;

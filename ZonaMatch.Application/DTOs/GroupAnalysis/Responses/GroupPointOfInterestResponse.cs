@@ -9,5 +9,6 @@ public sealed record GroupPointOfInterestResponse(
     double? Latitude,
     double? Longitude,
     string? Type,
+    string? Frequency,
     string? Priority,
     string? MaximumTime);

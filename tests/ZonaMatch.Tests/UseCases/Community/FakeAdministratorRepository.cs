@@ -27,6 +27,10 @@ internal sealed class FakeAdministratorRepository : IUserRepository
     public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
+    public Task SetInvestorAccessAsync(
+        Guid id, string? access, DateTimeOffset? requestedAt, DateTimeOffset? grantedAt, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
     public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => throw new NotSupportedException();

@@ -8,6 +8,9 @@ namespace ZonaMatch.Application.Interfaces
         // Includes details and change tracking; null when the profile has not been created.
         Task<Context?> GetByUserAsync(Guid userId, CancellationToken cancellationToken = default);
 
+        // The investor profile (Context of type inversor), with its criteria and change tracking; null until created.
+        Task<Context?> GetInvestorProfileAsync(Guid userId, CancellationToken cancellationToken = default);
+
         // Existing profiles for multiple users, including their preferences and constraints.
         Task<IReadOnlyList<Context>> GetByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default);
 
