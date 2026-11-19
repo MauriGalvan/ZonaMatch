@@ -14,12 +14,14 @@ namespace ZonaMatch.Application.UseCases.Contribution
     {
         private readonly IContributionRepository _contributions;
         private readonly IZoneRepository _zones;
+        private readonly IUserRepository _users;
         private readonly TimeProvider _clock;
 
-        public CreateContributionCorrection(IContributionRepository contributions, IZoneRepository zones, TimeProvider clock)
+        public CreateContributionCorrection(IContributionRepository contributions, IZoneRepository zones, IUserRepository users, TimeProvider clock)
         {
             _contributions = contributions;
             _zones = zones;
+            _users = users;
             _clock = clock;
         }
 
@@ -67,10 +69,11 @@ namespace ZonaMatch.Application.UseCases.Contribution
             if (reason != CorrectionReason.Location)
                 await _zones.EnsureZoneExistsAsync(zoneSlug, cancellationToken);
 
+            var author = await _users.GetByIdAsync(currentUser.Id, cancellationToken);
             _contributions.Add(contribution);
             await _contributions.SaveChangesAsync(cancellationToken);
 
-            return ContributionMapper.ToResponse(contribution, currentUser.Email, currentUser.Id);
+            return ContributionMapper.ToResponse(contribution, CommunityAuthor.FromUser(author, currentUser.Email), currentUser.Id);
         }
     }
 }

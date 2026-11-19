@@ -19,4 +19,5 @@ public sealed record ReviewResponse(
     IReadOnlyList<ImageResponse> Images,
     ReviewStatus Status,
     // Only filled in for the author of a rejected review.
-    string? RejectionReason);
+    string? RejectionReason,
+    string? AuthorName = null);

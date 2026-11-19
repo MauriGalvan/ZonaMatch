@@ -1,5 +1,6 @@
 using ZonaMatch.Application.DTOs.Review.Responses;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.UseCases.Community;
 
 namespace ZonaMatch.Application.UseCases.Review
 {
@@ -23,7 +24,7 @@ namespace ZonaMatch.Application.UseCases.Review
             return reviews
                 .Select(review => new PendingReviewResponse(
                     review.ZoneSlug,
-                    ReviewMapper.ToResponse(review, review.User?.Email, currentUserId: null, _images)))
+                    ReviewMapper.ToResponse(review, CommunityAuthor.FromUser(review.User), currentUserId: null, _images)))
                 .ToList();
         }
     }

@@ -24,6 +24,9 @@ internal sealed class FakeAdministratorRepository : IUserRepository
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult<User?>(null);
 
+    public Task<bool> TryCompleteNameAsync(Guid id, string firstName, string lastName, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
     public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 

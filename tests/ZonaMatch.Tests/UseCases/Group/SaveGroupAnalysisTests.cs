@@ -66,6 +66,8 @@ public class SaveGroupAnalysisTests
         response.Name.Should().Be("Shared search");
         response.GroupScores.Should().NotBeNull();
         response.GroupScores!.Zones.Select(zone => zone.Slug).Should().Equal("safe-zone", "unsafe-zone");
+        response.GroupScores.Zones.SelectMany(zone => zone.Participants)
+            .Select(item => item.Name).Should().Equal("Ana Torres", "Ana Torres");
         analysisRepository.Verify(repository => repository.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         zoneProfiles.Verify(repository => repository.ListAsync(It.IsAny<CancellationToken>()), Times.Once);
         groupRepository.Verify(repository => repository.GetDetailsByIdAsync(groupId, It.IsAny<CancellationToken>()), Times.Once);
@@ -91,7 +93,7 @@ public class SaveGroupAnalysisTests
             GroupId = groupId,
             UserId = userId,
             Role = GroupRole.Owner,
-            User = new User { Id = userId, Email = "ana@example.com" }
+            User = new User { Id = userId, Email = "ana@example.com", FirstName = "Ana", LastName = "Torres" }
         };
         var group = new DomainGroup { Id = groupId, Name = "Weekend search", Participants = [participant] };
         groups = new Mock<IGroupRepository>();

@@ -93,6 +93,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<CompletePasswordReset>();
         services.AddScoped<LoginUser>();
         services.AddScoped<RegisterUser>();
+        services.AddScoped<GetCurrentSession>();
+        services.AddScoped<CompleteCurrentUserName>();
 
         services.AddScoped<ListUsers>();
         services.AddScoped<UpdateUserRole>();

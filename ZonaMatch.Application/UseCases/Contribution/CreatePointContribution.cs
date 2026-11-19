@@ -13,12 +13,14 @@ namespace ZonaMatch.Application.UseCases.Contribution
     {
         private readonly IContributionRepository _contributions;
         private readonly IZoneRepository _zones;
+        private readonly IUserRepository _users;
         private readonly TimeProvider _clock;
 
-        public CreatePointContribution(IContributionRepository contributions, IZoneRepository zones, TimeProvider clock)
+        public CreatePointContribution(IContributionRepository contributions, IZoneRepository zones, IUserRepository users, TimeProvider clock)
         {
             _contributions = contributions;
             _zones = zones;
+            _users = users;
             _clock = clock;
         }
 
@@ -27,6 +29,7 @@ namespace ZonaMatch.Application.UseCases.Contribution
         {
             var category = ContributionMapper.ValidateCategory(request.Category);
             await _zones.EnsurePointBelongsToZoneAsync(zoneSlug, request.Latitude, request.Longitude, cancellationToken);
+            var author = await _users.GetByIdAsync(currentUser.Id, cancellationToken);
 
             var contribution = new DomainContribution
             {
@@ -45,7 +48,7 @@ namespace ZonaMatch.Application.UseCases.Contribution
             _contributions.Add(contribution);
             await _contributions.SaveChangesAsync(cancellationToken);
 
-            return ContributionMapper.ToResponse(contribution, currentUser.Email, currentUser.Id);
+            return ContributionMapper.ToResponse(contribution, CommunityAuthor.FromUser(author, currentUser.Email), currentUser.Id);
         }
     }
 }

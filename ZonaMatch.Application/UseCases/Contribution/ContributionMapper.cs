@@ -25,12 +25,12 @@ namespace ZonaMatch.Application.UseCases.Contribution
 
         public static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-        public static ContributionResponse ToResponse(DomainContribution contribution, string? authorEmail, Guid? currentUserId) =>
+        public static ContributionResponse ToResponse(DomainContribution contribution, CommunityAuthor author, Guid? currentUserId) =>
             new(
                 contribution.Id,
                 contribution.Type,
                 contribution.Status,
-                AuthorInitials.GetInitials(authorEmail),
+                author.Initials,
                 contribution.CreatedAt,
                 contribution.UserId == currentUserId,
                 contribution.Votes.FirstOrDefault(vote => vote.UserId == currentUserId)?.Confirms,
@@ -45,6 +45,7 @@ namespace ZonaMatch.Application.UseCases.Contribution
                 contribution.PointOfInterestId,
                 contribution.PointOfInterestName,
                 contribution.Reason,
-                contribution.Comment);
+                contribution.Comment,
+                author.Name);
     }
 }

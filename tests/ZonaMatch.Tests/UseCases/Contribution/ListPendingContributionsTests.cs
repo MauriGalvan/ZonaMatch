@@ -1,5 +1,6 @@
 using ZonaMatch.Application.UseCases.Contribution;
 using ZonaMatch.Domain.Entities;
+using FluentAssertions;
 using ZonaMatch.Tests.UseCases.Community;
 using DomainContribution = ZonaMatch.Domain.Entities.Contribution;
 
@@ -34,6 +35,20 @@ namespace ZonaMatch.Tests.UseCases.Contribution
             };
             _contributions.Add(contribution);
             return contribution;
+        }
+
+        [Fact]
+        public async Task ListPending_WhenAuthorHasNames_ReturnsTheNameAndInitials()
+        {
+            _author.FirstName = "Ignacio";
+            _author.LastName = "López";
+            Add();
+
+            var result = await _useCase.ExecuteAsync(Zone, _neighborId);
+
+            var contribution = result.Should().ContainSingle().Which;
+            contribution.AuthorName.Should().Be("Ignacio López");
+            contribution.AuthorInitials.Should().Be("IL");
         }
 
         [Fact]

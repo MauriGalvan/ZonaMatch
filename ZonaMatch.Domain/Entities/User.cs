@@ -3,11 +3,17 @@ namespace ZonaMatch.Domain.Entities
     // Registered user of the site (app.usuarios table).
     public class User
     {
+        public const int MaximumNameLength = 100;
+
         // UUIDv7: unique and time-ordered, so the primary key index stays compact
         public Guid Id { get; set; } = Guid.CreateVersion7();
 
         // Stored trimmed and lowercase, so the unique index is case-insensitive
         public string Email { get; set; } = string.Empty;
+
+        public string? FirstName { get; set; }
+
+        public string? LastName { get; set; }
 
         // Output of IPasswordHasher (salted PBKDF2). The plain password is never stored.
         public string PasswordHash { get; set; } = string.Empty;
