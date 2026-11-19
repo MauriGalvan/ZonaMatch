@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ZonaMatch.Application.Policies;
 
 namespace ZonaMatch.Application.DTOs.Auth.Requests;
 
@@ -16,13 +17,22 @@ public sealed record RegisterRequest(
     string ConfirmPassword,
 
     [Required(ErrorMessage = "La fecha de nacimiento es obligatoria.")]
-    DateOnly? BirthDate) : IValidatableObject
+    DateOnly? BirthDate,
+
+    [Required(ErrorMessage = UserNameRules.FirstNameRequiredMessage)]
+    string? FirstName,
+
+    [Required(ErrorMessage = UserNameRules.LastNameRequiredMessage)]
+    string? LastName) : IValidatableObject
 {
     private const int MinimumAgeYears = 18;
     private const int MaximumAgeYears = 120;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        foreach (var error in UserNameRules.ValidateLength(FirstName, LastName))
+            yield return error;
+
         if (Password != ConfirmPassword)
             yield return new ValidationResult("Las contraseñas no coinciden.", [nameof(ConfirmPassword)]);
 

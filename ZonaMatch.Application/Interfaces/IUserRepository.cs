@@ -22,6 +22,8 @@ public interface IUserRepository
     // Read-only.
     Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<bool> TryCompleteNameAsync(Guid id, string firstName, string lastName, CancellationToken cancellationToken = default);
+
     Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default);
 
     // Investor profile access (User.InvestorAccess) and when it was requested and granted.

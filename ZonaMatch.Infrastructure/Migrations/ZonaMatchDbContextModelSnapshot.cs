@@ -1421,6 +1421,11 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("character varying(254)")
                         .HasColumnName("email");
 
+                    b.Property<string>("FirstName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_name");
+
                     b.Property<string>("InvestorAccess")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -1437,6 +1442,11 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Property<bool>("IsAdministrator")
                         .HasColumnType("boolean")
                         .HasColumnName("es_administrador");
+
+                    b.Property<string>("LastName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_name");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()

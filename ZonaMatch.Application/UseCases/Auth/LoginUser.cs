@@ -26,7 +26,7 @@ public sealed class LoginUser(
         }
 
         var (accessToken, expiresAt) = tokenService.Generate(user);
-        var userResponse = new UserResponse(user.Id, user.Email, user.DateOfBirth, user.IsAdministrator);
+        var userResponse = new UserResponse(user.Id, user.Email, user.DateOfBirth, user.IsAdministrator, user.FirstName, user.LastName);
 
         logger.LogInformation("User {UserId} logged in", user.Id);
 

@@ -25,6 +25,14 @@ public sealed class UserRepository(ZonaMatchDbContext dbContext) : IUserReposito
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         dbContext.Users.AsNoTracking().FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
 
+    public async Task<bool> TryCompleteNameAsync(
+        Guid id, string firstName, string lastName, CancellationToken cancellationToken = default) =>
+        await dbContext.Users
+            .Where(user => user.Id == id && (user.FirstName == null || user.LastName == null))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(user => user.FirstName, user => user.FirstName ?? firstName)
+                .SetProperty(user => user.LastName, user => user.LastName ?? lastName), cancellationToken) > 0;
+
     public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) =>
         dbContext.Users
             .Where(user => user.Id == id)
