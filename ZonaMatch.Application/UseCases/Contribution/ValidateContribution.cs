@@ -2,6 +2,7 @@
 using ZonaMatch.Application.DTOs.Contribution.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Contribution
@@ -39,7 +40,7 @@ namespace ZonaMatch.Application.UseCases.Contribution
             await _poiUpdater.ApplyAsync(contribution, now, cancellationToken);
             await _contributions.SaveChangesAsync(cancellationToken);
 
-            return ContributionMapper.ToResponse(contribution, contribution.User?.Email, userId);
+            return ContributionMapper.ToResponse(contribution, CommunityAuthor.FromUser(contribution.User), userId);
         }
     }
 }

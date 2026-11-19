@@ -1,5 +1,6 @@
 ﻿using ZonaMatch.Application.DTOs.Review.Responses;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.UseCases.Review
@@ -26,7 +27,7 @@ namespace ZonaMatch.Application.UseCases.Review
 
             return new ZoneReviewListResponse(
                 ReviewMapper.Summarize(approvedReviews),
-                reviews.Select(review => ReviewMapper.ToResponse(review, review.User?.Email, currentUserId, _images)).ToList());
+                reviews.Select(review => ReviewMapper.ToResponse(review, CommunityAuthor.FromUser(review.User), currentUserId, _images)).ToList());
         }
     }
 }

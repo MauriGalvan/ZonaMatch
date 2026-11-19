@@ -7,4 +7,5 @@ public sealed record QuestionResponse(
     string Initials,
     DateTimeOffset CreatedAt,
     bool IsMine,
-    IReadOnlyList<AnswerResponse> Answers);
+    IReadOnlyList<AnswerResponse> Answers,
+    string? AuthorName = null);

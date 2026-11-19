@@ -29,10 +29,10 @@ namespace ZonaMatch.Application.UseCases.Review
                 ]);
         }
 
-        public static ReviewResponse ToResponse(DomainReview review, string? authorEmail, Guid? currentUserId, IImageStorage imageStorage) =>
+        public static ReviewResponse ToResponse(DomainReview review, CommunityAuthor author, Guid? currentUserId, IImageStorage imageStorage) =>
             new(
                 review.Id,
-                AuthorInitials.GetInitials(authorEmail),
+                author.Initials,
                 review.YearsInZone,
                 review.IsVerified,
                 review.OverallScore,
@@ -50,6 +50,7 @@ namespace ZonaMatch.Application.UseCases.Review
                 review.UserId == currentUserId,
                 review.ImageNames.Select(name => new ImageResponse(name, imageStorage.GetUrl(name))).ToList(),
                 review.Status,
-                review.UserId == currentUserId ? review.RejectionReason : null);
+                review.UserId == currentUserId ? review.RejectionReason : null,
+                author.Name);
     }
 }

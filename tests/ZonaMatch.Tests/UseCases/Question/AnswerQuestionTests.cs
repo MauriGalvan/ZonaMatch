@@ -35,6 +35,7 @@ public class AnswerQuestionTests
         _useCase = new AnswerQuestion(
             _questions,
             _notifications,
+            new FakeAdministratorRepository(),
             _emailService,
             NullLogger<AnswerQuestion>.Instance,
             new FixedTimeProvider(CurrentTime),

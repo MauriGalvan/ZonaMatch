@@ -1,8 +1,11 @@
 using FluentAssertions;
+using Moq;
 using ZonaMatch.Application.DTOs.Question.Requests;
 using ZonaMatch.Application.Exceptions;
+using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Question;
+using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
 using ZonaMatch.Tests.UseCases.Community;
 using DomainSavedZone = ZonaMatch.Domain.Entities.SavedZone;
@@ -17,16 +20,20 @@ public class CreateQuestionTests
     private readonly FakeQuestionRepository _questions = new();
     private readonly FakeSavedZoneRepository _savedZones = new();
     private readonly FakeNotificationRepository _notifications = new();
+    private readonly Mock<IUserRepository> _users = new();
     private readonly CreateQuestion _useCase;
     private readonly AuthenticatedUserContext _ana = new(Guid.NewGuid(), "ana@example.com");
 
     public CreateQuestionTests()
     {
+        _users.Setup(users => users.GetByIdAsync(_ana.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = _ana.Id, Email = _ana.Email });
         _useCase = new CreateQuestion(
             _questions,
             new FakeZoneRepository(),
             _savedZones,
             _notifications,
+            _users.Object,
             new FixedTimeProvider(CurrentTime));
     }
 
@@ -44,8 +51,21 @@ public class CreateQuestionTests
         savedQuestion.CreatedAt.Should().Be(CurrentTime);
         response.Id.Should().Be(savedQuestion.Id);
         response.Initials.Should().Be("AN");
+        response.AuthorName.Should().BeNull();
         response.IsMine.Should().BeTrue();
         response.Answers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CreateQuestion_WhenAuthorHasNames_ReturnsTheNameAndInitials()
+    {
+        _users.Setup(users => users.GetByIdAsync(_ana.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = _ana.Id, Email = _ana.Email, FirstName = "Ángela María", LastName = "Pérez" });
+
+        var response = await _useCase.ExecuteAsync(Zone, _ana, new CreateQuestionRequest("¿Hay escuelas cerca?"));
+
+        response.AuthorName.Should().Be("Ángela María Pérez");
+        response.Initials.Should().Be("ÁP");
     }
 
     [Fact]

@@ -20,16 +20,7 @@ namespace ZonaMatch.Application.UseCases.Question
             var questions = await _questions.ListByZoneAsync(zoneSlug, cancellationToken);
 
             return questions
-                .Select(question => new QuestionResponse(
-                    question.Id,
-                    question.Text,
-                    AuthorInitials.GetInitials(question.User?.Email),
-                    question.CreatedAt,
-                    question.UserId == currentUserId,
-                    question.Answers
-                        .OrderBy(answer => answer.CreatedAt)
-                        .Select(answer => QuestionMapper.ToResponse(answer, answer.User?.Email, currentUserId))
-                        .ToList()))
+                .Select(question => QuestionMapper.ToResponse(question, CommunityAuthor.FromUser(question.User), currentUserId))
                 .ToList();
         }
     }

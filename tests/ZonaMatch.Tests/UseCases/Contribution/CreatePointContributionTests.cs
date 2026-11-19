@@ -18,7 +18,7 @@ namespace ZonaMatch.Tests.UseCases.Contribution
 
         public CreatePointContributionTests()
         {
-            _useCase = new CreatePointContribution(_contributions, new FakeZoneRepository(), new FixedTimeProvider(Now));
+            _useCase = new CreatePointContribution(_contributions, new FakeZoneRepository(), new FakeAdministratorRepository(), new FixedTimeProvider(Now));
         }
 
         private static CreatePointContributionRequest Point(string category = "salud", double latitude = -34.63) =>

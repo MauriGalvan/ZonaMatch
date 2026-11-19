@@ -15,6 +15,7 @@ namespace ZonaMatch.Application.UseCases.Question
         private readonly IZoneRepository _zones;
         private readonly ISavedZoneRepository _savedZones;
         private readonly INotificationRepository _notifications;
+        private readonly IUserRepository _users;
         private readonly TimeProvider _clock;
 
         public CreateQuestion(
@@ -22,12 +23,14 @@ namespace ZonaMatch.Application.UseCases.Question
             IZoneRepository zones,
             ISavedZoneRepository savedZones,
             INotificationRepository notifications,
+            IUserRepository users,
             TimeProvider clock)
         {
             _questions = questions;
             _zones = zones;
             _savedZones = savedZones;
             _notifications = notifications;
+            _users = users;
             _clock = clock;
         }
 
@@ -35,6 +38,7 @@ namespace ZonaMatch.Application.UseCases.Question
             string zoneSlug, AuthenticatedUserContext currentUser, CreateQuestionRequest request, CancellationToken cancellationToken = default)
         {
             await _zones.EnsureZoneExistsAsync(zoneSlug, cancellationToken);
+            var author = await _users.GetByIdAsync(currentUser.Id, cancellationToken);
 
             var question = new DomainQuestion
             {
@@ -59,7 +63,7 @@ namespace ZonaMatch.Application.UseCases.Question
 
             await _questions.SaveChangesAsync(cancellationToken);
 
-            return new QuestionResponse(question.Id, question.Text, AuthorInitials.GetInitials(currentUser.Email), question.CreatedAt, IsMine: true, []);
+            return QuestionMapper.ToResponse(question, CommunityAuthor.FromUser(author, currentUser.Email), currentUser.Id);
         }
     }
 }
