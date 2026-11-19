@@ -19,8 +19,8 @@ public sealed class GroupAnalysisApiTests(PostgreSqlDatabaseFixture database)
     public async Task GroupAnalysis_WhenCalculatedAndSaved_UsesAllMemberProfilesAndRestrictsAccess()
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);
-        using var owner = await TestApiUser.RegisterAsync(factory);
-        using var guest = await TestApiUser.RegisterAsync(factory);
+        using var owner = await TestApiUser.RegisterAsync(factory, firstName: "Ana María", lastName: "Pérez");
+        using var guest = await TestApiUser.RegisterAsync(factory, firstName: "Álvaro", lastName: "Gómez");
         using var outsider = await TestApiUser.RegisterAsync(factory);
 
         var createGroupResponse = await owner.Client.PostAsJsonAsync(
@@ -63,6 +63,8 @@ public sealed class GroupAnalysisApiTests(PostgreSqlDatabaseFixture database)
         groupDetails.Should().NotBeNull();
         var ownerParticipant = groupDetails!.Participants.Single(participant => participant.UserId == owner.User.Id);
         var guestParticipant = groupDetails.Participants.Single(participant => participant.UserId == guest.User.Id);
+        ownerParticipant.Name.Should().Be("Ana María Pérez");
+        guestParticipant.Name.Should().Be("Álvaro Gómez");
         var weights = new List<ParticipantWeightRequest>
         {
             new() { ParticipantId = ownerParticipant.Id, Weight = 80 },
@@ -137,7 +139,14 @@ public sealed class GroupAnalysisApiTests(PostgreSqlDatabaseFixture database)
         savedAnalysisDetails.Should().NotBeNull();
         savedAnalysisDetails!.GroupScores.Should().NotBeNull();
         savedAnalysisDetails.GroupScores!.Zones.Should().HaveCount(2);
-        savedAnalysisDetails.GroupScores.Zones[0].Score.Should().Be(savedGroupAnalysis.GroupScores.Zones[0].Score);
+        var reopenedZone = savedAnalysisDetails.GroupScores.Zones[0];
+        reopenedZone.Score.Should().Be(savedGroupAnalysis.GroupScores.Zones[0].Score);
+        reopenedZone.Participants.Select(participant => (participant.ParticipantId, participant.Name))
+            .Should().BeEquivalentTo(new[]
+            {
+                (ownerParticipant.Id, ownerParticipant.Name),
+                (guestParticipant.Id, guestParticipant.Name)
+            });
 
         var guestSavedAnalysisResponse = await guest.Client.GetAsync($"/api/v1/analyses/{savedGroupAnalysis.Id}");
         guestSavedAnalysisResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
