@@ -34,6 +34,8 @@ public sealed class CalculateInvestmentRanking(
     {
         await InvestorProfiles.EnsureAccessAsync(users, userId, cancellationToken);
         var settings = await ResolveSettingsAsync(userId, request?.Settings, cancellationToken);
+        if (exchangeRate.UsdArs is not { } usdArs || usdArs <= 0)
+            throw new ServiceUnavailableException("El análisis de inversión no está disponible. Falta configurar la cotización de la carga de mercado.");
 
         var universe = await zoneProfiles.ListAsync(cancellationToken);
         var zonesBySlug = universe.ToDictionary(zone => zone.Slug, StringComparer.Ordinal);
@@ -42,7 +44,7 @@ public sealed class CalculateInvestmentRanking(
         var fixedZones = request?.Zones?.Distinct(StringComparer.Ordinal).Select(Find).ToList();
         var added = (request?.AddedZones ?? []).Distinct(StringComparer.Ordinal).Select(Find).ToList();
 
-        var engine = new ScoringEngine(universe, exchangeRate.UsdArs);
+        var engine = new ScoringEngine(universe, usdArs);
         var scoringRequest = new ScoringRequest(
             settings.Criteria.ToDictionary(criterion => criterion.CriterionId, criterion => criterion.Priority),
             [],
@@ -90,7 +92,7 @@ public sealed class CalculateInvestmentRanking(
             settings.HousingType,
             settings.Rooms,
             settings.CreditEligible,
-            exchangeRate.UsdArs);
+            usdArs);
     }
 
     // The settings sent for one analysis, validated like the profile, or else the saved investor profile

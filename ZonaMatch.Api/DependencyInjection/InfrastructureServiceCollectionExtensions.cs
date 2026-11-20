@@ -2,7 +2,9 @@ using Azure.Storage.Blobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Infrastructure.Caching;
 using ZonaMatch.Infrastructure.Data;
 using ZonaMatch.Infrastructure.Geo;
 using ZonaMatch.Infrastructure.Repositories;
@@ -49,44 +51,54 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IGuestReportSendRepository, GuestReportSendRepository>();
         services.AddScoped<IZoneProfilesRepository, ZoneProfilesRepository>();
 
-        // The three reverse geocoders are registered; Geocoding:Provider (Osm, Nominatim or Photon) is the default and,
-        // with Geocoding:AllowProviderOverride, a request can pick one (?provider=) to compare them.
+        services.AddOptions<LocationServicesOptions>()
+            .BindConfiguration(string.Empty)
+            .Validate(options => options.Geocoding.IsValidGeocodingProvider, "Geocoding:Provider must be Osm, Nominatim or Photon.")
+            .Validate(options => options.PlaceSearch.IsValidSearchProvider, "PlaceSearch:Provider must be Nominatim or Photon.")
+            .Validate(options => !options.IsEnabled("nominatim") || LocationServicesOptions.IsHttpBaseUrl(options.Nominatim.BaseUrl),
+                "Nominatim:BaseUrl must be an absolute HTTP or HTTPS URL when Nominatim is enabled.")
+            .Validate(options => !options.IsEnabled("photon") || LocationServicesOptions.IsHttpBaseUrl(options.Photon.BaseUrl),
+                "Photon:BaseUrl must be an absolute HTTP or HTTPS URL when Photon is enabled.")
+            .Validate(options => !options.IsEnabled("nominatim") || options.Nominatim.Timeout > TimeSpan.Zero,
+                "Nominatim:Timeout must be positive when Nominatim is enabled.")
+            .Validate(options => !options.IsEnabled("photon") || options.Photon.Timeout > TimeSpan.Zero,
+                "Photon:Timeout must be positive when Photon is enabled.")
+            .Validate(options => !options.Geocoding.CanSelect("nominatim") || !string.IsNullOrWhiteSpace(options.Nominatim.UserAgent),
+                "Nominatim:UserAgent is required when Nominatim reverse geocoding is enabled.")
+            .ValidateOnStart();
+
         services.AddScoped<OsmGeocodingClient>();
-        services.AddHttpClient<NominatimGeocodingClient>(client =>
+        services.AddHttpClient<NominatimGeocodingClient>((provider, client) =>
         {
-            client.BaseAddress = new Uri(configuration["Nominatim:BaseUrl"] ?? "https://nominatim.openstreetmap.org/");
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(configuration["Nominatim:UserAgent"] ?? "ZonaMatch/1.0");
-            client.Timeout = TimeSpan.FromSeconds(10);
+            var options = provider.GetRequiredService<IOptions<LocationServicesOptions>>().Value.Nominatim;
+            client.BaseAddress = LocationServicesOptions.ToBaseAddress(options.BaseUrl!);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent!);
+            client.Timeout = options.Timeout;
         });
-        services.AddHttpClient<PhotonGeocodingClient>(client =>
+        services.AddHttpClient<PhotonGeocodingClient>(ConfigurePhoton);
+        services.AddScoped<IGeocodingClientSelector>(provider =>
         {
-            client.BaseAddress = new Uri(configuration["Photon:BaseUrl"] ?? "http://localhost:2322/");
-            client.Timeout = TimeSpan.FromSeconds(10);
+            var options = provider.GetRequiredService<IOptions<LocationServicesOptions>>().Value.Geocoding;
+            return new GeocodingClientSelector(provider, options.Provider.Trim(), options.AllowProviderOverride);
         });
-        services.AddScoped<IGeocodingClientSelector>(serviceProvider => new GeocodingClientSelector(
-            serviceProvider,
-            configuration["Geocoding:Provider"] ?? "Osm",
-            configuration.GetValue<bool>("Geocoding:AllowProviderOverride")));
         services.AddScoped<IGeocodingClient>(serviceProvider =>
             serviceProvider.GetRequiredService<IGeocodingClientSelector>().Resolve(null));
 
-        // Both search engines are available; PlaceSearch:Provider chooses the default and, with
-        // PlaceSearch:AllowProviderOverride, the request can pick one (?provider=nominatim|photon) to compare them.
-        services.AddHttpClient<NominatimPlaceSearchClient>(client =>
+        services.AddSingleton(PlaceSearchBounds.LoadAmba());
+        services.AddHttpClient<NominatimPlaceSearchClient>((provider, client) =>
         {
-            client.BaseAddress = new Uri(configuration["Nominatim:BaseUrl"] ?? "http://localhost:8080/");
-            client.Timeout = TimeSpan.FromSeconds(10);
+            var options = provider.GetRequiredService<IOptions<LocationServicesOptions>>().Value.Nominatim;
+            client.BaseAddress = LocationServicesOptions.ToBaseAddress(options.BaseUrl!);
+            client.Timeout = options.Timeout;
         });
-        services.AddSingleton(new PhotonSearchOptions(configuration["Photon:Language"]));
-        services.AddHttpClient<PhotonPlaceSearchClient>(client =>
+        services.AddSingleton(provider =>
+            new PhotonSearchOptions(provider.GetRequiredService<IOptions<LocationServicesOptions>>().Value.Photon.Language));
+        services.AddHttpClient<PhotonPlaceSearchClient>(ConfigurePhoton);
+        services.AddScoped<IPlaceSearchClientSelector>(provider =>
         {
-            client.BaseAddress = new Uri(configuration["Photon:BaseUrl"] ?? "http://localhost:2322/");
-            client.Timeout = TimeSpan.FromSeconds(10);
+            var options = provider.GetRequiredService<IOptions<LocationServicesOptions>>().Value.PlaceSearch;
+            return new PlaceSearchClientSelector(provider, options.Provider.Trim(), options.AllowProviderOverride);
         });
-        services.AddScoped<IPlaceSearchClientSelector>(serviceProvider => new PlaceSearchClientSelector(
-            serviceProvider,
-            configuration["PlaceSearch:Provider"] ?? "Nominatim",
-            configuration.GetValue<bool>("PlaceSearch:AllowProviderOverride")));
         services.AddScoped<IPlaceSearchClient>(serviceProvider =>
             serviceProvider.GetRequiredService<IPlaceSearchClientSelector>().Resolve(null));
         services.AddScoped<IEmailService, EmailService>();
@@ -100,22 +112,47 @@ public static class InfrastructureServiceCollectionExtensions
             configuration.GetValue<bool>("Storage:PublicRead")));
 
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
+        services.AddOptions<CacheLifetimeOptions>()
+            .BindConfiguration(CacheLifetimeOptions.SectionName)
+            .Validate(options => options.ZoneProfiles > TimeSpan.Zero, "Cache:ZoneProfiles must be positive.")
+            .Validate(options => options.NominatimAddresses > TimeSpan.Zero, "Cache:NominatimAddresses must be positive.")
+            .Validate(options => options.MotisTravelTimes > TimeSpan.Zero, "Cache:MotisTravelTimes must be positive.")
+            .Validate(options => options.MotisRoutePlans > TimeSpan.Zero, "Cache:MotisRoutePlans must be positive.")
+            .Validate(options => options.PublicResponseSeconds > 0, "Cache:PublicResponseSeconds must be positive.")
+            .ValidateOnStart();
         // MOTIS trips and plans and Nominatim addresses. Today it lives in memory; with several instances, a distributed
         // cache (Redis or PostgreSQL) can be added here as its second level.
         services.AddHybridCache();
         // The zone profiles are too large for HybridCache: they have their own in-memory cache.
         services.AddSingleton<ZoneProfilesCache>();
-        services.AddHttpClient<IRoutingClient, MotisRoutingClient>(client =>
+        services.AddOptions<MotisOptions>()
+            .BindConfiguration(MotisOptions.SectionName)
+            .Validate(options => LocationServicesOptions.IsHttpBaseUrl(options.Url),
+                "Motis:Url must be an absolute HTTP or HTTPS URL.")
+            .Validate(options => options.ReferenceTime is not null, "Motis:FechaReferencia is required.")
+            .Validate(options => options.RoutingTimeout > TimeSpan.Zero, "Motis:RoutingTimeout must be positive.")
+            .Validate(options => options.PlanningTimeout > TimeSpan.Zero, "Motis:PlanningTimeout must be positive.")
+            .ValidateOnStart();
+        services.AddHttpClient<IRoutingClient, MotisRoutingClient>((provider, client) =>
         {
-            client.BaseAddress = new Uri(configuration["Motis:Url"] ?? "http://localhost:18080/");
-            client.Timeout = TimeSpan.FromSeconds(8);
+            var options = provider.GetRequiredService<IOptions<MotisOptions>>().Value;
+            client.BaseAddress = LocationServicesOptions.ToBaseAddress(options.Url!);
+            client.Timeout = options.RoutingTimeout;
         });
-        services.AddHttpClient<IRoutePlanner, MotisRoutePlanner>(client =>
+        services.AddHttpClient<IRoutePlanner, MotisRoutePlanner>((provider, client) =>
         {
-            client.BaseAddress = new Uri(configuration["Motis:Url"] ?? "http://localhost:18080/");
-            client.Timeout = TimeSpan.FromSeconds(15);
+            var options = provider.GetRequiredService<IOptions<MotisOptions>>().Value;
+            client.BaseAddress = LocationServicesOptions.ToBaseAddress(options.Url!);
+            client.Timeout = options.PlanningTimeout;
         });
 
         return services;
+    }
+
+    private static void ConfigurePhoton(IServiceProvider provider, HttpClient client)
+    {
+        var options = provider.GetRequiredService<IOptions<LocationServicesOptions>>().Value.Photon;
+        client.BaseAddress = LocationServicesOptions.ToBaseAddress(options.BaseUrl!);
+        client.Timeout = options.Timeout;
     }
 }

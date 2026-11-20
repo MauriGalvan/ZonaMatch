@@ -1,15 +1,21 @@
 using FluentAssertions;
 using System.Net;
 using System.Text;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using ZonaMatch.Domain.Scoring;
+using ZonaMatch.Infrastructure.Caching;
 using ZonaMatch.Infrastructure.Geo;
 
 namespace ZonaMatch.Tests.Infrastructure;
 
 public class MotisRoutingClientTests
 {
+    private static readonly IOptions<MotisOptions> Motis =
+        Options.Create(new MotisOptions { ReferenceTime = new DateTimeOffset(2026, 3, 3, 11, 0, 0, TimeSpan.Zero) });
+    private static readonly IOptions<CacheLifetimeOptions> CacheLifetimes =
+        Options.Create(new CacheLifetimeOptions { MotisTravelTimes = TimeSpan.FromDays(1) });
+
     [Fact]
     public async Task GetTravelTimeAsync_WhenMultipleItinerariesExist_UsesTimeAndDistanceFromTheSameItinerary()
     {
@@ -148,7 +154,7 @@ public class MotisRoutingClientTests
 
     private static MotisRoutingClient CreateClient(HttpMessageHandler handler) => new(
         new HttpClient(handler) { BaseAddress = new Uri("http://motis.test/") },
-        HybridCacheTestSupport.Create(), TimeProvider.System, new ConfigurationBuilder().Build(),
+        HybridCacheTestSupport.Create(), TimeProvider.System, Motis, CacheLifetimes,
         NullLogger<MotisRoutingClient>.Instance);
 
     // Answers each request with the next JSON of the list (the last one repeats) and counts the requests
@@ -172,9 +178,8 @@ public class MotisRoutingClientTests
     {
         using var handler = new JsonHandler(json);
         using var http = new HttpClient(handler) { BaseAddress = new Uri("http://motis.test/") };
-        var cache = HybridCacheTestSupport.Create();
         var client = new MotisRoutingClient(
-            http, cache, TimeProvider.System, new ConfigurationBuilder().Build(),
+            http, HybridCacheTestSupport.Create(), TimeProvider.System, Motis, CacheLifetimes,
             NullLogger<MotisRoutingClient>.Instance);
 
         var travelTime = await client.GetTravelTimeAsync(-34.6, -58.4, -34.5, -58.3, mode);

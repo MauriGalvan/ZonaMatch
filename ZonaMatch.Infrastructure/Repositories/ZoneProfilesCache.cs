@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using ZonaMatch.Domain.Scoring;
+using ZonaMatch.Infrastructure.Caching;
 
 namespace ZonaMatch.Infrastructure.Repositories;
 
@@ -7,17 +9,17 @@ namespace ZonaMatch.Infrastructure.Repositories;
 // type and rooms) exceed its payload limit; every instance can rebuild them from the database.
 public sealed class ZoneProfilesCache
 {
-    public static readonly TimeSpan Lifetime = TimeSpan.FromHours(6);
-
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private readonly TimeProvider _timeProvider;
+    private readonly TimeSpan _lifetime;
 
     private IReadOnlyList<ZoneProfile>? _profiles;
     private DateTimeOffset _expiresAt;
 
-    public ZoneProfilesCache(TimeProvider timeProvider)
+    public ZoneProfilesCache(TimeProvider timeProvider, IOptions<CacheLifetimeOptions> cacheLifetimes)
     {
         _timeProvider = timeProvider;
+        _lifetime = cacheLifetimes.Value.ZoneProfiles;
     }
 
     // An empty result (data not loaded yet) is not kept, so the next request tries again.
@@ -39,7 +41,7 @@ public sealed class ZoneProfilesCache
             if (refreshedProfiles.Count > 0)
             {
                 _profiles = refreshedProfiles;
-                _expiresAt = _timeProvider.GetUtcNow() + Lifetime;
+                _expiresAt = _timeProvider.GetUtcNow() + _lifetime;
             }
 
             return refreshedProfiles;

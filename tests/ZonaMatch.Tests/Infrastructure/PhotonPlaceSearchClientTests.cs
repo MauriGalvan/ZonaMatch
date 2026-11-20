@@ -120,7 +120,8 @@ namespace ZonaMatch.Tests.Infrastructure
         }
 
         private static PhotonPlaceSearchClient CreateClient(StubHandler handler) =>
-            new(new HttpClient(handler) { BaseAddress = new Uri("http://photon.test/") }, new PhotonSearchOptions());
+            new(new HttpClient(handler) { BaseAddress = new Uri("http://photon.test/") },
+                new PhotonSearchOptions(), PlaceSearchBounds.LoadAmba());
 
         private sealed class StubHandler(HttpStatusCode statusCode, string body) : HttpMessageHandler
         {

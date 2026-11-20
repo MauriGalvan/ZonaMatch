@@ -23,7 +23,14 @@ public sealed class ZonaMatchApiFactory(string connectionString) : WebApplicatio
                 ["Jwt:Issuer"] = "ZonaMatch.IntegrationTests",
                 ["Jwt:Audience"] = "ZonaMatch.IntegrationTests",
                 ["Jwt:ExpirationMinutes"] = "10",
-                ["Frontend:BaseUrl"] = "http://localhost:5173"
+                ["Frontend:BaseUrl"] = "http://localhost:5173",
+                ["PlaceSearch:Provider"] = "Nominatim",
+                ["PlaceSearch:AllowProviderOverride"] = "false",
+                ["Geocoding:Provider"] = "Osm",
+                ["Geocoding:AllowProviderOverride"] = "false",
+                ["Nominatim:BaseUrl"] = "http://nominatim.test/",
+                ["Motis:Url"] = "http://motis.test/",
+                ["Motis:FechaReferencia"] = "2026-03-03T11:00:00Z"
             }));
 
         builder.ConfigureTestServices(services =>

@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.DTOs.PointOfInterest.Responses;
 using ZonaMatch.Application.DTOs.Transit.Responses;
 using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.DTOs.ZoneIndicator.Responses;
 using ZonaMatch.Application.UseCases.Zone;
+using ZonaMatch.Infrastructure.Caching;
 
 namespace ZonaMatch.Api.Controllers;
 
@@ -33,7 +34,7 @@ public sealed class ZonesController : ControllerBase
     // GET /api/v1/zones/villa-luro?tolerance=0.00015
     // Returns a GeoJSON Feature with the zone geometry and its administrative properties.
     [HttpGet("{slug}")]
-    [ResponseCache(Duration = 3600)]
+    [ResponseCache(CacheProfileName = CacheLifetimeOptions.PublicResponseProfile)]
     public async Task<IActionResult> GetZoneAsync(
         [FromRoute] string slug,
         [FromQuery] double? tolerance,
@@ -74,7 +75,7 @@ public sealed class ZonesController : ControllerBase
 
     // GET /api/v1/zones/villa-luro/indicators
     [HttpGet("{slug}/indicators")]
-    [ResponseCache(Duration = 3600)]
+    [ResponseCache(CacheProfileName = CacheLifetimeOptions.PublicResponseProfile)]
     [ProducesResponseType<ZoneIndicatorsResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetZoneIndicatorsAsync(
@@ -87,7 +88,7 @@ public sealed class ZonesController : ControllerBase
 
     // GET /api/v1/zones/villa-luro/transit
     [HttpGet("{slug}/transit")]
-    [ResponseCache(Duration = 3600)]
+    [ResponseCache(CacheProfileName = CacheLifetimeOptions.PublicResponseProfile)]
     [ProducesResponseType<ZoneTransitResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetZoneTransitAsync(
@@ -101,7 +102,7 @@ public sealed class ZonesController : ControllerBase
     // GET /api/v1/zones/villa-luro/transit/routes
     // Paths of the bus, train, and subway lines inside the zone, for the map layer.
     [HttpGet("{slug}/transit/routes")]
-    [ResponseCache(Duration = 3600)]
+    [ResponseCache(CacheProfileName = CacheLifetimeOptions.PublicResponseProfile)]
     [ProducesResponseType<ZoneTransitRouteListResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetZoneTransitRoutesAsync(

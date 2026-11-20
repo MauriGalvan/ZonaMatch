@@ -1,18 +1,19 @@
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
 using ZonaMatch.Api.Authentication;
 using ZonaMatch.Api.Background;
 using ZonaMatch.Api.DependencyInjection;
 using ZonaMatch.Api.ExceptionHandling;
 using ZonaMatch.Api.Middleware;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Infrastructure.Caching;
 using ZonaMatch.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,45 +51,7 @@ builder.Services.ConfigureOptions<ConfigureJwtBearerOptions>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddAuthorization();
 
-// Slows down password guessing on /api/v1/auth/login: 10 attempts per minute per IP
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    // Rejections would otherwise be silent: repeated hits on /api/v1/auth/login are the signal of a brute-force attempt
-    options.OnRejected = (context, _) =>
-    {
-        var http = context.HttpContext;
-        http.RequestServices.GetRequiredService<ILoggerFactory>()
-            .CreateLogger("ZonaMatch.RateLimiting")
-            .LogWarning("Rate limit exceeded on {Method} {Path} from {RemoteIp}",
-                http.Request.Method, http.Request.Path, http.Connection.RemoteIpAddress);
-        return ValueTask.CompletedTask;
-    };
-    options.AddPolicy("login", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
-    // The public contact form sends an email per submission: 5 requests per 10 minutes per IP.
-    options.AddPolicy("contact", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10) }));
-    // Password recovery: 5 requests per 15 minutes per IP, for both the email and the new password.
-    options.AddPolicy("password-reset", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15) }));
-    // Group invitations by email: 10 per hour per signed-in user, so a group owner cannot be used to send spam.
-    options.AddPolicy("invitation-email", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        httpContext.User.GetAuthenticatedUserId()?.ToString() ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
-    // A visitor gets their PDF report by email: 3 requests per hour per IP (each one sends an email with an attachment).
-    // PENDING: too low for live demos; see the note on SendGuestReport.MaxEmailsPerRecipientPerDay.
-    options.AddPolicy("guest-report", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1) }));
-    // Each upload stores a file in Azure: 20 images per 10 minutes per IP.
-    options.AddPolicy("image-upload", httpContext => RateLimitPartition.GetFixedWindowLimiter(
-        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(10) }));
-});
+builder.Services.AddRequestRateLimiting();
 
 // GeoJSON compresses very well; "application/geo+json" is not in the default MIME list
 builder.Services.AddResponseCompression(options =>
@@ -118,6 +81,10 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower)))
     // Invalid requests answer with the same ProblemDetails shape as the global exception handler, in Spanish
     .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = ValidationProblemFactory.Create);
+builder.Services.AddOptions<MvcOptions>()
+    .Configure<IOptions<CacheLifetimeOptions>>((mvc, cache) =>
+        mvc.CacheProfiles.Add(CacheLifetimeOptions.PublicResponseProfile,
+            new CacheProfile { Duration = cache.Value.PublicResponseSeconds }));
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi();

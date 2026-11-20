@@ -7,9 +7,11 @@ using ZonaMatch.Application.Interfaces;
 namespace ZonaMatch.Infrastructure.Geo
 {
     // Forward geocoding through the local Nominatim instance, bounded to the imported AMBA extract.
-    public sealed class NominatimPlaceSearchClient(HttpClient httpClient) : IPlaceSearchClient
+    public sealed class NominatimPlaceSearchClient(HttpClient httpClient, PlaceSearchBounds searchBounds) : IPlaceSearchClient
     {
-        private const string Viewbox = "-58.99,-34.33,-58.01,-34.93";
+        // Nominatim's viewbox is given from the upper-left corner to the lower-right corner.
+        private readonly string _viewbox = string.Create(CultureInfo.InvariantCulture,
+            $"{searchBounds.MinLongitude},{searchBounds.MaxLatitude},{searchBounds.MaxLongitude},{searchBounds.MinLatitude}");
 
         // A whole neighbourhood or town, not a place: the front warns that zones are found by the analysis
         private static readonly HashSet<string> AreaTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -22,7 +24,7 @@ namespace ZonaMatch.Infrastructure.Geo
         {
             var nominatimLimit = Math.Min(limit * 3, 40);
             var url = $"search?format=jsonv2&addressdetails=1&namedetails=1&accept-language=es" +
-                      $"&countrycodes=ar&viewbox={Viewbox}&bounded=1&limit={nominatimLimit}&q={Uri.EscapeDataString(search)}";
+                      $"&countrycodes=ar&viewbox={_viewbox}&bounded=1&limit={nominatimLimit}&q={Uri.EscapeDataString(search)}";
 
             HttpResponseMessage response;
             try
