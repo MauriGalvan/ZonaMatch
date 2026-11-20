@@ -12,7 +12,6 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
     // Versions always belong to the original, even when another version was adjusted.
     public class CreateAnalysisVersion
     {
-        private const int MaxNameLength = 50;
 
         private readonly IAnalysisRepository _analysisRepository;
         private readonly ICriterionRepository _criteriaRepository;
@@ -99,8 +98,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
         public static string BuildVersionName(string originalName, int versionNumber)
         {
             var suffix = $" ({versionNumber})";
-            var baseName = originalName.Length + suffix.Length > MaxNameLength
-                ? originalName[..(MaxNameLength - suffix.Length)].TrimEnd()
+            var baseName = originalName.Length + suffix.Length > Analysis.MaximumNameLength
+                ? originalName[..(Analysis.MaximumNameLength - suffix.Length)].TrimEnd()
                 : originalName;
 
             return baseName + suffix;

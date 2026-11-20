@@ -268,7 +268,7 @@ namespace ZonaMatch.Infrastructure.Data
             {
                 e.ToTable("analisis");
                 e.HasKey(x => x.Id);
-                e.Property(x => x.Name).HasColumnName("nombre").HasMaxLength(50).IsRequired();
+                e.Property(x => x.Name).HasColumnName("nombre").HasMaxLength(Analysis.MaximumNameLength).IsRequired();
                 e.Property(x => x.GroupScoresJson).HasColumnName("puntajes_en_grupo_json").HasColumnType("jsonb");
                 e.Property(x => x.ResultJson).HasColumnName("resultado_json").HasColumnType("jsonb");
                 e.Property(x => x.ResultGeneratedAt).HasColumnName("fecha_resultado").HasColumnType("timestamptz");
