@@ -1,4 +1,5 @@
-﻿using ZonaMatch.Domain.Entities;
+﻿using ZonaMatch.Application.DTOs.Zone.Responses;
+using ZonaMatch.Domain.Entities;
 
 namespace ZonaMatch.Application.Interfaces
 {
@@ -15,5 +16,11 @@ namespace ZonaMatch.Application.Interfaces
         // Zones whose slug contains the search text turned into a slug with the same rule the ETL uses for the zone
         // slugs (geo.slug_zona); prefix matches come first. Results come without their boundary.
         Task<IReadOnlyList<Zone>> SearchAsync(string searchText, int resultLimit, CancellationToken cancellationToken = default);
+
+        // Active coverage zones with simplified boundaries as a GeoJSON FeatureCollection string.
+        Task<string> GetCoverageGeoJsonAsync(double simplificationTolerance, CancellationToken cancellationToken = default);
+
+        // Lightweight list of active zones and indicator availability without geometries.
+        Task<IReadOnlyList<AvailableZoneResponse>> ListAvailableAsync(CancellationToken cancellationToken = default);
     }
 }
