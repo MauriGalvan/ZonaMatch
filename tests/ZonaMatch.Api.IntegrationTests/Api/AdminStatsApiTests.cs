@@ -79,6 +79,25 @@ public sealed class AdminStatsApiTests(PostgreSqlDatabaseFixture database)
     }
 
     [Fact]
+    public async Task GetStats_CountsReportDownloadsOfUsersAndVisitors()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        using var visitor = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+        var before = (await administrator.Client.GetFromJsonAsync<AdminStatsResponse>("/api/v1/admin/stats"))!.Activity;
+
+        (await member.Client.PostAsync("/api/v1/report-downloads", content: null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await visitor.PostAsync("/api/v1/report-downloads", content: null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var after = (await administrator.Client.GetFromJsonAsync<AdminStatsResponse>("/api/v1/admin/stats"))!.Activity;
+        after.ReportDownloads.Should().Be(before.ReportDownloads + 2);
+        after.ReportDownloadsLast30Days.Should().Be(before.ReportDownloadsLast30Days + 2);
+        after.ReportDownloadsByGuests.Should().Be(before.ReportDownloadsByGuests + 1, "only the visitor has no account");
+    }
+
+    [Fact]
     public async Task ListGroups_WhenAdministrator_ReturnsTheGroupWithItsCreationDateAndOwner()
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);

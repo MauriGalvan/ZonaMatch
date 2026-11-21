@@ -16,6 +16,7 @@ using ZonaMatch.Application.UseCases.Contact;
 using ZonaMatch.Application.UseCases.Criterion;
 using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Application.UseCases.GuestReport;
+using ZonaMatch.Application.UseCases.ReportDownload;
 using ZonaMatch.Application.UseCases.GroupInvitation;
 using ZonaMatch.Application.UseCases.GroupLink;
 using ZonaMatch.Application.UseCases.Image;
@@ -101,6 +102,7 @@ public static class ApplicationServiceCollectionExtensions
 
         services.AddScoped<ListUsers>();
         services.AddScoped<UpdateUserRole>();
+        services.AddScoped<UpdateUserSuspension>();
         services.AddScoped<UpdateInvestorAccess>();
         services.AddScoped<GetInvestorAccess>();
         services.AddScoped<RequestInvestorAccess>();
@@ -187,6 +189,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SendContactMessage>();
         services.AddScoped<GuestReportQuota>();
         services.AddScoped<SendGuestReport>();
+        services.AddScoped<RegisterReportDownload>();
         services.AddScoped<UploadImage>();
 
         return services;

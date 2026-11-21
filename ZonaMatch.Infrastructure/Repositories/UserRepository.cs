@@ -47,6 +47,11 @@ public sealed class UserRepository(ZonaMatchDbContext dbContext) : IUserReposito
                 .SetProperty(user => user.InvestorAccessRequestedAt, requestedAt)
                 .SetProperty(user => user.InvestorAccessGrantedAt, grantedAt), cancellationToken);
 
+    public Task SetSuspendedAsync(Guid id, DateTimeOffset? suspendedAt, CancellationToken cancellationToken = default) =>
+        dbContext.Users
+            .Where(user => user.Id == id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.SuspendedAt, suspendedAt), cancellationToken);
+
     public async Task<IReadOnlyList<string>> GetAdministratorEmailsAsync(CancellationToken cancellationToken = default) =>
         await dbContext.Users
             .AsNoTracking()

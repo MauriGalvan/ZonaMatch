@@ -40,7 +40,11 @@ public sealed record AdminActivityStats(
     int SavedZones,
     // PDF reports emailed to guests (visitors without an account).
     int GuestReports,
-    int GuestReportsLast30Days);
+    int GuestReportsLast30Days,
+    // PDF reports downloaded from the analysis result, by users and visitors; ByGuests: the visitors' ones.
+    int ReportDownloads = 0,
+    int ReportDownloadsLast30Days = 0,
+    int ReportDownloadsByGuests = 0);
 
 public sealed record AdminCommunityStats(
     int Reviews,

@@ -1090,6 +1090,30 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("preguntas", "app");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ReportDownload", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("DownloadedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("downloaded_at");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DownloadedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("report_downloads", "app");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1523,6 +1547,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("password_hash");
+
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_suspension");
 
                     b.HasKey("Id");
 
@@ -2101,6 +2129,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ReportDownload", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>

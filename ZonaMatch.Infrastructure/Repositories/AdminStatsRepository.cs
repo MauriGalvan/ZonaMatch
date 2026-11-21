@@ -106,6 +106,7 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
         var groups = dbContext.Groups.AsNoTracking();
         var invitations = dbContext.GroupInvitations.AsNoTracking();
         var guestReports = dbContext.GuestReportSends.AsNoTracking();
+        var downloads = dbContext.ReportDownloads.AsNoTracking();
         // Groups store their creation date as a UTC DateTime.
         var groupsSince = period.Since30Days.UtcDateTime;
 
@@ -119,7 +120,10 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
             AcceptedGroupInvitations: await invitations.CountAsync(invitation => invitation.Status == InvitationStatus.Accepted, cancellationToken),
             SavedZones: await dbContext.SavedZones.AsNoTracking().CountAsync(cancellationToken),
             GuestReports: await guestReports.CountAsync(cancellationToken),
-            GuestReportsLast30Days: await guestReports.CountAsync(report => report.SentAt >= period.Since30Days, cancellationToken));
+            GuestReportsLast30Days: await guestReports.CountAsync(report => report.SentAt >= period.Since30Days, cancellationToken),
+            ReportDownloads: await downloads.CountAsync(cancellationToken),
+            ReportDownloadsLast30Days: await downloads.CountAsync(download => download.DownloadedAt >= period.Since30Days, cancellationToken),
+            ReportDownloadsByGuests: await downloads.CountAsync(download => download.UserId == null, cancellationToken));
     }
 
     private async Task<AdminCommunityStats> GetCommunityStatsAsync(AdminStatsPeriod period, CancellationToken cancellationToken)

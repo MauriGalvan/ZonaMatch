@@ -23,10 +23,10 @@ public sealed class GuestReportQuota(IGuestReportSendRepository sends, TimeProvi
     private static string Hash(string recipient) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(recipient.Trim().ToLowerInvariant())));
 
-    // Midnight in Argentina, as an instant
+    // Midnight in Argentina, as an instant in UTC: Npgsql only writes DateTimeOffset values with offset 0.
     private DateTimeOffset StartOfToday()
     {
         var local = clock.GetUtcNow().ToOffset(ArgentinaOffset);
-        return new DateTimeOffset(local.Date, ArgentinaOffset);
+        return new DateTimeOffset(local.Date, ArgentinaOffset).ToUniversalTime();
     }
 }

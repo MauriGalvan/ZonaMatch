@@ -84,6 +84,10 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("guest-report", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1) }));
+    // Each PDF download adds a row for the statistics: 30 per 10 minutes per IP is plenty for real use.
+    options.AddPolicy("report-download", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(10) }));
     // Each upload stores a file in Azure: 20 images per 10 minutes per IP.
     options.AddPolicy("image-upload", httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",

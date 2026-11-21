@@ -53,6 +53,15 @@ internal sealed class FakeAdminUserRepository(params User[] users) : IUserReposi
     public Task<bool> TryCompleteNameAsync(Guid id, string firstName, string lastName, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
+    public int SetSuspendedCalls { get; private set; }
+
+    public Task SetSuspendedAsync(Guid id, DateTimeOffset? suspendedAt, CancellationToken cancellationToken = default)
+    {
+        SetSuspendedCalls++;
+        Users.Single(user => user.Id == id).SuspendedAt = suspendedAt;
+        return Task.CompletedTask;
+    }
+
     public Task SetInvestorAccessAsync(
         Guid id, string? access, DateTimeOffset? requestedAt, DateTimeOffset? grantedAt, CancellationToken cancellationToken = default)
     {

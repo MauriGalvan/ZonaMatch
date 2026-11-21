@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Infrastructure.Data.Converters;
@@ -46,6 +46,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<UserNotification> Notifications => Set<UserNotification>();
         public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
         public DbSet<GuestReportSend> GuestReportSends => Set<GuestReportSend>();
+        public DbSet<ReportDownload> ReportDownloads => Set<ReportDownload>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -179,6 +180,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.InvestorAccessRequestedAt).HasColumnName("acceso_inversor_solicitado").HasColumnType("timestamptz");
                 e.Property(x => x.InvestorAccessGrantedAt).HasColumnName("acceso_inversor_habilitado").HasColumnType("timestamptz");
                 e.Ignore(x => x.HasInvestorAccess);
+                e.Property(x => x.SuspendedAt).HasColumnName("fecha_suspension").HasColumnType("timestamptz");
+                e.Ignore(x => x.IsSuspended);
             });
 
             modelBuilder.Entity<UserFeedbackPreferences>(e =>
@@ -376,6 +379,16 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.RecipientHash).HasMaxLength(64).IsRequired();
                 e.Property(x => x.SentAt).HasColumnType("timestamptz");
                 e.HasIndex(x => new { x.RecipientHash, x.SentAt });
+            });
+
+            modelBuilder.Entity<ReportDownload>(e =>
+            {
+                e.ToTable("report_downloads");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.DownloadedAt).HasColumnType("timestamptz");
+                e.HasIndex(x => x.DownloadedAt);
+                // Deleting an account keeps its downloads in the totals, as a visitor's.
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<UserNotification>(e =>
