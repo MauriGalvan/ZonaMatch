@@ -1,3 +1,4 @@
+using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.Interfaces;
 
 namespace ZonaMatch.Tests.UseCases.Community;
@@ -18,4 +19,10 @@ internal sealed class FakeZoneRepository : IZoneRepository
 
     public Task<IReadOnlyList<ZonaMatch.Domain.Entities.Zone>> SearchAsync(string searchText, int resultLimit, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
+
+    public Task<string> GetCoverageGeoJsonAsync(double simplificationTolerance, CancellationToken cancellationToken = default) =>
+        Task.FromResult("""{"type":"FeatureCollection","features":[]}""");
+
+    public Task<IReadOnlyList<AvailableZoneResponse>> ListAvailableAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AvailableZoneResponse>>([]);
 }

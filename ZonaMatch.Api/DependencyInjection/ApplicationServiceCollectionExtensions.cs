@@ -56,6 +56,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ReverseGeocode>();
         services.AddScoped<SearchZones>();
         services.AddScoped<GetZone>();
+        services.AddScoped<GetZoneCoverage>();
+        services.AddScoped<GetAvailableZones>();
         services.AddScoped<GetZonePointsOfInterest>();
         services.AddScoped<GetZonePointsOfInterestSummary>();
         services.AddScoped<GetMapDistricts>();

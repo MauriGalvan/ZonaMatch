@@ -33,6 +33,8 @@ public sealed partial class ZoneRepositoryTests(PostgreSqlDatabaseFixture databa
                 osm_id bigint PRIMARY KEY, nombre text NOT NULL, slug text NOT NULL, nivel integer NOT NULL,
                 superficie_km2 double precision NOT NULL, geom geometry(MultiPolygon, 4326) NOT NULL,
                 elegida boolean NOT NULL DEFAULT false);
+            CREATE TABLE IF NOT EXISTS geo.zona_indicadores (
+                osm_id bigint PRIMARY KEY);
             """);
 
         // The slug function is taken from the ETL itself, so the search is tested with the rule that creates the slugs
@@ -133,6 +135,28 @@ public sealed partial class ZoneRepositoryTests(PostgreSqlDatabaseFixture databa
         var exists = await new ZoneRepository(context).ExistsAsync(slug);
 
         exists.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task GetCoverageGeoJsonAsync_WhenZonesExist_ReturnsFeatureCollectionGeoJson()
+    {
+        await using var context = database.CreateDbContext();
+
+        var geoJson = await new ZoneRepository(context).GetCoverageGeoJsonAsync(0.0003);
+
+        geoJson.Should().Contain("\"type\":\"FeatureCollection\"");
+        geoJson.Should().Contain("\"palermo\"");
+    }
+
+    [Fact]
+    public async Task ListAvailableAsync_WhenZonesExist_ReturnsAvailableZones()
+    {
+        await using var context = database.CreateDbContext();
+
+        var zones = await new ZoneRepository(context).ListAvailableAsync();
+
+        zones.Should().NotBeEmpty();
+        zones.Should().Contain(z => z.Slug == "palermo" && z.Type == "barrio");
     }
 
     private static string ReadSlugFunctionFromEtl()

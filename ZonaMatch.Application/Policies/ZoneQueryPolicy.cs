@@ -7,6 +7,9 @@ public static class ZoneQueryPolicy
 {
     // ~15 m: preserve the shape of a neighborhood while keeping its boundary payload light.
     public const double DefaultBoundaryTolerance = 0.00015;
+    public const double DefaultCoverageTolerance = 0.0003;
+    public const double SimplifiedCoverageTolerance = 0.001;
+    public const double MaximumCoverageTolerance = 0.05;
     public const int MinimumSearchCharacters = 2;
     public const int MaximumSearchResults = 20;
 
@@ -20,4 +23,7 @@ public static class ZoneQueryPolicy
 
     public static double NormalizeBoundaryTolerance(double? tolerance) =>
         Math.Max(tolerance ?? DefaultBoundaryTolerance, 0);
+
+    public static double NormalizeCoverageTolerance(double? tolerance, bool simplified = false) =>
+        Math.Clamp(tolerance ?? (simplified ? SimplifiedCoverageTolerance : DefaultCoverageTolerance), 0d, MaximumCoverageTolerance);
 }
