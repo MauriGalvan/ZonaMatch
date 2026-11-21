@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -144,8 +145,11 @@ public sealed partial class ZoneRepositoryTests(PostgreSqlDatabaseFixture databa
 
         var geoJson = await new ZoneRepository(context).GetCoverageGeoJsonAsync(0.0003);
 
-        geoJson.Should().Contain("\"type\":\"FeatureCollection\"");
-        geoJson.Should().Contain("\"palermo\"");
+        var featureCollection = JsonNode.Parse(geoJson);
+        featureCollection.Should().NotBeNull();
+        featureCollection!["type"]!.GetValue<string>().Should().Be("FeatureCollection");
+        var features = featureCollection["features"]!.AsArray();
+        features.Should().Contain(f => f!["id"]!.GetValue<string>() == "palermo");
     }
 
     [Fact]
