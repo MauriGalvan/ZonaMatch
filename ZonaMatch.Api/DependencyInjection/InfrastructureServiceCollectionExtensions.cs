@@ -49,6 +49,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICommunityPoiRepository, CommunityPoiRepository>();
         services.AddScoped<IProfileRepository, ProfileRepository>();
         services.AddScoped<IGuestReportSendRepository, GuestReportSendRepository>();
+        services.AddScoped<IReportDownloadRepository, ReportDownloadRepository>();
         services.AddScoped<IZoneProfilesRepository, ZoneProfilesRepository>();
 
         // The three reverse geocoders are registered; Geocoding:Provider (Osm, Nominatim or Photon) is the default and,

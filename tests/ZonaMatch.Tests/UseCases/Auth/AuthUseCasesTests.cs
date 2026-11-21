@@ -220,6 +220,28 @@ public sealed class AuthUseCasesTests
     }
 
     [Fact]
+    public async Task Login_WhenAccountIsSuspended_ThrowsForbiddenWithTheSuspendedMessage()
+    {
+        await _registerUser.ExecuteAsync(CreateRegisterRequest());
+        Assert.Single(_users.SavedUsers).SuspendedAt = CurrentTime;
+
+        var exception = await Assert.ThrowsAsync<ForbiddenException>(
+            () => _loginUser.ExecuteAsync(new LoginRequest("ana@example.com", "Secreta123")));
+
+        Assert.Equal(LoginUser.SuspendedAccountMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Login_WhenAccountIsSuspendedAndPasswordIsWrong_DoesNotRevealTheSuspension()
+    {
+        await _registerUser.ExecuteAsync(CreateRegisterRequest());
+        Assert.Single(_users.SavedUsers).SuspendedAt = CurrentTime;
+
+        await Assert.ThrowsAsync<UnauthorizedException>(
+            () => _loginUser.ExecuteAsync(new LoginRequest("ana@example.com", "OtraClave999")));
+    }
+
+    [Fact]
     public async Task Login_WithUnknownEmail_ThrowsUnauthorized()
     {
         await Assert.ThrowsAsync<UnauthorizedException>(
@@ -276,6 +298,9 @@ public sealed class AuthUseCasesTests
             throw new NotSupportedException();
 
         public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task SetSuspendedAsync(Guid id, DateTimeOffset? suspendedAt, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task SetInvestorAccessAsync(

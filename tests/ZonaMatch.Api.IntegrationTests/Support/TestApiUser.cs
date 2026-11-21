@@ -12,7 +12,8 @@ namespace ZonaMatch.Api.IntegrationTests.Support;
 
 internal sealed class TestApiUser(HttpClient client, UserResponse user) : IDisposable
 {
-    private const string Password = "IntegrationPassword123!";
+    // Shared with the tests that sign in through the login endpoint.
+    internal const string Password = "IntegrationPassword123!";
 
     public HttpClient Client { get; } = client;
     public UserResponse User { get; } = user;

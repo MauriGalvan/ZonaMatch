@@ -34,6 +34,11 @@ namespace ZonaMatch.Domain.Entities
         public DateTimeOffset? InvestorAccessGrantedAt { get; set; }
 
         public bool HasInvestorAccess => InvestorAccess == Entities.InvestorAccess.Granted;
+
+        // When an administrator suspended the account; null while it is active. A suspended user cannot sign in.
+        public DateTimeOffset? SuspendedAt { get; set; }
+
+        public bool IsSuspended => SuspendedAt is not null;
     }
 
     // Stored values of User.InvestorAccess.

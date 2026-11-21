@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using ZonaMatch.Api.IntegrationTests.Support;
 using ZonaMatch.Application.DTOs.Admin.Requests;
 using ZonaMatch.Application.DTOs.Admin.Responses;
+using ZonaMatch.Application.DTOs.Auth.Requests;
+using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.DTOs.Notification.Responses;
 using ZonaMatch.Application.UseCases.Admin;
 using ZonaMatch.Domain.Enums;
@@ -107,6 +109,44 @@ public sealed class AdminUsersApiTests(PostgreSqlDatabaseFixture database)
         var notification = notifications!.Items.Should().ContainSingle(item => item.Type == NotificationType.NewUserRegistered).Subject;
         notification.Link.Should().Be(NotifyNewUserRegistered.UserListLink);
         notification.Message.Should().Contain(newUser.User.Email);
+    }
+
+    [Fact]
+    public async Task UpdateSuspension_WhenSuspended_BlocksTheLoginUntilTheAccountIsReactivated()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        using var anonymous = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+        var login = new LoginRequest(member.User.Email, TestApiUser.Password);
+
+        var suspendResponse = await administrator.Client.PutAsJsonAsync(
+            $"/api/v1/admin/users/{member.User.Id}/suspension", new UpdateUserSuspensionRequest(Suspended: true));
+        suspendResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await suspendResponse.Content.ReadFromJsonAsync<AdminUserResponse>())!.IsSuspended.Should().BeTrue();
+
+        var blocked = await anonymous.PostAsJsonAsync("/api/v1/auth/login", login);
+        blocked.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await blocked.Content.ReadAsStringAsync()).Should().Contain("suspendida");
+
+        (await administrator.Client.PutAsJsonAsync(
+            $"/api/v1/admin/users/{member.User.Id}/suspension", new UpdateUserSuspensionRequest(Suspended: false)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await anonymous.PostAsJsonAsync("/api/v1/auth/login", login)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task UpdateSuspension_WhenNotAdministrator_ReturnsForbidden()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        using var other = await TestApiUser.RegisterAsync(factory);
+
+        var response = await member.Client.PutAsJsonAsync(
+            $"/api/v1/admin/users/{other.User.Id}/suspension", new UpdateUserSuspensionRequest(Suspended: true));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

@@ -35,6 +35,8 @@ namespace ZonaMatch.Api.Controllers
         [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        // The account is suspended (the right password was entered).
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
         public async Task<IActionResult> LoginAsync(

@@ -16,7 +16,7 @@ public interface IUserRepository
 
     Task AddAsync(User user, CancellationToken cancellationToken = default);
 
-    // Every registered user, ordered by email.
+    // Every registered user, newest account first.
     Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default);
 
     // Read-only.
@@ -29,4 +29,7 @@ public interface IUserRepository
     // Investor profile access (User.InvestorAccess) and when it was requested and granted.
     Task SetInvestorAccessAsync(
         Guid id, string? access, DateTimeOffset? requestedAt, DateTimeOffset? grantedAt, CancellationToken cancellationToken = default);
+
+    // Suspends the account (a date) or reactivates it (null).
+    Task SetSuspendedAsync(Guid id, DateTimeOffset? suspendedAt, CancellationToken cancellationToken = default);
 }
