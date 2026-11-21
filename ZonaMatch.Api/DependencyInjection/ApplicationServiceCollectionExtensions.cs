@@ -6,6 +6,7 @@ using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Admin;
+using ZonaMatch.Application.UseCases.Nps;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Investor;
 using ZonaMatch.Application.UseCases.AnalysisFollowUp;
@@ -111,6 +112,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ListAdminGroups>();
         services.AddScoped<ListAdminReviews>();
         services.AddScoped<ListAdminSurveys>();
+        services.AddScoped<NpsSurveys>();
+        services.AddScoped<RecordCompletedZoneAnalysis>();
+        services.AddScoped<ListAdminNps>();
         services.AddScoped<NotifyNewUserRegistered>();
         services.AddScoped<ListAdminZones>();
         services.AddScoped<GetAdminZone>();

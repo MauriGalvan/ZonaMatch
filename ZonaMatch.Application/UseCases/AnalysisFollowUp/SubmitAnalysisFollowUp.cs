@@ -23,6 +23,9 @@ public sealed class SubmitAnalysisFollowUp(IAnalysisFollowUpRepository repositor
         var preferences = await repository.GetPreferencesAsync(userId, cancellationToken)
             ?? throw new NotFoundException("Las preferencias de encuestas no existen.");
         var now = clock.GetUtcNow();
+        if (preferences.ActiveSurvey == "nps")
+            throw new ConflictException("Hay otra encuesta activa. Actualizá la página.");
+        preferences.ActiveSurvey = null;
         followUp.Outcome = request.Outcome;
         followUp.Helpfulness = request.Helpfulness;
         followUp.Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
