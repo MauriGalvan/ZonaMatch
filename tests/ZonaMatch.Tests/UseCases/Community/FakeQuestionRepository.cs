@@ -18,7 +18,12 @@ internal sealed class FakeQuestionRepository : IQuestionRepository
     public Task<DomainQuestion?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Questions.FirstOrDefault(p => p.Id == id));
 
+    public Task<Answer?> GetAnswerAsync(Guid questionId, Guid answerId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Questions.FirstOrDefault(p => p.Id == questionId)?.Answers.FirstOrDefault(answer => answer.Id == answerId));
+
     public void Remove(DomainQuestion question) => Questions.Remove(question);
+
+    public void Remove(Answer answer) => Questions.FirstOrDefault(p => p.Id == answer.QuestionId)?.Answers.Remove(answer);
 
     public Task<bool> ExistsAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Questions.Any(p => p.ZoneSlug == zoneSlug && p.Id == id));

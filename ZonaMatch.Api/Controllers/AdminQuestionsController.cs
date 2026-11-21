@@ -6,7 +6,7 @@ using ZonaMatch.Application.UseCases.Admin;
 
 namespace ZonaMatch.Api.Controllers;
 
-// Admin panel: follow the community questions and delete an inappropriate one.
+// Admin panel: follow the community questions and delete an inappropriate question or answer.
 [ApiController]
 [Route("api/v1/admin/questions")]
 [Authorize(Roles = AppRoles.Admin)]
@@ -34,6 +34,22 @@ public sealed class AdminQuestionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         await useCase.ExecuteAsync(id, User.RequireUserId(), cancellationToken);
+        return NoContent();
+    }
+
+    // DELETE /api/v1/admin/questions/{questionId}/answers/{answerId}: deletes one answer; the question stays.
+    [HttpDelete("{questionId:guid}/answers/{answerId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteAnswerAsync(
+        [FromRoute] Guid questionId,
+        [FromRoute] Guid answerId,
+        [FromServices] DeleteAdminAnswer useCase,
+        CancellationToken cancellationToken)
+    {
+        await useCase.ExecuteAsync(questionId, answerId, User.RequireUserId(), cancellationToken);
         return NoContent();
     }
 }

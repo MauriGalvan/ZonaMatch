@@ -20,8 +20,13 @@ namespace ZonaMatch.Application.Interfaces
         void Add(Question question);
         void Add(Answer answer);
 
+        // An answer of a question, tracked so it can be removed.
+        Task<Answer?> GetAnswerAsync(Guid questionId, Guid answerId, CancellationToken cancellationToken = default);
+
         // Its answers are deleted with it (database cascade).
         void Remove(Question question);
+
+        void Remove(Answer answer);
 
         Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }

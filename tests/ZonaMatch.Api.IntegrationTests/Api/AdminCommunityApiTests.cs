@@ -83,6 +83,34 @@ public sealed class AdminCommunityApiTests(PostgreSqlDatabaseFixture database)
         (await administrator.Client.DeleteAsync($"/api/v1/admin/questions/{question.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task DeleteAnswer_RemovesTheAnswerAndKeepsTheQuestion()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var author = await TestApiUser.RegisterAsync(factory);
+        using var neighbor = await TestApiUser.RegisterAsync(factory);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        var questionUrl = $"/api/v1/zones/{IntegrationZoneRepository.CreateCommunityZoneSlug()}/questions";
+        var question = (await (await author.Client.PostAsJsonAsync(questionUrl, new CreateQuestionRequest("¿Hay plazas cerca?")))
+            .Content.ReadFromJsonAsync<QuestionResponse>())!;
+        (await neighbor.Client.PostAsJsonAsync($"{questionUrl}/{question.Id}/answers", new CreateAnswerRequest("Visiten mi página")))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
+        var answerId = (await administrator.Client.GetFromJsonAsync<List<AdminQuestionResponse>>("/api/v1/admin/questions"))!
+            .Single(item => item.Id == question.Id).Answers.Single().Id;
+
+        (await administrator.Client.DeleteAsync($"/api/v1/admin/questions/{question.Id}/answers/{answerId}"))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var listed = (await administrator.Client.GetFromJsonAsync<List<AdminQuestionResponse>>("/api/v1/admin/questions"))!
+            .Single(item => item.Id == question.Id);
+        listed.Answers.Should().BeEmpty();
+        (await administrator.Client.DeleteAsync($"/api/v1/admin/questions/{question.Id}/answers/{answerId}"))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await neighbor.Client.DeleteAsync($"/api/v1/admin/questions/{question.Id}/answers/{Guid.NewGuid()}"))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     [Theory]
     [InlineData("/api/v1/admin/contributions")]
     [InlineData("/api/v1/admin/questions")]

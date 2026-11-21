@@ -49,7 +49,12 @@ namespace ZonaMatch.Infrastructure.Repositories
 
         public void Add(Answer answer) => _dbContext.Answers.Add(answer);
 
+        public Task<Answer?> GetAnswerAsync(Guid questionId, Guid answerId, CancellationToken cancellationToken = default) =>
+            _dbContext.Answers.FirstOrDefaultAsync(answer => answer.QuestionId == questionId && answer.Id == answerId, cancellationToken);
+
         public void Remove(Question question) => _dbContext.Questions.Remove(question);
+
+        public void Remove(Answer answer) => _dbContext.Answers.Remove(answer);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
             _dbContext.SaveChangesAsync(cancellationToken);

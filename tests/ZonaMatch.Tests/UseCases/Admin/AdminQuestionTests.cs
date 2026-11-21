@@ -9,7 +9,7 @@ using DomainQuestion = ZonaMatch.Domain.Entities.Question;
 
 namespace ZonaMatch.Tests.UseCases.Admin;
 
-// ListAdminQuestions and DeleteAdminQuestion: following and deleting community questions.
+// ListAdminQuestions, DeleteAdminQuestion and DeleteAdminAnswer: following and deleting community questions and answers.
 public class AdminQuestionTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 22, 15, 0, 0, TimeSpan.Zero);
@@ -71,5 +71,33 @@ public class AdminQuestionTests
         var act = () => new DeleteAdminQuestion(_questions, NullLogger<DeleteAdminQuestion>.Instance).ExecuteAsync(Guid.NewGuid(), Guid.NewGuid());
 
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task DeleteAnswer_RemovesOnlyThatAnswer()
+    {
+        var question = AddQuestion("¿Hay plazas?", Now);
+        var spam = new Answer { QuestionId = question.Id, User = _neighbor, Text = "Publicidad", CreatedAt = Now };
+        var useful = new Answer { QuestionId = question.Id, User = _neighbor, Text = "Sí, dos", CreatedAt = Now };
+        question.Answers.AddRange([spam, useful]);
+
+        await new DeleteAdminAnswer(_questions, NullLogger<DeleteAdminAnswer>.Instance).ExecuteAsync(question.Id, spam.Id, Guid.NewGuid());
+
+        _questions.Questions.Should().ContainSingle();
+        question.Answers.Should().ContainSingle().Which.Text.Should().Be("Sí, dos");
+    }
+
+    [Fact]
+    public async Task DeleteAnswer_WhenItBelongsToAnotherQuestion_ThrowsNotFound()
+    {
+        var question = AddQuestion("¿Hay plazas?", Now);
+        var other = AddQuestion("¿Hay colectivos?", Now);
+        var answer = new Answer { QuestionId = other.Id, User = _neighbor, Text = "Varios", CreatedAt = Now };
+        other.Answers.Add(answer);
+
+        var act = () => new DeleteAdminAnswer(_questions, NullLogger<DeleteAdminAnswer>.Instance).ExecuteAsync(question.Id, answer.Id, Guid.NewGuid());
+
+        await act.Should().ThrowAsync<NotFoundException>();
+        other.Answers.Should().ContainSingle();
     }
 }
