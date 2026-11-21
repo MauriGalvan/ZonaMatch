@@ -115,6 +115,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetAdminStats>();
         services.AddScoped<ListAdminGroups>();
         services.AddScoped<ListAdminReviews>();
+        services.AddScoped<ListAdminContributions>();
+        services.AddScoped<ListAdminQuestions>();
+        services.AddScoped<DeleteAdminQuestion>();
         services.AddScoped<ListAdminSurveys>();
         services.AddScoped<NpsSurveys>();
         services.AddScoped<RecordCompletedZoneAnalysis>();

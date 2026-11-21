@@ -9,6 +9,13 @@ namespace ZonaMatch.Application.Interfaces
         // Returns pending contributions for a zone with their authors and votes, oldest first (read-only).
         Task<IReadOnlyList<Contribution>> ListPendingAsync(string zoneSlug, CancellationToken cancellationToken = default);
 
+        // Pending contributions of every zone with their authors and votes, oldest first (read-only).
+        Task<IReadOnlyList<Contribution>> ListAllPendingAsync(CancellationToken cancellationToken = default);
+
+        // The latest approved or rejected contributions of every zone with their authors and votes, most recently
+        // resolved first (read-only).
+        Task<IReadOnlyList<Contribution>> ListResolvedAsync(int limit, CancellationToken cancellationToken = default);
+
         // Returns the contribution with its votes, tracked for changes.
         Task<Contribution?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default);
 
