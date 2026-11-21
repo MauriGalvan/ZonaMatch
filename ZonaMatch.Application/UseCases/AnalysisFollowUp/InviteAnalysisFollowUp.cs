@@ -12,7 +12,7 @@ public sealed class InviteAnalysisFollowUp(IAnalysisFollowUpRepository repositor
     public async Task<AnalysisFollowUpResponse?> ExecuteAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var preferences = await repository.GetPreferencesAsync(userId, cancellationToken);
-        if (preferences is { SurveysEnabled: false })
+        if (preferences is { SurveysEnabled: false } || preferences?.ActiveSurvey == "nps")
             return null;
 
         var active = await repository.GetActiveAsync(userId, cancellationToken);
@@ -42,6 +42,7 @@ public sealed class InviteAnalysisFollowUp(IAnalysisFollowUpRepository repositor
         }
 
         followUp.InvitedAt = now;
+        preferences.ActiveSurvey = "follow-up";
         followUp.PostponedUntil = null;
         preferences.NextInvitationAt = now.AddDays(AnalysisFollowUpRules.InvitationIntervalDays);
         await repository.SaveChangesAsync(cancellationToken);

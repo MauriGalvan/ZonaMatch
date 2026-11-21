@@ -4,6 +4,7 @@ using ZonaMatch.Api.Authentication;
 using ZonaMatch.Application.DTOs.Scoring.Requests;
 using ZonaMatch.Application.DTOs.Scoring.Responses;
 using ZonaMatch.Application.UseCases.Scoring;
+using ZonaMatch.Application.UseCases.Nps;
 
 namespace ZonaMatch.Api.Controllers
 {
@@ -27,10 +28,13 @@ namespace ZonaMatch.Api.Controllers
             [FromBody] CalculateScoresRequest request,
             [FromServices] CalculateScores useCase,
             [FromServices] ILogger<ScoresController> logger,
+            [FromServices] RecordCompletedZoneAnalysis recordCompletion,
             CancellationToken cancellationToken)
         {
             var stopwatch = Stopwatch.StartNew();
             var result = await useCase.ExecuteAsync(request, isGuest: User.GetAuthenticatedUserId() is null, cancellationToken);
+            if (User.GetAuthenticatedUserId() is { } userId && result.Zones.Count > 0)
+                await recordCompletion.ExecuteAsync(userId, request, cancellationToken);
             stopwatch.Stop();
 
             logger.Log(
