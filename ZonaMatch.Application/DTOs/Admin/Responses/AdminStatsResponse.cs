@@ -13,6 +13,8 @@ public sealed record AdminStatsResponse(
     IReadOnlyList<AdminCriterionCount> CriteriaUsage,
     // Saved analyses by housing operation (alquiler / compra).
     AdminOperationSplit Operations,
+    // Tags users give to their places in the first step of the analysis.
+    AdminPlaceTagStats PlaceTags,
     DateTimeOffset GeneratedAt);
 
 public sealed record AdminUserStats(
@@ -61,3 +63,9 @@ public sealed record AdminZoneCount(string ZoneSlug, string Name, int Count);
 public sealed record AdminCriterionCount(string CriterionId, string Name, int Count, int HighPriorityCount);
 
 public sealed record AdminOperationSplit(int Rent, int Purchase);
+
+// Custom: tags typed by users; Predefined: the ones the wizard offers. Each list is sorted by users, then by saved analyses.
+public sealed record AdminPlaceTagStats(IReadOnlyList<AdminPlaceTagCount> Custom, IReadOnlyList<AdminPlaceTagCount> Predefined);
+
+// Users: people with the tag in their profile or in a saved analysis. SavedAnalyses: places with the tag in saved analyses.
+public sealed record AdminPlaceTagCount(string Tag, int Users, int SavedAnalyses);
