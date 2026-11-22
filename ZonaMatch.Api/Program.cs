@@ -106,8 +106,9 @@ if (app.Environment.IsDevelopment())
 app.UseResponseCompression();
 app.UseCors(FrontendCorsPolicy);
 app.UseMiddleware<OriginValidationMiddleware>(new object[] { allowedOrigins });
-app.UseRateLimiter();
+// Email invitation quotas are keyed by the authenticated user.
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
 app.MapControllers();
