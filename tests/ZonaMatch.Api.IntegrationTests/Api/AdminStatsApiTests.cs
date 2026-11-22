@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Testing;
 using ZonaMatch.Api.IntegrationTests.Support;
 using ZonaMatch.Application.DTOs.Admin.Responses;
+using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.DTOs.Group.Requests;
 using ZonaMatch.Application.DTOs.Group.Responses;
 using ZonaMatch.Application.UseCases.Admin;
@@ -54,6 +55,46 @@ public sealed class AdminStatsApiTests(PostgreSqlDatabaseFixture database)
         after.NewLastDay.Should().Be(before.NewLastDay, "an account created two days ago is not from the last 24 hours");
         after.NewLast7Days.Should().Be(before.NewLast7Days + 1);
         after.NewLast30Days.Should().Be(before.NewLast30Days + 1);
+    }
+
+    [Fact]
+    public async Task GetStats_WhenAUserGivesAPlaceACustomTag_CountsItAsCustom()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        var customTag = $"Taller {Guid.NewGuid():N}"[..20];
+        var profile = ProfileApiTests.CreateProfileRequest(
+            peopleCount: 1, personNames: [], ageRanges: [], criterion: "seguridad", priority: "alta", placeName: "Taller de cerámica");
+        profile.Points!.Places[0].Type = customTag;
+        (await member.Client.PutAsJsonAsync("/api/v1/profile", profile)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var stats = await administrator.Client.GetFromJsonAsync<AdminStatsResponse>("/api/v1/admin/stats");
+
+        var tag = stats!.PlaceTags.Custom.Should().ContainSingle(item => item.Tag == customTag).Subject;
+        tag.Users.Should().Be(1);
+        tag.SavedAnalyses.Should().Be(0, "the tag is only in the profile, not in a saved analysis");
+        stats.PlaceTags.Predefined.Should().NotContain(item => item.Tag == customTag);
+    }
+
+    [Fact]
+    public async Task GetStats_CountsReportDownloadsOfUsersAndVisitors()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        using var visitor = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+        var before = (await administrator.Client.GetFromJsonAsync<AdminStatsResponse>("/api/v1/admin/stats"))!.Activity;
+
+        (await member.Client.PostAsync("/api/v1/report-downloads", content: null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await visitor.PostAsync("/api/v1/report-downloads", content: null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var after = (await administrator.Client.GetFromJsonAsync<AdminStatsResponse>("/api/v1/admin/stats"))!.Activity;
+        after.ReportDownloads.Should().Be(before.ReportDownloads + 2);
+        after.ReportDownloadsLast30Days.Should().Be(before.ReportDownloadsLast30Days + 2);
+        after.ReportDownloadsByGuests.Should().Be(before.ReportDownloadsByGuests + 1, "only the visitor has no account");
     }
 
     [Fact]

@@ -15,6 +15,9 @@ public sealed class PostponeAnalysisFollowUp(IAnalysisFollowUpRepository reposit
         var preferences = await repository.GetPreferencesAsync(userId, cancellationToken)
             ?? throw new NotFoundException("Las preferencias de encuestas no existen.");
         var nextInvitation = clock.GetUtcNow().AddDays(AnalysisFollowUpRules.PostponeDays);
+        if (preferences.ActiveSurvey == "nps")
+            throw new ConflictException("Hay otra encuesta activa. Actualizá la página.");
+        preferences.ActiveSurvey = null;
         followUp.PostponedUntil = nextInvitation;
         preferences.NextInvitationAt = nextInvitation;
         await repository.SaveChangesAsync(cancellationToken);

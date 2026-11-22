@@ -16,6 +16,7 @@ internal static class RateLimitingServiceCollectionExtensions
             .Validate(options => options.PasswordReset.IsValid, "RateLimits:PasswordReset requires a positive permit limit and window.")
             .Validate(options => options.InvitationEmail.IsValid, "RateLimits:InvitationEmail requires a positive permit limit and window.")
             .Validate(options => options.GuestReport.IsValid, "RateLimits:GuestReport requires a positive permit limit and window.")
+            .Validate(options => options.ReportDownload.IsValid, "RateLimits:ReportDownload requires a positive permit limit and window.")
             .Validate(options => options.ImageUpload.IsValid, "RateLimits:ImageUpload requires a positive permit limit and window.")
             .ValidateOnStart();
 
@@ -48,6 +49,8 @@ internal static class RateLimitingServiceCollectionExtensions
                         _ => limits.InvitationEmail.ToLimiterOptions()));
                 options.AddPolicy("guest-report", context =>
                     RateLimitPartition.GetFixedWindowLimiter(GetClientIp(context), _ => limits.GuestReport.ToLimiterOptions()));
+                options.AddPolicy("report-download", context =>
+                    RateLimitPartition.GetFixedWindowLimiter(GetClientIp(context), _ => limits.ReportDownload.ToLimiterOptions()));
                 options.AddPolicy("image-upload", context =>
                     RateLimitPartition.GetFixedWindowLimiter(GetClientIp(context), _ => limits.ImageUpload.ToLimiterOptions()));
             });

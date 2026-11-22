@@ -11,6 +11,7 @@ internal sealed class RequestRateLimitOptions
     public FixedWindow PasswordReset { get; set; } = new();
     public FixedWindow InvitationEmail { get; set; } = new();
     public FixedWindow GuestReport { get; set; } = new();
+    public FixedWindow ReportDownload { get; set; } = new();
     public FixedWindow ImageUpload { get; set; } = new();
 
     public sealed class FixedWindow

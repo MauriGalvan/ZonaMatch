@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Infrastructure.Data.Converters;
@@ -33,6 +33,8 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<Analysis> Analyses => Set<Analysis>();
         public DbSet<AnalysisFollowUp> AnalysisFollowUps => Set<AnalysisFollowUp>();
         public DbSet<UserFeedbackPreferences> UserFeedbackPreferences => Set<UserFeedbackPreferences>();
+        public DbSet<NpsSurvey> NpsSurveys => Set<NpsSurvey>();
+        public DbSet<CompletedZoneAnalysis> CompletedZoneAnalyses => Set<CompletedZoneAnalysis>();
         public DbSet<AnalysisZone> AnalysisZones => Set<AnalysisZone>();
         public DbSet<Person> People => Set<Person>();
         public DbSet<ContextPlace> ContextPlaces => Set<ContextPlace>();
@@ -44,6 +46,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<UserNotification> Notifications => Set<UserNotification>();
         public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
         public DbSet<GuestReportSend> GuestReportSends => Set<GuestReportSend>();
+        public DbSet<ReportDownload> ReportDownloads => Set<ReportDownload>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -177,6 +180,8 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.InvestorAccessRequestedAt).HasColumnName("acceso_inversor_solicitado").HasColumnType("timestamptz");
                 e.Property(x => x.InvestorAccessGrantedAt).HasColumnName("acceso_inversor_habilitado").HasColumnType("timestamptz");
                 e.Ignore(x => x.HasInvestorAccess);
+                e.Property(x => x.SuspendedAt).HasColumnName("fecha_suspension").HasColumnType("timestamptz");
+                e.Ignore(x => x.IsSuspended);
             });
 
             modelBuilder.Entity<UserFeedbackPreferences>(e =>
@@ -185,7 +190,32 @@ namespace ZonaMatch.Infrastructure.Data
                 e.HasKey(x => x.UserId);
                 // An invitation must not overwrite a simultaneous opt-out or a newer waiting period.
                 e.Property(x => x.SurveysEnabled).IsConcurrencyToken();
+                e.Property(x => x.ActiveSurvey).HasMaxLength(16).IsConcurrencyToken();
                 e.Property(x => x.NextInvitationAt).HasColumnType("timestamptz").IsConcurrencyToken();
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<CompletedZoneAnalysis>(e =>
+            {
+                e.ToTable("completed_zone_analyses");
+                e.HasKey(x => new { x.UserId, x.Fingerprint });
+                e.Property(x => x.Fingerprint).HasMaxLength(64);
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<NpsSurvey>(e =>
+            {
+                e.ToTable("nps_surveys", table =>
+                {
+                    table.HasCheckConstraint("ck_nps_score", "score IS NULL OR score BETWEEN 0 AND 10");
+                    table.HasCheckConstraint("ck_nps_completion", "(completed_at IS NULL AND score IS NULL) OR (completed_at IS NOT NULL AND score IS NOT NULL AND postponed_at IS NULL)");
+                });
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Comment).HasMaxLength(2000);
+                e.Property(x => x.CompletedAt).IsConcurrencyToken();
+                e.Property(x => x.PostponedAt).IsConcurrencyToken();
+                e.HasIndex(x => x.UserId).IsUnique().HasFilter("completed_at IS NULL AND postponed_at IS NULL");
+                e.HasIndex(x => x.CompletedAt);
                 e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -349,6 +379,16 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.RecipientHash).HasMaxLength(64).IsRequired();
                 e.Property(x => x.SentAt).HasColumnType("timestamptz");
                 e.HasIndex(x => new { x.RecipientHash, x.SentAt });
+            });
+
+            modelBuilder.Entity<ReportDownload>(e =>
+            {
+                e.ToTable("report_downloads");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.DownloadedAt).HasColumnType("timestamptz");
+                e.HasIndex(x => x.DownloadedAt);
+                // Deleting an account keeps its downloads in the totals, as a visitor's.
+                e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<UserNotification>(e =>

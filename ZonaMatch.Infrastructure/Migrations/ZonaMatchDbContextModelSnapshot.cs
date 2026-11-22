@@ -366,6 +366,26 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("community_pois", "app");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.CompletedZoneAnalysis", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Fingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<DateTimeOffset>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.HasKey("UserId", "Fingerprint");
+
+                    b.ToTable("completed_zone_analyses", "app");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Context", b =>
                 {
                     b.Property<Guid>("Id")
@@ -883,6 +903,56 @@ namespace ZonaMatch.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.NpsSurvey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("comment");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("InvitedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("invited_at");
+
+                    b.Property<DateTimeOffset?>("PostponedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("postponed_at");
+
+                    b.Property<int?>("Score")
+                        .HasColumnType("integer")
+                        .HasColumnName("score");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompletedAt");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("completed_at IS NULL AND postponed_at IS NULL");
+
+                    b.ToTable("nps_surveys", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_nps_completion", "(completed_at IS NULL AND score IS NULL) OR (completed_at IS NOT NULL AND score IS NOT NULL AND postponed_at IS NULL)");
+
+                            t.HasCheckConstraint("ck_nps_score", "score IS NULL OR score BETWEEN 0 AND 10");
+                        });
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Participant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1018,6 +1088,30 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.HasIndex("ZoneSlug");
 
                     b.ToTable("preguntas", "app");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ReportDownload", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("DownloadedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("downloaded_at");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DownloadedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("report_downloads", "app");
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>
@@ -1454,6 +1548,10 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("password_hash");
 
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("fecha_suspension");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
@@ -1470,6 +1568,12 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
+
+                    b.Property<string>("ActiveSurvey")
+                        .IsConcurrencyToken()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("active_survey");
 
                     b.Property<DateTimeOffset?>("NextInvitationAt")
                         .IsConcurrencyToken()
@@ -1867,6 +1971,15 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.CompletedZoneAnalysis", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Context", b =>
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.User", null)
@@ -1959,6 +2072,15 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.Navigation("District");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.NpsSurvey", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Participant", b =>
                 {
                     b.HasOne("ZonaMatch.Domain.Entities.Group", "Group")
@@ -2007,6 +2129,14 @@ namespace ZonaMatch.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.ReportDownload", b =>
+                {
+                    b.HasOne("ZonaMatch.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("ZonaMatch.Domain.Entities.Review", b =>

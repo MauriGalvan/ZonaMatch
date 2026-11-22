@@ -41,6 +41,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ISavedZoneRepository, SavedZoneRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAdminStatsRepository, AdminStatsRepository>();
+        services.AddScoped<IAdminSurveyRepository, AdminSurveyRepository>();
+        services.AddScoped<INpsRepository, NpsRepository>();
         services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
         services.AddScoped<ICriterionRepository, CriterionRepository>();
         services.AddScoped<IReviewRepository, ReviewRepository>();
@@ -49,6 +51,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICommunityPoiRepository, CommunityPoiRepository>();
         services.AddScoped<IProfileRepository, ProfileRepository>();
         services.AddScoped<IGuestReportSendRepository, GuestReportSendRepository>();
+        services.AddScoped<IReportDownloadRepository, ReportDownloadRepository>();
         services.AddScoped<IZoneProfilesRepository, ZoneProfilesRepository>();
 
         services.AddOptions<LocationServicesOptions>()

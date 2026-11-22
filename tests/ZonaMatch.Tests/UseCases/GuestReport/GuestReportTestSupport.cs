@@ -8,11 +8,19 @@ internal sealed class InMemoryGuestReportSendRepository : IGuestReportSendReposi
 {
     public List<GuestReportSend> Sends { get; } = [];
 
-    public Task<int> CountSinceAsync(string recipientHash, DateTimeOffset since, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Sends.Count(send => send.RecipientHash == recipientHash && send.SentAt >= since));
+    // The last instants the quota asked for, to check what reaches the database.
+    public DateTimeOffset? LastSince { get; private set; }
+    public DateTimeOffset? LastDeleteBefore { get; private set; }
+
+    public Task<int> CountSinceAsync(string recipientHash, DateTimeOffset since, CancellationToken cancellationToken = default)
+    {
+        LastSince = since;
+        return Task.FromResult(Sends.Count(send => send.RecipientHash == recipientHash && send.SentAt >= since));
+    }
 
     public Task AddAsync(GuestReportSend send, DateTimeOffset deleteBefore, CancellationToken cancellationToken = default)
     {
+        LastDeleteBefore = deleteBefore;
         Sends.Add(send);
         Sends.RemoveAll(old => old.SentAt < deleteBefore);
         return Task.CompletedTask;

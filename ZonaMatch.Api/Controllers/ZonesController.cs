@@ -31,6 +31,34 @@ public sealed class ZonesController : ControllerBase
         return Ok(zones);
     }
 
+    // GET /api/v1/zones/coverage?simplified=true&tolerance=0.0003
+    // Returns active coverage zones with simplified boundaries as a GeoJSON FeatureCollection.
+    [HttpGet("coverage")]
+    [ResponseCache(Duration = 3600)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK, GeoJson)]
+    public async Task<IActionResult> GetCoverageAsync(
+        [FromQuery] bool simplified,
+        [FromQuery] double? tolerance,
+        [FromServices] GetZoneCoverage getZoneCoverage,
+        CancellationToken cancellationToken)
+    {
+        var geoJson = await getZoneCoverage.ExecuteAsync(simplified, tolerance, cancellationToken);
+        return Content(geoJson, GeoJson);
+    }
+
+    // GET /api/v1/zones/available
+    // Lightweight list of available zones and their active indicator status without geometries.
+    [HttpGet("available")]
+    [ResponseCache(Duration = 3600)]
+    [ProducesResponseType(typeof(IReadOnlyList<AvailableZoneResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AvailableZoneResponse>>> GetAvailableZonesAsync(
+        [FromServices] GetAvailableZones getAvailableZones,
+        CancellationToken cancellationToken)
+    {
+        var zones = await getAvailableZones.ExecuteAsync(cancellationToken);
+        return Ok(zones);
+    }
+
     // GET /api/v1/zones/villa-luro?tolerance=0.00015
     // Returns a GeoJSON Feature with the zone geometry and its administrative properties.
     [HttpGet("{slug}")]

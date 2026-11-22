@@ -55,4 +55,19 @@ public class GuestReportQuotaTests
 
         _sends.Sends.Should().ContainSingle();
     }
+
+    [Fact]
+    public async Task Quota_AsksTheDatabaseForMidnightInArgentinaInUtc()
+    {
+        var quota = new GuestReportQuota(_sends, _clock);
+
+        await quota.SentTodayAsync("ana@example.com");
+        await quota.RegisterAsync("ana@example.com");
+
+        // Midnight of November 6 in Buenos Aires is 03:00 UTC. Npgsql rejects any other offset (the error of the 500).
+        var midnight = new DateTimeOffset(2026, 11, 6, 3, 0, 0, TimeSpan.Zero);
+        _sends.LastSince.Should().Be(midnight);
+        _sends.LastSince!.Value.Offset.Should().Be(TimeSpan.Zero);
+        _sends.LastDeleteBefore!.Value.Offset.Should().Be(TimeSpan.Zero);
+    }
 }

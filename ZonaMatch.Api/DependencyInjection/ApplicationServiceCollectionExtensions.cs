@@ -7,6 +7,7 @@ using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Services;
 using ZonaMatch.Application.UseCases.Admin;
+using ZonaMatch.Application.UseCases.Nps;
 using ZonaMatch.Application.Models;
 using ZonaMatch.Application.UseCases.Investor;
 using ZonaMatch.Application.UseCases.AnalysisFollowUp;
@@ -16,6 +17,7 @@ using ZonaMatch.Application.UseCases.Contact;
 using ZonaMatch.Application.UseCases.Criterion;
 using ZonaMatch.Application.UseCases.Geolocation;
 using ZonaMatch.Application.UseCases.GuestReport;
+using ZonaMatch.Application.UseCases.ReportDownload;
 using ZonaMatch.Application.UseCases.GroupInvitation;
 using ZonaMatch.Application.UseCases.GroupLink;
 using ZonaMatch.Application.UseCases.Image;
@@ -57,6 +59,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ReverseGeocode>();
         services.AddScoped<SearchZones>();
         services.AddScoped<GetZone>();
+        services.AddScoped<GetZoneCoverage>();
+        services.AddScoped<GetAvailableZones>();
         services.AddScoped<GetZonePointsOfInterest>();
         services.AddScoped<GetZonePointsOfInterestSummary>();
         services.AddScoped<GetMapDistricts>();
@@ -99,6 +103,7 @@ public static class ApplicationServiceCollectionExtensions
 
         services.AddScoped<ListUsers>();
         services.AddScoped<UpdateUserRole>();
+        services.AddScoped<UpdateUserSuspension>();
         services.AddScoped<UpdateInvestorAccess>();
         services.AddScoped<GetInvestorAccess>();
         services.AddScoped<RequestInvestorAccess>();
@@ -111,6 +116,14 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetAdminStats>();
         services.AddScoped<ListAdminGroups>();
         services.AddScoped<ListAdminReviews>();
+        services.AddScoped<ListAdminContributions>();
+        services.AddScoped<ListAdminQuestions>();
+        services.AddScoped<DeleteAdminQuestion>();
+        services.AddScoped<DeleteAdminAnswer>();
+        services.AddScoped<ListAdminSurveys>();
+        services.AddScoped<NpsSurveys>();
+        services.AddScoped<RecordCompletedZoneAnalysis>();
+        services.AddScoped<ListAdminNps>();
         services.AddScoped<NotifyNewUserRegistered>();
         services.AddScoped<ListAdminZones>();
         services.AddScoped<GetAdminZone>();
@@ -189,6 +202,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SendContactMessage>();
         services.AddScoped<GuestReportQuota>();
         services.AddScoped<SendGuestReport>();
+        services.AddScoped<RegisterReportDownload>();
         services.AddScoped<UploadImage>();
 
         return services;

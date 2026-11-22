@@ -6,4 +6,5 @@ public class UserFeedbackPreferences
     public Guid UserId { get; set; }
     public bool SurveysEnabled { get; set; } = true;
     public DateTimeOffset? NextInvitationAt { get; set; }
+    public string? ActiveSurvey { get; set; }
 }
