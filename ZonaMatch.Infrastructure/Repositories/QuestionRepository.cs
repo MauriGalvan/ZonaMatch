@@ -35,7 +35,10 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
 
         public Task<Question?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-            _dbContext.Questions.FirstOrDefaultAsync(question => question.Id == id, cancellationToken);
+            _dbContext.Questions
+                .Include(question => question.User)
+                .Include(question => question.Answers)
+                .FirstOrDefaultAsync(question => question.Id == id, cancellationToken);
 
         public Task<bool> ExistsAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Questions.AnyAsync(question => question.ZoneSlug == zoneSlug && question.Id == id, cancellationToken);
@@ -55,6 +58,15 @@ namespace ZonaMatch.Infrastructure.Repositories
         public void Remove(Question question) => _dbContext.Questions.Remove(question);
 
         public void Remove(Answer answer) => _dbContext.Answers.Remove(answer);
+
+        public void Add(DeletedQuestion deletedQuestion) => _dbContext.DeletedQuestions.Add(deletedQuestion);
+
+        public async Task<IReadOnlyList<DeletedQuestion>> ListDeletedAsync(int limit, CancellationToken cancellationToken = default) =>
+            await _dbContext.DeletedQuestions
+                .AsNoTracking()
+                .OrderByDescending(deleted => deleted.DeletedAt)
+                .Take(limit)
+                .ToListAsync(cancellationToken);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
             _dbContext.SaveChangesAsync(cancellationToken);

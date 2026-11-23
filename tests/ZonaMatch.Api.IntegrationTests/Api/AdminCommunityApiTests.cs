@@ -78,6 +78,11 @@ public sealed class AdminCommunityApiTests(PostgreSqlDatabaseFixture database)
 
         (await administrator.Client.DeleteAsync($"/api/v1/admin/questions/{question.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
+        var deleted = await administrator.Client.GetFromJsonAsync<List<AdminDeletedQuestionResponse>>("/api/v1/admin/questions/deleted");
+        var logged = deleted.Should().ContainSingle(item => item.Text == "¿Hay plazas cerca?" && item.AuthorEmail == author.User.Email).Subject;
+        logged.AnswerCount.Should().Be(1);
+        logged.DeletedByEmail.Should().Be(administrator.User.Email);
+
         var zoneQuestions = await author.Client.GetFromJsonAsync<List<QuestionResponse>>(questionUrl);
         zoneQuestions.Should().NotContain(item => item.Id == question.Id);
         (await administrator.Client.DeleteAsync($"/api/v1/admin/questions/{question.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -111,9 +116,40 @@ public sealed class AdminCommunityApiTests(PostgreSqlDatabaseFixture database)
             .StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    [Fact]
+    public async Task ZoneActivity_WhenAnAdministratorRejectsTheOnlyContribution_LeavesTheZoneOutOfTheRanking()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var contributor = await TestApiUser.RegisterAsync(factory);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        var zoneSlug = IntegrationZoneRepository.CreateContributionZoneSlug();
+        var createResponse = await contributor.Client.PostAsJsonAsync(
+            $"/api/v1/zones/{zoneSlug}/contributions/corrections",
+            new CreateContributionCorrectionRequest(
+                PointOfInterestId: $"n{Random.Shared.NextInt64(1, 9_000_000_000_000_000_000).ToString(CultureInfo.InvariantCulture)}",
+                PointOfInterestName: "Kiosco",
+                Reason: CorrectionReason.Closed,
+                ProposedName: null,
+                ProposedCategory: null,
+                Latitude: null,
+                Longitude: null,
+                Comment: "Cerró."),
+            ApiJson.Options);
+        var contribution = (await createResponse.Content.ReadFromJsonAsync<ContributionResponse>(ApiJson.Options))!;
+
+        (await administrator.Client.PutAsJsonAsync(
+            $"/api/v1/zones/{zoneSlug}/contributions/{contribution.Id}/resolution", new ResolveContributionRequest(Approve: false)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var activity = await administrator.Client.GetFromJsonAsync<AdminZoneActivityResponse>("/api/v1/admin/zones/activity");
+        activity!.MostContributed.Should().NotContain(zone => zone.ZoneSlug == zoneSlug);
+    }
+
     [Theory]
     [InlineData("/api/v1/admin/contributions")]
     [InlineData("/api/v1/admin/questions")]
+    [InlineData("/api/v1/admin/questions/deleted")]
     public async Task List_WhenNotAdministrator_ReturnsForbidden(string path)
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);

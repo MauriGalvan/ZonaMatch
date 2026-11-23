@@ -119,6 +119,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ListAdminContributions>();
         services.AddScoped<ListAdminQuestions>();
         services.AddScoped<DeleteAdminQuestion>();
+        services.AddScoped<ListDeletedQuestions>();
         services.AddScoped<DeleteAdminAnswer>();
         services.AddScoped<ListAdminSurveys>();
         services.AddScoped<NpsSurveys>();

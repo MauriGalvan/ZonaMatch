@@ -86,7 +86,9 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
             .Where(review => review.Status != ReviewStatus.Rejected)
             .Select(review => review.ZoneSlug));
         var questions = CountByZone(dbContext.Questions.AsNoTracking().Select(question => question.ZoneSlug));
-        var contributions = CountByZone(dbContext.Contributions.AsNoTracking().Select(contribution => contribution.ZoneSlug));
+        var contributions = CountByZone(dbContext.Contributions.AsNoTracking()
+            .Where(contribution => contribution.Status != ContributionStatus.Rejected)
+            .Select(contribution => contribution.ZoneSlug));
 
         return new AdminZoneActivitySnapshot(
             MostSaved: await TopAsync(saved.OrderByDescending(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken),

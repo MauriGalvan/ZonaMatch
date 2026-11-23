@@ -25,6 +25,11 @@ public class AdminQuestionTests
         return question;
     }
 
+    private readonly User _administrator = new() { Email = "admin@example.com", IsAdministrator = true };
+
+    private DeleteAdminQuestion DeleteUseCase() =>
+        new(_questions, new FakeAdminUserRepository(_administrator), new FixedTimeProvider(Now), NullLogger<DeleteAdminQuestion>.Instance);
+
     private ListAdminQuestions ListUseCase() =>
         new(_questions, new FakeAdminZoneProfilesRepository(new ZoneProfile { Slug = "palermo", Name = "Palermo" }));
 
@@ -60,7 +65,7 @@ public class AdminQuestionTests
     {
         var question = AddQuestion("Publicidad", Now);
 
-        await new DeleteAdminQuestion(_questions, NullLogger<DeleteAdminQuestion>.Instance).ExecuteAsync(question.Id, Guid.NewGuid());
+        await DeleteUseCase().ExecuteAsync(question.Id, Guid.NewGuid());
 
         _questions.Questions.Should().BeEmpty();
     }
@@ -68,7 +73,7 @@ public class AdminQuestionTests
     [Fact]
     public async Task DeleteQuestion_WhenItDoesNotExist_ThrowsNotFound()
     {
-        var act = () => new DeleteAdminQuestion(_questions, NullLogger<DeleteAdminQuestion>.Instance).ExecuteAsync(Guid.NewGuid(), Guid.NewGuid());
+        var act = () => DeleteUseCase().ExecuteAsync(Guid.NewGuid(), Guid.NewGuid());
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -99,5 +104,39 @@ public class AdminQuestionTests
 
         await act.Should().ThrowAsync<NotFoundException>();
         other.Answers.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task DeleteQuestion_KeepsACopyInTheHistoryWithWhoDeletedIt()
+    {
+        var question = AddQuestion("Publicidad", Now.AddDays(-2));
+        question.Answers.Add(new Answer { QuestionId = question.Id, User = _neighbor, Text = "Respuesta", CreatedAt = Now.AddDays(-1) });
+
+        await DeleteUseCase().ExecuteAsync(question.Id, _administrator.Id);
+
+        var deleted = _questions.DeletedQuestions.Should().ContainSingle().Subject;
+        deleted.QuestionId.Should().Be(question.Id);
+        deleted.ZoneSlug.Should().Be("palermo");
+        deleted.Text.Should().Be("Publicidad");
+        deleted.AuthorEmail.Should().Be("ana@example.com");
+        deleted.AskedAt.Should().Be(Now.AddDays(-2));
+        deleted.AnswerCount.Should().Be(1);
+        deleted.DeletedAt.Should().Be(Now);
+        deleted.DeletedByEmail.Should().Be("admin@example.com");
+    }
+
+    [Fact]
+    public async Task ListDeletedQuestions_ReturnsTheMostRecentlyDeletedFirstWithTheZoneName()
+    {
+        _questions.DeletedQuestions.AddRange([
+            new DeletedQuestion { ZoneSlug = "palermo", Text = "Primera", DeletedAt = Now.AddDays(-2) },
+            new DeletedQuestion { ZoneSlug = "zona-sin-datos", Text = "Segunda", DeletedAt = Now }]);
+
+        var deleted = await new ListDeletedQuestions(_questions, new FakeAdminZoneProfilesRepository(new ZoneProfile { Slug = "palermo", Name = "Palermo" }))
+            .ExecuteAsync();
+
+        deleted.Select(question => question.Text).Should().Equal("Segunda", "Primera");
+        deleted[0].ZoneName.Should().Be("zona-sin-datos");
+        deleted[1].ZoneName.Should().Be("Palermo");
     }
 }

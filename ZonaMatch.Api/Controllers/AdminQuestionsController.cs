@@ -22,7 +22,17 @@ public sealed class AdminQuestionsController : ControllerBase
         return Ok(await useCase.ExecuteAsync(cancellationToken));
     }
 
-    // DELETE /api/v1/admin/questions/{id}: deletes the question and its answers.
+    // GET /api/v1/admin/questions/deleted: the history of deleted questions. A literal route, so it wins over {id}.
+    [HttpGet("deleted")]
+    [ProducesResponseType<IReadOnlyList<AdminDeletedQuestionResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListDeletedAsync([FromServices] ListDeletedQuestions useCase, CancellationToken cancellationToken)
+    {
+        return Ok(await useCase.ExecuteAsync(cancellationToken));
+    }
+
+    // DELETE /api/v1/admin/questions/{id}: deletes the question and its answers, and keeps a copy in the history.
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
