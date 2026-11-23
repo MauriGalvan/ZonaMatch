@@ -127,6 +127,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<NotifyNewUserRegistered>();
         services.AddScoped<ListAdminZones>();
         services.AddScoped<GetAdminZone>();
+        services.AddScoped<GetAdminZoneActivity>();
 
         services.AddScoped<ListZoneReviews>();
         services.AddScoped<SaveMyReview>();

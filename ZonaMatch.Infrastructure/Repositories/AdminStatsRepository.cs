@@ -79,6 +79,39 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
             group.Members.Select(member => new AdminGroupMemberResponse(member.UserId, member.Email, member.Role == GroupRole.Owner)).ToList()))
         .ToList();
 
+    public async Task<AdminZoneActivitySnapshot> GetZoneActivityAsync(int size, CancellationToken cancellationToken = default)
+    {
+        var saved = CountByZone(dbContext.SavedZones.AsNoTracking().Select(zone => zone.ZoneSlug));
+        var reviews = CountByZone(dbContext.Reviews.AsNoTracking()
+            .Where(review => review.Status != ReviewStatus.Rejected)
+            .Select(review => review.ZoneSlug));
+        var questions = CountByZone(dbContext.Questions.AsNoTracking().Select(question => question.ZoneSlug));
+        var contributions = CountByZone(dbContext.Contributions.AsNoTracking().Select(contribution => contribution.ZoneSlug));
+
+        return new AdminZoneActivitySnapshot(
+            MostSaved: await TopAsync(saved.OrderByDescending(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken),
+            LeastSaved: await TopAsync(saved.OrderBy(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken),
+            MostReviewed: await TopAsync(reviews.OrderByDescending(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken),
+            MostAsked: await TopAsync(questions.OrderByDescending(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken),
+            MostContributed: await TopAsync(contributions.OrderByDescending(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken));
+    }
+
+    // Rows per zone slug. A class with settable members, unlike a record built with a constructor, can be ordered in SQL.
+    private sealed class ZoneCountRow
+    {
+        public string ZoneSlug { get; init; } = string.Empty;
+        public int Count { get; init; }
+    }
+
+    private static IQueryable<ZoneCountRow> CountByZone(IQueryable<string> zoneSlugs) =>
+        zoneSlugs.GroupBy(slug => slug).Select(group => new ZoneCountRow { ZoneSlug = group.Key, Count = group.Count() });
+
+    private static async Task<IReadOnlyList<ZoneActivityCount>> TopAsync(
+        IQueryable<ZoneCountRow> ordered, int size, CancellationToken cancellationToken) =>
+        (await ordered.Take(size).ToListAsync(cancellationToken))
+            .Select(row => new ZoneActivityCount(row.ZoneSlug, row.Count))
+            .ToList();
+
     private async Task<AdminUserStats> GetUserStatsAsync(AdminStatsPeriod period, CancellationToken cancellationToken)
     {
         var users = dbContext.Users.AsNoTracking();
