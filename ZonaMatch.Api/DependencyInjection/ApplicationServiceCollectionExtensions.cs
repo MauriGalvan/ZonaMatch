@@ -103,6 +103,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ListUsers>();
         services.AddScoped<UpdateUserRole>();
         services.AddScoped<UpdateUserSuspension>();
+        services.AddScoped<SendNameReminder>();
         services.AddScoped<UpdateInvestorAccess>();
         services.AddScoped<GetInvestorAccess>();
         services.AddScoped<RequestInvestorAccess>();

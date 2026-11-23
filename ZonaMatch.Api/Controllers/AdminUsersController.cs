@@ -65,6 +65,24 @@ public sealed class AdminUsersController : ControllerBase
         return Ok(await useCase.ExecuteAsync(id, request.Suspended!.Value, administratorId, cancellationToken));
     }
 
+    // POST /api/v1/admin/users/{id}/name-reminder
+    // Emails a user without first or last name, asking them to sign in and complete them.
+    [HttpPost("{id:guid}/name-reminder")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> SendNameReminderAsync(
+        [FromRoute] Guid id,
+        [FromServices] SendNameReminder useCase,
+        CancellationToken cancellationToken)
+    {
+        await useCase.ExecuteAsync(id, cancellationToken);
+        return NoContent();
+    }
+
     // PUT /api/v1/admin/users/{id}/investor-access    Body: { "granted": true }
     // Applies at once: the investor profile endpoints read the access from the database.
     [HttpPut("{id:guid}/investor-access")]
