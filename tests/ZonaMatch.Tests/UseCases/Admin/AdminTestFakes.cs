@@ -13,6 +13,16 @@ internal sealed class FakeAdminStatsRepository(params DateTimeOffset[] registrat
 
     public List<AdminPlaceTagCount> PlaceTags { get; } = [];
 
+    public AdminZoneActivitySnapshot ZoneActivity { get; set; } = new([], [], [], [], []);
+
+    public int? RequestedRankingSize { get; private set; }
+
+    public Task<AdminZoneActivitySnapshot> GetZoneActivityAsync(int size, CancellationToken cancellationToken = default)
+    {
+        RequestedRankingSize = size;
+        return Task.FromResult(ZoneActivity);
+    }
+
     public Task<IReadOnlyList<AdminGroupResponse>> ListGroupsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<AdminGroupResponse>>(Groups);
 

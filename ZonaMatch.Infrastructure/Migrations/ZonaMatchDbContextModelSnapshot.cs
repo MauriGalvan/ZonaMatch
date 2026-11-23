@@ -756,6 +756,59 @@ namespace ZonaMatch.Infrastructure.Migrations
                     b.ToTable("criterios", "app");
                 });
 
+            modelBuilder.Entity("ZonaMatch.Domain.Entities.DeletedQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AnswerCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("answer_count");
+
+                    b.Property<DateTimeOffset>("AskedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("asked_at");
+
+                    b.Property<string>("AuthorEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("author_email");
+
+                    b.Property<DateTimeOffset>("DeletedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("DeletedByEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("deleted_by_email");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("question_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
+
+                    b.Property<string>("ZoneSlug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("zone_slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.ToTable("deleted_questions", "app");
+                });
+
             modelBuilder.Entity("ZonaMatch.Domain.Entities.District", b =>
                 {
                     b.Property<string>("Key")

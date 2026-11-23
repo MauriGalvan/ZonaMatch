@@ -103,6 +103,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ListUsers>();
         services.AddScoped<UpdateUserRole>();
         services.AddScoped<UpdateUserSuspension>();
+        services.AddScoped<SendNameReminder>();
         services.AddScoped<UpdateInvestorAccess>();
         services.AddScoped<GetInvestorAccess>();
         services.AddScoped<RequestInvestorAccess>();
@@ -118,6 +119,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ListAdminContributions>();
         services.AddScoped<ListAdminQuestions>();
         services.AddScoped<DeleteAdminQuestion>();
+        services.AddScoped<ListDeletedQuestions>();
         services.AddScoped<DeleteAdminAnswer>();
         services.AddScoped<ListAdminSurveys>();
         services.AddScoped<NpsSurveys>();
@@ -126,6 +128,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<NotifyNewUserRegistered>();
         services.AddScoped<ListAdminZones>();
         services.AddScoped<GetAdminZone>();
+        services.AddScoped<GetAdminZoneActivity>();
 
         services.AddScoped<ListZoneReviews>();
         services.AddScoped<SaveMyReview>();

@@ -24,6 +24,7 @@ namespace ZonaMatch.Infrastructure.Data
         public DbSet<ReviewHelpfulVote> ReviewHelpfulVotes => Set<ReviewHelpfulVote>();
         public DbSet<Question> Questions => Set<Question>();
         public DbSet<Answer> Answers => Set<Answer>();
+        public DbSet<DeletedQuestion> DeletedQuestions => Set<DeletedQuestion>();
         public DbSet<Contribution> Contributions => Set<Contribution>();
         public DbSet<ContributionVote> ContributionVotes => Set<ContributionVote>();
         public DbSet<CommunityPoi> CommunityPois => Set<CommunityPoi>();
@@ -379,6 +380,19 @@ namespace ZonaMatch.Infrastructure.Data
                 e.Property(x => x.RecipientHash).HasMaxLength(64).IsRequired();
                 e.Property(x => x.SentAt).HasColumnType("timestamptz");
                 e.HasIndex(x => new { x.RecipientHash, x.SentAt });
+            });
+
+            modelBuilder.Entity<DeletedQuestion>(e =>
+            {
+                e.ToTable("deleted_questions");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.ZoneSlug).HasMaxLength(100).IsRequired();
+                e.Property(x => x.Text).IsRequired();
+                e.Property(x => x.AuthorEmail).HasMaxLength(254).IsRequired();
+                e.Property(x => x.DeletedByEmail).HasMaxLength(254).IsRequired();
+                e.Property(x => x.AskedAt).HasColumnType("timestamptz");
+                e.Property(x => x.DeletedAt).HasColumnType("timestamptz");
+                e.HasIndex(x => x.DeletedAt);
             });
 
             modelBuilder.Entity<ReportDownload>(e =>

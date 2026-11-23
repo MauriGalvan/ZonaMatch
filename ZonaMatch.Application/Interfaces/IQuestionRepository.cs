@@ -10,7 +10,7 @@ namespace ZonaMatch.Application.Interfaces
         // The latest questions of every zone with their answers and authors, newest first (read-only).
         Task<IReadOnlyList<Question>> ListLatestAsync(int limit, CancellationToken cancellationToken = default);
 
-        // A question of any zone, tracked so it can be removed.
+        // A question of any zone with its author and answers, tracked so it can be removed.
         Task<Question?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
         Task<bool> ExistsAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default);
@@ -27,6 +27,12 @@ namespace ZonaMatch.Application.Interfaces
         void Remove(Question question);
 
         void Remove(Answer answer);
+
+        // History of questions an administrator deleted.
+        void Add(DeletedQuestion deletedQuestion);
+
+        // The latest deleted questions, most recently deleted first (read-only).
+        Task<IReadOnlyList<DeletedQuestion>> ListDeletedAsync(int limit, CancellationToken cancellationToken = default);
 
         Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }

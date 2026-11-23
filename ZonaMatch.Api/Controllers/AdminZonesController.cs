@@ -22,6 +22,17 @@ public sealed class AdminZonesController : ControllerBase
         return Ok(await useCase.ExecuteAsync(cancellationToken));
     }
 
+    // GET /api/v1/admin/zones/activity: zones saved the most and the least, and with the most reviews, questions and
+    // contributions. A literal route, so it wins over the {slug} one below.
+    [HttpGet("activity")]
+    [ProducesResponseType<AdminZoneActivityResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetActivityAsync([FromServices] GetAdminZoneActivity useCase, CancellationToken cancellationToken)
+    {
+        return Ok(await useCase.ExecuteAsync(cancellationToken));
+    }
+
     // GET /api/v1/admin/zones/palermo
     [HttpGet("{slug:regex(" + ZoneRouteConstraints.Slug + ")}")]
     [ProducesResponseType<AdminZoneDetailResponse>(StatusCodes.Status200OK)]

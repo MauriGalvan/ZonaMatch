@@ -21,6 +21,13 @@ internal sealed class FakeQuestionRepository : IQuestionRepository
     public Task<Answer?> GetAnswerAsync(Guid questionId, Guid answerId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Questions.FirstOrDefault(p => p.Id == questionId)?.Answers.FirstOrDefault(answer => answer.Id == answerId));
 
+    public List<DeletedQuestion> DeletedQuestions { get; } = [];
+
+    public void Add(DeletedQuestion deletedQuestion) => DeletedQuestions.Add(deletedQuestion);
+
+    public Task<IReadOnlyList<DeletedQuestion>> ListDeletedAsync(int limit, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<DeletedQuestion>>(DeletedQuestions.OrderByDescending(deleted => deleted.DeletedAt).Take(limit).ToList());
+
     public void Remove(DomainQuestion question) => Questions.Remove(question);
 
     public void Remove(Answer answer) => Questions.FirstOrDefault(p => p.Id == answer.QuestionId)?.Answers.Remove(answer);
