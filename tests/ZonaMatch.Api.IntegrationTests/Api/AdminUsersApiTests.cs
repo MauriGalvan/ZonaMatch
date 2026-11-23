@@ -33,7 +33,13 @@ public sealed class AdminUsersApiTests(PostgreSqlDatabaseFixture database)
         var users = await response.Content.ReadFromJsonAsync<List<AdminUserResponse>>();
         users.Should().ContainSingle(user => user.Id == member.User.Id)
             .Which.Should().BeEquivalentTo(
-                new AdminUserResponse(member.User.Id, member.User.Email, member.User.BirthDate, IsAdmin: false),
+                new AdminUserResponse(
+                    member.User.Id,
+                    member.User.Email,
+                    member.User.BirthDate,
+                    IsAdmin: false,
+                    FirstName: member.User.FirstName,
+                    LastName: member.User.LastName),
                 options => options.Excluding(user => user.RegisteredAt));
     }
 
