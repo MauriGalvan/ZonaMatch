@@ -7,7 +7,10 @@ using System.Text.Json;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
+using MailKit.Net.Smtp;
+using Microsoft.Extensions.Configuration;
 using MimeKit;
+using ZonaMatch.Infrastructure.Services;
 
 namespace ZonaMatch.Api.IntegrationTests.Support;
 
@@ -29,6 +32,12 @@ public sealed class Smtp4DevFixture : IAsyncLifetime
         _container = new ContainerBuilder("rnwood/smtp4dev:v3")
             .WithPortBinding(25, true)
             .WithPortBinding(80, true)
+            .WithCreateParameterModifier(parameters =>
+            {
+                if (parameters.HostConfig?.PortBindings is not { } portBindings) return;
+                foreach (var binding in portBindings.Values.SelectMany(bindings => bindings))
+                    binding.HostIP = IPAddress.Loopback.ToString();
+            })
             .WithBindMount(certificatePath, "/tmp/zonamatch-smtp-test.pfx", AccessMode.ReadOnly)
             .WithEnvironment("ServerOptions__HostName", "localhost")
             .WithEnvironment("ServerOptions__Port", "25")
@@ -47,13 +56,35 @@ public sealed class Smtp4DevFixture : IAsyncLifetime
 
     public int Port => _container.GetMappedPublicPort(25);
 
-    public string CertificateThumbprint => _certificate.Thumbprint;
 
     public async Task InitializeAsync()
     {
         await _container.StartAsync();
         _httpClient.BaseAddress = new Uri($"http://{_container.Hostname}:{_container.GetMappedPublicPort(80)}/");
         await WaitUntilReadyAsync();
+    }
+
+    public EmailService CreateEmailService()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["EmailSettings:From"] = "sender@example.test",
+                ["EmailSettings:Host"] = Host,
+                ["EmailSettings:Port"] = Port.ToString(),
+                ["EmailSettings:User"] = "integration-test-user",
+                ["EmailSettings:Password"] = "integration-test-password"
+            })
+            .Build();
+
+        return new EmailService(configuration, () =>
+        {
+            var client = new SmtpClient();
+            client.ServerCertificateValidationCallback = (_, certificate, _, _) =>
+                certificate is not null
+                && certificate.GetCertHashString().Equals(_certificate.Thumbprint, StringComparison.OrdinalIgnoreCase);
+            return client;
+        });
     }
 
     public async Task<MimeMessage> GetLatestMessageAsync()

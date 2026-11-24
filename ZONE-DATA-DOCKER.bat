@@ -144,10 +144,16 @@ if exist "amba.osm.pbf" (
     goto :motis_gtfs
 )
 rem Use the same AMBA extract as OSM-DATA-UPDATER-DOCKER.bat.
+set "AMBA_BBOX="
+for /f "delims=" %%b in ('call "%~dp0docker\print-amba-bounds.bat"') do set "AMBA_BBOX=%%b"
+if not defined AMBA_BBOX (
+    echo ERROR: could not read the shared AMBA bounds.
+    goto :err_motis
+)
 echo Downloading the Argentina map (about 430 MB) to extract the AMBA area...
 curl -L -o datos\motis\argentina-latest.osm.pbf https://download.geofabrik.de/south-america/argentina-latest.osm.pbf
 if errorlevel 1 goto :err_motis
-docker run --rm -v "%cd%\datos\motis":/data -w /data ubuntu:22.04 bash -c "apt-get update > /dev/null && apt-get install -y osmium-tool > /dev/null && osmium extract -b -58.99,-34.93,-58.01,-34.33 argentina-latest.osm.pbf -o amba.osm.pbf"
+docker run --rm -v "%cd%\datos\motis":/data -w /data ubuntu:22.04 bash -c "apt-get update > /dev/null && apt-get install -y osmium-tool > /dev/null && osmium extract -b %AMBA_BBOX% argentina-latest.osm.pbf -o amba.osm.pbf"
 if errorlevel 1 goto :err_motis
 del /q datos\motis\argentina-latest.osm.pbf
 

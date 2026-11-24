@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -192,7 +193,15 @@ public static class ApplicationServiceCollectionExtensions
             configuration["Contact:RecipientEmail"]
                 ?? configuration["Contacto:Destinatario"]
                 ?? "zonamatchtpi@gmail.com"));
-        services.AddSingleton(new MarketExchangeRate(configuration.GetValue<decimal?>("Market:UsdArs") ?? MarketExchangeRate.Default));
+        services.AddOptions<MarketOptions>().BindConfiguration(MarketOptions.SectionName);
+        services.AddSingleton(provider =>
+        {
+            var value = provider.GetRequiredService<IOptions<MarketOptions>>().Value.UsdArs;
+            var numberFormat = NumberStyles.Number & ~NumberStyles.AllowThousands;
+            return new MarketExchangeRate(decimal.TryParse(value, numberFormat, CultureInfo.InvariantCulture, out var rate)
+                ? rate
+                : null);
+        });
         services.AddScoped<SendContactMessage>();
         services.AddScoped<GuestReportQuota>();
         services.AddScoped<SendGuestReport>();

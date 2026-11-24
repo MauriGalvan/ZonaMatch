@@ -55,7 +55,7 @@ public class AcceptInvitationTests
         Func<Task> action = async () => await _useCase.ExecuteAsync(token, currentUserId, CancellationToken.None);
 
         await action.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("La invitación ya no es válida (Estado: Accepted).");
+            .WithMessage("La invitación ya fue aceptada.");
     }
 
     [Fact]

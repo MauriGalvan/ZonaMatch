@@ -16,7 +16,7 @@ namespace ZonaMatch.Application.UseCases.Zone
 
         public async Task<ZoneMarketResponse> ExecuteAsync(string slug, CancellationToken cancellationToken = default)
         {
-            ZoneQueryPolicy.ValidateSlug(slug, "The zone slug is not valid.");
+            ZoneQueryPolicy.ValidateSlug(slug, "El identificador de la zona no es válido.");
             var rows = await market.ListByZoneAsync(slug, cancellationToken);
 
             // No listings nor estimate loaded for the zone (ZONE-MARKET-DOCKER.bat has not run for it)

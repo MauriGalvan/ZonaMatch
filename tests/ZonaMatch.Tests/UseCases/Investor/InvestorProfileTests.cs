@@ -105,6 +105,22 @@ public class InvestorProfileTests
         ranking.UsdArs.Should().Be(1500);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Ranking_WhenExchangeRateIsUnavailable_RejectsRankingBeforeLoadingZones(int? usdArs)
+    {
+        await Save().ExecuteAsync(_investor.Id, Request(("rentabilidad", "alta")));
+        var zones = new Mock<IZoneProfilesRepository>();
+        var ranking = new CalculateInvestmentRanking(_users, _profiles, _criteria.Object, zones.Object, new MarketExchangeRate(usdArs));
+
+        var act = () => ranking.ExecuteAsync(_investor.Id);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>().WithMessage("*cotización de la carga de mercado.");
+        zones.VerifyNoOtherCalls();
+    }
+
     // Twelve zones with their own sales: zona-12 has the best yield, zona-1 the worst
     private CalculateInvestmentRanking Ranking()
     {

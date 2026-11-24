@@ -9,10 +9,11 @@ using ZonaMatch.Application.Interfaces;
 namespace ZonaMatch.Infrastructure.Geo
 {
     // Forward geocoding through the local Photon instance (search-as-you-type), bounded to the imported AMBA extract.
-    public sealed partial class PhotonPlaceSearchClient(HttpClient httpClient, PhotonSearchOptions options) : IPlaceSearchClient
+    public sealed partial class PhotonPlaceSearchClient(
+        HttpClient httpClient, PhotonSearchOptions options, PlaceSearchBounds searchBounds) : IPlaceSearchClient
     {
-        // Photon order: minLon,minLat,maxLon,maxLat (the same area as the Nominatim viewbox)
-        private const string BoundingBox = "-58.99,-34.93,-58.01,-34.33";
+        private readonly string _boundingBox = string.Create(CultureInfo.InvariantCulture,
+            $"{searchBounds.MinLongitude},{searchBounds.MinLatitude},{searchBounds.MaxLongitude},{searchBounds.MaxLatitude}");
 
         // A whole neighbourhood or town, not a place: the front warns that zones are found by the analysis
         private static readonly HashSet<string> AreaTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -30,7 +31,7 @@ namespace ZonaMatch.Infrastructure.Geo
             string search, int limit, CancellationToken cancellationToken = default)
         {
             var photonLimit = Math.Min(limit * 3, 40);
-            var url = $"api?bbox={BoundingBox}&limit={photonLimit}&q={Uri.EscapeDataString(search)}";
+            var url = $"api?bbox={_boundingBox}&limit={photonLimit}&q={Uri.EscapeDataString(search)}";
             if (!string.IsNullOrWhiteSpace(options.Language))
                 url += $"&lang={Uri.EscapeDataString(options.Language)}";
 

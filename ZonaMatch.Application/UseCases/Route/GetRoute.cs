@@ -17,7 +17,7 @@ namespace ZonaMatch.Application.UseCases.Route
                 throw new BadRequestException("El origen y el destino necesitan una latitud y una longitud válidas.");
 
             var requestedMode = TravelModes.FromCode(request.Mode)
-                ?? throw new BadRequestException("Unknown travel mode: use transporte-publico, auto, bici or a-pie.");
+                ?? throw new BadRequestException("El medio de transporte no es válido. Usá transporte-publico, auto, bici o a-pie.");
 
             // Five blocks or less are walked, as in the scoring: the response says which mode was used
             var mode = TravelModes.ForDistance(

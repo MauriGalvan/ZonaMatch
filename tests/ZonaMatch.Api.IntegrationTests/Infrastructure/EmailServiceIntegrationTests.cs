@@ -1,13 +1,9 @@
-using System.Net.Security;
 using System.Text;
 using FluentAssertions;
-using MailKit.Net.Smtp;
-using Microsoft.Extensions.Configuration;
 using MimeKit;
 using ZonaMatch.Api.IntegrationTests.Support;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Interfaces;
-using ZonaMatch.Infrastructure.Services;
 
 namespace ZonaMatch.Api.IntegrationTests.Infrastructure;
 
@@ -17,7 +13,7 @@ public sealed class EmailServiceIntegrationTests(Smtp4DevFixture smtp)
     [Fact]
     public async Task SendEmailAsync_WhenServerAcceptsStartTls_DeliversHtmlMessage()
     {
-        var service = CreateEmailService(smtp);
+        var service = smtp.CreateEmailService();
 
         await service.SendEmailAsync(
             "recipient@example.test",
@@ -42,7 +38,7 @@ public sealed class EmailServiceIntegrationTests(Smtp4DevFixture smtp)
             "text/plain",
             Encoding.UTF8.GetBytes(attachmentText));
 
-        await CreateEmailService(smtp).SendEmailAsync(
+        await smtp.CreateEmailService().SendEmailAsync(
             "recipient@example.test",
             "SMTP attachment integration test",
             body,
@@ -61,28 +57,5 @@ public sealed class EmailServiceIntegrationTests(Smtp4DevFixture smtp)
         receivedAttachment.Content.Should().NotBeNull();
         await receivedAttachment.Content!.DecodeToAsync(content);
         Encoding.UTF8.GetString(content.ToArray()).Should().Be(attachmentText);
-    }
-
-    private static EmailService CreateEmailService(Smtp4DevFixture smtp)
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["EmailSettings:From"] = "sender@example.test",
-                ["EmailSettings:Host"] = smtp.Host,
-                ["EmailSettings:Port"] = smtp.Port.ToString(),
-                ["EmailSettings:User"] = "integration-test-user",
-                ["EmailSettings:Password"] = "integration-test-password"
-            })
-            .Build();
-
-        return new EmailService(configuration, () =>
-        {
-            var client = new SmtpClient();
-            client.ServerCertificateValidationCallback = (_, certificate, _, _) =>
-                certificate is not null
-                && certificate.GetCertHashString().Equals(smtp.CertificateThumbprint, StringComparison.OrdinalIgnoreCase);
-            return client;
-        });
     }
 }

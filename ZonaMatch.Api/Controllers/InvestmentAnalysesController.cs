@@ -21,6 +21,7 @@ public sealed class InvestmentAnalysesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<AnalysisResponse>> CreateAsync(
         [FromBody] SaveInvestmentAnalysisRequest request,
         [FromServices] SaveInvestmentAnalysis useCase,
@@ -37,6 +38,7 @@ public sealed class InvestmentAnalysesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<AnalysisResponse>> CreateVersionAsync(
         Guid id,
         [FromBody] SaveInvestmentAnalysisRequest request,
@@ -54,6 +56,7 @@ public sealed class InvestmentAnalysesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<AnalysisResponse>> RecalculateAsync(
         Guid id,
         [FromServices] RecalculateInvestmentAnalysis useCase,

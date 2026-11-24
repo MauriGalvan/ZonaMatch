@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ZonaMatch.Application.DTOs;
 using ZonaMatch.Application.UseCases.Map;
+using ZonaMatch.Infrastructure.Caching;
 
 namespace ZonaMatch.Api.Controllers;
 
@@ -13,7 +14,7 @@ public sealed class MapController : ControllerBase
 
     // GET /api/v1/map/districts?tolerance=0.0005
     [HttpGet("districts")]
-    [ResponseCache(Duration = 3600)]
+    [ResponseCache(CacheProfileName = CacheLifetimeOptions.PublicResponseProfile)]
     public async Task<IActionResult> GetDistrictsAsync(
         [FromQuery] double? tolerance,
         [FromServices] GetMapDistricts getMapDistricts)
@@ -24,7 +25,7 @@ public sealed class MapController : ControllerBase
 
     // GET /api/v1/map/communes?tolerance=0.0005
     [HttpGet("communes")]
-    [ResponseCache(Duration = 3600)]
+    [ResponseCache(CacheProfileName = CacheLifetimeOptions.PublicResponseProfile)]
     public async Task<IActionResult> GetCommunesAsync(
         [FromQuery] double? tolerance,
         [FromServices] GetMapCommunes getMapCommunes)

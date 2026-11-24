@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using ZonaMatch.Application.DTOs.Analysis.Requests;
 using ZonaMatch.Application.UseCases.Scoring;
+using DomainAnalysis = ZonaMatch.Domain.Entities.Analysis;
 using DomainGroup = ZonaMatch.Domain.Entities.Group;
 
 namespace ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
@@ -8,7 +9,7 @@ namespace ZonaMatch.Application.DTOs.GroupAnalysis.Requests;
 public sealed class SaveGroupAnalysisRequest
 {
     [Required(ErrorMessage = "El nombre es obligatorio.")]
-    [StringLength(50, MinimumLength = 1, ErrorMessage = "El nombre debe tener entre 1 y 50 caracteres.")]
+    [StringLength(DomainAnalysis.MaximumNameLength, MinimumLength = 1, ErrorMessage = "El nombre debe tener entre {2} y {1} caracteres.")]
     public string Name { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Las zonas son obligatorias.")]

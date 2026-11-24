@@ -150,11 +150,34 @@ class ZoneRowsTests(unittest.TestCase):
         filters = {(row[1], row[4]): row[5] for row in totals if row[4]}
         self.assertEqual({("venta", "credit"): 40, ("venta", "owner"): 3}, filters)
 
-    def test_credit_totals_are_read_at_the_zone_sale_prices(self):
-        # Every sale listing of the fixture costs US$ 100.000, so the zone has a single threshold
-        self.write(scraper.credit_path("palermo", 100_000), page(35, []))
+    def test_credit_totals_are_read_at_the_sale_prices_for_each_segment(self):
+        # All sale listings cost US$100,000, so each segment has one price cutoff.
+        max_price = 100_000
+        scraped_at = "2026-10-30T12:00:00+00:00"
+        segments = [
+            ("all", 0, 40, 35),
+            ("all", 1, 10, 8),
+            ("all", 2, 20, 17),
+            ("all", 3, 9, 8),
+            ("departamentos", 0, 39, 34),
+            ("departamentos", 1, 10, 8),
+            ("departamentos", 2, 20, 17),
+            ("departamentos", 3, 9, 8),
+        ]
+        expected_rows = []
+        for property_type, rooms, total, total_at_cutoff in segments:
+            self.write(scraper.credit_path(property_type, "palermo", rooms=rooms), page(total, []))
+            self.write(
+                scraper.credit_path(property_type, "palermo", rooms=rooms, max_price=max_price),
+                page(total_at_cutoff, []),
+            )
+            expected_rows.extend([
+                ["palermo", property_type, rooms, "", total, scraped_at],
+                ["palermo", property_type, rooms, max_price, total_at_cutoff, scraped_at],
+            ])
+
         _, _, credit = self.all_rows()
-        self.assertEqual([["palermo", 100_000, 35, "2026-10-30T12:00:00+00:00"]], credit)
+        self.assertEqual(expected_rows, credit)
 
     def test_credit_totals_missing_from_the_cache_are_reported_as_incomplete(self):
         _, _, credit = self.all_rows()
