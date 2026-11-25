@@ -17,14 +17,14 @@ public static class MapQueryPolicy
     {
         if (!boundingBox.EsValido)
             throw new BadRequestException(
-                "El viewport es invalido: indica minLon, minLat, maxLon y maxLat en grados, con min menor que max.");
+                "El área visible del mapa no es válida. Indicá minLon, minLat, maxLon y maxLat en grados, con cada mínimo menor que su máximo.");
     }
 
     public static void ValidateFeatureCount(int count, string layer)
     {
         if (count > MaximumFeaturesPerQuery)
             throw new BadRequestException(
-                $"El viewport contiene mas de {MaximumFeaturesPerQuery} {layer}. Acerca el mapa o aplica filtros.");
+                $"El área visible del mapa contiene más de {MaximumFeaturesPerQuery} {layer}. Acercá el mapa o aplicá filtros.");
     }
 
     public static double NormalizeTolerance(double? tolerance, double? defaultTolerance = null) =>

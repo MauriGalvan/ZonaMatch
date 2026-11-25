@@ -2,10 +2,11 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Hybrid;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Scoring;
+using ZonaMatch.Infrastructure.Caching;
 
 namespace ZonaMatch.Infrastructure.Geo
 {
@@ -14,15 +15,16 @@ namespace ZonaMatch.Infrastructure.Geo
     // keeps each plan in memory for a day. Of the itineraries MOTIS offers, the best one is kept: the fastest, with
     // every transfer counted as TransferPenaltySeconds more and every public transport leg shorter than five blocks as
     // ShortRidePenaltySeconds more, so a bus for three blocks or an unnecessary transfer does not win by a minute.
-    public class MotisRoutePlanner(HttpClient http, HybridCache cache, IConfiguration configuration) : IRoutePlanner
+    public class MotisRoutePlanner(
+        HttpClient http,
+        HybridCache cache,
+        IOptions<MotisOptions> motis,
+        IOptions<CacheLifetimeOptions> cacheLifetimes) : IRoutePlanner
     {
-        // Tuesday, March 3, 2026, 8:00 in Buenos Aires (UTC-3), as in MotisRoutingClient
-        private const string DefaultReferenceTime = "2026-03-03T11:00:00Z";
-
-        private static readonly HybridCacheEntryOptions PlanLifetime = new()
+        private readonly HybridCacheEntryOptions _planLifetime = new()
         {
-            Expiration = TimeSpan.FromDays(1),
-            LocalCacheExpiration = TimeSpan.FromDays(1),
+            Expiration = cacheLifetimes.Value.MotisRoutePlans,
+            LocalCacheExpiration = cacheLifetimes.Value.MotisRoutePlans,
         };
 
         private const int TransferPenaltySeconds = 300;
@@ -33,7 +35,7 @@ namespace ZonaMatch.Infrastructure.Geo
         // Longest direct walk or bike ride searched (seconds)
         private const int MaxDirectSeconds = 7200;
 
-        private readonly string _referenceTime = configuration["Motis:FechaReferencia"] ?? DefaultReferenceTime;
+        private readonly string _referenceTime = motis.Value.ReferenceTimestamp;
 
         public async Task<RoutePlan?> PlanAsync(
             double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, TravelMode mode,
@@ -44,7 +46,7 @@ namespace ZonaMatch.Infrastructure.Geo
 
             // An unavailable MOTIS throws, and HybridCache does not keep exceptions
             return await cache.GetOrCreateAsync(key, token => new ValueTask<RoutePlan?>(QueryAsync(fromLatitude, fromLongitude, toLatitude, toLongitude, mode, token)),
-                PlanLifetime, cancellationToken: cancellationToken);
+                _planLifetime, cancellationToken: cancellationToken);
         }
 
         private async Task<RoutePlan?> QueryAsync(

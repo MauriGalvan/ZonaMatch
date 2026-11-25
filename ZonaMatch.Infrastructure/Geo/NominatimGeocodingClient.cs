@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Options;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models.Geolocation;
+using ZonaMatch.Infrastructure.Caching;
 
 namespace ZonaMatch.Infrastructure.Geo
 {
@@ -11,23 +13,20 @@ namespace ZonaMatch.Infrastructure.Geo
     public class NominatimGeocodingClient : IGeocodingClient
     {
         private static readonly TimeSpan MinimumRequestInterval = TimeSpan.FromSeconds(1);
-        private static readonly HybridCacheEntryOptions CacheDuration = new()
-        {
-            Expiration = TimeSpan.FromHours(24),
-            LocalCacheExpiration = TimeSpan.FromHours(24),
-        };
-
         // Shared by every instance (the typed HttpClient is transient) to honor the 1 req/s limit globally
         private static readonly SemaphoreSlim RequestLock = new(1, 1);
         private static DateTimeOffset _lastRequestAt = DateTimeOffset.MinValue;
 
         private readonly HttpClient _http;
         private readonly HybridCache _cache;
+        private readonly HybridCacheEntryOptions _cacheDuration;
 
-        public NominatimGeocodingClient(HttpClient http, HybridCache cache)
+        public NominatimGeocodingClient(HttpClient http, HybridCache cache, IOptions<CacheLifetimeOptions> cacheLifetimes)
         {
             _http = http;
             _cache = cache;
+            var lifetime = cacheLifetimes.Value.NominatimAddresses;
+            _cacheDuration = new HybridCacheEntryOptions { Expiration = lifetime, LocalCacheExpiration = lifetime };
         }
 
         public async Task<GeocodedAddress?> ReverseAsync(
@@ -37,7 +36,7 @@ namespace ZonaMatch.Infrastructure.Geo
             var cacheKey = string.Create(CultureInfo.InvariantCulture, $"nominatim:{latitude:F4}:{longitude:F4}");
 
             return await _cache.GetOrCreateAsync(cacheKey, token => new ValueTask<GeocodedAddress?>(QueryAsync(latitude, longitude, token)),
-                CacheDuration, cancellationToken: cancellationToken);
+                _cacheDuration, cancellationToken: cancellationToken);
         }
 
         private async Task<GeocodedAddress?> QueryAsync(double latitude, double longitude, CancellationToken cancellationToken)

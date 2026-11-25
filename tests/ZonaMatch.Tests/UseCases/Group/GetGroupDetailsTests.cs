@@ -55,7 +55,7 @@ public class GetGroupDetailsTests
         {
             UserId = userId,
             Role = GroupRole.Owner,
-            User = new User { Id = userId, Email = "ana.torres@example.com" }
+            User = new User { Id = userId, Email = "ana.torres@example.com", FirstName = "Ana María", LastName = "Torres" }
         };
         var group = new DomainGroup
         {
@@ -92,7 +92,7 @@ public class GetGroupDetailsTests
             .ExecuteAsync(groupId, userId, CancellationToken.None);
 
         var resultParticipant = response.Participants.Should().ContainSingle().Which;
-        resultParticipant.Name.Should().Be("ana.torres@example.com");
+        resultParticipant.Name.Should().Be("Ana María Torres");
         resultParticipant.IsMe.Should().BeTrue();
         resultParticipant.Initials.Should().Be("AT");
         resultParticipant.Preferences.Should().ContainKey("safety").WhoseValue.Should().Be("Alta");

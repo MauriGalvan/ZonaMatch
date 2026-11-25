@@ -55,7 +55,8 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
             topAnalyzedZones,
             topSavedZones,
             await GetCriteriaUsageAsync(cancellationToken),
-            await GetOperationSplitAsync(cancellationToken));
+            await GetOperationSplitAsync(cancellationToken),
+            await GetPlaceTagsAsync(cancellationToken));
     }
 
     public async Task<IReadOnlyList<AdminGroupResponse>> ListGroupsAsync(CancellationToken cancellationToken = default) =>
@@ -77,6 +78,41 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
             new DateTimeOffset(DateTime.SpecifyKind(group.CreatedAt, DateTimeKind.Utc)),
             group.Members.Select(member => new AdminGroupMemberResponse(member.UserId, member.Email, member.Role == GroupRole.Owner)).ToList()))
         .ToList();
+
+    public async Task<AdminZoneActivitySnapshot> GetZoneActivityAsync(int size, CancellationToken cancellationToken = default)
+    {
+        var saved = CountByZone(dbContext.SavedZones.AsNoTracking().Select(zone => zone.ZoneSlug));
+        var reviews = CountByZone(dbContext.Reviews.AsNoTracking()
+            .Where(review => review.Status != ReviewStatus.Rejected)
+            .Select(review => review.ZoneSlug));
+        var questions = CountByZone(dbContext.Questions.AsNoTracking().Select(question => question.ZoneSlug));
+        var contributions = CountByZone(dbContext.Contributions.AsNoTracking()
+            .Where(contribution => contribution.Status != ContributionStatus.Rejected)
+            .Select(contribution => contribution.ZoneSlug));
+
+        return new AdminZoneActivitySnapshot(
+            MostSaved: await TopAsync(saved.OrderByDescending(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken),
+            LeastSaved: await TopAsync(saved.OrderBy(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken),
+            MostReviewed: await TopAsync(reviews.OrderByDescending(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken),
+            MostAsked: await TopAsync(questions.OrderByDescending(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken),
+            MostContributed: await TopAsync(contributions.OrderByDescending(row => row.Count).ThenBy(row => row.ZoneSlug), size, cancellationToken));
+    }
+
+    // Rows per zone slug. A class with settable members, unlike a record built with a constructor, can be ordered in SQL.
+    private sealed class ZoneCountRow
+    {
+        public string ZoneSlug { get; init; } = string.Empty;
+        public int Count { get; init; }
+    }
+
+    private static IQueryable<ZoneCountRow> CountByZone(IQueryable<string> zoneSlugs) =>
+        zoneSlugs.GroupBy(slug => slug).Select(group => new ZoneCountRow { ZoneSlug = group.Key, Count = group.Count() });
+
+    private static async Task<IReadOnlyList<ZoneActivityCount>> TopAsync(
+        IQueryable<ZoneCountRow> ordered, int size, CancellationToken cancellationToken) =>
+        (await ordered.Take(size).ToListAsync(cancellationToken))
+            .Select(row => new ZoneActivityCount(row.ZoneSlug, row.Count))
+            .ToList();
 
     private async Task<AdminUserStats> GetUserStatsAsync(AdminStatsPeriod period, CancellationToken cancellationToken)
     {
@@ -105,6 +141,7 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
         var groups = dbContext.Groups.AsNoTracking();
         var invitations = dbContext.GroupInvitations.AsNoTracking();
         var guestReports = dbContext.GuestReportSends.AsNoTracking();
+        var downloads = dbContext.ReportDownloads.AsNoTracking();
         // Groups store their creation date as a UTC DateTime.
         var groupsSince = period.Since30Days.UtcDateTime;
 
@@ -118,7 +155,10 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
             AcceptedGroupInvitations: await invitations.CountAsync(invitation => invitation.Status == InvitationStatus.Accepted, cancellationToken),
             SavedZones: await dbContext.SavedZones.AsNoTracking().CountAsync(cancellationToken),
             GuestReports: await guestReports.CountAsync(cancellationToken),
-            GuestReportsLast30Days: await guestReports.CountAsync(report => report.SentAt >= period.Since30Days, cancellationToken));
+            GuestReportsLast30Days: await guestReports.CountAsync(report => report.SentAt >= period.Since30Days, cancellationToken),
+            ReportDownloads: await downloads.CountAsync(cancellationToken),
+            ReportDownloadsLast30Days: await downloads.CountAsync(download => download.DownloadedAt >= period.Since30Days, cancellationToken),
+            ReportDownloadsByGuests: await downloads.CountAsync(download => download.UserId == null, cancellationToken));
     }
 
     private async Task<AdminCommunityStats> GetCommunityStatsAsync(AdminStatsPeriod period, CancellationToken cancellationToken)
@@ -160,6 +200,23 @@ public sealed class AdminStatsRepository(ZonaMatchDbContext dbContext) : IAdminS
             .ThenBy(criterion => criterion.CriterionId)
             .ToListAsync(cancellationToken))
         .Select(criterion => new AdminCriterionCount(criterion.CriterionId, criterion.Name, criterion.Count, criterion.HighPriorityCount))
+        .ToList();
+
+    // Tags of the places in profiles and saved analyses (the home search; investor contexts have no places), grouped
+    // ignoring case and spaces. The label shown is one of the spellings used.
+    private async Task<List<AdminPlaceTagCount>> GetPlaceTagsAsync(CancellationToken cancellationToken) =>
+        (await dbContext.ContextPlaces.AsNoTracking()
+            .Where(place => place.Type != null && place.Type.Trim() != ""
+                && (place.Context!.Type == ContextType.Profile || place.Context.Type == ContextType.Analysis))
+            .GroupBy(place => place.Type!.Trim().ToLower())
+            .Select(group => new
+            {
+                Tag = group.Max(place => place.Type!.Trim()),
+                Users = group.Select(place => place.Context!.UserId).Distinct().Count(),
+                SavedAnalyses = group.Count(place => place.Context!.Type == ContextType.Analysis),
+            })
+            .ToListAsync(cancellationToken))
+        .Select(tag => new AdminPlaceTagCount(tag.Tag!, tag.Users, tag.SavedAnalyses))
         .ToList();
 
     private async Task<AdminOperationSplit> GetOperationSplitAsync(CancellationToken cancellationToken)

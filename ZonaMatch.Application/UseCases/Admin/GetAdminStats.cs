@@ -33,7 +33,22 @@ public sealed class GetAdminStats(IAdminStatsRepository stats, TimeProvider time
             snapshot.TopSavedZones,
             snapshot.CriteriaUsage,
             snapshot.Operations,
+            SplitPlaceTags(snapshot.PlaceTags),
             now);
+    }
+
+    // Separates the tags users typed from the ones the wizard offers, most used first.
+    private static AdminPlaceTagStats SplitPlaceTags(IReadOnlyList<AdminPlaceTagCount> tags)
+    {
+        var sorted = tags
+            .OrderByDescending(tag => tag.Users)
+            .ThenByDescending(tag => tag.SavedAnalyses)
+            .ThenBy(tag => tag.Tag, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        return new AdminPlaceTagStats(
+            sorted.Where(tag => !PredefinedPlaceTags.IsPredefined(tag.Tag)).ToList(),
+            sorted.Where(tag => PredefinedPlaceTags.IsPredefined(tag.Tag)).ToList());
     }
 
     // The Mondays of the last WeekCount weeks, including the current one, oldest first.

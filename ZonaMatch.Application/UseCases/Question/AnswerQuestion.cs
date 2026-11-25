@@ -5,6 +5,7 @@ using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Application.Models;
+using ZonaMatch.Application.UseCases.Community;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Domain.Enums;
 
@@ -14,6 +15,7 @@ namespace ZonaMatch.Application.UseCases.Question
     {
         private readonly IQuestionRepository _questions;
         private readonly INotificationRepository _notifications;
+        private readonly IUserRepository _users;
         private readonly IEmailService _emailService;
         private readonly ILogger<AnswerQuestion> _logger;
         private readonly TimeProvider _clock;
@@ -22,6 +24,7 @@ namespace ZonaMatch.Application.UseCases.Question
         public AnswerQuestion(
             IQuestionRepository questions,
             INotificationRepository notifications,
+            IUserRepository users,
             IEmailService emailService,
             ILogger<AnswerQuestion> logger,
             TimeProvider clock,
@@ -29,6 +32,7 @@ namespace ZonaMatch.Application.UseCases.Question
         {
             _questions = questions;
             _notifications = notifications;
+            _users = users;
             _emailService = emailService;
             _logger = logger;
             _clock = clock;
@@ -40,6 +44,7 @@ namespace ZonaMatch.Application.UseCases.Question
         {
             var question = await _questions.GetByIdAsync(zoneSlug, questionId, cancellationToken)
                 ?? throw new NotFoundException("No se encontró la pregunta.");
+            var author = await _users.GetByIdAsync(currentUser.Id, cancellationToken);
 
             var answer = new Answer
             {
@@ -98,7 +103,7 @@ namespace ZonaMatch.Application.UseCases.Question
                 }
             }
 
-            return QuestionMapper.ToResponse(answer, currentUser.Email, currentUser.Id);
+            return QuestionMapper.ToResponse(answer, CommunityAuthor.FromUser(author, currentUser.Email), currentUser.Id);
         }
     }
 }

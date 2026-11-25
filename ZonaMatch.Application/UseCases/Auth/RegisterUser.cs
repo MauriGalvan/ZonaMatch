@@ -3,6 +3,7 @@ using ZonaMatch.Application.DTOs.Auth.Requests;
 using ZonaMatch.Application.DTOs.Auth.Responses;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Application.Interfaces;
+using ZonaMatch.Application.Policies;
 using ZonaMatch.Application.UseCases.Admin;
 using ZonaMatch.Domain.Entities;
 
@@ -21,6 +22,7 @@ public sealed class RegisterUser(
         if (request.BirthDate is not { } birthDate)
             throw new BadRequestException("La fecha de nacimiento es obligatoria.");
 
+        var (firstName, lastName) = UserNameRules.Normalize(request.FirstName, request.LastName);
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
         if (await users.EmailExistsAsync(normalizedEmail, cancellationToken))
@@ -29,6 +31,8 @@ public sealed class RegisterUser(
         var user = new User
         {
             Email = normalizedEmail,
+            FirstName = firstName,
+            LastName = lastName,
             PasswordHash = passwordHasher.Hash(request.Password),
             DateOfBirth = birthDate,
             CreatedAt = timeProvider.GetUtcNow()
@@ -48,6 +52,6 @@ public sealed class RegisterUser(
             logger.LogWarning(exception, "Could not notify administrators about user {UserId}", user.Id);
         }
 
-        return new UserResponse(user.Id, user.Email, user.DateOfBirth);
+        return new UserResponse(user.Id, user.Email, user.DateOfBirth, user.IsAdministrator, user.FirstName, user.LastName);
     }
 }

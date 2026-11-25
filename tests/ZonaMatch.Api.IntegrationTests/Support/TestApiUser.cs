@@ -12,13 +12,16 @@ namespace ZonaMatch.Api.IntegrationTests.Support;
 
 internal sealed class TestApiUser(HttpClient client, UserResponse user) : IDisposable
 {
-    private const string Password = "IntegrationPassword123!";
+    // Shared with the tests that sign in through the login endpoint.
+    internal const string Password = "IntegrationPassword123!";
 
     public HttpClient Client { get; } = client;
     public UserResponse User { get; } = user;
 
     public static async Task<TestApiUser> RegisterAsync(
         WebApplicationFactory<Program> factory,
+        string firstName = "Ana",
+        string lastName = "Pérez",
         CancellationToken cancellationToken = default)
     {
         var client = factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -30,7 +33,7 @@ internal sealed class TestApiUser(HttpClient client, UserResponse user) : IDispo
 
         var registration = await client.PostAsJsonAsync(
             "/api/v1/auth/register",
-            new RegisterRequest(email, Password, Password, new DateOnly(1990, 5, 31)),
+            new RegisterRequest(email, Password, Password, new DateOnly(1990, 5, 31), firstName, lastName),
             cancellationToken);
 
         if (registration.StatusCode != HttpStatusCode.Created)

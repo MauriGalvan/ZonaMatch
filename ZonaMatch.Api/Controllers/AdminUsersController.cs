@@ -45,6 +45,44 @@ public sealed class AdminUsersController : ControllerBase
         return Ok(user);
     }
 
+    // PUT /api/v1/admin/users/{id}/suspension    Body: { "suspended": true }
+    // A suspended user cannot sign in; an open session keeps working until its token expires.
+    [HttpPut("{id:guid}/suspension")]
+    [ProducesResponseType<AdminUserResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSuspensionAsync(
+        [FromRoute] Guid id,
+        [FromBody] UpdateUserSuspensionRequest request,
+        [FromServices] UpdateUserSuspension useCase,
+        CancellationToken cancellationToken)
+    {
+        if (User.GetAuthenticatedUserId() is not { } administratorId)
+            return Unauthorized();
+
+        return Ok(await useCase.ExecuteAsync(id, request.Suspended!.Value, administratorId, cancellationToken));
+    }
+
+    // POST /api/v1/admin/users/{id}/name-reminder
+    // Emails a user without first or last name, asking them to sign in and complete them.
+    [HttpPost("{id:guid}/name-reminder")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> SendNameReminderAsync(
+        [FromRoute] Guid id,
+        [FromServices] SendNameReminder useCase,
+        CancellationToken cancellationToken)
+    {
+        await useCase.ExecuteAsync(id, cancellationToken);
+        return NoContent();
+    }
+
     // PUT /api/v1/admin/users/{id}/investor-access    Body: { "granted": true }
     // Applies at once: the investor profile endpoints read the access from the database.
     [HttpPut("{id:guid}/investor-access")]

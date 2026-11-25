@@ -52,6 +52,7 @@ namespace ZonaMatch.Application.UseCases.Review
 
             var imageNames = NormalizeImageNames(request.ImageNames);
             var text = request.Text.Trim();
+            var author = await _users.GetByIdAsync(currentUser.Id, cancellationToken);
 
             var now = _clock.GetUtcNow();
             var review = await _reviews.GetByUserAsync(zoneSlug, currentUser.Id, cancellationToken);
@@ -94,7 +95,7 @@ namespace ZonaMatch.Application.UseCases.Review
             if (submittedForApproval)
                 await _moderationEmails.NotifySubmittedAsync(review, currentUser.Email, isEdit: !isNewReview, cancellationToken);
 
-            return ReviewMapper.ToResponse(review, currentUser.Email, currentUser.Id, _images);
+            return ReviewMapper.ToResponse(review, CommunityAuthor.FromUser(author, currentUser.Email), currentUser.Id, _images);
         }
 
         // The bell of every administrator shows a review to moderate. It is saved together with the review.

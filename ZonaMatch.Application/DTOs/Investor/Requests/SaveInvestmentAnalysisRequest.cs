@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using ZonaMatch.Application.DTOs.Analysis.Requests;
+using DomainAnalysis = ZonaMatch.Domain.Entities.Analysis;
 
 namespace ZonaMatch.Application.DTOs.Investor.Requests;
 
@@ -7,7 +8,7 @@ namespace ZonaMatch.Application.DTOs.Investor.Requests;
 // is optional, as for the household analyses.
 public sealed class SaveInvestmentAnalysisRequest
 {
-    [StringLength(50, ErrorMessage = "El nombre debe tener hasta 50 caracteres.")]
+    [StringLength(DomainAnalysis.MaximumNameLength, ErrorMessage = "El nombre debe tener hasta {1} caracteres.")]
     public string? Name { get; set; }
 
     [Required(ErrorMessage = "La configuración del análisis es obligatoria.")]

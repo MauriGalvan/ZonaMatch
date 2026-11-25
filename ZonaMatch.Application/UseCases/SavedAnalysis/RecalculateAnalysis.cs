@@ -11,7 +11,6 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
     // can be compared.
     public class RecalculateAnalysis(IAnalysisRepository analyses, IAnalysisResultCalculator calculator, TimeProvider clock)
     {
-        private const int NameLength = 50;
 
         public async Task<AnalysisResponse> ExecuteAsync(Guid analysisId, Guid userId, CancellationToken cancellationToken = default)
         {
@@ -61,8 +60,8 @@ namespace ZonaMatch.Application.UseCases.SavedAnalysis
         public static string RecalculatedName(string originalName, DateTimeOffset now)
         {
             var suffix = $" · datos al {now.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM", CultureInfo.InvariantCulture)}";
-            var baseName = originalName.Length + suffix.Length > NameLength
-                ? originalName[..(NameLength - suffix.Length)].TrimEnd()
+            var baseName = originalName.Length + suffix.Length > Analysis.MaximumNameLength
+                ? originalName[..(Analysis.MaximumNameLength - suffix.Length)].TrimEnd()
                 : originalName;
 
             return baseName + suffix;

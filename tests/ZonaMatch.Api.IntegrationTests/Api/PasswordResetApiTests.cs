@@ -31,7 +31,7 @@ public sealed class PasswordResetApiTests(PostgreSqlDatabaseFixture database)
         var email = $"password-reset-{Guid.NewGuid():N}@example.com";
         var registrationResponse = await client.PostAsJsonAsync(
             "/api/v1/auth/register",
-            new RegisterRequest(email, CurrentPassword, CurrentPassword, new DateOnly(1990, 5, 31)));
+            new RegisterRequest(email, CurrentPassword, CurrentPassword, new DateOnly(1990, 5, 31), "Ana", "Pérez"));
         registrationResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var user = await registrationResponse.Content.ReadFromJsonAsync<UserResponse>();
         user.Should().NotBeNull();
@@ -66,7 +66,7 @@ public sealed class PasswordResetApiTests(PostgreSqlDatabaseFixture database)
         var email = $"password-reset-complete-{Guid.NewGuid():N}@example.com";
         var registrationResponse = await client.PostAsJsonAsync(
             "/api/v1/auth/register",
-            new RegisterRequest(email, CurrentPassword, CurrentPassword, new DateOnly(1990, 5, 31)));
+            new RegisterRequest(email, CurrentPassword, CurrentPassword, new DateOnly(1990, 5, 31), "Ana", "Pérez"));
         registrationResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var user = await registrationResponse.Content.ReadFromJsonAsync<UserResponse>();
         user.Should().NotBeNull();
@@ -112,7 +112,7 @@ public sealed class PasswordResetApiTests(PostgreSqlDatabaseFixture database)
         var email = $"password-reset-expired-{Guid.NewGuid():N}@example.com";
         var registrationResponse = await client.PostAsJsonAsync(
             "/api/v1/auth/register",
-            new RegisterRequest(email, CurrentPassword, CurrentPassword, new DateOnly(1990, 5, 31)));
+            new RegisterRequest(email, CurrentPassword, CurrentPassword, new DateOnly(1990, 5, 31), "Ana", "Pérez"));
         registrationResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var user = await registrationResponse.Content.ReadFromJsonAsync<UserResponse>();
         user.Should().NotBeNull();

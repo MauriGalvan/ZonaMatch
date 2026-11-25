@@ -3,27 +3,20 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Hybrid;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Scoring;
+using ZonaMatch.Infrastructure.Caching;
 
 namespace ZonaMatch.Infrastructure.Geo
 {
     // Duration and distance for the same MOTIS itinerary (GET /api/v1/plan).
     // The loaded schedules use a reference week (etl/motis/config.yml): requests always use a weekday at 8 AM
-    // from that week. Each trip is cached in memory for one day.
+    // from that week. Trip durations are cached in memory.
     // If MOTIS does not respond, requests are skipped for one minute to avoid repeated timeouts.
     public class MotisRoutingClient : IRoutingClient
     {
-        // Tuesday, March 3, 2026, at 8:00 AM in Buenos Aires (UTC-3).
-        private const string DefaultReferenceDate = "2026-03-03T11:00:00Z";
-
-        private static readonly HybridCacheEntryOptions TravelTimeCacheDuration = new()
-        {
-            Expiration = TimeSpan.FromDays(1),
-            LocalCacheExpiration = TimeSpan.FromDays(1),
-        };
         private static readonly TimeSpan FailureBackoffDuration = TimeSpan.FromMinutes(1);
 
         // Maximum duration for direct walking or cycling routes, in seconds.
@@ -36,14 +29,23 @@ namespace ZonaMatch.Infrastructure.Geo
         private readonly TimeProvider _timeProvider;
         private readonly ILogger<MotisRoutingClient> _logger;
         private readonly string _referenceDate;
+        private readonly HybridCacheEntryOptions _cacheDuration;
 
-        public MotisRoutingClient(HttpClient http, HybridCache cache, TimeProvider timeProvider, IConfiguration configuration, ILogger<MotisRoutingClient> logger)
+        public MotisRoutingClient(
+            HttpClient http,
+            HybridCache cache,
+            TimeProvider timeProvider,
+            IOptions<MotisOptions> motis,
+            IOptions<CacheLifetimeOptions> cacheLifetimes,
+            ILogger<MotisRoutingClient> logger)
         {
             _http = http;
             _cache = cache;
             _timeProvider = timeProvider;
             _logger = logger;
-            _referenceDate = configuration["Motis:FechaReferencia"] ?? DefaultReferenceDate;
+            _referenceDate = motis.Value.ReferenceTimestamp;
+            var lifetime = cacheLifetimes.Value.MotisTravelTimes;
+            _cacheDuration = new HybridCacheEntryOptions { Expiration = lifetime, LocalCacheExpiration = lifetime };
         }
 
         public async Task<TravelTime?> GetTravelTimeAsync(
@@ -58,7 +60,7 @@ namespace ZonaMatch.Infrastructure.Geo
             {
                 return await _cache.GetOrCreateAsync(cacheKey,
                     token => new ValueTask<TravelTime>(QueryAsync(originLatitude, originLongitude, destinationLatitude, destinationLongitude, mode, token)),
-                    TravelTimeCacheDuration, cancellationToken: cancellationToken);
+                    _cacheDuration, cancellationToken: cancellationToken);
             }
             catch (TripNotAvailableException)
             {

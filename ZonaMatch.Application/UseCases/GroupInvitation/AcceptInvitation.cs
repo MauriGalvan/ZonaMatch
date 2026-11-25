@@ -34,7 +34,13 @@ public class AcceptInvitation
         // 2. Ensure it is still pending.
         if (invitation.Status != InvitationStatus.Pending)
         {
-            throw new BadRequestException($"La invitación ya no es válida (Estado: {invitation.Status}).");
+            throw new BadRequestException(invitation.Status switch
+            {
+                InvitationStatus.Accepted => "La invitación ya fue aceptada.",
+                InvitationStatus.Rejected => "La invitación ya fue rechazada.",
+                InvitationStatus.Expired => "La invitación ha expirado.",
+                _ => "La invitación ya no es válida."
+            });
         }
 
         // 3. Ensure it has not expired.

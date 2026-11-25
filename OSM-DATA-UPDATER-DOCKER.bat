@@ -94,6 +94,12 @@ popd
 if not "%EF_RESULT%"=="0" goto :err_ef
 
 :osm
+set "AMBA_BBOX="
+for /f "delims=" %%b in ('call "%~dp0docker\print-amba-bounds.bat"') do set "AMBA_BBOX=%%b"
+if not defined AMBA_BBOX (
+    echo ERROR: could not read the shared AMBA bounds.
+    goto :err_osm
+)
 echo.
 echo [5/7] Downloading the latest Argentina map...
 curl -L -O https://download.geofabrik.de/south-america/argentina-latest.osm.pbf
@@ -101,7 +107,7 @@ if errorlevel 1 goto :err_download
 
 echo.
 echo [6/7] Extracting the CABA and Greater Buenos Aires area...
-docker run --rm -v "%cd%":/data -w /data ubuntu:22.04 bash -c "apt-get update > /dev/null && apt-get install -y osmium-tool > /dev/null && osmium extract -b -58.99,-34.93,-58.01,-34.33 argentina-latest.osm.pbf -o amba.osm.pbf"
+docker run --rm -v "%cd%":/data -w /data ubuntu:22.04 bash -c "apt-get update > /dev/null && apt-get install -y osmium-tool > /dev/null && osmium extract -b %AMBA_BBOX% argentina-latest.osm.pbf -o amba.osm.pbf"
 if errorlevel 1 goto :err_osm
 
 echo.

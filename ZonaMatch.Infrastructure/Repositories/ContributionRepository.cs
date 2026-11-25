@@ -39,6 +39,28 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .OrderBy(contribution => contribution.CreatedAt)
                 .ToListAsync(cancellationToken);
 
+        public async Task<IReadOnlyList<Contribution>> ListAllPendingAsync(CancellationToken cancellationToken = default) =>
+            await _dbContext.Contributions
+                .AsNoTracking()
+                .AsSplitQuery()
+                .Include(contribution => contribution.User)
+                .Include(contribution => contribution.Votes)
+                .Where(contribution => contribution.Status == ContributionStatus.Pending)
+                .OrderBy(contribution => contribution.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+        public async Task<IReadOnlyList<Contribution>> ListResolvedAsync(int limit, CancellationToken cancellationToken = default) =>
+            await _dbContext.Contributions
+                .AsNoTracking()
+                .AsSplitQuery()
+                .Include(contribution => contribution.User)
+                .Include(contribution => contribution.Votes)
+                .Where(contribution => contribution.Status != ContributionStatus.Pending)
+                .OrderByDescending(contribution => contribution.ResolvedAt)
+                .ThenByDescending(contribution => contribution.CreatedAt)
+                .Take(limit)
+                .ToListAsync(cancellationToken);
+
         public Task<Contribution?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Contributions
                 .Include(contribution => contribution.User)

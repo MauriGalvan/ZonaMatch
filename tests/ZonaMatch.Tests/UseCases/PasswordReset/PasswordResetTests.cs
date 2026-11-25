@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Abstractions;
 using ZonaMatch.Application.DTOs.PasswordReset.Requests;
 using ZonaMatch.Application.Emails;
 using ZonaMatch.Application.Exceptions;
@@ -147,7 +147,11 @@ public class PasswordResetTests
         public Task AddAsync(User user, CancellationToken cancellationToken = default) { All.Add(user); return Task.CompletedTask; }
         public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<User>>(All);
         public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(All.FirstOrDefault(u => u.Id == id));
+        public Task<bool> TryCompleteNameAsync(Guid id, string firstName, string lastName, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task SetSuspendedAsync(Guid id, DateTimeOffset? suspendedAt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
 
         public Task SetInvestorAccessAsync(
             Guid id, string? access, DateTimeOffset? requestedAt, DateTimeOffset? grantedAt, CancellationToken cancellationToken = default) =>

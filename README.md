@@ -58,6 +58,32 @@ dotnet user-secrets set "EmailSettings:Password" "CONTRASEÑA_SMTP" --project Zo
 
 No incluyas contraseñas, claves JWT ni cadenas de conexión reales en `appsettings.json`, `.env.example`, commits o mensajes. En otros entornos, configurá `ConnectionStrings__DefaultConnection`, `Jwt__SigningKey` y `EmailSettings__Password` como variables de entorno o ajustes del servicio de hosting.
 
+### Proveedores de ubicación, transporte y mercado
+
+`appsettings.Development.json` define las URLs locales de Photon, Nominatim y MOTIS y la fecha de referencia de la semana que carga el script de transporte. Si cambiaste los puertos o los datos, podés sobrescribir estos valores con User Secrets, por ejemplo:
+
+```powershell
+dotnet user-secrets set "Motis:Url" "http://localhost:18080/" --project ZonaMatch.Api
+dotnet user-secrets set "Motis:FechaReferencia" "2026-03-03T11:00:00Z" --project ZonaMatch.Api
+```
+
+Antes de desplegar en Azure o arrancar la API fuera de `Development`, configurá estos ajustes del entorno:
+
+| Variable | Qué configurar |
+| --- | --- |
+| `Motis__Url` | URL base HTTP o HTTPS de MOTIS. La API la exige al arrancar. |
+| `Motis__FechaReferencia` | Fecha y hora ISO 8601 con zona horaria, dentro de la semana de horarios que se importó en MOTIS. La usan tanto los tiempos como los recorridos. |
+| `Nominatim__BaseUrl`, `Photon__BaseUrl` | URL de cada proveedor habilitado por `PlaceSearch__Provider` o `Geocoding__Provider`. Con `AllowProviderOverride` activado en cualquiera de las dos secciones, configurá ambas URLs. El proveedor de geocodificación `Osm` consulta la base local y no necesita una URL. |
+| `Market__UsdArs` | Sobrescribí este valor si la carga de mercado usó una cotización distinta del valor por defecto. Usá un número positivo con punto decimal. |
+
+La cotización por defecto es `1568.7` ARS por USD y está en `appsettings.json`. Si en local importaste los precios con otra cotización, usá el valor que pasaste a `ZONE-MARKET-DOCKER.bat --usd-ars` o que el script informó al terminar. Por ejemplo, si la carga usó `1563.9`:
+
+```powershell
+dotnet user-secrets set "Market:UsdArs" "1563.9" --project ZonaMatch.Api
+```
+
+Los tiempos de espera de los proveedores se configuran en `Motis:RoutingTimeout`, `Motis:PlanningTimeout`, `Photon:Timeout` y `Nominatim:Timeout`. `appsettings.json` también define los valores compartidos de `RateLimits` y `Cache`. Podés sobrescribirlos por entorno, por ejemplo con `RateLimits__Login__PermitLimit` o `Cache__ZoneProfiles`. Las duraciones usan el formato `[d.]hh:mm:ss`, salvo `Cache__PublicResponseSeconds`, que se expresa en segundos.
+
 ### Imágenes de las reseñas (Azurite)
 
 Las imágenes de las reseñas se guardan en Azure Blob Storage. En local se usa el emulador Azurite, que está en el perfil `azurite` del docker-compose, así que no arranca con los `docker compose up -d` habituales. Desde la raíz del proyecto, ejecutá una sola vez:
@@ -123,7 +149,7 @@ Cosas útiles:
 - **Comparar o volver a otro motor (solo Development):** `GET /api/v1/geolocation/places?search=...&provider=nominatim|photon` y `GET /api/v1/geolocation/address?...&provider=osm|nominatim|photon` eligen el motor por pedido. Para cambiar el motor por defecto sin tocar archivos versionados: `dotnet user-secrets set "PlaceSearch:Provider" "Nominatim" --project ZonaMatch.Api` (necesita Nominatim local, paso 6.3).
 - **Siglas:** Photon no conoce siglas como UNLa, UNLaM o UBA. Las más usadas se reemplazan por el nombre completo antes de buscar; la lista está en `PlaceQueryVariants.cs` (`Siglas`). Para agregar una, sumá una línea con el nombre tal como figura en OpenStreetMap.
 - **Qué aporta Photon al tocar el mapa:** calle, número, lugar y localidad. El partido, la comuna y la provincia salen de las tablas de límites de la base. Si no hay una dirección con número cerca del punto, se muestra solo la calle.
-- **La búsqueda queda acotada al AMBA** con un recuadro (bbox) en la API y en el índice.
+- **La búsqueda queda acotada al AMBA.** El archivo `docker/photon/amba-bounds.json` define el recuadro para Photon, Nominatim y los scripts de recorte de Photon, OSM y MOTIS. Si se modifica el área, hay que volver a compilar la API y regenerar los recortes e índices afectados.
 - **`pull access denied` o `manifest unknown`:** la imagen todavía no está publicada o el paquete en GitHub no es público. Pedile a quien mantiene el despliegue que la publique (paso 6.2 y `docs/deploy-photon-dev.md` del repo de infraestructura), o construí el índice vos mismo con el paso 6.2 y levantalo con `PHOTON_IMAGE`.
 - **La búsqueda responde 503 aunque Photon esté corriendo:** revisá `dotnet user-secrets list --project ZonaMatch.Api`; no debería haber un `Photon:BaseUrl` ni un `PlaceSearch:Provider` distinto de Photon. Si los hay, borralos con `dotnet user-secrets remove "<clave>" --project ZonaMatch.Api`.
 - **El puerto 2322 ya está en uso:** apagá el otro servicio o cambiá el puerto publicado en `docker-compose.yml` y actualizá `Photon:BaseUrl`.

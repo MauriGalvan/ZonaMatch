@@ -48,7 +48,8 @@ public sealed class GetGroupDetails
 
         var participants = group.Participants
             .OrderBy(participant => participant.Role == GroupRole.Owner ? 0 : 1)
-            .ThenBy(participant => participant.User.Email)
+            .ThenBy(GroupParticipantName.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(participant => participant.Id)
             .Select(participant =>
             {
                 profilesByUserId.TryGetValue(participant.UserId, out var profile);
@@ -62,9 +63,9 @@ public sealed class GetGroupDetails
                 return new GroupParticipantResponse(
                     participant.Id,
                     participant.UserId,
-                    participant.User.Email,
+                    GroupParticipantName.DisplayName(participant),
                     participant.UserId == currentUserId,
-                    GetInitials(participant.User.Email),
+                    GroupParticipantName.Initials(participant.User),
                     participant.Role == GroupRole.Owner ? "Organizador" : "Invitado",
                     new GroupParticipantStatsResponse(
                         preferences.Count,
@@ -168,16 +169,6 @@ public sealed class GetGroupDetails
         2 => $"{values[0]} y {values[1]}",
         _ => $"{string.Join(", ", values.Take(values.Count - 1))} y {values[^1]}",
     };
-
-    private static string GetInitials(string email)
-    {
-        var localPart = email.Split('@', 2)[0];
-        var words = localPart.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length >= 2)
-            return string.Concat(words.Take(2).Select(word => char.ToUpperInvariant(word[0])));
-
-        return localPart.Length == 0 ? string.Empty : localPart[..Math.Min(2, localPart.Length)].ToUpperInvariant();
-    }
 
     private static string FormatPriority(string priority) => priority.ToLowerInvariant() switch
     {

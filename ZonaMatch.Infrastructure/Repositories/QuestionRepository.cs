@@ -24,6 +24,22 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .OrderByDescending(question => question.CreatedAt)
                 .ToListAsync(cancellationToken);
 
+        public async Task<IReadOnlyList<Question>> ListLatestAsync(int limit, CancellationToken cancellationToken = default) =>
+            await _dbContext.Questions
+                .AsNoTracking()
+                .AsSplitQuery()
+                .Include(question => question.User)
+                .Include(question => question.Answers).ThenInclude(answer => answer.User)
+                .OrderByDescending(question => question.CreatedAt)
+                .Take(limit)
+                .ToListAsync(cancellationToken);
+
+        public Task<Question?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+            _dbContext.Questions
+                .Include(question => question.User)
+                .Include(question => question.Answers)
+                .FirstOrDefaultAsync(question => question.Id == id, cancellationToken);
+
         public Task<bool> ExistsAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
             _dbContext.Questions.AnyAsync(question => question.ZoneSlug == zoneSlug && question.Id == id, cancellationToken);
 
@@ -35,6 +51,22 @@ namespace ZonaMatch.Infrastructure.Repositories
         public void Add(Question question) => _dbContext.Questions.Add(question);
 
         public void Add(Answer answer) => _dbContext.Answers.Add(answer);
+
+        public Task<Answer?> GetAnswerAsync(Guid questionId, Guid answerId, CancellationToken cancellationToken = default) =>
+            _dbContext.Answers.FirstOrDefaultAsync(answer => answer.QuestionId == questionId && answer.Id == answerId, cancellationToken);
+
+        public void Remove(Question question) => _dbContext.Questions.Remove(question);
+
+        public void Remove(Answer answer) => _dbContext.Answers.Remove(answer);
+
+        public void Add(DeletedQuestion deletedQuestion) => _dbContext.DeletedQuestions.Add(deletedQuestion);
+
+        public async Task<IReadOnlyList<DeletedQuestion>> ListDeletedAsync(int limit, CancellationToken cancellationToken = default) =>
+            await _dbContext.DeletedQuestions
+                .AsNoTracking()
+                .OrderByDescending(deleted => deleted.DeletedAt)
+                .Take(limit)
+                .ToListAsync(cancellationToken);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
             _dbContext.SaveChangesAsync(cancellationToken);

@@ -4,8 +4,12 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Testing;
 using ZonaMatch.Api.IntegrationTests.Support;
+using ZonaMatch.Application.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using ZonaMatch.Application.DTOs.Admin.Requests;
 using ZonaMatch.Application.DTOs.Admin.Responses;
+using ZonaMatch.Application.DTOs.Auth.Requests;
+using ZonaMatch.Application.UseCases.Auth;
 using ZonaMatch.Application.DTOs.Notification.Responses;
 using ZonaMatch.Application.UseCases.Admin;
 using ZonaMatch.Domain.Enums;
@@ -29,7 +33,13 @@ public sealed class AdminUsersApiTests(PostgreSqlDatabaseFixture database)
         var users = await response.Content.ReadFromJsonAsync<List<AdminUserResponse>>();
         users.Should().ContainSingle(user => user.Id == member.User.Id)
             .Which.Should().BeEquivalentTo(
-                new AdminUserResponse(member.User.Id, member.User.Email, member.User.BirthDate, IsAdmin: false),
+                new AdminUserResponse(
+                    member.User.Id,
+                    member.User.Email,
+                    member.User.BirthDate,
+                    IsAdmin: false,
+                    FirstName: member.User.FirstName,
+                    LastName: member.User.LastName),
                 options => options.Excluding(user => user.RegisteredAt));
     }
 
@@ -107,6 +117,99 @@ public sealed class AdminUsersApiTests(PostgreSqlDatabaseFixture database)
         var notification = notifications!.Items.Should().ContainSingle(item => item.Type == NotificationType.NewUserRegistered).Subject;
         notification.Link.Should().Be(NotifyNewUserRegistered.UserListLink);
         notification.Message.Should().Contain(newUser.User.Email);
+    }
+
+    [Fact]
+    public async Task UpdateSuspension_WhenSuspended_BlocksTheLoginUntilTheAccountIsReactivated()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        using var anonymous = factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+        var login = new LoginRequest(member.User.Email, TestApiUser.Password);
+
+        var suspendResponse = await administrator.Client.PutAsJsonAsync(
+            $"/api/v1/admin/users/{member.User.Id}/suspension", new UpdateUserSuspensionRequest(Suspended: true));
+        suspendResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await suspendResponse.Content.ReadFromJsonAsync<AdminUserResponse>())!.IsSuspended.Should().BeTrue();
+
+        var blocked = await anonymous.PostAsJsonAsync("/api/v1/auth/login", login);
+        blocked.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await blocked.Content.ReadAsStringAsync()).Should().Contain("suspendida");
+
+        (await administrator.Client.PutAsJsonAsync(
+            $"/api/v1/admin/users/{member.User.Id}/suspension", new UpdateUserSuspensionRequest(Suspended: false)))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await anonymous.PostAsJsonAsync("/api/v1/auth/login", login)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task UpdateSuspension_WhenNotAdministrator_ReturnsForbidden()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        using var other = await TestApiUser.RegisterAsync(factory);
+
+        var response = await member.Client.PutAsJsonAsync(
+            $"/api/v1/admin/users/{other.User.Id}/suspension", new UpdateUserSuspensionRequest(Suspended: true));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task SendNameReminder_WhenTheUserHasNoName_EmailsThemAndListsTheEmptyName()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        await using (var dbContext = database.CreateDbContext())
+        {
+            await dbContext.Users.Where(user => user.Id == member.User.Id)
+                .ExecuteUpdateAsync(set => set.SetProperty(user => user.FirstName, (string?)null).SetProperty(user => user.LastName, (string?)null));
+        }
+
+        var listed = (await administrator.Client.GetFromJsonAsync<List<AdminUserResponse>>("/api/v1/admin/users"))!
+            .Single(user => user.Id == member.User.Id);
+        listed.FirstName.Should().BeNull();
+        listed.LastName.Should().BeNull();
+
+        var response = await administrator.Client.PostAsync($"/api/v1/admin/users/{member.User.Id}/name-reminder", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var emails = factory.Services.GetRequiredService<IEmailService>().Should().BeOfType<IntegrationEmailService>().Subject;
+        emails.SentEmails.Should().Contain(email => email.To == member.User.Email && email.Subject == SendNameReminder.Subject);
+    }
+
+    [Fact]
+    public async Task SendNameReminder_WhenTheUserHasBothNames_ReturnsBadRequest()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var administrator = await TestApiUser.RegisterAsync(factory);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        administrator.AuthenticateAsAdministrator(factory);
+        await using (var dbContext = database.CreateDbContext())
+        {
+            await dbContext.Users.Where(user => user.Id == member.User.Id)
+                .ExecuteUpdateAsync(set => set.SetProperty(user => user.FirstName, "Ana").SetProperty(user => user.LastName, "Pérez"));
+        }
+
+        var response = await administrator.Client.PostAsync($"/api/v1/admin/users/{member.User.Id}/name-reminder", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task SendNameReminder_WhenNotAdministrator_ReturnsForbidden()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var member = await TestApiUser.RegisterAsync(factory);
+        using var other = await TestApiUser.RegisterAsync(factory);
+
+        var response = await member.Client.PostAsync($"/api/v1/admin/users/{other.User.Id}/name-reminder", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

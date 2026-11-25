@@ -19,6 +19,14 @@ internal sealed class FakeContributionRepository : IContributionRepository
         Task.FromResult<IReadOnlyList<DomainContribution>>(
             Contributions.Where(a => a.ZoneSlug == zoneSlug && a.Status == ContributionStatus.Pending).ToList());
 
+    public Task<IReadOnlyList<DomainContribution>> ListAllPendingAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<DomainContribution>>(
+            Contributions.Where(a => a.Status == ContributionStatus.Pending).OrderBy(a => a.CreatedAt).ToList());
+
+    public Task<IReadOnlyList<DomainContribution>> ListResolvedAsync(int limit, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<DomainContribution>>(
+            Contributions.Where(a => a.Status != ContributionStatus.Pending).OrderByDescending(a => a.ResolvedAt).Take(limit).ToList());
+
     public Task<DomainContribution?> GetAsync(string zoneSlug, Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Contributions.FirstOrDefault(a => a.ZoneSlug == zoneSlug && a.Id == id));
 

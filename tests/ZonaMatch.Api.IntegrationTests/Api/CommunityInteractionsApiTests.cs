@@ -19,6 +19,48 @@ namespace ZonaMatch.Api.IntegrationTests.Api;
 public sealed class CommunityInteractionsApiTests(PostgreSqlDatabaseFixture database)
 {
     [Fact]
+    public async Task ListQuestions_WhenAuthorsCompleteNames_ShowsCurrentPublicNamesWithoutEmails()
+    {
+        using var factory = new ZonaMatchApiFactory(database.ConnectionString);
+        using var author = await TestApiUser.RegisterAsync(factory);
+        using var answerer = await TestApiUser.RegisterAsync(factory);
+        using var anonymous = factory.CreateClient();
+        await using var dbContext = database.CreateDbContext();
+        await dbContext.Users.Where(user => user.Id == author.User.Id || user.Id == answerer.User.Id)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(user => user.FirstName, (string?)null)
+                .SetProperty(user => user.LastName, (string?)null));
+        var zoneSlug = IntegrationZoneRepository.CreateCommunityZoneSlug();
+        var questionUrl = $"/api/v1/zones/{zoneSlug}/questions";
+
+        var questionResponse = await author.Client.PostAsJsonAsync(questionUrl, new CreateQuestionRequest("¿Hay plazas cerca?"));
+        questionResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var question = await questionResponse.Content.ReadFromJsonAsync<QuestionResponse>();
+        question.Should().NotBeNull();
+        var answerResponse = await answerer.Client.PostAsJsonAsync(
+            $"{questionUrl}/{question!.Id}/answers", new CreateAnswerRequest("Sí, hay una a tres cuadras."));
+        answerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        (await author.Client.PutAsJsonAsync("/api/v1/auth/me/name", new { firstName = "Ana María", lastName = "Pérez" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await answerer.Client.PutAsJsonAsync("/api/v1/auth/me/name", new { firstName = "Álvaro", lastName = "Gómez" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var publicResponse = await anonymous.GetAsync(questionUrl);
+
+        publicResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var publicJson = await publicResponse.Content.ReadAsStringAsync();
+        publicJson.Should().NotContain(author.User.Email).And.NotContain(answerer.User.Email);
+        var questions = await publicResponse.Content.ReadFromJsonAsync<IReadOnlyList<QuestionResponse>>();
+        var publicQuestion = questions.Should().ContainSingle().Which;
+        publicQuestion.AuthorName.Should().Be("Ana María Pérez");
+        publicQuestion.Initials.Should().Be("AP");
+        var publicAnswer = publicQuestion.Answers.Should().ContainSingle().Which;
+        publicAnswer.AuthorName.Should().Be("Álvaro Gómez");
+        publicAnswer.Initials.Should().Be("ÁG");
+    }
+
+    [Fact]
     public async Task AnswerQuestion_WhenPostedByAnotherUser_PersistsAnswerAndNotifiesQuestionAuthor()
     {
         using var factory = new ZonaMatchApiFactory(database.ConnectionString);

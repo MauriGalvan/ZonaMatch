@@ -11,6 +11,18 @@ internal sealed class FakeAdminStatsRepository(params DateTimeOffset[] registrat
 {
     public List<AdminGroupResponse> Groups { get; } = [];
 
+    public List<AdminPlaceTagCount> PlaceTags { get; } = [];
+
+    public AdminZoneActivitySnapshot ZoneActivity { get; set; } = new([], [], [], [], []);
+
+    public int? RequestedRankingSize { get; private set; }
+
+    public Task<AdminZoneActivitySnapshot> GetZoneActivityAsync(int size, CancellationToken cancellationToken = default)
+    {
+        RequestedRankingSize = size;
+        return Task.FromResult(ZoneActivity);
+    }
+
     public Task<IReadOnlyList<AdminGroupResponse>> ListGroupsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<AdminGroupResponse>>(Groups);
 
@@ -29,7 +41,8 @@ internal sealed class FakeAdminStatsRepository(params DateTimeOffset[] registrat
             [new AdminZoneCount("palermo", "Palermo", 3)],
             [],
             [new AdminCriterionCount("seguridad", "Seguridad", 4, 2)],
-            new AdminOperationSplit(Rent: 3, Purchase: 1)));
+            new AdminOperationSplit(Rent: 3, Purchase: 1),
+            PlaceTags));
     }
 }
 
@@ -46,6 +59,18 @@ internal sealed class FakeAdminUserRepository(params User[] users) : IUserReposi
 
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Users.FirstOrDefault(user => user.Id == id));
+
+    public Task<bool> TryCompleteNameAsync(Guid id, string firstName, string lastName, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    public int SetSuspendedCalls { get; private set; }
+
+    public Task SetSuspendedAsync(Guid id, DateTimeOffset? suspendedAt, CancellationToken cancellationToken = default)
+    {
+        SetSuspendedCalls++;
+        Users.Single(user => user.Id == id).SuspendedAt = suspendedAt;
+        return Task.CompletedTask;
+    }
 
     public Task SetInvestorAccessAsync(
         Guid id, string? access, DateTimeOffset? requestedAt, DateTimeOffset? grantedAt, CancellationToken cancellationToken = default)

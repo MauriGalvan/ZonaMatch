@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Infrastructure.Data;
@@ -173,6 +174,78 @@ namespace ZonaMatch.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
 
             return rows.Select(row => row.ToZone(withBoundary: false)).ToList();
+        }
+
+        private static readonly string ZoneCoverageSql = $"""
+            SELECT json_build_object(
+                'type', 'FeatureCollection',
+                'features', COALESCE(json_agg(json_build_object(
+                    'type', 'Feature',
+                    'id', z.slug,
+                    'properties', json_build_object(
+                        'slug', z.slug,
+                        'name', z.nombre,
+                        'type', CASE
+                            WHEN z.nivel = 5 AND z.slug LIKE 'comuna-%' THEN 'comuna'
+                            WHEN z.nivel = 5 THEN 'partido'
+                            ELSE 'barrio'
+                        END,
+                        'administrativeLevel', z.nivel,
+                        'hasData', (i.osm_id IS NOT NULL),
+                        'center', json_build_object(
+                            'latitude', ST_Y({ZoneSql.GetCenter("z.geom")}),
+                            'longitude', ST_X({ZoneSql.GetCenter("z.geom")})
+                        )
+                    ),
+                    'geometry', ST_AsGeoJSON(ST_SimplifyPreserveTopology(z.geom, @simplificationTolerance), {GeoJsonCoordinatePrecision})::json
+                ) ORDER BY z.nivel, z.nombre), '[]'::json)
+            )::text AS "Value"
+            FROM {Geo}.zonas z
+            LEFT JOIN {Geo}.zona_indicadores i ON i.osm_id = z.osm_id
+            WHERE z.elegida
+            """;
+
+        private static readonly string ListAvailableSql = $"""
+            SELECT z.slug AS "Slug",
+                   z.nombre AS "Name",
+                   CASE
+                       WHEN z.nivel = 5 AND z.slug LIKE 'comuna-%' THEN 'comuna'
+                       WHEN z.nivel = 5 THEN 'partido'
+                       ELSE 'barrio'
+                   END AS "Type",
+                   (i.osm_id IS NOT NULL) AS "HasData"
+            FROM {Geo}.zonas z
+            LEFT JOIN {Geo}.zona_indicadores i ON i.osm_id = z.osm_id
+            WHERE z.elegida
+            ORDER BY z.nivel, z.nombre
+            """;
+
+        public Task<string> GetCoverageGeoJsonAsync(
+            double simplificationTolerance, CancellationToken cancellationToken = default) =>
+            _dbContext.Database
+                .SqlQueryRaw<string>(ZoneCoverageSql,
+                    new NpgsqlParameter("simplificationTolerance", simplificationTolerance))
+                .SingleAsync(cancellationToken);
+
+        public async Task<IReadOnlyList<AvailableZoneResponse>> ListAvailableAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var rows = await _dbContext.Database
+                .SqlQueryRaw<AvailableZoneRow>(ListAvailableSql)
+                .ToListAsync(cancellationToken);
+
+            return rows.Select(row => row.ToResponse()).ToList();
+        }
+
+        // Keyless result type for ListAvailableSql.
+        private sealed class AvailableZoneRow
+        {
+            public string Slug { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public string Type { get; set; } = string.Empty;
+            public bool HasData { get; set; }
+
+            public AvailableZoneResponse ToResponse() => new(Slug, Name, Type, HasData);
         }
 
         // Keyless result type for ZoneDetailsSql and SearchZonesSql; property names match the SQL column aliases.

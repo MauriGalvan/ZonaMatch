@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using ZonaMatch.Application.DTOs.Auth.Requests;
 using ZonaMatch.Application.Exceptions;
@@ -33,7 +34,7 @@ public sealed class AuthUseCasesTests
         string email = "ana@example.com",
         string password = "Secreta123",
         DateOnly? birthDate = null) =>
-        new(email, password, password, birthDate ?? new DateOnly(1990, 5, 31));
+        new(email, password, password, birthDate ?? new DateOnly(1990, 5, 31), "Ana", "Pérez");
 
     [Fact]
     public async Task Register_WithNewEmail_SavesUser()
@@ -69,6 +70,33 @@ public sealed class AuthUseCasesTests
 
         Assert.Equal("ana@example.com", response.Email);
         Assert.Equal("ana@example.com", Assert.Single(_users.SavedUsers).Email);
+    }
+
+    [Fact]
+    public async Task Register_WhenNameHasOuterWhitespace_PersistsAndReturnsTrimmedName()
+    {
+        var request = CreateRegisterRequest() with { FirstName = "  María del Mar  ", LastName = "  De la Peña  " };
+
+        var response = await _registerUser.ExecuteAsync(request);
+
+        response.FirstName.Should().Be("María del Mar");
+        response.LastName.Should().Be("De la Peña");
+        var savedUser = _users.SavedUsers.Should().ContainSingle().Which;
+        savedUser.FirstName.Should().Be(response.FirstName);
+        savedUser.LastName.Should().Be(response.LastName);
+    }
+
+    [Theory]
+    [InlineData("   ", "Pérez", "El nombre es obligatorio.")]
+    [InlineData("Ana", null, "El apellido es obligatorio.")]
+    public async Task Register_WhenNameIsMissing_RejectsRequest(string? firstName, string? lastName, string message)
+    {
+        var request = CreateRegisterRequest() with { FirstName = firstName, LastName = lastName };
+
+        var act = () => _registerUser.ExecuteAsync(request);
+
+        (await act.Should().ThrowAsync<BadRequestException>()).Which.Message.Should().Be(message);
+        _users.SavedUsers.Should().BeEmpty();
     }
 
     [Fact]
@@ -192,6 +220,28 @@ public sealed class AuthUseCasesTests
     }
 
     [Fact]
+    public async Task Login_WhenAccountIsSuspended_ThrowsForbiddenWithTheSuspendedMessage()
+    {
+        await _registerUser.ExecuteAsync(CreateRegisterRequest());
+        Assert.Single(_users.SavedUsers).SuspendedAt = CurrentTime;
+
+        var exception = await Assert.ThrowsAsync<ForbiddenException>(
+            () => _loginUser.ExecuteAsync(new LoginRequest("ana@example.com", "Secreta123")));
+
+        Assert.Equal(LoginUser.SuspendedAccountMessage, exception.Message);
+    }
+
+    [Fact]
+    public async Task Login_WhenAccountIsSuspendedAndPasswordIsWrong_DoesNotRevealTheSuspension()
+    {
+        await _registerUser.ExecuteAsync(CreateRegisterRequest());
+        Assert.Single(_users.SavedUsers).SuspendedAt = CurrentTime;
+
+        await Assert.ThrowsAsync<UnauthorizedException>(
+            () => _loginUser.ExecuteAsync(new LoginRequest("ana@example.com", "OtraClave999")));
+    }
+
+    [Fact]
     public async Task Login_WithUnknownEmail_ThrowsUnauthorized()
     {
         await Assert.ThrowsAsync<UnauthorizedException>(
@@ -244,7 +294,13 @@ public sealed class AuthUseCasesTests
         public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(SavedUsers.FirstOrDefault(user => user.Id == id));
 
+        public Task<bool> TryCompleteNameAsync(Guid id, string firstName, string lastName, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task SetAdministratorAsync(Guid id, bool isAdministrator, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task SetSuspendedAsync(Guid id, DateTimeOffset? suspendedAt, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task SetInvestorAccessAsync(

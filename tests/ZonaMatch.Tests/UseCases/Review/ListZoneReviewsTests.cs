@@ -1,5 +1,6 @@
 ﻿using ZonaMatch.Application.DTOs.Review.Responses;
 using ZonaMatch.Application.UseCases.Review;
+using FluentAssertions;
 using ZonaMatch.Domain.Common;
 using ZonaMatch.Domain.Entities;
 using ZonaMatch.Tests.UseCases.Image;
@@ -43,6 +44,18 @@ namespace ZonaMatch.Tests.UseCases.Review
             };
             _reviews.Add(review);
             return review;
+        }
+
+        [Fact]
+        public async Task ListReviews_WhenAuthorHasNames_ReturnsTheNameAndInitials()
+        {
+            Add(new User { Email = "example@example.com", FirstName = "María José", LastName = "Sánchez" });
+
+            var result = await _useCase.ExecuteAsync(Zone, currentUserId: null);
+
+            var review = result.Reviews.Should().ContainSingle().Which;
+            review.AuthorName.Should().Be("María José Sánchez");
+            review.Initials.Should().Be("MS");
         }
 
         [Fact]

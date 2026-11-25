@@ -21,4 +21,5 @@ public sealed record ContributionResponse(
     string? PointOfInterestId,
     string? PointOfInterestName,
     CorrectionReason? Reason,
-    string? Comment);
+    string? Comment,
+    string? AuthorName = null);

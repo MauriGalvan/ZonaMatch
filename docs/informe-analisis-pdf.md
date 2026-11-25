@@ -39,7 +39,7 @@ La generación ocurre en el navegador. No se agrega un servicio externo al que s
 
 ## Cómo funcionan los tests
 
-Los tests están en `e2e/tests/analysis/` y se ejecutan con Playwright. Los datos de `report-fixtures.ts` son ejemplos controlados; no modifican la base de datos.
+Los tests de navegador están en `tests/browser/analysis/` y los unitarios en `tests/unit/analysis/`, en el repositorio del frontend. Ambas suites usan Playwright y comparten los datos de ejemplo de `tests/fixtures/report.ts`.
 
 **11 tests del modelo y del generador**, en `report-model.spec.ts`:
 

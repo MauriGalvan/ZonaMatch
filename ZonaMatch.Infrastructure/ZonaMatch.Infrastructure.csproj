@@ -31,6 +31,7 @@
   <ItemGroup>
     <!-- Logo that every outgoing email shows (cid:zonamatch-logo) -->
     <EmbeddedResource Include="Services/Assets/email-logo.png" LogicalName="ZonaMatch.EmailLogo.png" />
+    <EmbeddedResource Include="../docker/photon/amba-bounds.json" LogicalName="ZonaMatch.AmbaBounds.json" />
   </ItemGroup>
 
 </Project>

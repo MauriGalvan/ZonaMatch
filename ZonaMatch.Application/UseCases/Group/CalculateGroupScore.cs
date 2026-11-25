@@ -178,7 +178,7 @@ public sealed partial class CalculateGroupScore
                 .Select(point => new GroupPointOfInterestResponse(
                     point.Id,
                     participant.Id,
-                    participant.User.Email,
+                    GroupParticipantName.DisplayName(participant),
                     point.Name,
                     point.Address,
                     point.Latitude,
@@ -309,7 +309,7 @@ public sealed partial class CalculateGroupScore
             return new ParticipantTripResponse(
                 point.Id,
                 member.Participant.Id,
-                member.Participant.User.Email,
+                GroupParticipantName.DisplayName(member.Participant),
                 point.Name,
                 point.Address,
                 point.Type,
@@ -353,7 +353,7 @@ public sealed partial class CalculateGroupScore
         var breakdown = available
             .Select(entry => new ParticipantScoreResponse(
                 entry.Participant.Id,
-                entry.Participant.User.Email,
+                GroupParticipantName.DisplayName(entry.Participant),
                 entry.Weight,
                 entry.Score is not null && entry.Weight > 0 && totalWeight > 0
                     ? decimal.Round(entry.Weight / totalWeight * 100, 2, MidpointRounding.AwayFromZero)
@@ -381,7 +381,7 @@ public sealed partial class CalculateGroupScore
                 var componentParticipants = group
                     .Select(entry => new ParticipantScoreComponentResponse(
                         entry.Member.Participant.Id,
-                        entry.Member.Participant.User.Email,
+                        GroupParticipantName.DisplayName(entry.Member.Participant),
                         entry.Component.Score is not null && weights[entry.Member.Participant.Id] > 0 && componentWeight > 0
                             ? decimal.Round(weights[entry.Member.Participant.Id] / componentWeight * 100, 2, MidpointRounding.AwayFromZero)
                             : 0,
@@ -404,7 +404,7 @@ public sealed partial class CalculateGroupScore
             .SelectMany(member => member.Zones[zone.Slug].Result.Limits.Select(limit =>
                 new ScoreLimitResponse(
                     member.Participant.Id,
-                    member.Participant.User.Email,
+                    GroupParticipantName.DisplayName(member.Participant),
                     normalizedWeights.GetValueOrDefault(member.Participant.Id),
                     limit.Type,
                     limit.IsSatisfied,
@@ -455,7 +455,7 @@ public sealed partial class CalculateGroupScore
 
         return reason is null
             ? null
-            : new ExcludedParticipantResponse(participant.Id, participant.User.Email, reason);
+            : new ExcludedParticipantResponse(participant.Id, GroupParticipantName.DisplayName(participant), reason);
     }
 
     [GeneratedRegex(@"\d+")]

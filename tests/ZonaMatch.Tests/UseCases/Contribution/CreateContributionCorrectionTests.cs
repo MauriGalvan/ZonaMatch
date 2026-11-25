@@ -18,7 +18,7 @@ namespace ZonaMatch.Tests.UseCases.Contribution
 
         public CreateContributionCorrectionTests()
         {
-            _useCase = new CreateContributionCorrection(_contributions, new FakeZoneRepository(), new FixedTimeProvider(Now));
+            _useCase = new CreateContributionCorrection(_contributions, new FakeZoneRepository(), new FakeAdministratorRepository(), new FixedTimeProvider(Now));
         }
 
         private static CreateContributionCorrectionRequest Correction(

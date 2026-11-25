@@ -1,9 +1,11 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using FluentAssertions;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using ZonaMatch.Application.Exceptions;
 using ZonaMatch.Domain.Scoring;
+using ZonaMatch.Infrastructure.Caching;
 using ZonaMatch.Infrastructure.Geo;
 
 namespace ZonaMatch.Tests.Infrastructure;
@@ -127,7 +129,7 @@ public sealed class MotisRoutePlannerTests
         TravelMode mode,
         string expectedModeParameters)
     {
-        const string referenceTime = "2026-05-12T11:00:00Z";
+        const string referenceTime = "2026-05-12T08:00:00-03:00";
         using var harness = CreateHarness(
             """{"direct":[{"duration":600,"transfers":0,"legs":[{"mode":"WALK","duration":600,"distance":500}]}]}""",
             referenceTime: referenceTime);
@@ -137,7 +139,7 @@ public sealed class MotisRoutePlannerTests
         var query = Uri.UnescapeDataString(harness.Handler.LastRequestUri!.Query);
         query.Should().Contain("fromPlace=-34.6,-58.4");
         query.Should().Contain("toPlace=-34.5,-58.3");
-        query.Should().Contain($"time={referenceTime}");
+        query.Should().Contain("time=2026-05-12T11:00:00Z");
         query.Should().Contain(expectedModeParameters);
     }
 
@@ -188,12 +190,12 @@ public sealed class MotisRoutePlannerTests
         var handler = new RecordingHttpMessageHandler(responseJson, statusCode, httpException);
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://motis.test/") };
         var cache = HybridCacheTestSupport.Create();
-        var configurationValues = new Dictionary<string, string?>();
-        if (referenceTime is not null)
-            configurationValues["Motis:FechaReferencia"] = referenceTime;
-
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(configurationValues).Build();
-        return new PlannerHarness(handler, httpClient, new MotisRoutePlanner(httpClient, cache, configuration));
+        var motis = Options.Create(new MotisOptions
+        {
+            ReferenceTime = DateTimeOffset.Parse(referenceTime ?? "2026-03-03T11:00:00Z", CultureInfo.InvariantCulture)
+        });
+        var cacheLifetimes = Options.Create(new CacheLifetimeOptions { MotisRoutePlans = TimeSpan.FromDays(1) });
+        return new PlannerHarness(handler, httpClient, new MotisRoutePlanner(httpClient, cache, motis, cacheLifetimes));
     }
 
     private sealed class PlannerHarness(

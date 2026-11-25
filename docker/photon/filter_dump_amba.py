@@ -11,8 +11,19 @@ centroid cae dentro del recuadro. Lee y escribe en UTF-8. Procesa de a una linea
 import json
 import os
 import sys
+from pathlib import Path
 
-DEFAULT_BBOX = (-58.99, -34.93, -58.01, -34.33)  # igual que el recuadro de busqueda de la API
+
+def load_amba_bounds():
+    config_path = Path(__file__).with_name("amba-bounds.json")
+    with config_path.open(encoding="utf-8") as config_file:
+        bounds = json.load(config_file)
+    return (
+        bounds["MinLongitude"],
+        bounds["MinLatitude"],
+        bounds["MaxLongitude"],
+        bounds["MaxLatitude"],
+    )
 
 
 def inside(place, bbox):
@@ -27,7 +38,13 @@ def main():
     if len(sys.argv) not in (3, 7):
         sys.exit(__doc__)
     source, target = sys.argv[1], sys.argv[2]
-    bbox = tuple(float(v) for v in sys.argv[3:7]) if len(sys.argv) == 7 else DEFAULT_BBOX
+    try:
+        bbox = tuple(float(v) for v in sys.argv[3:7]) if len(sys.argv) == 7 else load_amba_bounds()
+        west, south, east, north = bbox
+        if not (-180 <= west < east <= 180 and -90 <= south < north <= 90):
+            raise ValueError("Expected ordered WGS84 longitude and latitude limits.")
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        sys.exit(f"Invalid crop bounds: {error}")
 
     os.makedirs(os.path.dirname(os.path.abspath(target)), exist_ok=True)
 

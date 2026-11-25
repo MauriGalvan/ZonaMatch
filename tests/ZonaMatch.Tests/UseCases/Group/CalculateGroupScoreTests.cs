@@ -339,7 +339,7 @@ public class CalculateGroupScoreTests
     }
 
     [Fact]
-    public async Task CalculateGroupScore_WhenParticipantPlaceHasFrequency_ReturnsItInParticipantPoints()
+    public async Task CalculateGroupScore_WhenParticipantHasAPlace_ReturnsTheirFullNameAndPlaceFrequency()
     {
         var groupId = Guid.NewGuid();
         var userId = Guid.NewGuid();
@@ -349,7 +349,7 @@ public class CalculateGroupScoreTests
             GroupId = groupId,
             UserId = userId,
             Role = GroupRole.Owner,
-            User = new User { Id = userId, Email = "ana@example.com" }
+            User = new User { Id = userId, Email = "ana@example.com", FirstName = "Ana", LastName = "Torres" }
         };
         var group = new DomainGroup { Id = groupId, Name = "Weekend search", Participants = [participant] };
         var profile = new Context
@@ -380,8 +380,11 @@ public class CalculateGroupScoreTests
                 ParticipantWeights = [new ParticipantWeightRequest { ParticipantId = participant.Id, Weight = 100 }]
             });
 
-        result.ParticipantPoints.Should().ContainSingle()
-            .Which.Frequency.Should().Be("diaria");
+        var point = result.ParticipantPoints.Should().ContainSingle().Which;
+        point.ParticipantName.Should().Be("Ana Torres");
+        point.Frequency.Should().Be("diaria");
+        result.Zones.Should().ContainSingle().Which.Participants
+            .Should().ContainSingle().Which.Name.Should().Be("Ana Torres");
     }
 
     [Fact]

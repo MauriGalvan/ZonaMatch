@@ -1,3 +1,4 @@
+using ZonaMatch.Application.DTOs.Zone.Responses;
 using ZonaMatch.Application.Interfaces;
 using ZonaMatch.Domain.Entities;
 
@@ -52,4 +53,13 @@ internal sealed class IntegrationZoneRepository : IZoneRepository
         int resultLimit,
         CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Zone>>([]);
+
+    public Task<string> GetCoverageGeoJsonAsync(
+        double simplificationTolerance,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult("""{"type":"FeatureCollection","features":[]}""");
+
+    public Task<IReadOnlyList<AvailableZoneResponse>> ListAvailableAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AvailableZoneResponse>>([]);
 }

@@ -296,6 +296,12 @@ namespace ZonaMatch.Tests.UseCases.Scoring
 
             public Task<IReadOnlyList<ZonaMatch.Domain.Entities.Zone>> SearchAsync(string searchText, int resultLimit, CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<ZonaMatch.Domain.Entities.Zone>>([]);
+
+            public Task<string> GetCoverageGeoJsonAsync(double simplificationTolerance, CancellationToken cancellationToken = default) =>
+                Task.FromResult("""{"type":"FeatureCollection","features":[]}""");
+
+            public Task<IReadOnlyList<ZonaMatch.Application.DTOs.Zone.Responses.AvailableZoneResponse>> ListAvailableAsync(CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<ZonaMatch.Application.DTOs.Zone.Responses.AvailableZoneResponse>>([]);
         }
       
         [Theory]

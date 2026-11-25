@@ -6,6 +6,7 @@ namespace ZonaMatch.Domain.Entities
     public class Analysis
     {
         public const int TrashRetentionDays = 30;
+        public const int MaximumNameLength = 50;
 
         public static TimeSpan TrashRetentionPeriod => TimeSpan.FromDays(TrashRetentionDays);
 
